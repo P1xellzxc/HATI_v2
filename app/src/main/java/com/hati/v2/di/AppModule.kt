@@ -2,7 +2,8 @@ package com.hati.v2.di
 
 import android.content.Context
 import androidx.room.Room
-import com.hati.v2.data.local.GroupDao
+import com.hati.v2.data.local.DashboardDao
+import com.hati.v2.data.local.MemberDao
 import com.hati.v2.data.local.HatiDatabase
 import com.hati.v2.data.local.TransactionDao
 import com.hati.v2.data.local.UserDao
@@ -59,7 +60,12 @@ object DatabaseModule {
     }
     
     @Provides
-    fun provideGroupDao(database: HatiDatabase): GroupDao {
-        return database.groupDao()
+    fun provideDashboardDao(database: HatiDatabase): DashboardDao {
+        return database.dashboardDao()
+    }
+
+    @Provides
+    fun provideMemberDao(database: HatiDatabase): MemberDao {
+        return database.memberDao()
     }
 }

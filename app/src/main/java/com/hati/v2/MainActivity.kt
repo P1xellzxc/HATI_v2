@@ -18,6 +18,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.hati.v2.presentation.screen.HomeScreen
+import com.hati.v2.presentation.screen.DashboardScreen
 import com.hati.v2.presentation.screen.LoginScreen
 import com.hati.v2.presentation.theme.HatiTheme
 import com.hati.v2.presentation.theme.MangaColors
@@ -83,6 +84,16 @@ fun HatiNavigation(supabaseClient: SupabaseClient) {
                     navController.navigate("login") {
                         popUpTo("home") { inclusive = true }
                     }
+                },
+                onNavigateToDashboard = { dashboardId ->
+                    navController.navigate("dashboard/$dashboardId")
+                }
+            )
+        }
+        composable("dashboard/{dashboardId}") {
+            DashboardScreen(
+                onBack = {
+                    navController.popBackStack()
                 }
             )
         }

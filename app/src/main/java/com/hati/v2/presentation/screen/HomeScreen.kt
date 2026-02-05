@@ -1,79 +1,66 @@
 package com.hati.v2.presentation.screen
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.hati.v2.data.repository.TransactionRepository
-import com.hati.v2.domain.model.Transaction
+import com.hati.v2.data.local.DashboardEntity
 import com.hati.v2.presentation.animation.AntigravityEntrance
 import com.hati.v2.presentation.animation.FallingLayout
 import com.hati.v2.presentation.components.HalftoneOverlay
 import com.hati.v2.presentation.components.MangaCard
 import com.hati.v2.presentation.theme.MangaColors
 import com.hati.v2.presentation.theme.MangaTypography
-import dagger.hilt.android.lifecycle.HiltViewModel
-import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.auth.auth
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
- * HomeScreen - Main dashboard after login.
- * Displays transactions with Manga styling and Antigravity animations.
+ * HubScreen (formerly HomeScreen) - Displays user's dashboards (Folders).
  */
 @Composable
 fun HomeScreen(
+    onNavigateToDashboard: (String) -> Unit,
     onLogout: () -> Unit,
-    viewModel: HomeViewModel = hiltViewModel()
+    viewModel: HubViewModel = hiltViewModel()
 ) {
-    val transactions by viewModel.transactions.collectAsState()
+    val dashboards by viewModel.dashboards.collectAsState()
+    val userEmail by viewModel.userEmail.collectAsState()
     val scope = rememberCoroutineScope()
     
+    // Dialog state for creating new dashboard
+    var showCreateDialog by remember { mutableStateOf(false) }
+
+    if (showCreateDialog) {
+        CreateDashboardDialog(
+            onDismiss = { showCreateDialog = false },
+            onConfirm = { name ->
+                viewModel.createDashboard(name)
+                showCreateDialog = false
+            }
+        )
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MangaColors.White)
     ) {
-        // Background halftone pattern
-        HalftoneOverlay(
-            dotSize = 2f,
-            spacing = 16f
-        )
-        
+        HalftoneOverlay(dotSize = 2f, spacing = 16f)
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            // Header with Antigravity entrance
+            // Header
             AntigravityEntrance(delay = 0L) {
-                MangaCard(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                MangaCard(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -81,22 +68,25 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        BasicText(
-                            text = "HATI²",
-                            style = MangaTypography.displaySmall.copy(color = MangaColors.Black)
-                        )
-                        
-                        // Logout button
-                        androidx.compose.foundation.clickable(onClick = {
+                        Column {
+                            BasicText(
+                                text = "HATI² HUB",
+                                style = MangaTypography.displaySmall.copy(color = MangaColors.Black)
+                            )
+                            BasicText(
+                                text = userEmail ?: "GUEST",
+                                style = MangaTypography.labelMedium.copy(color = MangaColors.Black.copy(alpha = 0.6f))
+                            )
+                        }
+
+                        // Logout
+                        Box(modifier = Modifier.clickable {
                             scope.launch {
                                 viewModel.logout()
                                 onLogout()
                             }
                         }) {
-                            MangaCard(
-                                backgroundColor = MangaColors.Black,
-                                shadowOffset = 2.dp
-                            ) {
+                            MangaCard(backgroundColor = MangaColors.Black, shadowOffset = 2.dp) {
                                 BasicText(
                                     text = "LOGOUT",
                                     style = MangaTypography.labelLarge.copy(color = MangaColors.White),
@@ -107,25 +97,23 @@ fun HomeScreen(
                     }
                 }
             }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Section title
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Section Title
             FallingLayout(delay = 100L) {
                 BasicText(
-                    text = "TRANSACTIONS",
+                    text = "YOUR FOLDERS",
                     style = MangaTypography.headlineLarge.copy(color = MangaColors.Black)
                 )
             }
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            // Transaction list with staggered falling animation
-            if (transactions.isEmpty()) {
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Dashboard List
+            if (dashboards.isEmpty()) {
                 FallingLayout(delay = 200L) {
-                    MangaCard(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                    MangaCard(modifier = Modifier.fillMaxWidth()) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -133,7 +121,7 @@ fun HomeScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             BasicText(
-                                text = "NO TRANSACTIONS YET!",
+                                text = "NO FOLDERS YET",
                                 style = MangaTypography.headlineSmall.copy(color = MangaColors.Black)
                             )
                         }
@@ -141,19 +129,22 @@ fun HomeScreen(
                 }
             } else {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
-                    itemsIndexed(transactions) { index, transaction ->
+                    itemsIndexed(dashboards) { index, dashboard ->
                         FallingLayout(delay = (index + 2) * 50L) {
-                            TransactionCard(transaction = transaction)
+                            DashboardCard(
+                                dashboard = dashboard,
+                                onClick = { onNavigateToDashboard(dashboard.id) }
+                            )
                         }
                     }
                 }
             }
         }
-        
-        // FAB with Antigravity entrance
+
+        // FAB: Create Folder
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -161,17 +152,12 @@ fun HomeScreen(
             contentAlignment = Alignment.BottomEnd
         ) {
             AntigravityEntrance(delay = 300L) {
-                androidx.compose.foundation.clickable(onClick = {
-                    // TODO: Navigate to add transaction
-                }) {
-                    MangaCard(
-                        backgroundColor = MangaColors.Black,
-                        shadowOffset = 6.dp
-                    ) {
+                Box(modifier = Modifier.clickable { showCreateDialog = true }) {
+                    MangaCard(backgroundColor = MangaColors.Black, shadowOffset = 6.dp) {
                         BasicText(
-                            text = "+",
+                            text = "+ NEW FOLDER",
                             style = MangaTypography.displayMedium.copy(color = MangaColors.White),
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
                         )
                     }
                 }
@@ -180,64 +166,92 @@ fun HomeScreen(
     }
 }
 
-/**
- * Transaction card with Manga styling.
- */
 @Composable
-fun TransactionCard(transaction: Transaction) {
-    MangaCard(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
+fun DashboardCard(dashboard: DashboardEntity, onClick: () -> Unit) {
+    Box(modifier = Modifier.clickable(onClick = onClick)) {
+        MangaCard(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    BasicText(
+                        text = dashboard.name.uppercase(),
+                        style = MangaTypography.headlineSmall.copy(color = MangaColors.Black)
+                    )
+                    
+                    // Small "PHP" badge or similar
+                    MangaCard(backgroundColor = MangaColors.Accent, shadowOffset = 0.dp) {
+                        BasicText(
+                            text = dashboard.currency,
+                            style = MangaTypography.labelSmall.copy(color = MangaColors.Black),
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
                 BasicText(
-                    text = transaction.description.uppercase(),
-                    style = MangaTypography.headlineSmall.copy(color = MangaColors.Black)
-                )
-                BasicText(
-                    text = transaction.category.uppercase(),
+                    text = "CREATED: ${java.text.SimpleDateFormat("MMM dd").format(java.util.Date(dashboard.createdAt))}", // Quick format
                     style = MangaTypography.labelMedium.copy(color = MangaColors.Black.copy(alpha = 0.6f))
                 )
             }
-            
-            BasicText(
-                text = "₱${String.format("%.2f", transaction.amount)}",
-                style = MangaTypography.headlineMedium.copy(color = MangaColors.Black)
-            )
         }
     }
 }
 
-@HiltViewModel
-class HomeViewModel @Inject constructor(
-    private val transactionRepository: TransactionRepository,
-    private val supabaseClient: SupabaseClient
-) : ViewModel() {
+@Composable
+fun CreateDashboardDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    var text by remember { mutableStateOf("") }
     
-    private val _transactions = MutableStateFlow<List<Transaction>>(emptyList())
-    val transactions: StateFlow<List<Transaction>> = _transactions
-    
-    // TODO: Get actual group ID from navigation or user preferences
-    private val currentGroupId = "demo-group"
-    
-    init {
-        loadTransactions()
-    }
-    
-    private fun loadTransactions() {
-        viewModelScope.launch {
-            transactionRepository.getTransactionsByGroup(currentGroupId)
-                .collect { _transactions.value = it }
+    // Simple overlay dialog
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MangaColors.Black.copy(alpha = 0.5f))
+            .clickable(onClick = onDismiss),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(modifier = Modifier.clickable(enabled = false) {}) { // Prevent click through
+            MangaCard(modifier = Modifier.padding(32.dp)) {
+                Column(modifier = Modifier.padding(24.dp)) {
+                    BasicText(
+                        text = "NEW FOLDER",
+                        style = MangaTypography.headlineMedium
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Simple input replacement (Since I don't see the component code yet, using basic)
+                    // In real app, use MangaInput
+                    androidx.compose.foundation.text.BasicTextField(
+                        value = text,
+                        onValueChange = { text = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MangaColors.White)
+                            .padding(8.dp),
+                        textStyle = MangaTypography.bodyLarge
+                        // TODO: Add proper border/styling
+                    )
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                        Box(modifier = Modifier.clickable { onConfirm(text) }) {
+                            MangaCard(backgroundColor = MangaColors.Black) {
+                                BasicText(
+                                    text = "CREATE",
+                                    style = MangaTypography.labelLarge.copy(color = MangaColors.White),
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
-    
-    suspend fun logout() {
-        supabaseClient.auth.signOut()
-    }
 }
+

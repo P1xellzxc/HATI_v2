@@ -11,16 +11,18 @@ import androidx.room.RoomDatabase
     entities = [
         TransactionEntity::class,
         UserEntity::class,
-        GroupEntity::class
+        DashboardEntity::class,
+        MemberEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 abstract class HatiDatabase : RoomDatabase() {
     
     abstract fun transactionDao(): TransactionDao
     abstract fun userDao(): UserDao
-    abstract fun groupDao(): GroupDao
+    abstract fun dashboardDao(): DashboardDao
+    abstract fun memberDao(): MemberDao
     
     companion object {
         const val DATABASE_NAME = "hati_database"

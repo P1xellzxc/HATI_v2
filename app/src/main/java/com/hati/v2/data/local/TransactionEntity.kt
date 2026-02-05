@@ -8,7 +8,18 @@ import kotlinx.datetime.Instant
  * Room Entity for offline storage of transactions.
  * Maps to the Transaction domain model.
  */
-@Entity(tableName = "transactions")
+@Entity(
+    tableName = "transactions",
+    foreignKeys = [
+        androidx.room.ForeignKey(
+            entity = DashboardEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["groupId"],
+            onDelete = androidx.room.ForeignKey.CASCADE
+        )
+    ],
+    indices = [androidx.room.Index("groupId")]
+)
 data class TransactionEntity(
     @PrimaryKey
     val id: String,                    // UUID from Supabase
@@ -23,28 +34,3 @@ data class TransactionEntity(
     val isDeleted: Boolean = false     // Soft delete for sync
 )
 
-/**
- * Room Entity for users cache.
- */
-@Entity(tableName = "users")
-data class UserEntity(
-    @PrimaryKey
-    val id: String,
-    val email: String,
-    val name: String,
-    val avatarUrl: String?,
-    val createdAt: Long
-)
-
-/**
- * Room Entity for groups cache.
- */
-@Entity(tableName = "groups")
-data class GroupEntity(
-    @PrimaryKey
-    val id: String,
-    val name: String,
-    val description: String?,
-    val createdBy: String?,
-    val createdAt: Long
-)
