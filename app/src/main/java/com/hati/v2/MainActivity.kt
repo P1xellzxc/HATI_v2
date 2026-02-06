@@ -58,44 +58,66 @@ fun HatiNavigation(supabaseClient: SupabaseClient) {
 
     // Check session on launch
     LaunchedEffect(Unit) {
-        val session = supabaseClient.auth.currentSessionOrNull()
-        startDestination = if (session != null) "home" else "login"
+        try {
+            val session = supabaseClient.auth.currentSessionOrNull()
+            startDestination = if (session != null) "home" else "login"
+        } catch (e: Exception) {
+            // Fallback to login on error
+            startDestination = "login"
+        }
     }
 
-    // Don't render until we know the start destination
-    if (startDestination == null) return
+    // Show loading state while determining start destination
+    when (val destination = startDestination) {
+        null -> LoadingScreen()
+        else -> NavHost(
+            navController = navController,
+            startDestination = destination
+        ) {
+            composable("login") {
+                LoginScreen(
+                    onLoginSuccess = {
+                        navController.navigate("home") {
+                            popUpTo("login") { inclusive = true }
+                        }
+                    }
+                )
+            }
+            composable("home") {
+                HomeScreen(
+                    onLogout = {
+                        navController.navigate("login") {
+                            popUpTo("home") { inclusive = true }
+                        }
+                    },
+                    onNavigateToDashboard = { dashboardId ->
+                        navController.navigate("dashboard/$dashboardId")
+                    }
+                )
+            }
+            composable("dashboard/{dashboardId}") {
+                DashboardScreen(
+                    onBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+        }
+    }
+}
 
-    NavHost(
-        navController = navController,
-        startDestination = startDestination!!
+@Composable
+private fun LoadingScreen() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MangaColors.White),
+        contentAlignment = androidx.compose.ui.Alignment.Center
     ) {
-        composable("login") {
-            LoginScreen(
-                onLoginSuccess = {
-                    navController.navigate("home") {
-                        popUpTo("login") { inclusive = true }
-                    }
-                }
-            )
-        }
-        composable("home") {
-            HomeScreen(
-                onLogout = {
-                    navController.navigate("login") {
-                        popUpTo("home") { inclusive = true }
-                    }
-                },
-                onNavigateToDashboard = { dashboardId ->
-                    navController.navigate("dashboard/$dashboardId")
-                }
-            )
-        }
-        composable("dashboard/{dashboardId}") {
-            DashboardScreen(
-                onBack = {
-                    navController.popBackStack()
-                }
-            )
-        }
+        // Simple loading text or indicator matching Manga style
+        androidx.compose.foundation.text.BasicText(
+            text = "LOADING...",
+            style = com.hati.v2.presentation.theme.MangaTypography.headlineMedium
+        )
     }
 }

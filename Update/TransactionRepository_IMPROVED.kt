@@ -2,8 +2,6 @@ package com.hati.v2.data.repository
 
 import com.hati.v2.data.local.HatiDatabase
 import com.hati.v2.data.local.TransactionEntity
-import com.hati.v2.data.network.NetworkMonitor
-import com.hati.v2.data.network.NetworkUnavailableException
 import com.hati.v2.domain.model.Transaction
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
@@ -409,3 +407,10 @@ data class SupabaseTransaction(
     val createdAt: Long,
     val updatedAt: Long
 )
+
+// ============================
+// Custom Exceptions
+// ============================
+
+class NetworkUnavailableException(message: String) : Exception(message)
+class SyncConflictException(message: String) : Exception(message)

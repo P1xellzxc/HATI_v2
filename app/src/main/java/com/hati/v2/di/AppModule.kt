@@ -3,10 +3,14 @@ package com.hati.v2.di
 import android.content.Context
 import androidx.room.Room
 import com.hati.v2.data.local.DashboardDao
-import com.hati.v2.data.local.MemberDao
+import com.hati.v2.data.local.GroupDao
 import com.hati.v2.data.local.HatiDatabase
+import com.hati.v2.data.local.MemberDao
+import com.hati.v2.data.local.SyncMetadataDao
 import com.hati.v2.data.local.TransactionDao
 import com.hati.v2.data.local.UserDao
+import com.hati.v2.data.network.NetworkMonitor
+import com.hati.v2.data.network.NetworkMonitorImpl
 import com.hati.v2.data.remote.SupabaseClientFactory
 import dagger.Module
 import dagger.Provides
@@ -16,9 +20,6 @@ import dagger.hilt.components.SingletonComponent
 import io.github.jan.supabase.SupabaseClient
 import javax.inject.Singleton
 
-/**
- * Hilt AppModule - Provides application-level dependencies.
- */
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
@@ -28,11 +29,14 @@ object AppModule {
     fun provideSupabaseClient(): SupabaseClient {
         return SupabaseClientFactory.create()
     }
+
+    @Provides
+    @Singleton
+    fun provideNetworkMonitor(@ApplicationContext context: Context): NetworkMonitor {
+        return NetworkMonitorImpl(context)
+    }
 }
 
-/**
- * Hilt DatabaseModule - Provides Room database dependencies.
- */
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -46,7 +50,9 @@ object DatabaseModule {
             context,
             HatiDatabase::class.java,
             HatiDatabase.DATABASE_NAME
-        ).build()
+        )
+        .addMigrations(HatiDatabase.MIGRATION_1_2)
+        .build()
     }
     
     @Provides
@@ -63,9 +69,19 @@ object DatabaseModule {
     fun provideDashboardDao(database: HatiDatabase): DashboardDao {
         return database.dashboardDao()
     }
+    
+    @Provides
+    fun provideGroupDao(database: HatiDatabase): GroupDao {
+        return database.groupDao()
+    }
 
     @Provides
     fun provideMemberDao(database: HatiDatabase): MemberDao {
         return database.memberDao()
+    }
+
+    @Provides
+    fun provideSyncMetadataDao(database: HatiDatabase): SyncMetadataDao {
+        return database.syncMetadataDao()
     }
 }

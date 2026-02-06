@@ -5,9 +5,11 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "users")
 data class UserEntity(
-    @PrimaryKey val id: String, // Supabase Auth ID
+    @PrimaryKey
+    val id: String,
     val email: String,
-    val fullName: String?,
-    val avatarUrl: String?,
-    val lastSyncedAt: Long = 0
+    val name: String,
+    val avatarUrl: String? = null,
+    val createdAt: Long,
+    val updatedAt: Long
 )

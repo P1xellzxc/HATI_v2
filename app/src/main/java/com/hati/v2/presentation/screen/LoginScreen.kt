@@ -142,9 +142,29 @@ class LoginViewModel @Inject constructor(
 ) : ViewModel() {
     
     suspend fun login(email: String, password: String) {
-        supabaseClient.auth.signInWith(Email) {
-            this.email = email
-            this.password = password
+        // Validate input
+        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            throw IllegalArgumentException("Invalid email format")
+        }
+        
+        if (password.length < 6) {
+            throw IllegalArgumentException("Password must be at least 6 characters")
+        }
+
+        try {
+            supabaseClient.auth.signInWith(Email) {
+                this.email = email
+                this.password = password
+            }
+        } catch (e: Exception) {
+            // Map Supabase errors to user-friendly messages
+            val message = when {
+                e.message?.contains("Invalid login credentials") == true -> "Invalid email or password"
+                e.message?.contains("Email not confirmed") == true -> "Please verify your email first"
+                e.message?.contains("network") == true -> "Network error. Please check your connection."
+                else -> "Login failed. Please try again."
+            }
+            throw Exception(message)
         }
     }
 }
