@@ -20,14 +20,17 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
 
-class MainViewModel(application: Application) : AndroidViewModel(application) {
-    private val database = (application as App).database
-    private val dashboardDao = database.dashboardDao()
-    private val personDao = database.personDao()
-    private val expenseDao = database.expenseDao()
-
-    private val calculateDebtsUseCase = CalculateDebtsUseCase()
-
+@dagger.hilt.android.lifecycle.HiltViewModel
+class MainViewModel @javax.inject.Inject constructor(
+    application: Application,
+    private val dashboardDao: com.hativ2.data.dao.DashboardDao,
+    private val personDao: com.hativ2.data.dao.PersonDao,
+    private val expenseDao: com.hativ2.data.dao.ExpenseDao,
+    private val addTransactionUseCase: com.hativ2.domain.usecase.AddTransactionUseCase,
+    private val calculateDashboardStatsUseCase: com.hativ2.domain.usecase.CalculateDashboardStatsUseCase,
+    private val calculateDebtsUseCase: CalculateDebtsUseCase
+) : AndroidViewModel(application) {
+    
     val dashboards: StateFlow<List<DashboardEntity>> = dashboardDao.getAllDashboards()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -44,27 +47,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         dashboardDao.getDashboardMembers(dashboard.id)
                     ) { expenses, splits, settlements, members ->
                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                            val debtSummary = calculateDebtsUseCase.execute(
+                            calculateDashboardStatsUseCase.execute(
+                                dashboard = dashboard,
                                 expenses = expenses,
                                 splits = splits,
                                 settlements = settlements,
-                                userIds = members.map { it.id },
+                                members = members,
                                 currentUserId = "user-current"
-                            )
-                            DashboardWithStats(
-                                id = dashboard.id,
-                                title = dashboard.title,
-                                coverImageUrl = dashboard.coverImageUrl,
-                                coverImageOffsetY = dashboard.coverImageOffsetY,
-                                coverImageZoom = dashboard.coverImageZoom,
-                                currencySymbol = dashboard.currencySymbol,
-                                themeColor = dashboard.themeColor,
-                                dashboardType = dashboard.dashboardType,
-                                createdAt = dashboard.createdAt,
-                                order = dashboard.order,
-                                expenseCount = expenses.size,
-                                totalSpent = expenses.sumOf { it.amount },
-                                netBalance = debtSummary.totalOwedToYou - debtSummary.totalYouOwe
                             )
                         }
                     }
@@ -124,29 +113,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         splitWith: List<String> 
     ) {
         viewModelScope.launch {
-            val expenseId = UUID.randomUUID().toString()
-            val expense = com.hativ2.data.entity.ExpenseEntity(
-                id = expenseId,
+            addTransactionUseCase.execute(
                 dashboardId = dashboardId,
                 description = description,
                 amount = amount,
                 paidBy = paidBy,
                 category = category,
-                createdAt = System.currentTimeMillis()
+                splitWith = splitWith
             )
-            
-            // Default split strategy: Equal split among selected people
-            val splitAmount = amount / splitWith.size
-            val splits = splitWith.map { personId ->
-                com.hativ2.data.entity.SplitEntity(
-                    id = UUID.randomUUID().toString(),
-                    expenseId = expenseId,
-                    personId = personId,
-                    amount = splitAmount
-                )
-            }
-
-            expenseDao.saveExpenseWithSplits(expense, splits)
         }
     }
 
@@ -277,6 +251,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val settlementItems = settlements.map { TransactionDisplayItem.SettlementItem(it) }
             (expenseItems + settlementItems).sortedByDescending { it.date }
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    }
+    fun getAllTransactions(): StateFlow<List<TransactionDisplayItem>> {
+        return combine(
+             expenseDao.getAllExpenses(),
+             expenseDao.getAllSettlements()
+        ) { expenses, settlements ->
+            val expenseItems = expenses.map { TransactionDisplayItem.ExpenseItem(it) }
+            val settlementItems = settlements.map { TransactionDisplayItem.SettlementItem(it) }
+            (expenseItems + settlementItems).sortedByDescending { it.date }
+        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    }
+
+    fun deleteSettlement(settlementId: String) {
+        viewModelScope.launch {
+            expenseDao.deleteSettlement(settlementId)
+        }
     }
 }
 

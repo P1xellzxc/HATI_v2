@@ -15,6 +15,9 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses WHERE dashboardId = :dashboardId ORDER BY createdAt DESC")
     fun getExpensesForDashboard(dashboardId: String): Flow<List<ExpenseEntity>>
 
+    @Query("SELECT * FROM expenses WHERE dashboardId = :dashboardId AND createdAt BETWEEN :startDate AND :endDate ORDER BY createdAt DESC")
+    fun getExpensesByDateRange(dashboardId: String, startDate: Long, endDate: Long): Flow<List<ExpenseEntity>>
+
     @Query("SELECT * FROM expenses WHERE id = :id")
     suspend fun getExpenseById(id: String): ExpenseEntity?
 
@@ -49,6 +52,12 @@ interface ExpenseDao {
 
     @Query("SELECT * FROM settlements WHERE dashboardId = :dashboardId ORDER BY createdAt DESC")
     fun getSettlementsForDashboard(dashboardId: String): Flow<List<SettlementEntity>>
+
+    @Query("SELECT * FROM expenses ORDER BY createdAt DESC")
+    fun getAllExpenses(): Flow<List<ExpenseEntity>>
+
+    @Query("SELECT * FROM settlements ORDER BY createdAt DESC")
+    fun getAllSettlements(): Flow<List<SettlementEntity>>
 
     @Query("DELETE FROM settlements WHERE id = :id")
     suspend fun deleteSettlement(id: String)

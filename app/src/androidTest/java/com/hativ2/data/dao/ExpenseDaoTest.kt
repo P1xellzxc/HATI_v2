@@ -1,0 +1,76 @@
+package com.hativ2.data.dao
+
+import android.content.Context
+import androidx.room.Room
+import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.hativ2.data.AppDatabase
+import com.hativ2.data.entity.ExpenseEntity
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import java.io.IOException
+
+@RunWith(AndroidJUnit4::class)
+class ExpenseDaoTest {
+    private lateinit var expenseDao: ExpenseDao
+    private lateinit var db: AppDatabase
+
+    @Before
+    fun createDb() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        db = Room.inMemoryDatabaseBuilder(
+            context, AppDatabase::class.java
+        ).build()
+        expenseDao = db.expenseDao()
+    }
+
+    @After
+    @Throws(IOException::class)
+    fun closeDb() {
+        db.close()
+    }
+
+    @Test
+    @Throws(Exception::class)
+    fun writeUserAndReadInList() = runBlocking {
+        val dashboardId = "dash-1"
+        val expense = ExpenseEntity(
+            id = "expense-1",
+            dashboardId = dashboardId,
+            description = "Test Expense",
+            amount = 100.0,
+            paidBy = "user-1",
+            category = "Food",
+            createdAt = System.currentTimeMillis()
+        )
+        
+        expenseDao.insertExpense(expense)
+        
+        val expenses = expenseDao.getExpensesForDashboard(dashboardId).first()
+        assertEquals(expenses[0].description, "Test Expense")
+    }
+
+    @Test
+    fun getExpensesByDateRangeReturnsCorrectExpenses() = runBlocking {
+        val dashboardId = "dash-1"
+        val expense1 = ExpenseEntity("1", dashboardId, "Exp 1", 10.0, "u1", "Food", 1000)
+        val expense2 = ExpenseEntity("2", dashboardId, "Exp 2", 20.0, "u1", "Food", 2000)
+        val expense3 = ExpenseEntity("3", dashboardId, "Exp 3", 30.0, "u1", "Food", 3000)
+
+        expenseDao.insertExpense(expense1)
+        expenseDao.insertExpense(expense2)
+        expenseDao.insertExpense(expense3)
+
+        // Range covers expense 2 only
+        val result = expenseDao.getExpensesByDateRange(dashboardId, 1500, 2500).first()
+        
+        assertEquals(1, result.size)
+        assertEquals("Exp 2", result[0].description)
+    }
+}

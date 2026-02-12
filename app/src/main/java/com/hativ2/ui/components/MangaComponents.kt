@@ -6,13 +6,19 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -123,8 +129,8 @@ fun MangaButton(
         ) {
             ProvideTextStyle(value = MaterialTheme.typography.labelLarge.copy(color = contentColor, fontWeight = FontWeight.Bold)) {
                 // We need to fake a RowScope here or just use a Row
-                androidx.compose.foundation.layout.Row(
-                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+                Row(
+                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                     content = content
                 )
@@ -139,20 +145,27 @@ fun MangaTextField(
     onValueChange: (String) -> Unit,
     label: String,
     modifier: Modifier = Modifier,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default
+    placeholder: String = "",
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    singleLine: Boolean = true,
+    visualTransformation: VisualTransformation = VisualTransformation.None
 ) {
     Column(modifier = modifier) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 4.dp)
+            modifier = Modifier.padding(bottom = 4.dp),
+            color = MangaBlack
         )
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            textStyle = MaterialTheme.typography.bodyLarge,
+            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MangaBlack),
             keyboardOptions = keyboardOptions,
+            singleLine = singleLine,
+            visualTransformation = visualTransformation,
+            maxLines = if (singleLine) 1 else Int.MAX_VALUE,
             decorationBox = { innerTextField ->
                 Box(
                     modifier = Modifier
@@ -161,10 +174,11 @@ fun MangaTextField(
                         .border(MangaBorderWidth, MangaBlack, RoundedCornerShape(MangaCornerRadius))
                         .padding(horizontal = 12.dp, vertical = 12.dp)
                 ) {
-                    if (value.isEmpty()) {
+                    if (value.isEmpty() && placeholder.isNotEmpty()) {
                         Text(
-                            text = "", // Placeholder if needed
-                            color = Color.Gray
+                            text = placeholder,
+                            color = Color.Gray,
+                            style = MaterialTheme.typography.bodyLarge
                         )
                     }
                     innerTextField()
@@ -173,3 +187,87 @@ fun MangaTextField(
         )
     }
 }
+
+@Composable
+fun TransactionCard(
+    modifier: Modifier = Modifier,
+    title: String,
+    subtitle: String,
+    amount: String,
+    amountColor: Color = MangaBlack,
+    date: String? = null,
+    avatarColor: String? = null, // "default", etc. or a hex string if we support that later
+    avatarText: String? = null,
+    icon: @Composable (() -> Unit)? = null,
+    onClick: () -> Unit
+) {
+    MangaCard(
+        modifier = modifier.fillMaxWidth(),
+        onClick = onClick
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                // Avatar / Icon Area
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(
+                            if (avatarColor == "default") com.hativ2.ui.theme.NotionYellow else NotionWhite, 
+                            RoundedCornerShape(MangaCornerRadius)
+                        )
+                        .border(MangaBorderWidth, MangaBlack, RoundedCornerShape(MangaCornerRadius)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (icon != null) {
+                        icon()
+                    } else if (avatarText != null) {
+                        Text(
+                            text = avatarText.take(1).uppercase(),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.width(12.dp))
+                
+                Column {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MangaBlack
+                    )
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+                    if (date != null) {
+                         Text(
+                            text = date,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.Gray
+                        )
+                    }
+                }
+            }
+            
+            Text(
+                text = amount,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Black,
+                color = amountColor
+            )
+        }
+    }
+}
+
+

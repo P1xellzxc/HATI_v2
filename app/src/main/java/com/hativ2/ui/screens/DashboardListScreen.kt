@@ -137,7 +137,7 @@ fun DashboardListScreen(
                                 .border(2.dp, MangaBlack, RoundedCornerShape(4.dp)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("H", color = Color.White, fontWeight = FontWeight.Bold)
+                            Text("H", color = NotionWhite, fontWeight = FontWeight.Bold)
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
@@ -257,7 +257,7 @@ fun VolumeCard(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White, RoundedCornerShape(MangaCornerRadius))
+                .background(NotionWhite, RoundedCornerShape(MangaCornerRadius))
                 .border(2.dp, MangaBlack, RoundedCornerShape(MangaCornerRadius))
                 .clip(RoundedCornerShape(MangaCornerRadius))
         ) {
@@ -403,7 +403,7 @@ fun NewVolumeCard(onClick: () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White.copy(alpha = 0.5f), RoundedCornerShape(MangaCornerRadius))
+                .background(NotionWhite.copy(alpha = 0.5f), RoundedCornerShape(MangaCornerRadius))
                 .border(2.dp, MangaBlack, RoundedCornerShape(MangaCornerRadius)) 
                 .clip(RoundedCornerShape(MangaCornerRadius)),
             contentAlignment = Alignment.Center

@@ -52,6 +52,8 @@ import com.hativ2.ui.theme.MangaBlack
 import com.hativ2.ui.theme.NotionGreen
 import com.hativ2.ui.theme.NotionWhite
 import com.hativ2.ui.theme.NotionYellow
+import com.hativ2.ui.theme.NotionPurple
+import com.hativ2.ui.theme.NotionGray
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -302,7 +304,7 @@ fun MonthlyTrendChart(
             
             // Bar
             drawRect(
-                color = Color(0xFFF3F3F3), // Light gray bar
+                color = NotionGray, // Light gray bar
                 topLeft = Offset(startX, bottomY - barHeight),
                 size = Size(barWidth, barHeight)
             )

@@ -28,6 +28,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
@@ -100,6 +101,9 @@ fun DashboardDetailScreen(
     
     val transactionsFlow = remember(dashboardId) { viewModel.getTransactions(dashboardId) }
     val transactions by transactionsFlow.collectAsState()
+
+    val expensesFlow = remember(dashboardId) { viewModel.getExpenses(dashboardId) }
+    val expenses by expensesFlow.collectAsState()
     
     // We need people to map creator IDs to names if needed, but for now we just show simplistic info
     val peopleFlow = remember(dashboardId) { viewModel.getPeople(dashboardId) }
@@ -332,7 +336,23 @@ fun DashboardDetailScreen(
                         details = owedToYouDetails,
                         headerColor = NotionGreen.copy(alpha=0.15f),
                         icon = null, // Icons.Default.ArrowBack (rotated)
-                        onSettleUpClick = { /* TODO: Settle Up Logic */ }
+                        onSettleUpClick = if (debtSummary.totalOwedToYou > 0) {
+                            {
+                                val owedToYouList = debtSummary.transactions.filter { it.toId == "user-current" }
+                                if (owedToYouList.size == 1) {
+                                    val first = owedToYouList.first()
+                                    settleUpFromId = first.fromId
+                                    settleUpToId = "user-current"
+                                    settleUpAmount = first.amount
+                                } else {
+                                    // Multiple people owe you, default to generic or let user pick payer
+                                    settleUpFromId = null 
+                                    settleUpToId = "user-current"
+                                    settleUpAmount = 0.0
+                                }
+                                showSettleUpDialog = true
+                            }
+                        } else null
                     )
                     // You Owe
                     SummaryCard(
@@ -392,7 +412,7 @@ fun DashboardDetailScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            if (expenses.isEmpty()) {
+            if (transactions.isEmpty()) {
                 item {
                     Column(
                         modifier = Modifier
@@ -410,13 +430,40 @@ fun DashboardDetailScreen(
                     }
                 }
             } else {
-                items(expenses.take(5)) { expense ->
-                     val payerName = people.find { it.id == expense.paidBy }?.name ?: "Unknown"
-                     ChapterItem(
-                         expense = expense,
-                         payerName = payerName,
-                         onClick = { onExpenseClick(expense.id) }
-                     )
+                items(transactions.take(5)) { item ->
+                     when(item) {
+                         is TransactionDisplayItem.ExpenseItem -> {
+                             val expense = item.expense
+                             val isPayer = expense.paidBy == "user-current"
+                             val payerName = if (isPayer) "You" else people.find { it.id == expense.paidBy }?.name ?: "Unknown"
+                             
+                             com.hativ2.ui.components.TransactionCard(
+                                title = expense.description,
+                                subtitle = "paid by $payerName",
+                                amount = "₱${String.format("%,.2f", expense.amount)}",
+                                amountColor = if (isPayer) NotionGreen else MangaBlack,
+                                date = java.text.SimpleDateFormat("MMM dd", java.util.Locale.getDefault()).format(java.util.Date(expense.createdAt)),
+                                avatarText = payerName,
+                                avatarColor = if (isPayer) "default" else "white",
+                                onClick = { onExpenseClick(expense.id) }
+                            )
+                         }
+                         is TransactionDisplayItem.SettlementItem -> {
+                             val settlement = item.settlement
+                             val fromName = if(settlement.fromId == "user-current") "You" else people.find { it.id == settlement.fromId }?.name ?: "Unknown"
+                             val toName = if(settlement.toId == "user-current") "You" else people.find { it.id == settlement.toId }?.name ?: "Unknown"
+                             
+                             com.hativ2.ui.components.TransactionCard(
+                                title = "Settlement",
+                                subtitle = "$fromName -> $toName",
+                                amount = "₱${String.format("%,.2f", settlement.amount)}",
+                                amountColor = NotionBlue,
+                                date = java.text.SimpleDateFormat("MMM dd", java.util.Locale.getDefault()).format(java.util.Date(settlement.createdAt)),
+                                icon = { Icon(Icons.Default.Check, null, tint = MangaBlack) },
+                                onClick = { }
+                            )
+                         }
+                     }
                      Spacer(modifier = Modifier.height(8.dp))
                 }
             }
@@ -816,56 +863,9 @@ fun SummaryCard(
     }
 }
 
-@Composable
-fun ChapterItem(
-    expense: ExpenseEntity,
-    payerName: String,
-    onClick: () -> Unit
-) {
-    // Manga-style list item
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-    ) {
-        Box(
-             modifier = Modifier.matchParentSize().offset(x = 2.dp, y = 2.dp).background(MangaBlack)
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(NotionWhite)
-                .border(MangaBorderWidth, MangaBlack)
-                .padding(12.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Category Icon placeholder
-                Box(
-                    modifier = Modifier.size(32.dp).background(NotionYellow).border(1.dp, MangaBlack),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(expense.category.take(1).uppercase(), fontWeight = FontWeight.Bold)
-                }
-                
-                Spacer(modifier = Modifier.width(12.dp))
-                
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(expense.description, fontWeight = FontWeight.Bold)
-                    Text(
-                        "Paid by $payerName", 
-                        style = MaterialTheme.typography.labelSmall, 
-                        color = Color.Gray
-                    )
-                }
-                
-                Text(
-                    "₱${String.format("%,.2f", expense.amount)}", 
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-    }
-}
+
+
+
 
 @Composable
 fun AddPersonDialog(onDismiss: () -> Unit, onAdd: (String) -> Unit) {

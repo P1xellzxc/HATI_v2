@@ -6,57 +6,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.ui.platform.LocalContext
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import com.hativ2.util.CsvExportManager
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import kotlinx.coroutines.launch
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Dispatchers
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -66,17 +27,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import java.text.SimpleDateFormat
+import java.util.*
 import com.hativ2.data.entity.ExpenseEntity
 import com.hativ2.data.entity.PersonEntity
+import com.hativ2.data.entity.SettlementEntity
 import com.hativ2.domain.model.DashboardWithStats
 import com.hativ2.ui.MainViewModel
-import com.hativ2.ui.theme.MangaBlack
-import com.hativ2.ui.theme.NotionBlue
-import com.hativ2.ui.theme.NotionGreen
-import com.hativ2.ui.theme.NotionRed
-import com.hativ2.ui.theme.NotionWhite
-import com.hativ2.ui.theme.NotionYellow
+import com.hativ2.ui.TransactionDisplayItem
+import com.hativ2.ui.theme.*
 import com.hativ2.ui.components.MangaBackButton
+import com.hativ2.util.CsvExportManager
 
 // Categories matching FinSplit
 data class CategoryItem(
@@ -90,7 +54,7 @@ val CATEGORIES = listOf(
     CategoryItem("food", "Food", "🍽️", NotionYellow),
     CategoryItem("transport", "Transport", "🚗", NotionBlue),
     CategoryItem("shopping", "Shopping", "🛍️", NotionRed),
-    CategoryItem("entertainment", "Entertainment", "🎬", Color(0xFFE879F9)),
+    CategoryItem("entertainment", "Entertainment", "🎬", NotionPurple),
     CategoryItem("utilities", "Utilities", "💡", NotionGreen),
     CategoryItem("other", "Other", "📦", Color.Gray)
 )
@@ -105,8 +69,8 @@ fun HistoryScreen(
 ) {
     val dashboardsWithStats by viewModel.dashboardsWithStats.collectAsState()
     
-    val expensesFlow = remember(dashboardId) { viewModel.getExpenses(dashboardId ?: "") }
-    val expenses by expensesFlow.collectAsState()
+    // Always fetch all transactions to support "All Volumes" properly
+    val transactions by viewModel.getAllTransactions().collectAsState()
     
     val peopleFlow = remember(dashboardId) { viewModel.getPeople(dashboardId ?: "") }
     val people by peopleFlow.collectAsState()
@@ -123,34 +87,45 @@ fun HistoryScreen(
     // Get current dashboard
     val currentDashboard = dashboardsWithStats.find { it.id == selectedVolumeId }
     
-    // Get all expenses for selected volume or all
-    val allExpenses = if (selectedVolumeId == null) {
-        // Get all expenses across all dashboards
-        dashboardsWithStats.flatMap { dashboard ->
-            // We need to filter from the main expenses list
-            expenses.filter { it.dashboardId == dashboard.id }
+    // Filter by volume
+    val visibleTransactions = remember(transactions, selectedVolumeId) {
+        if (selectedVolumeId == null) {
+            transactions
+        } else {
+            transactions.filter { item ->
+                when(item) {
+                    is TransactionDisplayItem.ExpenseItem -> item.expense.dashboardId == selectedVolumeId
+                    is TransactionDisplayItem.SettlementItem -> item.settlement.dashboardId == selectedVolumeId
+                }
+            }
         }
-    } else {
-        expenses
     }
     
-    // Filter expenses
-    val filteredExpenses = remember(allExpenses, searchQuery, selectedCategory) {
-        allExpenses.filter { expense ->
-            val matchesSearch = expense.description.lowercase().contains(searchQuery.lowercase())
-            val matchesCategory = selectedCategory == null || expense.category == selectedCategory
+    // Filter by search & category
+    val filteredTransactions = remember(visibleTransactions, searchQuery, selectedCategory) {
+        visibleTransactions.filter { item ->
+            val (description, category, amount) = when(item) {
+                is TransactionDisplayItem.ExpenseItem -> Triple(item.expense.description, item.expense.category, item.expense.amount)
+                is TransactionDisplayItem.SettlementItem -> Triple("Settlement", "payment", item.settlement.amount)
+            }
+            
+            val matchesSearch = description.lowercase().contains(searchQuery.lowercase())
+            val matchesCategory = selectedCategory == null || category == selectedCategory
             matchesSearch && matchesCategory
-        }.sortedByDescending { it.createdAt }
+        }
     }
 
-    // Export Launcher
+    // Export Launcher (Expenses Only for now to keep CSV format)
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument()
     ) { uri: android.net.Uri? ->
         if (uri != null) {
             scope.launch(kotlinx.coroutines.Dispatchers.IO) {
                 try {
-                    val csvContent = com.hativ2.util.CsvExportManager.generateCsv(filteredExpenses, people)
+                    val expensesToExport = filteredTransactions.mapNotNull { 
+                        (it as? TransactionDisplayItem.ExpenseItem)?.expense 
+                    }
+                    val csvContent = com.hativ2.util.CsvExportManager.generateCsv(expensesToExport, people)
                     context.contentResolver.openOutputStream(uri)?.use { outputStream ->
                         outputStream.write(csvContent.toByteArray())
                     }
@@ -164,8 +139,13 @@ fun HistoryScreen(
     }
     
     // Analytics
-    val totalSpending = filteredExpenses.sumOf { it.amount }
-    val expenseCount = filteredExpenses.size
+    val totalSpending = filteredTransactions.sumOf { 
+         when(it) {
+             is TransactionDisplayItem.ExpenseItem -> it.expense.amount
+             is TransactionDisplayItem.SettlementItem -> 0.0 // Don't verify settlements in spending total
+         }
+    }
+    val transactionCount = filteredTransactions.size
     
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -188,7 +168,7 @@ fun HistoryScreen(
                         )
                         Text(
                             if (selectedVolumeId == null) 
-                                "${dashboardsWithStats.size} volumes • $expenseCount chapters"
+                                "${dashboardsWithStats.size} volumes • $transactionCount chapters"
                             else 
                                 currentDashboard?.title ?: "",
                             style = MaterialTheme.typography.bodySmall,
@@ -348,13 +328,13 @@ fun HistoryScreen(
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            // Expense List
+            // Transaction List
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (filteredExpenses.isEmpty()) {
+                if (filteredTransactions.isEmpty()) {
                     item {
                         com.hativ2.ui.components.MangaEmptyState(
                             message = if (searchQuery.isNotEmpty() || selectedCategory != null)
@@ -366,22 +346,42 @@ fun HistoryScreen(
                         )
                     }
                 } else {
-                    items(filteredExpenses, key = { it.id }) { expense ->
-                        ExpenseHistoryCard(
-                            expense = expense,
-                            people = people,
-                            volumeTitle = if (selectedVolumeId == null) 
-                                dashboardsWithStats.find { it.id == expense.dashboardId }?.title 
-                            else null,
-                            isDeleteConfirm = deleteConfirmId == expense.id,
-                            onEdit = { onEditExpense(expense.id) },
-                            onDeleteClick = { deleteConfirmId = expense.id },
-                            onDeleteConfirm = { 
-                                viewModel.deleteExpense(expense.id)
-                                deleteConfirmId = null
-                            },
-                            onDeleteCancel = { deleteConfirmId = null }
-                        )
+                    items(filteredTransactions, key = { it.id }) { item ->
+                        when(item) {
+                            is TransactionDisplayItem.ExpenseItem -> {
+                                val expense = item.expense
+                                val isPayer = expense.paidBy == "user-current"
+                                val payerName = if (isPayer) "You" else people.find { it.id == expense.paidBy }?.name ?: "Unknown"
+                                
+                                com.hativ2.ui.components.TransactionCard(
+                                    title = expense.description,
+                                    subtitle = "paid by $payerName",
+                                    amount = "₱${String.format("%,.2f", expense.amount)}",
+                                    amountColor = if (isPayer) NotionGreen else MangaBlack,
+                                    date = java.text.SimpleDateFormat("MMM dd", java.util.Locale.getDefault()).format(java.util.Date(expense.createdAt)),
+                                    avatarText = payerName,
+                                    avatarColor = if (isPayer) "default" else "white", // Simplified
+                                    onClick = { onEditExpense(expense.id) }
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+                            is TransactionDisplayItem.SettlementItem -> {
+                                val settlement = item.settlement
+                                val fromName = if(settlement.fromId == "user-current") "You" else people.find { it.id == settlement.fromId }?.name ?: "Unknown"
+                                val toName = if(settlement.toId == "user-current") "You" else people.find { it.id == settlement.toId }?.name ?: "Unknown"
+                                
+                                com.hativ2.ui.components.TransactionCard(
+                                    title = "Settlement",
+                                    subtitle = "$fromName -> $toName",
+                                    amount = "₱${String.format("%,.2f", settlement.amount)}",
+                                    amountColor = NotionBlue,
+                                    date = java.text.SimpleDateFormat("MMM dd", java.util.Locale.getDefault()).format(java.util.Date(settlement.createdAt)),
+                                    icon = { Icon(Icons.Default.Check, null, tint = MangaBlack) },
+                                    onClick = { /* No action for now */ }
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+                        }
                     }
                 }
             }
@@ -441,157 +441,4 @@ fun CategoryPill(
     }
 }
 
-@Composable
-fun ExpenseHistoryCard(
-    expense: ExpenseEntity,
-    people: List<PersonEntity>,
-    volumeTitle: String?,
-    isDeleteConfirm: Boolean,
-    onEdit: () -> Unit,
-    onDeleteClick: () -> Unit,
-    onDeleteConfirm: () -> Unit,
-    onDeleteCancel: () -> Unit
-) {
-    val isPayer = expense.paidBy == "user-current"
-    val payerName = if (isPayer) "You" else people.find { it.id == expense.paidBy }?.name ?: "Unknown"
-    val category = CATEGORIES.find { it.value == expense.category }
-    val dateFormat = SimpleDateFormat("MMM d", Locale.getDefault())
-    val formattedDate = dateFormat.format(Date(expense.createdAt))
-    
-    // Light design for better readability
-    val accentColor = if (isPayer) NotionGreen else NotionRed
-    
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp) // Slight padding for shadow
-    ) {
-        // Shadow
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .offset(x = 4.dp, y = 4.dp)
-                .background(MangaBlack, RoundedCornerShape(4.dp))
-        )
-        
-        // Card Content
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(NotionWhite, RoundedCornerShape(4.dp))
-                .border(2.dp, MangaBlack, RoundedCornerShape(4.dp))
-                .clickable { if (!isDeleteConfirm) onEdit() }
-        ) {
-            Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-                // Colored Left Strip
-                Box(
-                    modifier = Modifier
-                        .width(6.dp)
-                        .fillMaxHeight()
-                        .background(accentColor, RoundedCornerShape(topStart = 2.dp, bottomStart = 2.dp))
-                )
-                
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(12.dp)
-                ) {
-                    // Header: Description + Amount
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                expense.description,
-                                fontWeight = FontWeight.Black,
-                                fontSize = 16.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            
-                            Spacer(modifier = Modifier.height(4.dp))
-                            
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                // Category Badge
-                                if (category != null) {
-                                    Box(
-                                        modifier = Modifier
-                                            .background(category.color.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
-                                            .border(1.dp, category.color, RoundedCornerShape(4.dp))
-                                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                                    ) {
-                                        Text(
-                                            category.label.uppercase(),
-                                            fontSize = 9.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MangaBlack
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                }
-                                
-                                Text(
-                                    formattedDate,
-                                    fontSize = 12.sp,
-                                    color = Color.Gray,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
-                        
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                "₱${String.format("%,.2f", expense.amount)}",
-                                fontWeight = FontWeight.Black,
-                                fontSize = 16.sp
-                            )
-                            
-                            Spacer(modifier = Modifier.height(4.dp))
-                            
-                            Text(
-                                if (isPayer) "You paid" else "$payerName paid",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isPayer) NotionGreen else NotionRed
-                            )
-                        }
-                    }
-                    
-                    // Actions (Delete Confirmation)
-                    AnimatedVisibility(visible = isDeleteConfirm) {
-                        Column {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.LightGray))
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("Delete this chapter?", fontSize = 12.sp, color = Color.Gray)
-                                Spacer(modifier = Modifier.weight(1f))
-                                Text(
-                                    "CANCEL",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp,
-                                    modifier = Modifier.clickable(onClick = onDeleteCancel).padding(8.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .clickable(onClick = onDeleteConfirm)
-                                        .background(NotionRed, RoundedCornerShape(4.dp))
-                                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                                ) {
-                                    Text("DELETE", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
+

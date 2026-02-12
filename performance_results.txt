@@ -1,0 +1,15 @@
+Starting Performance Tests...
+
+--- UI Jank (Add Expense Flow) ---
+No process found for: com.hativ2
+
+--- Startup Time ---
+
+TotalTime: 1904
+
+
+TotalTime: 1719
+
+
+TotalTime: 1747
+

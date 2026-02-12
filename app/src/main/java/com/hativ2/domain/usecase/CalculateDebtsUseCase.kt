@@ -5,6 +5,7 @@ import com.hativ2.data.entity.SettlementEntity
 import com.hativ2.data.entity.SplitEntity
 import com.hativ2.domain.model.DebtSummaryModel
 import com.hativ2.domain.model.TransactionModel
+import javax.inject.Inject
 import kotlin.math.abs
 import kotlin.math.round
 
@@ -13,7 +14,7 @@ enum class DebtStrategy {
     PAIRWISE    // Direct who-owes-whom (mutual cancellation only)
 }
 
-class CalculateDebtsUseCase {
+class CalculateDebtsUseCase @Inject constructor() {
 
     fun execute(
         expenses: List<ExpenseEntity>,

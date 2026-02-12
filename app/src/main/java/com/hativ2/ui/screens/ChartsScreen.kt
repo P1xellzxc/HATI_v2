@@ -56,6 +56,11 @@ import com.hativ2.ui.theme.NotionGreen
 import com.hativ2.ui.theme.NotionRed
 import com.hativ2.ui.theme.NotionWhite
 import com.hativ2.ui.theme.NotionYellow
+import com.hativ2.ui.theme.NotionOrange
+import com.hativ2.ui.theme.NotionPink
+import com.hativ2.ui.theme.NotionPurple
+import com.hativ2.ui.theme.NotionGray
+import com.hativ2.ui.theme.NotionGray
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -63,13 +68,13 @@ import java.util.Locale
 
 // Chart colors matching FinSplit
 val CHART_COLORS = listOf(
-    Color(0xFFFED7AA), // Orange
-    Color(0xFFBFDBFE), // Blue
-    Color(0xFFE9D5FF), // Purple
-    Color(0xFFFEF08A), // Yellow
-    Color(0xFFFBCFE8), // Pink
-    Color(0xFFBBF7D0), // Green
-    Color(0xFFE5E7EB), // Gray
+    NotionOrange,
+    NotionBlue,
+    NotionPurple,
+    NotionYellow,
+    NotionPink,
+    NotionGreen,
+    NotionGray,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)

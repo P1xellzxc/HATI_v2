@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -56,11 +58,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
+
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hativ2.ui.MainViewModel
+import com.hativ2.ui.components.MangaTextField
 import com.hativ2.ui.components.MangaDeleteDialog
 import com.hativ2.ui.theme.MangaBlack
 import com.hativ2.ui.theme.NotionBlue
@@ -227,79 +230,73 @@ fun AddExpenseScreen(
                     .background(MaterialTheme.colorScheme.background)
                     .padding(16.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            val amountVal = amount.toDoubleOrNull()
-                            
-                            if (description.isBlank()) {
-                                scope.launch { snackbarHostState.showSnackbar("Please enter a description") }
-                                return@clickable
-                            }
-                            
-                            if (amountVal == null || amountVal <= 0) {
-                                scope.launch { snackbarHostState.showSnackbar("Amount must be greater than 0") }
-                                return@clickable
-                            }
-                            
-                            if (splitWith.isEmpty()) {
-                                scope.launch { snackbarHostState.showSnackbar("Select at least one person to split with") }
-                                return@clickable
-                            }
-                            
-                            // VALIDATION: Percentage & Exact (Need to recalculate totals here since we are outside the item scope)
-                            // We can access state directly
-                            
-                            if (splitType == SplitType.PERCENTAGE) {
-                                val currentTotalPercent = splitWith.sumOf { splitPercentages[it]?.toDoubleOrNull() ?: 0.0 }
-                                if (kotlin.math.abs(currentTotalPercent - 100.0) > 0.1) {
-                                    scope.launch { snackbarHostState.showSnackbar("Total percentage must be 100% (Current: $currentTotalPercent%)") }
-                                    return@clickable
-                                }
-                            }
-
-                            if (splitType == SplitType.EXACT) {
-                                val totalExact = splitWith.sumOf { splitExactAmounts[it]?.toDoubleOrNull() ?: 0.0 }
-                                if (kotlin.math.abs(totalExact - amountVal) > 0.01) {
-                                    val diff = amountVal - totalExact
-                                    scope.launch { snackbarHostState.showSnackbar("Total exact amounts must equal ₱$amountVal (Missing: ₱${String.format("%.2f", diff)})") }
-                                    return@clickable
-                                }
-                            }
-
-                            if (isEditing && expenseId != null) {
-                                viewModel.updateExpense(
-                                    expenseId = expenseId,
-                                    dashboardId = dashboardId,
-                                    description = description,
-                                    amount = amountVal,
-                                    paidBy = paidBy,
-                                    category = category,
-                                    splitWith = splitWith.toList()
-                                )
-                            } else {
-                                viewModel.createExpense(
-                                    dashboardId = dashboardId,
-                                    description = description,
-                                    amount = amountVal,
-                                    paidBy = paidBy,
-                                    category = category,
-                                    splitWith = splitWith.toList()
-                                )
-                            }
-                            onBackClick()
+                com.hativ2.ui.components.MangaButton(
+                    onClick = {
+                        val amountVal = amount.toDoubleOrNull()
+                        
+                        if (description.isBlank()) {
+                            scope.launch { snackbarHostState.showSnackbar("Please enter a description") }
+                            return@MangaButton
                         }
-                        .background(NotionGreen, RoundedCornerShape(MangaCornerRadius))
-                        .border(MangaBorderWidth, MaterialTheme.colorScheme.onSurface, RoundedCornerShape(MangaCornerRadius))
-                        .padding(vertical = 16.dp),
-                    contentAlignment = Alignment.Center
+                        
+                        if (amountVal == null || amountVal <= 0) {
+                            scope.launch { snackbarHostState.showSnackbar("Amount must be greater than 0") }
+                            return@MangaButton
+                        }
+                        
+                        if (splitWith.isEmpty()) {
+                            scope.launch { snackbarHostState.showSnackbar("Select at least one person to split with") }
+                            return@MangaButton
+                        }
+                        
+                        // VALIDATION: Percentage & Exact (Need to recalculate totals here since we are outside the item scope)
+                        // We can access state directly
+                        
+                        if (splitType == SplitType.PERCENTAGE) {
+                            val currentTotalPercent = splitWith.sumOf { splitPercentages[it]?.toDoubleOrNull() ?: 0.0 }
+                            if (kotlin.math.abs(currentTotalPercent - 100.0) > 0.1) {
+                                scope.launch { snackbarHostState.showSnackbar("Total percentage must be 100% (Current: $currentTotalPercent%)") }
+                                return@MangaButton
+                            }
+                        }
+
+                        if (splitType == SplitType.EXACT) {
+                            val totalExact = splitWith.sumOf { splitExactAmounts[it]?.toDoubleOrNull() ?: 0.0 }
+                            if (kotlin.math.abs(totalExact - amountVal) > 0.01) {
+                                val diff = amountVal - totalExact
+                                scope.launch { snackbarHostState.showSnackbar("Total exact amounts must equal ₱$amountVal (Missing: ₱${String.format("%.2f", diff)})") }
+                                return@MangaButton
+                            }
+                        }
+
+                        if (isEditing && expenseId != null) {
+                            viewModel.updateExpense(
+                                expenseId = expenseId,
+                                dashboardId = dashboardId,
+                                description = description,
+                                amount = amountVal,
+                                paidBy = paidBy,
+                                category = category,
+                                splitWith = splitWith.toList()
+                            )
+                        } else {
+                            viewModel.createExpense(
+                                dashboardId = dashboardId,
+                                description = description,
+                                amount = amountVal,
+                                paidBy = paidBy,
+                                category = category,
+                                splitWith = splitWith.toList()
+                            )
+                        }
+                        onBackClick()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    backgroundColor = NotionGreen,
+                    contentColor = MangaBlack
                 ) {
                     Text(
-                        if (isEditing) "UPDATE EXPENSE" else "SAVE EXPENSE",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MangaBlack // Keep button text black for contrast with Green
+                        if (isEditing) "UPDATE EXPENSE" else "SAVE EXPENSE"
                     )
                 }
             }
@@ -333,25 +330,25 @@ fun AddExpenseScreen(
 
             // Description
             item(key = "section_description") {
-                SectionLabel("Description")
-                Spacer(modifier = Modifier.height(8.dp))
-                InputField(
+                MangaTextField(
                     value = description,
                     onValueChange = { description = it },
-                    placeholder = "What was this for?"
+                    label = "Description",
+                    placeholder = "What was this for?",
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
                 )
             }
 
             // Amount
             item(key = "section_amount") {
-                SectionLabel("Amount (₱)")
-                Spacer(modifier = Modifier.height(8.dp))
-                InputField(
+                MangaTextField(
                     value = amount,
                     onValueChange = { amount = it },
+                    label = "Amount (₱)",
                     placeholder = "0.00",
-                    keyboardType = KeyboardType.Decimal,
-                    onDone = { focusManager.clearFocus() }
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                 )
             }
 
@@ -589,43 +586,6 @@ fun SectionLabel(text: String) {
         style = MaterialTheme.typography.labelLarge,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onBackground
-    )
-}
-
-@Composable
-fun InputField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    placeholder: String,
-    keyboardType: KeyboardType = KeyboardType.Text,
-    onDone: (() -> Unit)? = null
-) {
-    BasicTextField(
-        value = value,
-        onValueChange = onValueChange,
-        textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
-        keyboardOptions = KeyboardOptions(
-            keyboardType = keyboardType,
-            imeAction = if (onDone != null) androidx.compose.ui.text.input.ImeAction.Done else androidx.compose.ui.text.input.ImeAction.Default
-        ),
-        keyboardActions = androidx.compose.foundation.text.KeyboardActions(
-            onDone = { onDone?.invoke() }
-        ),
-        cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
-        decorationBox = { innerTextField ->
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(MangaCornerRadius))
-                    .border(MangaBorderWidth, MaterialTheme.colorScheme.onSurface, RoundedCornerShape(MangaCornerRadius))
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
-            ) {
-                if (value.isEmpty()) {
-                    Text(placeholder, color = MaterialTheme.colorScheme.onSurface.copy(alpha=0.5f), style = MaterialTheme.typography.bodyLarge)
-                }
-                innerTextField()
-            }
-        }
     )
 }
 
