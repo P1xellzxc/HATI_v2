@@ -12,9 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -36,6 +34,7 @@ import com.hativ2.data.entity.ExpenseEntity
 import com.hativ2.ui.MainViewModel
 import com.hativ2.ui.components.MangaCard
 import com.hativ2.ui.theme.MangaBlack
+import com.hativ2.ui.components.MangaBackButton
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -49,6 +48,8 @@ import com.hativ2.ui.components.MangaDeleteDialog
 import com.hativ2.ui.theme.NotionWhite
 import com.hativ2.ui.theme.NotionYellow
 import com.hativ2.ui.theme.NotionRed
+import com.hativ2.ui.components.MangaBorderWidth
+import com.hativ2.ui.components.MangaCornerRadius
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,10 +77,15 @@ fun ExpenseListScreen(
         )
     }
 
-    // Helper to get name
-    fun getName(id: String): String {
-        return if (id == "user-current") "You" else people.find { it.id == id }?.name ?: "Unknown"
+    // Pre-compute name lookup map
+    val nameMap = remember(people) {
+        buildMap {
+            put("user-current", "You")
+            people.forEach { put(it.id, it.name) }
+        }
     }
+
+    fun getName(id: String): String = nameMap[id] ?: "Unknown"
 
     Scaffold(
         containerColor = NotionWhite,
@@ -87,9 +93,10 @@ fun ExpenseListScreen(
             TopAppBar(
                 title = { Text("Expenses", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MangaBlack)
-                    }
+                    MangaBackButton(
+                        onClick = onBackClick,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = NotionWhite,
@@ -102,7 +109,8 @@ fun ExpenseListScreen(
                 onClick = { onAddExpenseClick(dashboardId) },
                 containerColor = NotionYellow,
                 contentColor = MangaBlack,
-                modifier = Modifier.border(2.dp, MangaBlack, RoundedCornerShape(16.dp))
+                modifier = Modifier.border(2.dp, MangaBlack, RoundedCornerShape(MangaCornerRadius)),
+                shape = RoundedCornerShape(MangaCornerRadius)
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Expense")
             }
@@ -125,7 +133,7 @@ fun ExpenseListScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(expenses) { expense ->
+                items(expenses, key = { it.id }) { expense ->
                     ExpenseItem(
                         expense = expense,
                         payerName = getName(expense.paidBy ?: "user-current"),
@@ -171,7 +179,7 @@ fun ExpenseItem(
             
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "₱${expense.amount}",
+                    text = "₱${String.format("%,.2f", expense.amount)}",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Black,
                     color = MangaBlack
@@ -185,7 +193,8 @@ fun ExpenseItem(
                         expanded = expanded,
                         onDismissRequest = { expanded = false },
                         containerColor = NotionWhite,
-                        modifier = Modifier.background(NotionWhite).border(2.dp, MangaBlack)
+                        modifier = Modifier.background(NotionWhite, RoundedCornerShape(MangaCornerRadius))
+                            .border(MangaBorderWidth, MangaBlack, RoundedCornerShape(MangaCornerRadius))
                     ) {
                         DropdownMenuItem(
                             text = { Text("Edit") },

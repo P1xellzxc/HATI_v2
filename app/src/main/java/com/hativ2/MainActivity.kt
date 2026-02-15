@@ -13,6 +13,17 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.tween
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.Modifier
 import com.hativ2.ui.screens.DashboardListScreen
 import com.hativ2.ui.screens.ExpenseListScreen
 import com.hativ2.ui.screens.AddExpenseScreen
@@ -27,7 +38,14 @@ fun AppNavigation() {
     val navController = rememberNavController()
     val viewModel: com.hativ2.ui.MainViewModel = viewModel()
 
-    NavHost(navController = navController, startDestination = "dashboard_list") {
+    NavHost(
+        navController = navController,
+        startDestination = "dashboard_list",
+        enterTransition = { fadeIn(tween(300)) + slideInHorizontally(tween(300)) { it / 4 } },
+        exitTransition = { fadeOut(tween(200)) },
+        popEnterTransition = { fadeIn(tween(300)) + slideInHorizontally(tween(300)) { -it / 4 } },
+        popExitTransition = { fadeOut(tween(200)) + slideOutHorizontally(tween(200)) { it / 4 } }
+    ) {
                 composable("dashboard_list") {
             DashboardListScreen(
                 viewModel = viewModel,
@@ -140,13 +158,21 @@ fun AppNavigation() {
     }
 }
 
+
+
 @dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContent {
-            HatiV2Theme {
-                Surface(color = MaterialTheme.colorScheme.background) {
+            HatiV2Theme(darkTheme = false) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .windowInsetsPadding(WindowInsets.systemBars),
+                    color = MaterialTheme.colorScheme.background
+                ) {
                     AppNavigation()
                 }
             }

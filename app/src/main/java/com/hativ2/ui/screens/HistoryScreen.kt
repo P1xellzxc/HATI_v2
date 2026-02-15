@@ -1,7 +1,6 @@
 package com.hativ2.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -76,6 +75,14 @@ fun HistoryScreen(
     val people by peopleFlow.collectAsState()
     
     var searchQuery by remember { mutableStateOf("") }
+    
+    // Pre-compute name lookup map for O(1) access
+    val nameMap = remember(people) {
+        buildMap {
+            put("user-current", "You")
+            people.forEach { put(it.id, it.name) }
+        }
+    }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var selectedVolumeId by remember { mutableStateOf(dashboardId) }
     var deleteConfirmId by remember { mutableStateOf<String?>(null) }
@@ -83,6 +90,7 @@ fun HistoryScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
+    val dateFormat = remember { SimpleDateFormat("MMM dd", Locale.getDefault()) }
     
     // Get current dashboard
     val currentDashboard = dashboardsWithStats.find { it.id == selectedVolumeId }
@@ -191,7 +199,7 @@ fun HistoryScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Share, "Export", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurface)
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Export", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                Text("Export", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface)
                             }
                         }
                     }
@@ -258,7 +266,7 @@ fun HistoryScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text("💰 Total Arc Spending", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha=0.6f))
+                            Text("💰 Total Arc Spending", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha=0.6f))
                         }
                         Text(
                             "₱${String.format("%,.2f", totalSpending)}",
@@ -286,11 +294,11 @@ fun HistoryScreen(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
                         modifier = Modifier.weight(1f),
-                        textStyle = TextStyle(fontSize = 14.sp, color = MangaBlack),
-                        cursorBrush = SolidColor(MangaBlack),
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
                         decorationBox = { innerTextField ->
                             if (searchQuery.isEmpty()) {
-                                Text("Search expenses...", fontSize = 14.sp, color = Color.Gray)
+                                Text("Search expenses...", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
                             }
                             innerTextField()
                         }
@@ -342,7 +350,7 @@ fun HistoryScreen(
                             else
                                 "No chapters yet in this arc",
                             subMessage = "Start the story by adding an expense!",
-                            modifier = Modifier.padding(top = 48.dp)
+                            modifier = Modifier.padding(top = 32.dp)
                         )
                     }
                 } else {
@@ -351,14 +359,14 @@ fun HistoryScreen(
                             is TransactionDisplayItem.ExpenseItem -> {
                                 val expense = item.expense
                                 val isPayer = expense.paidBy == "user-current"
-                                val payerName = if (isPayer) "You" else people.find { it.id == expense.paidBy }?.name ?: "Unknown"
+                                val payerName = nameMap[expense.paidBy] ?: "Unknown"
                                 
                                 com.hativ2.ui.components.TransactionCard(
                                     title = expense.description,
                                     subtitle = "paid by $payerName",
                                     amount = "₱${String.format("%,.2f", expense.amount)}",
                                     amountColor = if (isPayer) NotionGreen else MangaBlack,
-                                    date = java.text.SimpleDateFormat("MMM dd", java.util.Locale.getDefault()).format(java.util.Date(expense.createdAt)),
+                                    date = dateFormat.format(java.util.Date(expense.createdAt)),
                                     avatarText = payerName,
                                     avatarColor = if (isPayer) "default" else "white", // Simplified
                                     onClick = { onEditExpense(expense.id) }
@@ -367,15 +375,15 @@ fun HistoryScreen(
                             }
                             is TransactionDisplayItem.SettlementItem -> {
                                 val settlement = item.settlement
-                                val fromName = if(settlement.fromId == "user-current") "You" else people.find { it.id == settlement.fromId }?.name ?: "Unknown"
-                                val toName = if(settlement.toId == "user-current") "You" else people.find { it.id == settlement.toId }?.name ?: "Unknown"
+                                val fromName = nameMap[settlement.fromId] ?: "Unknown"
+                                val toName = nameMap[settlement.toId] ?: "Unknown"
                                 
                                 com.hativ2.ui.components.TransactionCard(
                                     title = "Settlement",
                                     subtitle = "$fromName -> $toName",
                                     amount = "₱${String.format("%,.2f", settlement.amount)}",
                                     amountColor = NotionBlue,
-                                    date = java.text.SimpleDateFormat("MMM dd", java.util.Locale.getDefault()).format(java.util.Date(settlement.createdAt)),
+                                    date = dateFormat.format(java.util.Date(settlement.createdAt)),
                                     icon = { Icon(Icons.Default.Check, null, tint = MangaBlack) },
                                     onClick = { /* No action for now */ }
                                 )
@@ -407,8 +415,7 @@ fun VolumeTab(
     ) {
         Text(
             title,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
             color = if (isSelected) Color.White else MangaBlack,
             maxLines = 1
         )
@@ -434,7 +441,7 @@ fun CategoryPill(
     ) {
         Text(
             label,
-            fontSize = 11.sp,
+            style = MaterialTheme.typography.labelSmall,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
             color = MangaBlack
         )

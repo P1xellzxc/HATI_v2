@@ -45,6 +45,10 @@ import androidx.compose.ui.unit.dp
 import com.hativ2.ui.theme.MangaBlack
 import com.hativ2.ui.theme.MangaHeaderStyle
 import com.hativ2.ui.theme.NotionWhite
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 
 val MangaBorderWidth = 2.dp
 val MangaCornerRadius = 4.dp
@@ -96,8 +100,12 @@ fun MangaButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    
-    val currentOffset = if (isPressed) 0.dp else MangaShadowOffsetSmall
+    val haptic = LocalHapticFeedback.current
+    val currentOffset by animateDpAsState(
+        targetValue = if (isPressed) 0.dp else MangaShadowOffsetSmall,
+        animationSpec = tween(durationMillis = 80),
+        label = "buttonPress"
+    )
 
     Box(
         modifier = modifier
@@ -105,7 +113,10 @@ fun MangaButton(
                 interactionSource = interactionSource,
                 indication = null, // Custom indication via offset
                 enabled = enabled,
-                onClick = onClick
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onClick()
+                }
             )
     ) {
         // Shadow
@@ -219,7 +230,11 @@ fun TransactionCard(
                     modifier = Modifier
                         .size(40.dp)
                         .background(
-                            if (avatarColor == "default") com.hativ2.ui.theme.NotionYellow else NotionWhite, 
+                            when (avatarColor) {
+                                "default" -> com.hativ2.ui.theme.NotionYellow
+                                com.hativ2.ui.theme.HEX_NOTION_ORANGE -> com.hativ2.ui.theme.NotionOrange
+                                else -> NotionWhite
+                            }, 
                             RoundedCornerShape(MangaCornerRadius)
                         )
                         .border(MangaBorderWidth, MangaBlack, RoundedCornerShape(MangaCornerRadius)),

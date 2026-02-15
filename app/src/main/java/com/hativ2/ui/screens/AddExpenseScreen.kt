@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -114,7 +117,7 @@ fun AddExpenseScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
-    var areAllSelected by remember { mutableStateOf(true) }
+
 
     // Callbacks for SplitMemberRow
     val onToggleSplit = remember {
@@ -228,7 +231,9 @@ fun AddExpenseScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.background)
-                    .padding(16.dp)
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(16.dp),
+                contentAlignment = Alignment.CenterEnd
             ) {
                 com.hativ2.ui.components.MangaButton(
                     onClick = {
@@ -250,7 +255,6 @@ fun AddExpenseScreen(
                         }
                         
                         // VALIDATION: Percentage & Exact (Need to recalculate totals here since we are outside the item scope)
-                        // We can access state directly
                         
                         if (splitType == SplitType.PERCENTAGE) {
                             val currentTotalPercent = splitWith.sumOf { splitPercentages[it]?.toDoubleOrNull() ?: 0.0 }
@@ -291,69 +295,49 @@ fun AddExpenseScreen(
                         }
                         onBackClick()
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.width(200.dp),
                     backgroundColor = NotionGreen,
                     contentColor = MangaBlack
                 ) {
                     Text(
-                        if (isEditing) "UPDATE EXPENSE" else "SAVE EXPENSE"
+                        if (isEditing) "UPDATE" else "SAVE EXPENSE",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
         }
     ) { paddingValues ->
-        androidx.compose.foundation.lazy.LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Expense Type Selector
-            item(key = "section_type") {
-                SectionLabel("Type")
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    EXPENSE_TYPES.forEach { (type, label) ->
-                        SelectableChip(
-                            label = label,
-                            isSelected = expenseType == type,
-                            onClick = { expenseType = type },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-            }
-
             // Description
-            item(key = "section_description") {
-                MangaTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = "Description",
-                    placeholder = "What was this for?",
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
-                )
-            }
+            MangaTextField(
+                value = description,
+                onValueChange = { description = it },
+                label = "Description",
+                placeholder = "What was this for?",
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
+            )
 
             // Amount
-            item(key = "section_amount") {
-                MangaTextField(
-                    value = amount,
-                    onValueChange = { amount = it },
-                    label = "Amount (₱)",
-                    placeholder = "0.00",
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
-                )
-            }
+            MangaTextField(
+                value = amount,
+                onValueChange = { amount = it },
+                label = "Amount (₱)",
+                placeholder = "0.00",
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+            )
 
             // Category
-            item(key = "section_category") {
+            Column {
                 SectionLabel("Category")
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
@@ -374,7 +358,7 @@ fun AddExpenseScreen(
             }
 
             // Paid By Dropdown
-            item(key = "section_paid_by") {
+            Column {
                 SectionLabel("Paid By")
                 Spacer(modifier = Modifier.height(8.dp))
                 Box {
@@ -414,7 +398,7 @@ fun AddExpenseScreen(
             }
 
             // Split Type Selector
-            item(key = "section_split_type") {
+            Column {
                 SectionLabel("Split Type")
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
@@ -443,7 +427,13 @@ fun AddExpenseScreen(
             }
 
             // Split With Header
-            item(key = "section_split_header") {
+            Column {
+                val areAllSelected = remember(splitWith.size, people.size) {
+                    val userCurrentInvolved = splitWith.contains("user-current")
+                    val othersInvolved = people.all { splitWith.contains(it.id) }
+                    userCurrentInvolved && othersInvolved
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -451,19 +441,18 @@ fun AddExpenseScreen(
                 ) {
                     SectionLabel("Split With")
                     
-                    // Select All / Deselect All Toggle
                     Text(
                         text = if (areAllSelected) "Deselect All" else "Select All",
                         style = MaterialTheme.typography.labelMedium,
                         color = NotionBlue,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.clickable {
-                            areAllSelected = !areAllSelected
                             if (areAllSelected) {
-                                if (!splitWith.contains("user-current")) splitWith.add("user-current")
-                                people.forEach { if (!splitWith.contains(it.id)) splitWith.add(it.id) }
+                                splitWith.clear()
                             } else {
                                 splitWith.clear()
+                                splitWith.add("user-current")
+                                people.forEach { if (it.id != "user-current") splitWith.add(it.id) }
                             }
                         }
                     )
@@ -471,41 +460,37 @@ fun AddExpenseScreen(
             }
             
             // You
-            item(key = "user-current") {
-                SplitMemberRow(
-                    personId = "user-current",
-                    name = "You",
-                    isSelected = splitWith.contains("user-current"),
-                    onToggle = onToggleSplit,
-                    splitType = splitType,
-                    percentage = splitPercentages["user-current"] ?: "",
-                    onPercentageChange = onPercentageChange,
-                    exactAmount = splitExactAmounts["user-current"] ?: "",
-                    onExactAmountChange = onExactAmountChange
-                )
-            }
+            SplitMemberRow(
+                personId = "user-current",
+                name = "You",
+                isSelected = splitWith.contains("user-current"),
+                onToggle = onToggleSplit,
+                splitType = splitType,
+                percentage = splitPercentages["user-current"] ?: "",
+                onPercentageChange = onPercentageChange,
+                exactAmount = splitExactAmounts["user-current"] ?: "",
+                onExactAmountChange = onExactAmountChange
+            )
             
             // Other People
-            items(
-                items = people.filter { it.id != "user-current" },
-                key = { it.id }
-            ) { person ->
-                SplitMemberRow(
-                    personId = person.id,
-                    name = person.name,
-                    isSelected = splitWith.contains(person.id),
-                    onToggle = onToggleSplit,
-                    splitType = splitType,
-                    percentage = splitPercentages[person.id] ?: "",
-                    onPercentageChange = onPercentageChange,
-                    exactAmount = splitExactAmounts[person.id] ?: "",
-                    onExactAmountChange = onExactAmountChange
-                )
+            people.filter { it.id != "user-current" }.forEach { person ->
+                key(person.id) {
+                    SplitMemberRow(
+                        personId = person.id,
+                        name = person.name,
+                        isSelected = splitWith.contains(person.id),
+                        onToggle = onToggleSplit,
+                        splitType = splitType,
+                        percentage = splitPercentages[person.id] ?: "",
+                        onPercentageChange = onPercentageChange,
+                        exactAmount = splitExactAmounts[person.id] ?: "",
+                        onExactAmountChange = onExactAmountChange
+                    )
+                }
             }
 
             // Preview split amounts (Footer)
-            item(key = "section_footer") {
-                 // Running Total for Percentage
+            Column {
                 val totalPercent by remember(splitPercentages, splitWith) {
                     androidx.compose.runtime.derivedStateOf {
                          if (splitType == SplitType.PERCENTAGE) {
@@ -561,21 +546,30 @@ fun AddExpenseScreen(
                             .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
                             .padding(12.dp)
                     ) {
-                        val splitAmount = amountValue / splitWith.size
-                        Text(
-                            "Each person pays: ₱${String.format("%,.2f", splitAmount)}",
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        if (splitType == SplitType.EQUAL) {
+                            val splitAmount = amountValue / splitWith.size
+                            Text(
+                                "Each person pays: ₱${String.format("%,.2f", splitAmount)}",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        } else {
+                             Text(
+                                "Distribution set by ${if (splitType == SplitType.PERCENTAGE) "percentage" else "exact amounts"}",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
-
     }
 }
 
@@ -691,12 +685,12 @@ fun SplitMemberRow(
         }
         
         // Show input field for percentage or exact based on split type
-        AnimatedVisibility(visible = isSelected && splitType == SplitType.PERCENTAGE) {
+        if (isSelected && splitType == SplitType.PERCENTAGE) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 BasicTextField(
                     value = percentage,
                     onValueChange = { onPercentageChange(personId, it) },
-                    textStyle = TextStyle(fontSize = 14.sp, textAlign = TextAlign.End, color = MaterialTheme.colorScheme.onSurface),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(textAlign = TextAlign.End, color = MaterialTheme.colorScheme.onSurface),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier
                         .width(50.dp)
@@ -709,14 +703,14 @@ fun SplitMemberRow(
             }
         }
         
-        AnimatedVisibility(visible = isSelected && splitType == SplitType.EXACT) {
+        if (isSelected && splitType == SplitType.EXACT) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("₱", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                 Spacer(modifier = Modifier.width(4.dp))
                 BasicTextField(
                     value = exactAmount,
                     onValueChange = { onExactAmountChange(personId, it) },
-                    textStyle = TextStyle(fontSize = 14.sp, textAlign = TextAlign.End, color = MaterialTheme.colorScheme.onSurface),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(textAlign = TextAlign.End, color = MaterialTheme.colorScheme.onSurface),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier
                         .width(70.dp)

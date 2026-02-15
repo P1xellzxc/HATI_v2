@@ -13,6 +13,10 @@ class TransactionRepositoryImpl @Inject constructor(
         expenseDao.saveExpenseWithSplits(expense, splits)
     }
 
+    override suspend fun updateExpense(expense: ExpenseEntity, splits: List<SplitEntity>) {
+        expenseDao.saveExpenseWithSplits(expense, splits)
+    }
+
     override fun getExpensesByDateRange(dashboardId: String, startDate: Long, endDate: Long): kotlinx.coroutines.flow.Flow<List<ExpenseEntity>> {
         return expenseDao.getExpensesByDateRange(dashboardId, startDate, endDate)
     }

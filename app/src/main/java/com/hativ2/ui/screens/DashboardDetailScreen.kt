@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -80,6 +81,10 @@ import com.hativ2.ui.TransactionDisplayItem
 import com.hativ2.ui.components.MangaBackButton
 import com.hativ2.ui.components.MangaCornerRadius
 import com.hativ2.ui.components.MangaBorderWidth
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.mutableDoubleStateOf
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -98,6 +103,15 @@ fun DashboardDetailScreen(
     // Remember flows to avoid re-creating them on every recomposition
     val debtSummaryFlow = remember(dashboardId) { viewModel.getDebtSummary(dashboardId) }
     val debtSummary by debtSummaryFlow.collectAsState()
+
+    val context = LocalContext.current
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        if (uri != null) {
+            viewModel.exportCsv(dashboardId, uri, context)
+        }
+    }
     
     val transactionsFlow = remember(dashboardId) { viewModel.getTransactions(dashboardId) }
     val transactions by transactionsFlow.collectAsState()
@@ -118,6 +132,15 @@ fun DashboardDetailScreen(
     
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    // Pre-compute name lookup map for O(1) access
+    val nameMap = remember(people) {
+        buildMap {
+            put("user-current", "You")
+            people.forEach { put(it.id, it.name) }
+        }
+    }
+    val dateFormat = remember { java.text.SimpleDateFormat("MMM dd", java.util.Locale.getDefault()) }
 
     if (dashboard == null) {
         // Handle loading or deleted state
@@ -206,15 +229,21 @@ fun DashboardDetailScreen(
 
                         // Right: Actions (Download & Add)
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                             // Download Button Placeholder
+                             // Download Button
                              Box(
                                 modifier = Modifier
                                     .size(40.dp)
-                                    .border(2.dp, MaterialTheme.colorScheme.onBackground, RoundedCornerShape(2.dp))
-                                    .clickable { /* TODO: Download Action */ },
+                                    .border(2.dp, MaterialTheme.colorScheme.onBackground, RoundedCornerShape(4.dp))
+                                    .clickable { 
+                                        exportLauncher.launch("dashboard_${dashboard.title}_export.csv")
+                                    },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Filled.Warning, contentDescription = "Download", tint = MaterialTheme.colorScheme.onBackground)
+                                Icon(
+                                    imageVector = Icons.Default.Share, // Using Share icon as closest proxy for Export/Download if Download not avail
+                                    contentDescription = "Export CSV", 
+                                    tint = MaterialTheme.colorScheme.onBackground
+                                )
                             }
                             
                             Spacer(modifier = Modifier.width(8.dp))
@@ -301,6 +330,7 @@ fun DashboardDetailScreen(
                 item {
                     SpendingByMemberCard(
                         memberShares = debtSummary.memberShares,
+                        balances = debtSummary.balances,
                         people = people
                     )
                 }
@@ -313,14 +343,14 @@ fun DashboardDetailScreen(
                 val owedToYouDetails = debtSummary.transactions
                     .filter { it.toId == "user-current" }
                     .map { tx -> 
-                        val name = people.find { it.id == tx.fromId }?.name?.split(" ")?.firstOrNull() ?: "Unknown"
+                        val name = nameMap[tx.fromId]?.split(" ")?.firstOrNull() ?: "Unknown"
                         name to tx.amount
                     }
 
                 val youOweDetails = debtSummary.transactions
                     .filter { it.fromId == "user-current" }
                     .map { tx -> 
-                         val name = people.find { it.id == tx.toId }?.name?.split(" ")?.firstOrNull() ?: "Unknown"
+                         val name = nameMap[tx.toId]?.split(" ")?.firstOrNull() ?: "Unknown"
                          name to tx.amount
                     }
 
@@ -420,7 +450,7 @@ fun DashboardDetailScreen(
                             .padding(vertical = 32.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("👋", fontSize = 32.sp)
+                        Text("👋", style = MaterialTheme.typography.displayLarge)
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             "Start by adding people to split with",
@@ -430,19 +460,22 @@ fun DashboardDetailScreen(
                     }
                 }
             } else {
-                items(transactions.take(5)) { item ->
+                items(
+                    items = transactions.take(5),
+                    key = { it.id }
+                ) { item ->
                      when(item) {
                          is TransactionDisplayItem.ExpenseItem -> {
                              val expense = item.expense
                              val isPayer = expense.paidBy == "user-current"
-                             val payerName = if (isPayer) "You" else people.find { it.id == expense.paidBy }?.name ?: "Unknown"
+                             val payerName = nameMap[expense.paidBy] ?: "Unknown"
                              
                              com.hativ2.ui.components.TransactionCard(
                                 title = expense.description,
                                 subtitle = "paid by $payerName",
                                 amount = "₱${String.format("%,.2f", expense.amount)}",
                                 amountColor = if (isPayer) NotionGreen else MangaBlack,
-                                date = java.text.SimpleDateFormat("MMM dd", java.util.Locale.getDefault()).format(java.util.Date(expense.createdAt)),
+                                date = dateFormat.format(java.util.Date(expense.createdAt)),
                                 avatarText = payerName,
                                 avatarColor = if (isPayer) "default" else "white",
                                 onClick = { onExpenseClick(expense.id) }
@@ -450,8 +483,8 @@ fun DashboardDetailScreen(
                          }
                          is TransactionDisplayItem.SettlementItem -> {
                              val settlement = item.settlement
-                             val fromName = if(settlement.fromId == "user-current") "You" else people.find { it.id == settlement.fromId }?.name ?: "Unknown"
-                             val toName = if(settlement.toId == "user-current") "You" else people.find { it.id == settlement.toId }?.name ?: "Unknown"
+                             val fromName = nameMap[settlement.fromId] ?: "Unknown"
+                             val toName = nameMap[settlement.toId] ?: "Unknown"
                              
                              com.hativ2.ui.components.TransactionCard(
                                 title = "Settlement",
@@ -534,10 +567,9 @@ fun BalanceOverviewCard(
 @Composable
 fun SpendingByMemberCard(
     memberShares: Map<String, Double>,
+    balances: Map<String, Double> = emptyMap(),
     people: List<com.hativ2.data.entity.PersonEntity>
 ) {
-    val totalSpending = memberShares.values.sum()
-    
     Box(modifier = Modifier.fillMaxWidth()) {
         // Hard Shadow
         Box(
@@ -555,29 +587,42 @@ fun SpendingByMemberCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                      Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp)) 
                      Spacer(modifier = Modifier.width(8.dp))
-                     Text("SPENDING BY MEMBER", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                     Text("SPENDING BY MEMBER", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 }
                 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Table header
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Text("Member", modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
+                    Text("Paid", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                    Text("Share", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                    Text("Offset", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
                 Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(MangaBlack))
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 
                 if (memberShares.isEmpty()) {
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                          Text("No spending data yet", color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
                     }
                 } else {
-                     memberShares.forEach { (userId, amount) ->
+                     // Collect all user IDs (from both memberShares and balances)
+                     val allUserIds = (memberShares.keys + balances.keys).distinct()
+                     allUserIds.forEach { userId ->
                          key(userId) {
-                             val name = if(userId == "user-current") "You" else people.find { it.id == userId }?.name ?: "Unknown"
-                             val percentage = if (totalSpending > 0) (amount / totalSpending * 100) else 0.0
-                             val progress = (percentage / 100f).toFloat().coerceIn(0f, 1f)
+                             val name = if(userId == "user-current") "You" else people.find { it.id == userId }?.name?.split(" ")?.firstOrNull() ?: "Unknown"
+                             val paid = memberShares[userId] ?: 0.0
+                             val balance = balances[userId] ?: 0.0
+                             val fairShare = paid - balance // Derived: Paid - Offset = Share
                              
                              MemberSpendingRow(
                                  name = name,
-                                 amount = amount,
-                                 progress = progress,
-                                 percentage = percentage
+                                 paid = paid,
+                                 fairShare = fairShare,
+                                 offset = balance
                              )
                          }
                      }
@@ -592,66 +637,43 @@ fun SpendingByMemberCard(
 @Composable
 fun MemberSpendingRow(
     name: String,
-    amount: Double,
-    progress: Float,
-    percentage: Double
+    paid: Double,
+    fairShare: Double,
+    offset: Double
 ) {
-    val animatedProgress by animateFloatAsState(
-        targetValue = progress,
-        animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
-        label = "progress"
-    )
-
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        // Name and amount row
+    Column {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             Text(
-                "₱${String.format("%,.2f", amount)}",
+                name, 
+                modifier = Modifier.weight(1.5f), 
                 fontWeight = FontWeight.Bold,
-                fontSize = 14.sp
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                "₱${String.format("%,.0f", paid)}", 
+                modifier = Modifier.weight(1f), 
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = androidx.compose.ui.text.style.TextAlign.End
+            )
+            Text(
+                "₱${String.format("%,.0f", fairShare)}", 
+                modifier = Modifier.weight(1f), 
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = androidx.compose.ui.text.style.TextAlign.End
+            )
+            Text(
+                "₱${String.format("%,.0f", offset)}", 
+                modifier = Modifier.weight(1f), 
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (offset >= 0) NotionGreen else NotionRed,
+                textAlign = androidx.compose.ui.text.style.TextAlign.End
             )
         }
-        
-        Spacer(modifier = Modifier.height(6.dp))
-        
-        // Progress bar with percentage
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Progress bar container
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(12.dp)
-                    .background(Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(2.dp))
-                    .border(1.dp, MangaBlack, RoundedCornerShape(2.dp))
-            ) {
-                // Static progress fill (no animation to prevent stuttering)
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .fillMaxWidth(animatedProgress)
-                        .background(NotionBlue, RoundedCornerShape(1.dp))
-                )
-            }
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            // Percentage label
-            Text(
-                "${String.format("%.0f", percentage)}%",
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.sp,
-                color = Color.Gray,
-                modifier = Modifier.width(36.dp)
-            )
-        }
+        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.LightGray.copy(alpha = 0.5f)))
     }
 }
 
@@ -724,7 +746,7 @@ fun ActionCard(
              Column(horizontalAlignment = Alignment.CenterHorizontally) {
                  Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
                  Spacer(modifier = Modifier.height(4.dp))
-                 Text(title, fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                  Text(title, style = MaterialTheme.typography.labelSmall)
              }
          }
     }
@@ -775,16 +797,13 @@ fun SummaryCard(
                      // Arrow Icon
                      Text(
                          if(title.contains("OWED TO YOU")) "↙" else "↗", 
-                         fontWeight = FontWeight.Bold,
-                         fontSize = 12.sp,
+                          style = MaterialTheme.typography.labelMedium,
                          color = MangaBlack
                      )
                      Spacer(modifier = Modifier.width(8.dp))
                      Text(
                          title, 
-                         fontSize = 11.sp, 
-                         fontWeight = FontWeight.Bold, 
-                         letterSpacing = 1.sp,
+                          style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
                          color = MangaBlack
                      )
                  }
@@ -829,7 +848,7 @@ fun SummaryCard(
                                  )
                                  Text(
                                      "₱${String.format("%,.0f", debt)}",
-                                     style = MaterialTheme.typography.labelSmall,
+                                     style = MaterialTheme.typography.labelLarge,
                                      color = if(title.contains("OWED")) NotionGreen else NotionRed,
                                      fontWeight = FontWeight.Bold
                                  )
@@ -853,7 +872,7 @@ fun SummaryCard(
                          Text(
                              "SETTLE UP",
                              fontWeight = FontWeight.Bold,
-                             fontSize = 10.sp,
+                             style = MaterialTheme.typography.labelMedium,
                              letterSpacing = 1.sp
                          )
                      }

@@ -25,3 +25,8 @@ val NotionWhite = Color(0xFFFFFFFF)
 val MangaBlack = Color(0xFF000000)
 val MangaWhite = Color(0xFFFFFFFF)
 val MangaShadow = Color(0xFF000000)
+val MangaSuccess = Color(0xFF22C55E) // green-500
+val MangaDarkGray = Color(0xFF555555)
+
+// Hex Constants for Data Layer
+const val HEX_NOTION_ORANGE = "#FED7AA"

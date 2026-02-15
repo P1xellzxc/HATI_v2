@@ -77,7 +77,7 @@ fun AddDashboardDialog(
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .offset(x = 8.dp, y = 8.dp)
+                    .offset(x = 4.dp, y = 4.dp)
                     .background(MangaBlack)
             )
 
@@ -86,7 +86,7 @@ fun AddDashboardDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(NotionWhite)
-                    .border(3.dp, MangaBlack)
+                    .border(2.dp, MangaBlack)
                     .padding(24.dp)
             ) {
                 Column {
@@ -184,7 +184,7 @@ fun AddDashboardDialog(
                                 .clickable { onDismiss() },
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("Cancel", fontWeight = FontWeight.Bold)
+                            Text("Cancel", style = MaterialTheme.typography.labelLarge)
                         }
 
                         // Create Button
@@ -209,7 +209,7 @@ fun AddDashboardDialog(
                             ) {
                                 Text(
                                     "CREATE VOLUME", 
-                                    fontWeight = FontWeight.Black,
+                                    style = MaterialTheme.typography.labelLarge,
                                     color = if (title.isNotBlank()) MangaBlack else Color.Gray
                                 )
                             }

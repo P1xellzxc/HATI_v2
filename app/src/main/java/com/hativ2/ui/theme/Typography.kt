@@ -34,5 +34,8 @@ val Typography = Typography(
     titleSmall = MangaHeaderStyle.copy(fontSize = 16.sp),
     bodyLarge = MangaBodyStyle,
     bodyMedium = MangaBodyStyle.copy(fontSize = 14.sp),
-    bodySmall = MangaBodyStyle.copy(fontSize = 12.sp)
+    bodySmall = MangaBodyStyle.copy(fontSize = 12.sp),
+    labelLarge = MangaBodyStyle.copy(fontSize = 14.sp, fontWeight = FontWeight.Black),
+    labelMedium = MangaBodyStyle.copy(fontSize = 12.sp, fontWeight = FontWeight.Black),
+    labelSmall = MangaBodyStyle.copy(fontSize = 11.sp, fontWeight = FontWeight.Black)
 )

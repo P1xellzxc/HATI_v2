@@ -60,7 +60,8 @@ import com.hativ2.ui.theme.NotionOrange
 import com.hativ2.ui.theme.NotionPink
 import com.hativ2.ui.theme.NotionPurple
 import com.hativ2.ui.theme.NotionGray
-import com.hativ2.ui.theme.NotionGray
+import com.hativ2.ui.components.MangaCard
+import com.hativ2.ui.components.MangaBackButton
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -145,17 +146,10 @@ fun ChartsScreen(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .border(2.dp, MangaBlack, RoundedCornerShape(2.dp))
-                                .background(NotionWhite, RoundedCornerShape(2.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", modifier = Modifier.size(16.dp))
-                        }
-                    }
+                    MangaBackButton(
+                        onClick = onBack,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
                 },
                 title = {
                     Column {
@@ -185,7 +179,7 @@ fun ChartsScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.DateRange, null, modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text(selectedPeriod, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text(selectedPeriod, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                         }
                     }
                 },
@@ -207,7 +201,7 @@ fun ChartsScreen(
                     modifier = Modifier.fillMaxWidth().padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Total Arc Spending", fontSize = 14.sp, color = Color.Gray)
+                    Text("Total Arc Spending", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
                     Spacer(modifier = Modifier.height(8.dp))
                     Box(
                         modifier = Modifier
@@ -236,7 +230,7 @@ fun ChartsScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("📊", fontSize = 16.sp)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("CATEGORY BREAKDOWN", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("CATEGORY BREAKDOWN", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                         }
                     }
                     Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(MangaBlack))
@@ -285,12 +279,12 @@ fun ChartsScreen(
                                                 .border(1.dp, MangaBlack, RoundedCornerShape(2.dp))
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text(item.label, fontSize = 13.sp)
+                                        Text(item.label, style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp))
                                     }
                                     Text(
                                         "₱${String.format("%,.2f", item.amount)}",
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp
+                                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp)
                                     )
                                 }
                             }
@@ -305,7 +299,7 @@ fun ChartsScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("📈", fontSize = 16.sp)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("MONTHLY TREND", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text("MONTHLY TREND", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(MangaBlack))
@@ -347,6 +341,7 @@ fun ChartsScreen(
                                         "₱${String.format("%,.0f", amount)}",
                                         fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
                                         color = Color.Gray
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
@@ -362,6 +357,7 @@ fun ChartsScreen(
                                             .width(32.dp)
                                             .height(height.dp)
                                             .background(MangaBlack, RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
+                                            .border(2.dp, MangaBlack, RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
                                     )
                                     
                                     Spacer(modifier = Modifier.height(8.dp))
@@ -369,7 +365,7 @@ fun ChartsScreen(
                                     // Month label
                                     Text(
                                         month,
-                                        fontSize = 11.sp,
+                                        style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -386,7 +382,7 @@ fun ChartsScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("🧮", fontSize = 16.sp)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("OFFSET COMPUTATION", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("OFFSET COMPUTATION", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                         }
                         Spacer(modifier = Modifier.height(16.dp))
                         Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(MangaBlack))
@@ -394,10 +390,10 @@ fun ChartsScreen(
 
                         // Header Row
                         Row(modifier = Modifier.fillMaxWidth()) {
-                            Text("Member", modifier = Modifier.weight(1.5f), fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
-                            Text("Paid", modifier = Modifier.weight(1f), fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
-                            Text("Share", modifier = Modifier.weight(1f), fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
-                            Text("Offset", modifier = Modifier.weight(1f), fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                            Text("Member", modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
+                            Text("Paid", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                            Text("Share", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                            Text("Offset", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
                         }
                         
                         Spacer(modifier = Modifier.height(8.dp))
@@ -416,25 +412,25 @@ fun ChartsScreen(
                                         person.name.split(" ").firstOrNull() ?: "Unknown", 
                                         modifier = Modifier.weight(1.5f), 
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp)
                                     )
                                     Text(
                                         "₱${String.format("%,.0f", paid)}", 
                                         modifier = Modifier.weight(1f), 
-                                        fontSize = 12.sp,
+                                        style = MaterialTheme.typography.bodySmall,
                                         textAlign = androidx.compose.ui.text.style.TextAlign.End
                                     )
                                     Text(
                                         "₱${String.format("%,.0f", fairShare)}", 
                                         modifier = Modifier.weight(1f), 
-                                        fontSize = 12.sp,
+                                        style = MaterialTheme.typography.bodySmall,
                                         textAlign = androidx.compose.ui.text.style.TextAlign.End
                                     )
                                     Text(
                                         "₱${String.format("%,.0f", balance)}", 
                                         modifier = Modifier.weight(1f), 
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp,
+                                        style = MaterialTheme.typography.bodySmall,
                                         color = if (balance >= 0) NotionGreen else NotionRed,
                                         textAlign = androidx.compose.ui.text.style.TextAlign.End
                                     )
@@ -451,26 +447,7 @@ fun ChartsScreen(
     }
 }
 
-@Composable
-fun MangaCard(content: @Composable () -> Unit) {
-    Box(modifier = Modifier.fillMaxWidth()) {
-        // Shadow
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .offset(x = 4.dp, y = 4.dp)
-                .background(MangaBlack, RoundedCornerShape(2.dp))
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(NotionWhite, RoundedCornerShape(2.dp))
-                .border(2.dp, MangaBlack, RoundedCornerShape(2.dp))
-        ) {
-            content()
-        }
-    }
-}
+
 
 data class CategorySpending(
     val label: String,

@@ -16,21 +16,46 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import com.hativ2.domain.usecase.ExportDashboardCsvUseCase
+import android.net.Uri
+import android.content.Context
+import android.widget.Toast
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 @dagger.hilt.android.lifecycle.HiltViewModel
-class MainViewModel @javax.inject.Inject constructor(
+open class MainViewModel @javax.inject.Inject constructor(
     application: Application,
     private val dashboardDao: com.hativ2.data.dao.DashboardDao,
     private val personDao: com.hativ2.data.dao.PersonDao,
     private val expenseDao: com.hativ2.data.dao.ExpenseDao,
     private val addTransactionUseCase: com.hativ2.domain.usecase.AddTransactionUseCase,
     private val calculateDashboardStatsUseCase: com.hativ2.domain.usecase.CalculateDashboardStatsUseCase,
-    private val calculateDebtsUseCase: CalculateDebtsUseCase
+    private val calculateDebtsUseCase: CalculateDebtsUseCase,
+    private val updateExpenseUseCase: com.hativ2.domain.usecase.UpdateExpenseUseCase,
+    private val exportDashboardCsvUseCase: ExportDashboardCsvUseCase
 ) : AndroidViewModel(application) {
     
+    // Dark mode state
+    private val _isDarkMode = MutableStateFlow<Boolean?>(null) // null = follow system
+    val isDarkMode: StateFlow<Boolean?> = _isDarkMode
+    
+    fun toggleDarkMode() {
+        _isDarkMode.value = when (_isDarkMode.value) {
+            null -> true   // system -> dark
+            true -> false  // dark -> light
+            false -> null  // light -> system
+        }
+    }
+
     val dashboards: StateFlow<List<DashboardEntity>> = dashboardDao.getAllDashboards()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -85,7 +110,7 @@ class MainViewModel @javax.inject.Inject constructor(
         }.stateIn(viewModelScope, SharingStarted.Lazily, com.hativ2.domain.model.DebtSummaryModel(emptyList(), emptyMap(), 0.0, 0.0, emptyMap()))
     }
 
-    fun getPeople(dashboardId: String): StateFlow<List<com.hativ2.data.entity.PersonEntity>> {
+    open fun getPeople(dashboardId: String): StateFlow<List<com.hativ2.data.entity.PersonEntity>> {
         return dashboardDao.getDashboardMembers(dashboardId)
             .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     }
@@ -184,34 +209,20 @@ class MainViewModel @javax.inject.Inject constructor(
         splitWith: List<String>
     ) {
         viewModelScope.launch {
-             val expense = com.hativ2.data.entity.ExpenseEntity(
-                id = expenseId,
+            // Get existing createdAt to preserve it
+            val existing = expenseDao.getExpenseById(expenseId)
+            val createdAt = existing?.createdAt ?: System.currentTimeMillis()
+
+            updateExpenseUseCase.execute(
+                expenseId = expenseId,
                 dashboardId = dashboardId,
                 description = description,
                 amount = amount,
                 paidBy = paidBy,
                 category = category,
-                createdAt = System.currentTimeMillis() // Or keep original creation time? Ideally keep original. 
-                // For simplified logic we just overwrite, but let's try to keep original createdAt if we fetched it.
-                // Since this function signature doesn't take createdAt, we'll just set it to now or we need to fetch first.
-                // Let's just update the fields we care about.
+                splitWith = splitWith,
+                originalCreatedAt = createdAt
             )
-            // Ideally we get the existing createdAt. 
-            val existing = expenseDao.getExpenseById(expenseId)
-            val finalExpense = if(existing != null) expense.copy(createdAt = existing.createdAt) else expense
-
-            // Default split strategy: Equal split among selected people
-            val splitAmount = amount / splitWith.size
-            val splits = splitWith.map { personId ->
-                com.hativ2.data.entity.SplitEntity(
-                    id = UUID.randomUUID().toString(),
-                    expenseId = expenseId,
-                    personId = personId,
-                    amount = splitAmount
-                )
-            }
-
-            expenseDao.saveExpenseWithSplits(finalExpense, splits)
         }
     }
 
@@ -221,7 +232,7 @@ class MainViewModel @javax.inject.Inject constructor(
                 PersonEntity(
                     id = "user-current",
                     name = "You",
-                    avatarColor = "#fed7aa",
+                    avatarColor = com.hativ2.ui.theme.HEX_NOTION_ORANGE,
                     createdAt = System.currentTimeMillis()
                 )
             )
@@ -247,25 +258,50 @@ class MainViewModel @javax.inject.Inject constructor(
              expenseDao.getExpensesForDashboard(dashboardId),
              expenseDao.getSettlementsForDashboard(dashboardId)
         ) { expenses, settlements ->
-            val expenseItems = expenses.map { TransactionDisplayItem.ExpenseItem(it) }
-            val settlementItems = settlements.map { TransactionDisplayItem.SettlementItem(it) }
-            (expenseItems + settlementItems).sortedByDescending { it.date }
-        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            withContext(Dispatchers.IO) {
+                val expenseItems = expenses.map { TransactionDisplayItem.ExpenseItem(it) }
+                val settlementItems = settlements.map { TransactionDisplayItem.SettlementItem(it) }
+                (expenseItems + settlementItems).sortedByDescending { it.date }
+            }
+        }
+        .flowOn(Dispatchers.IO)
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     }
     fun getAllTransactions(): StateFlow<List<TransactionDisplayItem>> {
         return combine(
              expenseDao.getAllExpenses(),
              expenseDao.getAllSettlements()
         ) { expenses, settlements ->
-            val expenseItems = expenses.map { TransactionDisplayItem.ExpenseItem(it) }
-            val settlementItems = settlements.map { TransactionDisplayItem.SettlementItem(it) }
-            (expenseItems + settlementItems).sortedByDescending { it.date }
-        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            withContext(Dispatchers.IO) {
+                val expenseItems = expenses.map { TransactionDisplayItem.ExpenseItem(it) }
+                val settlementItems = settlements.map { TransactionDisplayItem.SettlementItem(it) }
+                (expenseItems + settlementItems).sortedByDescending { it.date }
+            }
+        }
+        .flowOn(Dispatchers.IO)
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     }
 
     fun deleteSettlement(settlementId: String) {
         viewModelScope.launch {
             expenseDao.deleteSettlement(settlementId)
+        }
+    }
+
+    fun exportCsv(dashboardId: String, uri: Uri, context: Context) {
+        viewModelScope.launch {
+            try {
+                val csvContent = exportDashboardCsvUseCase.execute(dashboardId)
+                withContext(Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                        outputStream.write(csvContent.toByteArray())
+                    }
+                }
+                Toast.makeText(context, "Export successful", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(context, "Export failed: ${e.message}", Toast.LENGTH_LONG).show()
+            }
         }
     }
 }

@@ -6,5 +6,6 @@ import kotlinx.coroutines.flow.Flow
 
 interface TransactionRepository {
     suspend fun addExpense(expense: ExpenseEntity, splits: List<SplitEntity>)
+    suspend fun updateExpense(expense: ExpenseEntity, splits: List<SplitEntity>)
     fun getExpensesByDateRange(dashboardId: String, startDate: Long, endDate: Long): Flow<List<ExpenseEntity>>
 }

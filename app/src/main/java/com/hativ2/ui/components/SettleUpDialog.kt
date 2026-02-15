@@ -55,7 +55,7 @@ fun SettleUpDialog(
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .offset(x = 6.dp, y = 6.dp)
+                    .offset(x = 4.dp, y = 4.dp)
                     .background(MangaBlack, RoundedCornerShape(MangaCornerRadius))
             )
             
@@ -235,7 +235,7 @@ fun SettleUpDialog(
                                 Icon(
                                     imageVector = Icons.Default.Check,
                                     contentDescription = null,
-                                    tint = Color(0xFF22C55E),
+                                    tint = MangaSuccess,
                                     modifier = Modifier.size(14.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -282,7 +282,7 @@ fun SettleUpDialog(
                                 modifier = Modifier
                                     .matchParentSize()
                                     .offset(x = 2.dp, y = 2.dp)
-                                    .background(if (isValid) Color(0xFF555555) else Color.Gray, RoundedCornerShape(MangaCornerRadius))
+                                    .background(if (isValid) MangaDarkGray else Color.Gray, RoundedCornerShape(MangaCornerRadius))
                             )
                             Box(
                                 modifier = Modifier

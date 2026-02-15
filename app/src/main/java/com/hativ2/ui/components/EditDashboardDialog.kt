@@ -75,7 +75,7 @@ fun EditDashboardDialog(
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .offset(x = 8.dp, y = 8.dp)
+                    .offset(x = 4.dp, y = 4.dp)
                     .background(MangaBlack)
             )
 
@@ -84,7 +84,7 @@ fun EditDashboardDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(NotionWhite)
-                    .border(3.dp, MangaBlack)
+                    .border(2.dp, MangaBlack)
                     .padding(24.dp)
             ) {
                 Column {

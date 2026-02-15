@@ -31,5 +31,12 @@ local.properties
 /build_log*.txt
 /build_output*.txt
 /*.png
+!hub_final.png
 /*.md
 !README.md
+/*.hprof
+/test_*.txt
+/instrumented_test_output*.txt
+/logcat_output*.txt
+/deps*.txt
+/check_*.txt

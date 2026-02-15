@@ -30,6 +30,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -48,6 +50,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hativ2.data.entity.DashboardEntity
 import com.hativ2.domain.model.DashboardWithStats
@@ -130,15 +133,14 @@ fun DashboardListScreen(
                 title = { 
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         // Logo box
-                        Box(
+                        Image(
+                            painter = androidx.compose.ui.res.painterResource(id = com.hativ2.R.drawable.app_logo),
+                            contentDescription = "App Logo",
                             modifier = Modifier
                                 .size(40.dp)
-                                .background(MangaBlack, RoundedCornerShape(4.dp))
-                                .border(2.dp, MangaBlack, RoundedCornerShape(4.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("H", color = NotionWhite, fontWeight = FontWeight.Bold)
-                        }
+                                .clip(RoundedCornerShape(4.dp))
+                                .border(2.dp, MangaBlack, RoundedCornerShape(4.dp))
+                        )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             "HATI", 
@@ -205,7 +207,10 @@ fun DashboardListScreen(
                     }
                 }
                 
-                items(dashboardsWithStats) { dashboard ->
+                items(
+                    items = dashboardsWithStats,
+                    key = { it.id }
+                ) { dashboard ->
                     VolumeCard(
                         dashboard = dashboard, 
                         onClick = { onDashboardClick(dashboard.id) },
@@ -249,7 +254,7 @@ fun VolumeCard(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .offset(x = 6.dp, y = 6.dp)
+                .offset(x = 4.dp, y = 4.dp)
                 .background(MangaBlack, RoundedCornerShape(MangaCornerRadius))
         )
 
@@ -396,7 +401,8 @@ fun NewVolumeCard(onClick: () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .offset(x = 6.dp, y = 6.dp)
+                .matchParentSize()
+                .offset(x = 4.dp, y = 4.dp)
                 .background(MangaBlack.copy(alpha = 0.2f), RoundedCornerShape(MangaCornerRadius))
         )
         

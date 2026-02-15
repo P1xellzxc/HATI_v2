@@ -160,12 +160,12 @@ fun BalanceScreen(
                         Box(
                             modifier = Modifier
                                 .background(NotionYellow.copy(alpha=0.5f))
-                                .border(3.dp, MangaBlack)
+                                .border(2.dp, MangaBlack)
                                 .padding(horizontal = 32.dp, vertical = 12.dp)
                         ) {
                             Text(
                                 "₱${String.format("%.2f", totalSpending)}", 
-                                fontSize = 32.sp, 
+                                style = MaterialTheme.typography.headlineLarge, 
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = 2.sp,
                                 color = MangaBlack // Ensure text is visible
@@ -227,7 +227,7 @@ fun StatCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(NotionWhite)
-                .border(4.dp, MangaBlack)
+                .border(2.dp, MangaBlack)
         ) {
             Column {
                 if (title.isNotEmpty()) {
@@ -240,7 +240,7 @@ fun StatCard(
                              Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) 
                              Spacer(modifier = Modifier.width(8.dp))
                         }
-                        Text(title, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 1.sp)
+                        Text(title, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     }
                     Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(MangaBlack))
                 }
