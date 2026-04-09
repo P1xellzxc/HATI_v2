@@ -41,7 +41,18 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "hati_database"
-                ).fallbackToDestructiveMigration().build()
+                )
+                    // Why fallbackToDestructiveMigrationFrom(1) instead of
+                    // fallbackToDestructiveMigration():
+                    // The blanket fallbackToDestructiveMigration() silently wipes
+                    // ALL user data on ANY schema change. This is dangerous for a
+                    // finance app — users would lose their expense history without
+                    // warning. By specifying version 1 only, we limit destructive
+                    // migration to the initial v1→v2 schema change (which already
+                    // happened). Future schema upgrades (v2→v3, etc.) MUST provide
+                    // explicit Migration objects to preserve user data.
+                    .fallbackToDestructiveMigrationFrom(1)
+                    .build()
                 INSTANCE = instance
                 instance
             }

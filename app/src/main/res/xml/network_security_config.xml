@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Why: Even though HATI v2 is offline-first, a future feature (Cloud Sync with
+    Supabase) will require network access. This config ensures that:
+      1. Cleartext (HTTP) traffic is blocked by default — only HTTPS is allowed.
+      2. System-trusted CAs are used for certificate validation.
+    This prevents man-in-the-middle attacks if network features are added later.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
