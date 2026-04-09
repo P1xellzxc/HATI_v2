@@ -18,9 +18,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.hativ2.domain.usecase.ExportDashboardCsvUseCase
@@ -299,8 +296,15 @@ open class MainViewModel @javax.inject.Inject constructor(
                 }
                 Toast.makeText(context, "Export successful", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                e.printStackTrace()
-                Toast.makeText(context, "Export failed: ${e.message}", Toast.LENGTH_LONG).show()
+                // Why not e.printStackTrace() + e.message in Toast:
+                // 1. printStackTrace() writes to Logcat which can be read by other
+                //    apps on rooted devices, potentially leaking file paths or
+                //    internal class names.
+                // 2. Showing e.message to users could reveal internal details
+                //    (file paths, SQL errors, etc.) that aid attackers.
+                // Instead: log a generic message and show a user-friendly toast.
+                android.util.Log.w("MainViewModel", "CSV export failed", e)
+                Toast.makeText(context, "Export failed. Please try again.", Toast.LENGTH_LONG).show()
             }
         }
     }

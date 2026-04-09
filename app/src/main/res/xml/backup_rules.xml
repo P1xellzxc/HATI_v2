@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Why: The previous configuration backed up ALL shared preferences and databases
+    to Google Drive, including the Room database with financial data (expenses,
+    debts, settlements, person names). This is a privacy risk because:
+      1. Users may not realize their financial data is synced to cloud.
+      2. Backup data can be extracted from a compromised Google account.
+    Now: Only non-sensitive preferences are backed up. The database is excluded.
+-->
 <full-backup-content>
-    <include domain="sharedpref" path="."/>
-    <include domain="database" path="."/>
+    <exclude domain="database" path="."/>
+    <exclude domain="external" path="."/>
 </full-backup-content>

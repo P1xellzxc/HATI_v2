@@ -1,15 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Why: The previous configuration included ALL domains (root, database, sharedpref,
+    external) in both cloud-backup and device-transfer. This exposed sensitive
+    financial data (Room database with expenses, debts, person names) to:
+      1. Google cloud backup (accessible if Google account is compromised)
+      2. Device-to-device transfer (accessible during phone setup)
+    Now: Database and external storage are excluded from cloud backup.
+    Device transfer still includes database for legitimate phone migration.
+-->
 <data-extraction-rules>
     <cloud-backup>
-        <include domain="root" />
-        <include domain="database" />
-        <include domain="sharedpref" />
-        <include domain="external" />
+        <include domain="sharedpref" path="."/>
+        <exclude domain="database" path="."/>
+        <exclude domain="external" path="."/>
     </cloud-backup>
     <device-transfer>
-        <include domain="root" />
-        <include domain="database" />
-        <include domain="sharedpref" />
-        <include domain="external" />
+        <include domain="sharedpref" path="."/>
+        <include domain="database" path="."/>
+        <exclude domain="external" path="."/>
     </device-transfer>
 </data-extraction-rules>

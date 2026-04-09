@@ -34,9 +34,15 @@ local.properties
 !hub_final.png
 /*.md
 !README.md
+!QUESTIONS_FOR_REVIEW.md
 /*.hprof
 /test_*.txt
 /instrumented_test_output*.txt
 /logcat_output*.txt
 /deps*.txt
 /check_*.txt
+/*.bat
+/*.ps1
+/build_result*.txt
+/install_log*.txt
+/performance_results*.txt
