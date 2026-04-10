@@ -77,7 +77,7 @@ open class MainViewModel @javax.inject.Inject constructor(
                                 splits = splits,
                                 settlements = settlements,
                                 members = members,
-                                currentUserId = "user-current"
+                                currentUserId = CURRENT_USER_ID
                             )
                         }
                     }
@@ -103,10 +103,20 @@ open class MainViewModel @javax.inject.Inject constructor(
                      splits = splits,
                      settlements = settlements,
                      userIds = members.map { it.id },
-                     currentUserId = "user-current" 
+                     currentUserId = CURRENT_USER_ID
                  )
              }
-        }.stateIn(viewModelScope, SharingStarted.Lazily, com.hativ2.domain.model.DebtSummaryModel(emptyList(), emptyMap(), 0.0, 0.0, emptyMap()))
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.Lazily,
+            com.hativ2.domain.model.DebtSummaryModel(
+                transactions = emptyList(),
+                balances = emptyMap(),
+                totalOwedToYou = 0.0,
+                totalYouOwe = 0.0,
+                memberShares = emptyMap()
+            )
+        )
     }
 
     open fun getPeople(dashboardId: String): StateFlow<List<com.hativ2.data.entity.PersonEntity>> {
@@ -179,7 +189,7 @@ open class MainViewModel @javax.inject.Inject constructor(
             
             ensureCurrentUser()
             
-            dashboardDao.addMember(DashboardMemberEntity(id, "user-current", System.currentTimeMillis()))
+            dashboardDao.addMember(DashboardMemberEntity(id, CURRENT_USER_ID, System.currentTimeMillis()))
         }
     }
 
@@ -248,10 +258,10 @@ open class MainViewModel @javax.inject.Inject constructor(
     }
 
     private suspend fun ensureCurrentUser() {
-        if (personDao.getPersonById("user-current") == null) {
+        if (personDao.getPersonById(CURRENT_USER_ID) == null) {
             personDao.insertPerson(
                 PersonEntity(
-                    id = "user-current",
+                    id = CURRENT_USER_ID,
                     name = "You",
                     avatarColor = com.hativ2.ui.theme.HEX_NOTION_ORANGE,
                     createdAt = System.currentTimeMillis()
@@ -284,11 +294,9 @@ open class MainViewModel @javax.inject.Inject constructor(
              expenseDao.getExpensesForDashboard(dashboardId),
              expenseDao.getSettlementsForDashboard(dashboardId)
         ) { expenses, settlements ->
-            withContext(Dispatchers.IO) {
-                val expenseItems = expenses.map { TransactionDisplayItem.ExpenseItem(it) }
-                val settlementItems = settlements.map { TransactionDisplayItem.SettlementItem(it) }
-                (expenseItems + settlementItems).sortedByDescending { it.date }
-            }
+            val expenseItems = expenses.map { TransactionDisplayItem.ExpenseItem(it) }
+            val settlementItems = settlements.map { TransactionDisplayItem.SettlementItem(it) }
+            (expenseItems + settlementItems).sortedByDescending { it.date }
         }
         .flowOn(Dispatchers.IO)
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
@@ -298,11 +306,9 @@ open class MainViewModel @javax.inject.Inject constructor(
              expenseDao.getAllExpenses(),
              expenseDao.getAllSettlements()
         ) { expenses, settlements ->
-            withContext(Dispatchers.IO) {
-                val expenseItems = expenses.map { TransactionDisplayItem.ExpenseItem(it) }
-                val settlementItems = settlements.map { TransactionDisplayItem.SettlementItem(it) }
-                (expenseItems + settlementItems).sortedByDescending { it.date }
-            }
+            val expenseItems = expenses.map { TransactionDisplayItem.ExpenseItem(it) }
+            val settlementItems = settlements.map { TransactionDisplayItem.SettlementItem(it) }
+            (expenseItems + settlementItems).sortedByDescending { it.date }
         }
         .flowOn(Dispatchers.IO)
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
@@ -353,6 +359,10 @@ open class MainViewModel @javax.inject.Inject constructor(
                 Toast.makeText(context, "Export failed. Please try again.", Toast.LENGTH_LONG).show()
             }
         }
+    }
+
+    companion object {
+        const val CURRENT_USER_ID = "user-current"
     }
 }
 

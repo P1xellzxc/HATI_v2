@@ -90,7 +90,7 @@ class MainViewModelTest {
         val type = "travel"
         val theme = "#FF0000"
         
-        whenever(personDao.getPersonById("user-current")).thenReturn(null)
+        whenever(personDao.getPersonById(MainViewModel.CURRENT_USER_ID)).thenReturn(null)
 
         viewModel.createDashboard(title, type, theme)
         advanceUntilIdle()
@@ -124,7 +124,7 @@ class MainViewModelTest {
 
     @Test
     fun `createDashboard sanitizes title`() = runTest {
-        whenever(personDao.getPersonById("user-current")).thenReturn(null)
+        whenever(personDao.getPersonById(MainViewModel.CURRENT_USER_ID)).thenReturn(null)
 
         viewModel.createDashboard("  My  Trip  ", "travel", "#FF0000")
         advanceUntilIdle()
@@ -136,8 +136,8 @@ class MainViewModelTest {
 
     @Test
     fun `createDashboard does not recreate existing current user`() = runTest {
-        val existingUser = PersonEntity("user-current", "You", "default", 1000L)
-        whenever(personDao.getPersonById("user-current")).thenReturn(existingUser)
+        val existingUser = PersonEntity(MainViewModel.CURRENT_USER_ID, "You", "default", 1000L)
+        whenever(personDao.getPersonById(MainViewModel.CURRENT_USER_ID)).thenReturn(existingUser)
 
         viewModel.createDashboard("Trip", "travel", "#FF0000")
         advanceUntilIdle()
