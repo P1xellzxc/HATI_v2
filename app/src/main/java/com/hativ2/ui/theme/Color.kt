@@ -8,7 +8,7 @@ import androidx.compose.ui.graphics.Color
 //
 // 60-30-10 COLOR RULE (whole-app breakdown):
 //
-//   60 % DOMINANT  — NotionWhite / MangaBlack (backgrounds, surfaces)
+//   60 % DOMINANT  — NotionWhite / DarkSurface (backgrounds, surfaces)
 //                    These occupy the vast majority of screen real estate
 //                    and provide visual breathing room.
 //
@@ -24,6 +24,10 @@ import androidx.compose.ui.graphics.Color
 //
 // Each colour is annotated with its closest Pantone Coated match
 // so the palette can be reproduced in print or cross-platform tooling.
+//
+// DESIGN REFERENCE: Think in HSB, export in hex. All dark-mode
+// variants reduce saturation and increase lightness per the rule:
+//   Light: hsl(H, S%, L%)  →  Dark: hsl(H, S-20%, L+20%)
 // ─────────────────────────────────────────────────────────────
 
 // ── Notion Pastels (10 % accent layer) ──────────────────────
@@ -48,6 +52,31 @@ val NotionDisabled = Color(0xFF9CA3AF) // Pantone Cool Gray 5 C — disabled sta
 val MangaBlack   = Color(0xFF000000) // Pantone Black C  — text, borders, shadows
 val MangaSuccess = Color(0xFF22C55E) // Pantone 7481 C   — positive / success
 val MangaDarkGray = Color(0xFF555555) // Pantone Cool Gray 10 C — heavy-disabled
+
+// ── Dark Mode Surface System ────────────────────────────────
+// Rule: Dark mode surface is NOT #000000; pure black causes eye
+// strain. Use #121212 as base, then elevate surfaces with +5%
+// lightness per elevation level.
+val DarkSurface          = Color(0xFF121212) // Level 0 — base dark background
+val DarkSurfaceElevated1 = Color(0xFF1E1E1E) // Level 1 — cards, raised surfaces (+5%)
+val DarkSurfaceElevated2 = Color(0xFF232323) // Level 2 — menus, dialogs (+10%)
+val DarkSurfaceElevated3 = Color(0xFF2C2C2C) // Level 3 — modal overlays (+15%)
+val DarkOnSurface        = Color(0xFFE0E0E0) // Slightly off-white for readability
+
+// ── Dark Mode Accent Variants (desaturated + lighter) ───────
+// Reduce saturation in dark mode to avoid visual strain.
+val DarkNotionYellow = Color(0xFFFFF3B0) // hsl(50, 60%, 84%) — desaturated yellow
+val DarkNotionBlue   = Color(0xFFCCE5FF) // hsl(210, 60%, 90%) — desaturated blue
+val DarkNotionGreen  = Color(0xFFB3EACA) // hsl(145, 45%, 82%) — desaturated green
+val DarkNotionRed    = Color(0xFFFFD4D4) // hsl(0, 60%, 91%)  — desaturated red
+
+// ── Error System ────────────────────────────────────────────
+// Rule: Never use Error red for anything that is not an error.
+// Red means broken. Treat it like a fire alarm.
+val ErrorRed            = Color(0xFFB3261E) // MD3 error baseline
+val ErrorRedContainer   = Color(0xFFF9DEDC) // Light-mode error container
+val DarkErrorRed        = Color(0xFFF2B8B5) // Dark-mode on-error
+val DarkErrorContainer  = Color(0xFF8C1D18) // Dark-mode error container
 
 // ── Hex Constants for Data Layer ────────────────────────────
 const val HEX_NOTION_ORANGE = "#FED7AA"
