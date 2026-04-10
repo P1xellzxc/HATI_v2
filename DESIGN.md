@@ -30,7 +30,7 @@ HATI² fuses two visual worlds into a single coherent aesthetic:
 
 ### Core Principles
 
-- **Volume Metaphor.** Each dashboard is a *manga volume*. The hub list is a shelf of volumes; opening one is opening a story arc of shared expenses.
+- **Volume Metaphor.** Each dashboard is a *manga volume*. The hub list is a bookshelf of volumes; opening one is opening a story arc of shared expenses.
 - **Heavy Ink Borders.** Every interactive surface is outlined with a 2 dp `MangaBlack` border — cards, buttons, inputs, avatars. This is the single strongest visual signature of the system.
 - **Hard Drop Shadows.** Shadows are geometric offsets of a solid black box behind the content, not blurred elevation shadows. They give the UI a printed, physical feel.
 - **Pastel Category Accents.** Color communicates meaning (category, status, balance) through soft Notion pastels, never through dominant fills.
