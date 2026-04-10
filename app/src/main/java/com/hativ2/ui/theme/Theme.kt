@@ -19,28 +19,46 @@ import androidx.core.view.WindowCompat
 // ─────────────────────────────────────────────────────────────
 // 60-30-10 mapping per theme mode
 //
-//  DARK   60 % MangaBlack (bg/surface)
-//         30 % NotionWhite (text/borders) + NotionMuted (labels)
-//         10 % NotionYellow (accent) + NotionBlue (tertiary)
+//  DARK   60 % DarkSurface/#121212 (bg/surface) — NOT pure black
+//         30 % DarkOnSurface (text) + NotionMuted (labels)
+//         10 % DarkNotionYellow (accent) + DarkNotionBlue (tertiary)
 //
 //  LIGHT  60 % NotionWhite (bg/surface)
 //         30 % MangaBlack (text/borders) + NotionMuted (labels)
 //         10 % NotionYellow (accent) + NotionBlue (tertiary)
+//
+//  Dark mode rules from design reference:
+//  - Surface uses #121212, not #000000 (pure black causes eye strain)
+//  - Accent colors are desaturated + lighter for dark mode
+//  - Elevation is communicated via lightness, not shadow
+//  - Each elevation level adds ~5% lightness to the surface
 // ─────────────────────────────────────────────────────────────
 
 private val DarkColorScheme = darkColorScheme(
-    primary = NotionWhite,
-    secondary = NotionYellow,
-    tertiary = NotionBlue,
-    background = MangaBlack,
-    surface = MangaBlack,
-    onPrimary = MangaBlack,
-    onSecondary = MangaBlack,
-    onTertiary = MangaBlack,
-    onBackground = NotionWhite,
-    onSurface = NotionWhite,
-    outline = NotionMuted,              // secondary text / labels
-    outlineVariant = NotionDivider,     // dividers / separators
+    primary = DarkOnSurface,
+    secondary = DarkNotionYellow,
+    tertiary = DarkNotionBlue,
+    background = DarkSurface,
+    surface = DarkSurface,
+    surfaceVariant = DarkSurfaceElevated1,
+    onPrimary = DarkSurface,
+    onSecondary = DarkSurface,
+    onTertiary = DarkSurface,
+    onBackground = DarkOnSurface,
+    onSurface = DarkOnSurface,
+    onSurfaceVariant = DarkOnSurface.copy(alpha = 0.8f),
+    outline = NotionMuted,
+    outlineVariant = Color(0xFF444444),
+    error = DarkErrorRed,
+    errorContainer = DarkErrorContainer,
+    onError = DarkSurface,
+    onErrorContainer = DarkErrorRed,
+    inverseSurface = NotionWhite,
+    inverseOnSurface = DarkSurface,
+    surfaceContainerHighest = DarkSurfaceElevated3,
+    surfaceContainerHigh = DarkSurfaceElevated2,
+    surfaceContainer = DarkSurfaceElevated1,
+    surfaceContainerLow = DarkSurface,
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -49,13 +67,25 @@ private val LightColorScheme = lightColorScheme(
     tertiary = NotionBlue,
     background = NotionWhite,
     surface = NotionWhite,
+    surfaceVariant = NotionGray,
     onPrimary = NotionWhite,
     onSecondary = MangaBlack,
     onTertiary = MangaBlack,
     onBackground = MangaBlack,
     onSurface = MangaBlack,
-    outline = NotionMuted,              // secondary text / labels
-    outlineVariant = NotionDivider,     // dividers / separators
+    onSurfaceVariant = NotionMuted,
+    outline = NotionMuted,
+    outlineVariant = NotionDivider,
+    error = ErrorRed,
+    errorContainer = ErrorRedContainer,
+    onError = NotionWhite,
+    onErrorContainer = ErrorRed,
+    inverseSurface = MangaBlack,
+    inverseOnSurface = NotionWhite,
+    surfaceContainerHighest = NotionGray,
+    surfaceContainerHigh = Color(0xFFF0F0F0),
+    surfaceContainer = Color(0xFFF5F5F5),
+    surfaceContainerLow = NotionWhite,
 )
 
 @Composable
