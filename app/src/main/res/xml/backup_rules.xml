@@ -5,9 +5,11 @@
     debts, settlements, person names). This is a privacy risk because:
       1. Users may not realize their financial data is synced to cloud.
       2. Backup data can be extracted from a compromised Google account.
-    Now: Only non-sensitive preferences are backed up. The database is excluded.
+    Now: Only non-sensitive preferences are backed up. The database and the
+    encrypted database passphrase (hati_db_prefs) are excluded.
 -->
 <full-backup-content>
     <exclude domain="database" path="."/>
     <exclude domain="external" path="."/>
+    <exclude domain="sharedpref" path="hati_db_prefs.xml"/>
 </full-backup-content>
