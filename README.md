@@ -18,6 +18,58 @@ HATI² features a unique visual language that combines the bold, high-contrast e
 
 ---
 
+## 📸 Screenshots
+
+### Hub List — Your Story Volumes
+> The home screen. All your expense "volumes" are displayed as manga-style cards. Tap a card to enter the volume, or tap **+ New Volume** to start a new arc.
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/74f732ca-831b-410d-8d88-2f715b09af48" alt="Hub List Screen" width="320"/>
+</p>
+
+Each volume card shows:
+- **Cover icon** — auto-selected emoji based on volume type (✈️ travel, 🏠 household, 🎉 event)
+- **Colored spine** — your chosen theme color (yellow, blue, green, red)
+- **Balance tag** — real-time net balance indicator (green = positive, red = negative)
+- **Total spent** and chapter (expense) count at a glance
+- **⋮ menu** — quick access to Edit or Delete the volume
+
+---
+
+## 🗺️ App Walkthrough
+
+### 1. Create a New Volume
+Tap **+ New Volume** (FAB or the ghost card) → enter a title, pick a type and theme color → the volume is created instantly and appears in your hub.
+
+### 2. Dashboard Detail
+Inside a volume you get a full overview:
+- **Stats bar** — total spent, participant count, and unsettled debt at a glance
+- **Recent transactions** — chronological list of expenses and settlements
+- **People panel** — add or remove participants from the split
+- **Action buttons** — navigate to Expenses, Balance, Charts, or export data (CSV / JSON)
+
+### 3. Add an Expense
+Tap **+ Add Expense** → fill in the title, amount, date, and category → choose who paid and configure the split between participants → confirm to save.
+
+Categories available: 🍽️ Food · 🚗 Transport · 🛍️ Shopping · 🎬 Entertainment · 💡 Utilities · 📦 Other
+
+### 4. Balance Screen
+Visual breakdown of who owes whom across all participants. Debts are calculated automatically via `CalculateDebtsUseCase` and displayed per-person with directional arrows.
+
+### 5. Charts Screen
+Spending analytics for the selected volume:
+- **Donut chart** — category percentage breakdown with color-coded segments
+- **Bar chart** — monthly spending totals with a monthly-average reference line
+- **Trend indicator** — month-over-month spending delta (↑ increase / ↓ decrease)
+
+### 6. History Screen
+A full log of all settlements ("Settle Up" events) recorded in the volume, showing payer, payee, amount, and timestamp.
+
+### 7. Export Data
+From the Dashboard Detail screen tap the **share icon** → choose **CSV** or **JSON** → a security notice is shown → confirm and save the file anywhere on your device via the system file picker (Storage Access Framework).
+
+---
+
 ## 🚀 Key Features
 
 - **Dashboard "Hubs"** — Manage multiple "Volumes" (dashboards) for different travel arcs, households, or events.
