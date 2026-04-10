@@ -157,8 +157,9 @@ fun HistoryScreen(
     val jsonExportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
     ) { uri: android.net.Uri? ->
-        if (uri != null && selectedVolumeId != null) {
-            viewModel.exportJson(selectedVolumeId!!, uri, context)
+        val volumeId = selectedVolumeId
+        if (uri != null && volumeId != null) {
+            viewModel.exportJson(volumeId, uri, context)
         }
     }
     

@@ -31,6 +31,10 @@ class ExportDashboardJsonUseCase @Inject constructor(
         val members = dashboardDao.getDashboardMembers(dashboardId).first()
         val membersMap = members.associateBy { it.id }
 
+        // Batch-fetch all splits for this dashboard to avoid N+1 queries.
+        val allSplits = expenseDao.getSplitsForDashboard(dashboardId).first()
+        val splitsByExpense = allSplits.groupBy { it.expenseId }
+
         val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
 
         val root = JSONObject()
@@ -71,21 +75,17 @@ class ExportDashboardJsonUseCase @Inject constructor(
             expenseJson.put("category", expense.category)
             expenseJson.put("createdAt", dateFormat.format(Date(expense.createdAt)))
 
-            val payerName = if (expense.paidBy == "user-current") "You"
-                else membersMap[expense.paidBy]?.name ?: "Unknown"
+            val payerName = resolveName(expense.paidBy, membersMap)
             expenseJson.put("paidById", expense.paidBy)
             expenseJson.put("paidByName", payerName)
 
-            // Splits
-            val splits = expenseDao.getSplitsForExpense(expense.id)
+            // Splits (from pre-fetched batch)
+            val splits = splitsByExpense[expense.id].orEmpty()
             val splitsArray = JSONArray()
             splits.forEach { split ->
                 val splitJson = JSONObject()
                 splitJson.put("personId", split.personId)
-                splitJson.put("personName",
-                    if (split.personId == "user-current") "You"
-                    else membersMap[split.personId]?.name ?: "Unknown"
-                )
+                splitJson.put("personName", resolveName(split.personId, membersMap))
                 splitJson.put("amount", split.amount)
                 splitsArray.put(splitJson)
             }
@@ -101,15 +101,9 @@ class ExportDashboardJsonUseCase @Inject constructor(
             val settlementJson = JSONObject()
             settlementJson.put("id", settlement.id)
             settlementJson.put("fromId", settlement.fromId)
-            settlementJson.put("fromName",
-                if (settlement.fromId == "user-current") "You"
-                else membersMap[settlement.fromId]?.name ?: "Unknown"
-            )
+            settlementJson.put("fromName", resolveName(settlement.fromId, membersMap))
             settlementJson.put("toId", settlement.toId)
-            settlementJson.put("toName",
-                if (settlement.toId == "user-current") "You"
-                else membersMap[settlement.toId]?.name ?: "Unknown"
-            )
+            settlementJson.put("toName", resolveName(settlement.toId, membersMap))
             settlementJson.put("amount", settlement.amount)
             settlementJson.put("createdAt", dateFormat.format(Date(settlement.createdAt)))
             settlementsArray.put(settlementJson)
@@ -126,4 +120,14 @@ class ExportDashboardJsonUseCase @Inject constructor(
 
         return root.toString(2)
     }
+
+    private companion object {
+        const val CURRENT_USER_ID = "user-current"
+    }
+
+    private fun resolveName(
+        personId: String,
+        membersMap: Map<String, com.hativ2.data.entity.PersonEntity>
+    ): String = if (personId == CURRENT_USER_ID) "You"
+        else membersMap[personId]?.name ?: "Unknown"
 }
