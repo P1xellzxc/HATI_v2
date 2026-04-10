@@ -6,11 +6,13 @@ import com.hativ2.data.AppDatabase
 import com.hativ2.data.dao.DashboardDao
 import com.hativ2.data.dao.ExpenseDao
 import com.hativ2.data.dao.PersonDao
+import com.hativ2.data.security.DatabaseKeyManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import net.sqlcipher.database.SupportFactory
 import javax.inject.Singleton
 
 @Module
@@ -20,7 +22,31 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
-        return AppDatabase.getDatabase(context)
+        // Why SupportFactory(passphrase) instead of plain Room.databaseBuilder:
+        // Plain Room stores all data in unencrypted SQLite. Anyone with root access
+        // or physical access to the device can read every expense, person name, and
+        // debt record. SupportFactory wraps Room's SQLiteOpenHelper with SQLCipher,
+        // which encrypts the entire database file using AES-256.
+        //
+        // The passphrase is stored encrypted in SharedPreferences and unwrapped
+        // using a hardware-backed Android Keystore key (see DatabaseKeyManager).
+        val passphrase = DatabaseKeyManager.getPassphrase(context)
+        val factory = SupportFactory(passphrase)
+
+        return Room.databaseBuilder(
+            context.applicationContext,
+            AppDatabase::class.java,
+            "hati_database"
+        )
+            .openHelperFactory(factory)
+            // Why fallbackToDestructiveMigrationFrom(1) instead of
+            // fallbackToDestructiveMigration():
+            // The blanket fallback silently wipes ALL user data on ANY schema
+            // change. By specifying version 1 only, we limit destructive
+            // migration to the initial v1→v2 change. Future upgrades MUST
+            // provide explicit Migration objects to preserve user data.
+            .fallbackToDestructiveMigrationFrom(1)
+            .build()
     }
 
     @Provides

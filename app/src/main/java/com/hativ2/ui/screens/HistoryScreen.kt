@@ -86,6 +86,7 @@ fun HistoryScreen(
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var selectedVolumeId by remember { mutableStateOf(dashboardId) }
     var deleteConfirmId by remember { mutableStateOf<String?>(null) }
+    var showExportWarning by remember { mutableStateOf(false) }
     
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -139,8 +140,14 @@ fun HistoryScreen(
                     }
                     scope.launch { snackbarHostState.showSnackbar("Export successful!") }
                 } catch (e: Exception) {
-                    e.printStackTrace()
-                    scope.launch { snackbarHostState.showSnackbar("Export failed: ${e.message}") }
+                    // Why Log.w instead of e.printStackTrace():
+                    // printStackTrace() writes to Logcat which can be read by other
+                    // apps on rooted devices. Log.w is tagged and controlled.
+                    // Why generic message instead of e.message in snackbar:
+                    // e.message could reveal file paths, SQL errors, or other
+                    // internals that help attackers.
+                    android.util.Log.w("HistoryScreen", "CSV export failed", e)
+                    scope.launch { snackbarHostState.showSnackbar("Export failed. Please try again.") }
                 }
             }
         }
@@ -154,6 +161,17 @@ fun HistoryScreen(
          }
     }
     val transactionCount = filteredTransactions.size
+
+    if (showExportWarning) {
+        com.hativ2.ui.components.ExportWarningDialog(
+            onConfirm = {
+                showExportWarning = false
+                val defaultFilename = "finsplit_export_${SimpleDateFormat("yyyyMMdd_HHmm", Locale.getDefault()).format(Date())}.csv"
+                exportLauncher.launch(defaultFilename)
+            },
+            onDismiss = { showExportWarning = false }
+        )
+    }
     
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -187,8 +205,7 @@ fun HistoryScreen(
                 actions = {
                     // Export button
                     IconButton(onClick = { 
-                        val defaultFilename = "finsplit_export_${SimpleDateFormat("yyyyMMdd_HHmm", Locale.getDefault()).format(Date())}.csv"
-                        exportLauncher.launch(defaultFilename)
+                        showExportWarning = true
                     }) {
                         Box(
                             modifier = Modifier

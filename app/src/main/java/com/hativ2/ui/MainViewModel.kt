@@ -114,10 +114,16 @@ open class MainViewModel @javax.inject.Inject constructor(
 
     fun addPerson(dashboardId: String, name: String) {
         viewModelScope.launch {
+            // Why use InputValidator.validatePersonName() instead of inline checks:
+            // Centralizes validation rules in one place. If limits change, only
+            // InputValidator needs updating.
+            val result = com.hativ2.util.InputValidator.validatePersonName(name)
+            if (result !is com.hativ2.util.InputValidator.ValidationResult.Valid) return@launch
+
             val personId = UUID.randomUUID().toString()
             val person = com.hativ2.data.entity.PersonEntity(
                 id = personId,
-                name = name,
+                name = result.sanitized,
                 avatarColor = "default",
                 createdAt = System.currentTimeMillis()
             )
@@ -135,10 +141,15 @@ open class MainViewModel @javax.inject.Inject constructor(
         splitWith: List<String> 
     ) {
         viewModelScope.launch {
+            val descResult = com.hativ2.util.InputValidator.validateExpenseDescription(description)
+            val amountResult = com.hativ2.util.InputValidator.validateAmount(amount.toString())
+            if (descResult !is com.hativ2.util.InputValidator.ValidationResult.Valid) return@launch
+            if (amountResult !is com.hativ2.util.InputValidator.AmountValidationResult.Valid) return@launch
+
             addTransactionUseCase.execute(
                 dashboardId = dashboardId,
-                description = description,
-                amount = amount,
+                description = descResult.sanitized,
+                amount = amountResult.amount,
                 paidBy = paidBy,
                 category = category,
                 splitWith = splitWith
@@ -148,10 +159,13 @@ open class MainViewModel @javax.inject.Inject constructor(
 
     fun createDashboard(title: String, type: String, themeColor: String) {
         viewModelScope.launch {
+            val titleResult = com.hativ2.util.InputValidator.validateDashboardTitle(title)
+            if (titleResult !is com.hativ2.util.InputValidator.ValidationResult.Valid) return@launch
+
             val id = UUID.randomUUID().toString()
             val dashboard = DashboardEntity(
                 id = id,
-                title = title,
+                title = titleResult.sanitized,
                 coverImageUrl = null,
                 currencySymbol = "₱",
                 themeColor = themeColor,
@@ -175,9 +189,12 @@ open class MainViewModel @javax.inject.Inject constructor(
 
     fun updateDashboard(dashboardId: String, title: String, type: String, themeColor: String) {
         viewModelScope.launch {
+            val titleResult = com.hativ2.util.InputValidator.validateDashboardTitle(title)
+            if (titleResult !is com.hativ2.util.InputValidator.ValidationResult.Valid) return@launch
+
             val currentList = dashboards.value
             val current = currentList.find { it.id == dashboardId } ?: return@launch
-            dashboardDao.updateDashboard(current.copy(title = title, dashboardType = type, themeColor = themeColor))
+            dashboardDao.updateDashboard(current.copy(title = titleResult.sanitized, dashboardType = type, themeColor = themeColor))
         }
     }
 
@@ -206,6 +223,11 @@ open class MainViewModel @javax.inject.Inject constructor(
         splitWith: List<String>
     ) {
         viewModelScope.launch {
+            val descResult = com.hativ2.util.InputValidator.validateExpenseDescription(description)
+            val amountResult = com.hativ2.util.InputValidator.validateAmount(amount.toString())
+            if (descResult !is com.hativ2.util.InputValidator.ValidationResult.Valid) return@launch
+            if (amountResult !is com.hativ2.util.InputValidator.AmountValidationResult.Valid) return@launch
+
             // Get existing createdAt to preserve it
             val existing = expenseDao.getExpenseById(expenseId)
             val createdAt = existing?.createdAt ?: System.currentTimeMillis()
@@ -213,8 +235,8 @@ open class MainViewModel @javax.inject.Inject constructor(
             updateExpenseUseCase.execute(
                 expenseId = expenseId,
                 dashboardId = dashboardId,
-                description = description,
-                amount = amount,
+                description = descResult.sanitized,
+                amount = amountResult.amount,
                 paidBy = paidBy,
                 category = category,
                 splitWith = splitWith,
@@ -238,6 +260,11 @@ open class MainViewModel @javax.inject.Inject constructor(
 
     fun settleUp(dashboardId: String, fromId: String, toId: String, amount: Double) {
         viewModelScope.launch {
+            // Validate settlement amount — prevent negative, zero, or excessive values.
+            if (amount <= 0 || amount > com.hativ2.util.InputValidator.MAX_AMOUNT) return@launch
+            // Prevent self-settlement which would corrupt balance calculations.
+            if (fromId == toId) return@launch
+
             val settlement = SettlementEntity(
                 id = UUID.randomUUID().toString(),
                 dashboardId = dashboardId,

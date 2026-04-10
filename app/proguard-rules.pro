@@ -47,3 +47,14 @@
 -keepclassmembers class * implements android.os.Parcelable {
     public static final ** CREATOR;
 }
+
+# --- SQLCipher ---
+# SQLCipher uses native libraries and reflection for database factory creation.
+# Without these rules, R8 strips the JNI bindings and the SupportFactory class.
+-keep class net.sqlcipher.** { *; }
+-keep class net.sqlcipher.database.** { *; }
+-dontwarn net.sqlcipher.**
+
+# --- Biometric ---
+# Biometric library uses fragment transactions internally.
+-dontwarn androidx.biometric.**

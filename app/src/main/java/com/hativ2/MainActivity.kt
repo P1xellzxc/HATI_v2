@@ -1,7 +1,6 @@
 package com.hativ2
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -24,6 +23,8 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.Modifier
+import androidx.fragment.app.FragmentActivity
+import com.hativ2.ui.auth.BiometricAuthGate
 import com.hativ2.ui.screens.DashboardListScreen
 import com.hativ2.ui.screens.ExpenseListScreen
 import com.hativ2.ui.screens.AddExpenseScreen
@@ -160,8 +161,12 @@ fun AppNavigation() {
 
 
 
+// Why FragmentActivity instead of ComponentActivity:
+// BiometricPrompt requires a FragmentActivity to manage its lifecycle.
+// FragmentActivity extends ComponentActivity, so all Compose and Activity
+// APIs remain fully available.
 @dagger.hilt.android.AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -173,7 +178,9 @@ class MainActivity : ComponentActivity() {
                         .windowInsetsPadding(WindowInsets.systemBars),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AppNavigation()
+                    BiometricAuthGate {
+                        AppNavigation()
+                    }
                 }
             }
         }

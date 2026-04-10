@@ -76,6 +76,7 @@ import com.hativ2.ui.theme.NotionRed
 import com.hativ2.ui.theme.NotionWhite
 import com.hativ2.ui.theme.NotionYellow
 import com.hativ2.ui.components.EditDashboardDialog
+import com.hativ2.ui.components.ExportWarningDialog
 import com.hativ2.data.entity.ExpenseEntity
 import com.hativ2.ui.TransactionDisplayItem
 import com.hativ2.ui.components.MangaBackButton
@@ -126,6 +127,7 @@ fun DashboardDetailScreen(
     var showAddPersonDialog by remember { mutableStateOf(false) }
     var showEditDashboardDialog by remember { mutableStateOf(false) }
     var showSettleUpDialog by remember { mutableStateOf(false) }
+    var showExportWarning by remember { mutableStateOf(false) }
     var settleUpFromId by remember { mutableStateOf<String?>(null) }
     var settleUpToId by remember { mutableStateOf<String?>(null) }
     var settleUpAmount by remember { mutableStateOf(0.0) }
@@ -149,6 +151,16 @@ fun DashboardDetailScreen(
         }
         return
     }
+
+        if (showExportWarning) {
+            ExportWarningDialog(
+                onConfirm = {
+                    showExportWarning = false
+                    exportLauncher.launch("dashboard_${dashboard.title}_export.csv")
+                },
+                onDismiss = { showExportWarning = false }
+            )
+        }
 
         if (showEditDashboardDialog) {
             EditDashboardDialog(
@@ -235,7 +247,7 @@ fun DashboardDetailScreen(
                                     .size(40.dp)
                                     .border(2.dp, MaterialTheme.colorScheme.onBackground, RoundedCornerShape(4.dp))
                                     .clickable { 
-                                        exportLauncher.launch("dashboard_${dashboard.title}_export.csv")
+                                        showExportWarning = true
                                     },
                                 contentAlignment = Alignment.Center
                             ) {

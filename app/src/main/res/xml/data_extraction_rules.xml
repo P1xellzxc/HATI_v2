@@ -6,16 +6,21 @@
       1. Google cloud backup (accessible if Google account is compromised)
       2. Device-to-device transfer (accessible during phone setup)
     Now: Database and external storage are excluded from cloud backup.
+    The encrypted database passphrase (hati_db_prefs) is excluded from ALL
+    backup/transfer to prevent key material from being restored to a different
+    device where the Android Keystore key won't match.
     Device transfer still includes database for legitimate phone migration.
 -->
 <data-extraction-rules>
     <cloud-backup>
         <include domain="sharedpref" path="."/>
+        <exclude domain="sharedpref" path="hati_db_prefs.xml"/>
         <exclude domain="database" path="."/>
         <exclude domain="external" path="."/>
     </cloud-backup>
     <device-transfer>
         <include domain="sharedpref" path="."/>
+        <exclude domain="sharedpref" path="hati_db_prefs.xml"/>
         <include domain="database" path="."/>
         <exclude domain="external" path="."/>
     </device-transfer>
