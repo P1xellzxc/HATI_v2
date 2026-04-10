@@ -41,6 +41,19 @@ class TransactionRepositoryTest {
     }
 
     @Test
+    fun `updateExpense calls dao saveExpenseWithSplits`() = runTest {
+        val expense = ExpenseEntity("e1", "dash1", "Updated Food", 150.0, "u1", "Food", 1000)
+        val splits = listOf(
+            SplitEntity("s1", "e1", "u1", 75.0),
+            SplitEntity("s2", "e1", "u2", 75.0)
+        )
+
+        repository.updateExpense(expense, splits)
+
+        verify(expenseDao).saveExpenseWithSplits(expense, splits)
+    }
+
+    @Test
     fun `getExpensesByDateRange returns flow from dao`() = runTest {
         // Given
         val dashboardId = "dash1"
@@ -58,5 +71,27 @@ class TransactionRepositoryTest {
         assertEquals(1, collected.size)
         assertEquals(expenses, collected[0])
         verify(expenseDao).getExpensesByDateRange(dashboardId, start, end)
+    }
+
+    @Test
+    fun `addExpense with empty splits list`() = runTest {
+        val expense = ExpenseEntity("e1", "dash1", "Solo", 50.0, "u1", "Misc", 1000)
+        val splits = emptyList<SplitEntity>()
+
+        repository.addExpense(expense, splits)
+
+        verify(expenseDao).saveExpenseWithSplits(expense, splits)
+    }
+
+    @Test
+    fun `getExpensesByDateRange returns empty flow for no matches`() = runTest {
+        val dashboardId = "dash1"
+        `when`(expenseDao.getExpensesByDateRange(dashboardId, 1000L, 2000L)).thenReturn(flowOf(emptyList()))
+
+        val result = repository.getExpensesByDateRange(dashboardId, 1000L, 2000L)
+        val collected = result.toList()
+
+        assertEquals(1, collected.size)
+        assertEquals(emptyList<ExpenseEntity>(), collected[0])
     }
 }
