@@ -310,7 +310,8 @@ class MainViewModelTest {
 
     @Test
     fun `settleUp rejects amount exceeding max`() = runTest {
-        viewModel.settleUp("dash-1", "u1", "u2", 1_000_001.0)
+        // InputValidator.MAX_AMOUNT is 1_000_000.0; anything above should be rejected
+        viewModel.settleUp("dash-1", "u1", "u2", com.hativ2.util.InputValidator.MAX_AMOUNT + 1.0)
         advanceUntilIdle()
 
         verify(expenseDao, never()).insertSettlement(any())

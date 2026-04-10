@@ -402,7 +402,7 @@ class CalculateDebtsUseCaseTest {
 
         // All transaction amounts should be rounded to 2 decimal places
         result.transactions.forEach { tx ->
-            val rounded = Math.round(tx.amount * 100) / 100.0
+            val rounded = kotlin.math.round(tx.amount * 100) / 100.0
             assertEquals(rounded, tx.amount, 0.001)
         }
     }
