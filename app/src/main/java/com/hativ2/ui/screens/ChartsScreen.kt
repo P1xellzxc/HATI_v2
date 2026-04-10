@@ -140,7 +140,35 @@ fun ChartsScreen(
     }
     
     val totalSpending = expenses.sumOf { it.amount }
-    
+
+    // Average monthly spending (for the average line on the bar chart)
+    val averageMonthlySpending = remember(monthlyData) {
+        val nonZeroMonths = monthlyData.filter { it.value > 0 }
+        if (nonZeroMonths.isEmpty()) 0.0 else nonZeroMonths.sumOf { it.value } / nonZeroMonths.size
+    }
+
+    // Month-over-month change: compare current month to previous month
+    val monthOverMonthChange = remember(monthlyData) {
+        if (monthlyData.size >= 2) {
+            val currentMonth = monthlyData.last().value
+            val previousMonth = monthlyData[monthlyData.size - 2].value
+            if (previousMonth > 0) {
+                ((currentMonth - previousMonth) / previousMonth) * 100.0
+            } else if (currentMonth > 0) {
+                100.0 // Went from 0 to something
+            } else {
+                0.0
+            }
+        } else {
+            0.0
+        }
+    }
+
+    // Top spending category
+    val topCategory = remember(categoryData) {
+        categoryData.maxByOrNull { it.amount }
+    }
+
     Scaffold(
         containerColor = NotionWhite,
         topBar = {
@@ -195,7 +223,7 @@ fun ChartsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // Total Spending Card
+            // Total Spending Card with Month-over-Month Indicator
             MangaCard {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(24.dp),
@@ -213,6 +241,43 @@ fun ChartsScreen(
                             "₱${String.format("%,.2f", totalSpending)}",
                             style = MaterialTheme.typography.headlineLarge,
                             fontWeight = FontWeight.Black
+                        )
+                    }
+
+                    // Month-over-month change indicator
+                    if (monthlyData.size >= 2 && monthOverMonthChange != 0.0) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        val isUp = monthOverMonthChange > 0
+                        val arrow = if (isUp) "↑" else "↓"
+                        val changeColor = if (isUp) NotionRed else NotionGreen
+                        val changeLabel = if (isUp) "more" else "less"
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                "$arrow ${String.format("%.1f", kotlin.math.abs(monthOverMonthChange))}%",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = changeColor
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                "$changeLabel than last month",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+
+                    // Top spending category
+                    if (topCategory != null && totalSpending > 0) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        val topPct = (topCategory.amount / totalSpending * 100)
+                        Text(
+                            "Top: ${topCategory.label} (${String.format("%.0f", topPct)}%)",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.Gray
                         )
                     }
                 }
@@ -262,6 +327,7 @@ fun ChartsScreen(
                         // Legend
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             categoryData.forEachIndexed { index, item ->
+                                val percentage = if (totalSpending > 0) item.amount / totalSpending * 100 else 0.0
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -280,6 +346,12 @@ fun ChartsScreen(
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(item.label, style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            "(${String.format("%.0f", percentage)}%)",
+                                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                            color = Color.Gray
+                                        )
                                     }
                                     Text(
                                         "₱${String.format("%,.2f", item.amount)}",
@@ -293,7 +365,7 @@ fun ChartsScreen(
                 }
             }
             
-            // Monthly Bar Chart
+            // Monthly Bar Chart with Average Line
             MangaCard {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -314,61 +386,122 @@ fun ChartsScreen(
                         }
                     } else {
                         val maxAmount = monthlyData.maxOfOrNull { it.value } ?: 1.0
+                        val chartHeight = 200.dp
+                        val barAreaHeight = 140f // Must match bar height calc below
                         
-                        Row(
+                        // Chart area with average line overlay
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(200.dp)
-                                .padding(top = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            verticalAlignment = Alignment.Bottom
+                                .height(chartHeight)
+                                .padding(top = 8.dp)
                         ) {
-                            val animatedHeightFactor = remember { androidx.compose.animation.core.Animatable(0f) }
-                            LaunchedEffect(monthlyData) {
-                                animatedHeightFactor.animateTo(
-                                    targetValue = 1f,
-                                    animationSpec = tween(durationMillis = 1000, easing = androidx.compose.animation.core.FastOutSlowInEasing)
-                                )
+                            // Average spending dashed line overlay
+                            if (averageMonthlySpending > 0 && maxAmount > 0) {
+                                val avgRatio = (averageMonthlySpending / maxAmount).toFloat().coerceIn(0f, 1f)
+                                Canvas(
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    // The bar area is approximately the middle portion.
+                                    // Bars grow upward from ~24dp above bottom (month label + spacer).
+                                    // Amount labels are ~16dp at top.
+                                    val bottomPadding = 32.dp.toPx() // month label + spacers
+                                    val topPadding = 20.dp.toPx() // amount label + spacer
+                                    val drawableHeight = size.height - bottomPadding - topPadding
+                                    val lineY = size.height - bottomPadding - (drawableHeight * avgRatio)
+                                    
+                                    // Draw dashed line
+                                    val dashLength = 8.dp.toPx()
+                                    val gapLength = 4.dp.toPx()
+                                    var x = 0f
+                                    while (x < size.width) {
+                                        val endX = (x + dashLength).coerceAtMost(size.width)
+                                        drawLine(
+                                            color = NotionOrange,
+                                            start = Offset(x, lineY),
+                                            end = Offset(endX, lineY),
+                                            strokeWidth = 2.dp.toPx()
+                                        )
+                                        x += dashLength + gapLength
+                                    }
+                                }
                             }
                         
-                            monthlyData.forEach { (month, amount) ->
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    // Amount label
-                                    Text(
-                                        "₱${String.format("%,.0f", amount)}",
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                                        color = Color.Gray
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    
-                                    // Bar
-                                    val barHeight = if (maxAmount > 0) 
-                                        ((amount / maxAmount) * 140).toFloat() * animatedHeightFactor.value
-                                    else 0f
-                                    val height = barHeight.coerceAtLeast(4f)
-                                    
-                                    Box(
-                                        modifier = Modifier
-                                            .width(32.dp)
-                                            .height(height.dp)
-                                            .background(MangaBlack, RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
-                                            .border(2.dp, MangaBlack, RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
-                                    )
-                                    
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    
-                                    // Month label
-                                    Text(
-                                        month,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.Bottom
+                            ) {
+                                val animatedHeightFactor = remember { androidx.compose.animation.core.Animatable(0f) }
+                                LaunchedEffect(monthlyData) {
+                                    animatedHeightFactor.animateTo(
+                                        targetValue = 1f,
+                                        animationSpec = tween(durationMillis = 1000, easing = androidx.compose.animation.core.FastOutSlowInEasing)
                                     )
                                 }
+                            
+                                monthlyData.forEach { (month, amount) ->
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        // Amount label
+                                        Text(
+                                            "₱${String.format("%,.0f", amount)}",
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                                            color = Color.Gray
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        
+                                        // Bar
+                                        val barHeight = if (maxAmount > 0) 
+                                            ((amount / maxAmount) * barAreaHeight).toFloat() * animatedHeightFactor.value
+                                        else 0f
+                                        val height = barHeight.coerceAtLeast(4f)
+                                        
+                                        Box(
+                                            modifier = Modifier
+                                                .width(32.dp)
+                                                .height(height.dp)
+                                                .background(MangaBlack, RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
+                                                .border(2.dp, MangaBlack, RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
+                                        )
+                                        
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        
+                                        // Month label
+                                        Text(
+                                            month,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Average label
+                        if (averageMonthlySpending > 0) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(16.dp)
+                                        .height(2.dp)
+                                        .background(NotionOrange)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    "Avg: ₱${String.format("%,.0f", averageMonthlySpending)}",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                    color = NotionOrange,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                         }
                     }
