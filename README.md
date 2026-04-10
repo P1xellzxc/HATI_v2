@@ -21,52 +21,81 @@ HATI² features a unique visual language that combines the bold, high-contrast e
 ## 📸 Screenshots
 
 ### Hub List — Your Story Volumes
-> The home screen. All your expense "volumes" are displayed as manga-style cards. Tap a card to enter the volume, or tap **+ New Volume** to start a new arc.
+> Current checked-in capture of the home screen. This is the starting point for every usability pass.
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/74f732ca-831b-410d-8d88-2f715b09af48" alt="Hub List Screen" width="320"/>
+  <img src="./hub_final.png" alt="Hub List Screen" width="320"/>
 </p>
 
-Each volume card shows:
-- **Cover icon** — auto-selected emoji based on volume type (✈️ travel, 🏠 household, 🎉 event)
-- **Colored spine** — your chosen theme color (yellow, blue, green, red)
-- **Balance tag** — real-time net balance indicator (green = positive, red = negative)
-- **Total spent** and chapter (expense) count at a glance
-- **⋮ menu** — quick access to Edit or Delete the volume
+What you are seeing:
+- **Volume cards** — one card per dashboard, styled like manga volumes for fast visual scanning
+- **Type icon + colored spine** — quick identity cues for travel, household, and event dashboards
+- **Balance tag** — instant signal for whether your current position is positive or negative
+- **⋮ menu** — edit and delete actions kept off the main tap target so opening a volume stays simple
+- **+ New Volume** — the primary action stays pinned in the FAB and duplicated by the ghost card
+
+Why it works like that:
+- The grid keeps multiple dashboards visible at once, which reduces navigation depth.
+- Strong borders, shadows, and color accents make each volume feel tappable without needing extra labels.
+- The empty-state card and FAB both point to the same creation flow, so first-run and repeat use share one mental model.
+
+> **Current screenshot coverage:** this repository currently includes the real Hub List capture above. The remaining screens are documented below from the current source and test flow so ongoing testing has a clear map of what each screen is doing.
 
 ---
 
-## 🗺️ App Walkthrough
+## 🧪 Usability Test Notes
 
-### 1. Create a New Volume
-Tap **+ New Volume** (FAB or the ghost card) → enter a title, pick a type and theme color → the volume is created instantly and appears in your hub.
+### Test method
+- Reviewed the current navigation flow in `MainActivity.kt`
+- Traced each primary Compose screen to document what the user sees and why each interaction behaves that way
+- Cross-checked the intended happy path against `app/src/androidTest/java/com/hativ2/ui/AppE2ETest.kt`
 
-### 2. Dashboard Detail
-Inside a volume you get a full overview:
-- **Stats bar** — total spent, participant count, and unsettled debt at a glance
-- **Recent transactions** — chronological list of expenses and settlements
-- **People panel** — add or remove participants from the split
-- **Action buttons** — navigate to Expenses, Balance, Charts, or export data (CSV / JSON)
+### Environment note
+- A fresh Gradle test run currently stops before execution because the Android Gradle Plugin version declared by the project could not be resolved in this environment.
+- Because of that, this pass documents the present UX from the checked-in UI and navigation code plus the existing E2E flow, rather than from a new emulator capture session.
 
-### 3. Add an Expense
-Tap **+ Add Expense** → fill in the title, amount, date, and category → choose who paid and configure the split between participants → confirm to save.
+### Current user flow
 
-Categories available: 🍽️ Food · 🚗 Transport · 🛍️ Shopping · 🎬 Entertainment · 💡 Utilities · 📦 Other
+#### 1. Hub List / Dashboard List
+**What it is doing:** shows all dashboards, creation entry points, and per-volume quick actions.  
+**How it works:** `DashboardListScreen` collects `dashboardsWithStats`, renders them in an adaptive grid, and opens add/edit/delete dialogs inline.  
+**Why it works like that:** the home screen is acting as a control center, so creation and management stay one tap away instead of being buried in a settings page.
 
-### 4. Balance Screen
-Visual breakdown of who owes whom across all participants. Debts are calculated automatically via `CalculateDebtsUseCase` and displayed per-person with directional arrows.
+#### 2. Create a New Volume
+**What it is doing:** lets the user create a new expense space with a title, type, and theme color.  
+**How it works:** both the FAB and the ghost “new volume” card open `AddDashboardDialog`, then `MainViewModel.createDashboard(...)` updates the grid and shows a snackbar.  
+**Why it works like that:** duplicate entry points remove dead ends; whether the list is empty or full, the same dialog appears and the same feedback pattern is used.
 
-### 5. Charts Screen
-Spending analytics for the selected volume:
-- **Donut chart** — category percentage breakdown with color-coded segments
-- **Bar chart** — monthly spending totals with a monthly-average reference line
-- **Trend indicator** — month-over-month spending delta (↑ increase / ↓ decrease)
+#### 3. Dashboard Detail
+**What it is doing:** acts as the hub for one dashboard by showing balance, transactions, members, settlement actions, and export.  
+**How it works:** `DashboardDetailScreen` subscribes to dashboard, people, expense, transaction, and debt-summary flows, then composes a single scrolling overview.  
+**Why it works like that:** keeping the dashboard summary on one page lowers context switching; users can inspect status, act, and confirm outcomes without hopping through multiple tabs first.
 
-### 6. History Screen
-A full log of all settlements ("Settle Up" events) recorded in the volume, showing payer, payee, amount, and timestamp.
+#### 4. Add Expense
+**What it is doing:** captures a new expense or edits an existing one, including payer and split participation.  
+**How it works:** `AddExpenseScreen` keeps form state locally, validates description/amount/split selection before save, and defaults the split to all known participants on first load.  
+**Why it works like that:** the screen optimizes for the common case—shared expenses—so users do less manual setup, while still stopping invalid totals before anything is saved.
 
-### 7. Export Data
-From the Dashboard Detail screen tap the **share icon** → choose **CSV** or **JSON** → a security notice is shown → confirm and save the file anywhere on your device via the system file picker (Storage Access Framework).
+#### 5. History
+**What it is doing:** shows a searchable transaction log and supports export.  
+**How it works:** `HistoryScreen` pulls all transactions, filters them by volume/search/category, and exposes CSV/JSON export through the system file picker.  
+**Why it works like that:** the log is designed as an audit trail, so filtering and export are placed close to the list rather than hidden behind secondary menus.
+
+#### 6. Charts
+**What it is doing:** summarizes spending with totals, category breakdown, monthly trend, and month-over-month change.  
+**How it works:** `ChartsScreen` aggregates current expenses into category totals and six-month monthly totals, then renders cards and charts from those derived values.  
+**Why it works like that:** analytics are computed from the same stored expense data the rest of the app uses, so the charts reinforce the detail screens instead of introducing a separate reporting model.
+
+#### 7. Export
+**What it is doing:** creates a manual backup of the selected dashboard.  
+**How it works:** export starts from the detail or history toolbar, shows `ExportWarningDialog`, then launches the Storage Access Framework document picker for CSV or JSON output.  
+**Why it works like that:** using the system picker gives the user explicit control over where files go and avoids silent writes into app-private storage.
+
+### Current usability observations
+- The overall flow is understandable: Hub List → Dashboard Detail → Add Expense / History / Charts.
+- The design language is consistent across screens: thick borders, shadowed cards, accent colors, and high-contrast labels keep primary actions recognizable.
+- Validation is front-loaded on the expense form, which should reduce bad data entry during real-world use.
+- There is a navigation gap in the current implementation: `BalanceScreen` and `ExpenseListScreen` exist, but the main dashboard actions currently route to **History** and **Charts** from `MainActivity`, so those two dedicated routes are not part of the primary reachable flow right now.
 
 ---
 
