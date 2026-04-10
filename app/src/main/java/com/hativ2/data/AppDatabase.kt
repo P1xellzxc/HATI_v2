@@ -24,38 +24,19 @@ import com.hativ2.data.entity.SplitEntity
         SettlementEntity::class
     ],
     version = 2,
-    exportSchema = false
+    // Why exportSchema = true:
+    // Enables Room to export the database schema as JSON files to app/schemas/.
+    // This gives us build-time migration validation, schema diffing in source
+    // control, and the ability to use @AutoMigration for future upgrades.
+    exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun personDao(): PersonDao
     abstract fun dashboardDao(): DashboardDao
     abstract fun expenseDao(): ExpenseDao
 
-    companion object {
-        @Volatile
-        private var INSTANCE: AppDatabase? = null
-
-        fun getDatabase(context: Context): AppDatabase {
-            return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    AppDatabase::class.java,
-                    "hati_database"
-                )
-                    // Why fallbackToDestructiveMigrationFrom(1) instead of
-                    // fallbackToDestructiveMigration():
-                    // The blanket fallbackToDestructiveMigration() silently wipes
-                    // ALL user data on ANY schema change. This is dangerous for a
-                    // finance app — users would lose their expense history without
-                    // warning. By specifying version 1 only, we limit destructive
-                    // migration to the initial v1→v2 schema change (which already
-                    // happened). Future schema upgrades (v2→v3, etc.) MUST provide
-                    // explicit Migration objects to preserve user data.
-                    .fallbackToDestructiveMigrationFrom(1)
-                    .build()
-                INSTANCE = instance
-                instance
-            }
-        }
-    }
+    // Why no companion object / singleton pattern here:
+    // Database creation is fully managed by Hilt (see DatabaseModule).
+    // Having a second creation path via a companion object risks creating
+    // an unencrypted instance that bypasses the SQLCipher SupportFactory.
 }

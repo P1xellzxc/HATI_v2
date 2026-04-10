@@ -45,6 +45,13 @@ android {
     }
 }
 
+// Enable Room schema export so migration history is tracked in source control.
+// Why: Without exported schemas, Room cannot validate @AutoMigration at build time,
+// and developers lose the ability to diff schema changes between versions.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -60,6 +67,19 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+
+    // SQLCipher — encrypts the Room SQLite database at rest.
+    // Why sqlcipher-android over the deprecated android-database-sqlcipher:
+    // The old library stopped receiving updates in April 2023. sqlcipher-android
+    // is the actively maintained successor with 16KB page-size support and
+    // ongoing security patches.
+    implementation(libs.sqlcipher.android)
+    implementation(libs.androidx.sqlite.ktx)
+
+    // Biometric — fingerprint / face unlock gate on app launch.
+    // Why 1.1.0 (stable) over 1.4.0-alpha: alpha releases can introduce
+    // regressions; stability is the priority for an auth gate.
+    implementation(libs.androidx.biometric)
 
     // Hilt
     implementation(libs.hilt.android)
