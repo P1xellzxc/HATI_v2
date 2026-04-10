@@ -106,11 +106,20 @@ fun DashboardDetailScreen(
     val debtSummary by debtSummaryFlow.collectAsState()
 
     val context = LocalContext.current
-    val exportLauncher = rememberLauncherForActivityResult(
+    // CSV export launcher
+    val csvExportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/csv")
     ) { uri ->
         if (uri != null) {
             viewModel.exportCsv(dashboardId, uri, context)
+        }
+    }
+    // JSON export launcher
+    val jsonExportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            viewModel.exportJson(dashboardId, uri, context)
         }
     }
     
@@ -154,9 +163,13 @@ fun DashboardDetailScreen(
 
         if (showExportWarning) {
             ExportWarningDialog(
-                onConfirm = {
+                onConfirm = { format ->
                     showExportWarning = false
-                    exportLauncher.launch("dashboard_${dashboard.title}_export.csv")
+                    val filename = "dashboard_${dashboard.title}_export.${format.extension}"
+                    when (format) {
+                        com.hativ2.ui.components.ExportFormat.CSV -> csvExportLauncher.launch(filename)
+                        com.hativ2.ui.components.ExportFormat.JSON -> jsonExportLauncher.launch(filename)
+                    }
                 },
                 onDismiss = { showExportWarning = false }
             )

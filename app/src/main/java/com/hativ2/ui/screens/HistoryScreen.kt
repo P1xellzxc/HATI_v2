@@ -124,9 +124,9 @@ fun HistoryScreen(
         }
     }
 
-    // Export Launcher (Expenses Only for now to keep CSV format)
-    val exportLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument()
+    // CSV Export Launcher
+    val csvExportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/csv")
     ) { uri: android.net.Uri? ->
         if (uri != null) {
             scope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -152,6 +152,15 @@ fun HistoryScreen(
             }
         }
     }
+
+    // JSON Export Launcher (uses ViewModel for structured export when dashboardId is available)
+    val jsonExportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: android.net.Uri? ->
+        if (uri != null && selectedVolumeId != null) {
+            viewModel.exportJson(selectedVolumeId!!, uri, context)
+        }
+    }
     
     // Analytics
     val totalSpending = filteredTransactions.sumOf { 
@@ -162,12 +171,26 @@ fun HistoryScreen(
     }
     val transactionCount = filteredTransactions.size
 
+    // Whether JSON export is available (requires a specific dashboard)
+    val jsonExportAvailable = selectedVolumeId != null
+
     if (showExportWarning) {
         com.hativ2.ui.components.ExportWarningDialog(
-            onConfirm = {
+            onConfirm = { format ->
                 showExportWarning = false
-                val defaultFilename = "finsplit_export_${SimpleDateFormat("yyyyMMdd_HHmm", Locale.getDefault()).format(Date())}.csv"
-                exportLauncher.launch(defaultFilename)
+                val timestamp = SimpleDateFormat("yyyyMMdd_HHmm", Locale.getDefault()).format(Date())
+                val defaultFilename = "finsplit_export_${timestamp}.${format.extension}"
+                when (format) {
+                    com.hativ2.ui.components.ExportFormat.CSV -> csvExportLauncher.launch(defaultFilename)
+                    com.hativ2.ui.components.ExportFormat.JSON -> {
+                        if (jsonExportAvailable) {
+                            jsonExportLauncher.launch(defaultFilename)
+                        } else {
+                            // JSON export needs a specific dashboard for structured data
+                            scope.launch { snackbarHostState.showSnackbar("JSON export requires a specific Volume. Select one first.") }
+                        }
+                    }
+                }
             },
             onDismiss = { showExportWarning = false }
         )

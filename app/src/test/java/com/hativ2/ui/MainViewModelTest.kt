@@ -47,6 +47,12 @@ class MainViewModelTest {
     @Mock
     private lateinit var updateExpenseUseCase: com.hativ2.domain.usecase.UpdateExpenseUseCase
 
+    @Mock
+    private lateinit var exportDashboardCsvUseCase: com.hativ2.domain.usecase.ExportDashboardCsvUseCase
+
+    @Mock
+    private lateinit var exportDashboardJsonUseCase: com.hativ2.domain.usecase.ExportDashboardJsonUseCase
+
     private lateinit var viewModel: MainViewModel
 
     @Before
@@ -64,7 +70,9 @@ class MainViewModelTest {
             addTransactionUseCase,
             calculateDashboardStatsUseCase,
             calculateDebtsUseCase,
-            updateExpenseUseCase
+            updateExpenseUseCase,
+            exportDashboardCsvUseCase,
+            exportDashboardJsonUseCase
         )
     }
 
