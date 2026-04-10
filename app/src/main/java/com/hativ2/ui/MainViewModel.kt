@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.hativ2.domain.usecase.ExportDashboardCsvUseCase
+import com.hativ2.domain.usecase.ExportDashboardJsonUseCase
 import android.net.Uri
 import android.content.Context
 import android.widget.Toast
@@ -38,7 +39,8 @@ open class MainViewModel @javax.inject.Inject constructor(
     private val calculateDashboardStatsUseCase: com.hativ2.domain.usecase.CalculateDashboardStatsUseCase,
     private val calculateDebtsUseCase: CalculateDebtsUseCase,
     private val updateExpenseUseCase: com.hativ2.domain.usecase.UpdateExpenseUseCase,
-    private val exportDashboardCsvUseCase: ExportDashboardCsvUseCase
+    private val exportDashboardCsvUseCase: ExportDashboardCsvUseCase,
+    private val exportDashboardJsonUseCase: ExportDashboardJsonUseCase
 ) : AndroidViewModel(application) {
     
     // Dark mode state
@@ -331,6 +333,23 @@ open class MainViewModel @javax.inject.Inject constructor(
                 //    (file paths, SQL errors, etc.) that aid attackers.
                 // Instead: log a generic message and show a user-friendly toast.
                 android.util.Log.w("MainViewModel", "CSV export failed", e)
+                Toast.makeText(context, "Export failed. Please try again.", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    fun exportJson(dashboardId: String, uri: Uri, context: Context) {
+        viewModelScope.launch {
+            try {
+                val jsonContent = exportDashboardJsonUseCase.execute(dashboardId)
+                withContext(Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                        outputStream.write(jsonContent.toByteArray())
+                    }
+                }
+                Toast.makeText(context, "JSON export successful", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                android.util.Log.w("MainViewModel", "JSON export failed", e)
                 Toast.makeText(context, "Export failed. Please try again.", Toast.LENGTH_LONG).show()
             }
         }

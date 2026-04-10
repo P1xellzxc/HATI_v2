@@ -60,8 +60,8 @@ app/src/main/java/com/hativ2/
 - [x] **Design Unification** — Standardization of all components to the Manga x Notion tokens.
 - [x] **Color Audit** — Replacement of all hardcoded colors with standardized `Notion*` constants.
 - [x] **Smart Calculation** — Implementation of `CalculateDebtsUseCase` and `Settle Up` logic.
-- [ ] **Chart Enhancements** — Advanced spending analytics and monthly trend visualizations.
-- [ ] **Data Export** — CSV/JSON export for manual backups.
+- [x] **Chart Enhancements** — Advanced spending analytics: category percentage breakdown, monthly average line, month-over-month trend indicator.
+- [x] **Data Export** — CSV and JSON export for manual backups with format selection and security warning.
 - [ ] **Cloud Sync** — Opt-in Supabase synchronization for multi-user party tracking.
 
 ---
