@@ -2,31 +2,52 @@ package com.hativ2.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// ─────────────────────────────────────────────────────────────
+// HATI² Color Palette — Manga × Notion Design System
+// ─────────────────────────────────────────────────────────────
+//
+// 60-30-10 COLOR RULE (whole-app breakdown):
+//
+//   60 % DOMINANT  — NotionWhite / MangaBlack (backgrounds, surfaces)
+//                    These occupy the vast majority of screen real estate
+//                    and provide visual breathing room.
+//
+//   30 % SECONDARY — MangaBlack / NotionWhite (text, borders, shadows)
+//                    + NotionMuted (secondary text, placeholders)
+//                    + NotionDivider (separators, disabled surfaces)
+//                    High-contrast manga outlines reinforce the 30 % layer.
+//
+//   10 % ACCENT    — NotionYellow (primary accent / CTA highlights)
+//                    + Semantic pastels (Green, Red, Blue) for status
+//                    + Category pastels (Orange, Purple, Pink) for charts
+//                    Accent colors should never dominate a section.
+//
+// Each colour is annotated with its closest Pantone Coated match
+// so the palette can be reproduced in print or cross-platform tooling.
+// ─────────────────────────────────────────────────────────────
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+// ── Notion Pastels (10 % accent layer) ──────────────────────
+val NotionRed    = Color(0xFFFECACA) // Pantone 7422 C  — bg-red-200
+val NotionBlue   = Color(0xFFBFDBFE) // Pantone 2707 C  — bg-blue-200
+val NotionYellow = Color(0xFFFEF08A) // Pantone 600 C   — bg-yellow-200
+val NotionGreen  = Color(0xFFBBF7D0) // Pantone 344 C   — bg-green-200
+val NotionPurple = Color(0xFFE9D5FF) // Pantone 2635 C  — bg-purple-200
+val NotionPink   = Color(0xFFFBCFE8) // Pantone 7430 C  — bg-pink-200
+val NotionOrange = Color(0xFFFED7AA) // Pantone 7507 C  — bg-orange-200
+val NotionGray   = Color(0xFFE5E7EB) // Pantone Cool Gray 2 C — bg-gray-200
+val NotionWhite  = Color(0xFFFFFFFF) // Pantone 11-0601 TCX (Bright White)
 
-// Notion Pastels
-val NotionRed = Color(0xFFFECACA)    // bg-red-200 / notion-red
-val NotionBlue = Color(0xFFBFDBFE)   // bg-blue-200 / notion-blue
-val NotionYellow = Color(0xFFFEF08A) // bg-yellow-200 / notion-yellow
-val NotionGreen = Color(0xFFBBF7D0)  // bg-green-200 / notion-green
-val NotionPurple = Color(0xFFE9D5FF) // bg-purple-200 / notion-purple
-val NotionPink = Color(0xFFFBCFE8)   // bg-pink-200 / notion-pink
-val NotionOrange = Color(0xFFFED7AA) // bg-orange-200 / notion-orange
-val NotionGray = Color(0xFFE5E7EB)   // bg-gray-200 / notion-gray
-val NotionWhite = Color(0xFFFFFFFF)
+// ── Semantic grays (30 % secondary layer) ───────────────────
+// These replace raw Color.Gray / Color.LightGray throughout the app
+// to keep every tint inside the design system.
+val NotionMuted    = Color(0xFF6B7280) // Pantone Cool Gray 8 C — secondary text, labels
+val NotionDivider  = Color(0xFFD1D5DB) // Pantone Cool Gray 3 C — dividers, light separators
+val NotionDisabled = Color(0xFF9CA3AF) // Pantone Cool Gray 5 C — disabled states, placeholders
 
-// Manga High Contrast
-val MangaBlack = Color(0xFF000000)
-val MangaWhite = Color(0xFFFFFFFF)
-val MangaShadow = Color(0xFF000000)
-val MangaSuccess = Color(0xFF22C55E) // green-500
-val MangaDarkGray = Color(0xFF555555)
+// ── Manga High Contrast (60 % + 30 % structural layer) ─────
+val MangaBlack   = Color(0xFF000000) // Pantone Black C  — text, borders, shadows
+val MangaSuccess = Color(0xFF22C55E) // Pantone 7481 C   — positive / success
+val MangaDarkGray = Color(0xFF555555) // Pantone Cool Gray 10 C — heavy-disabled
 
-// Hex Constants for Data Layer
+// ── Hex Constants for Data Layer ────────────────────────────
 const val HEX_NOTION_ORANGE = "#FED7AA"

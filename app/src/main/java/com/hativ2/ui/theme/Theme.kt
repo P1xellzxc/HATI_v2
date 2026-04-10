@@ -16,6 +16,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
+// ─────────────────────────────────────────────────────────────
+// 60-30-10 mapping per theme mode
+//
+//  DARK   60 % MangaBlack (bg/surface)
+//         30 % NotionWhite (text/borders) + NotionMuted (labels)
+//         10 % NotionYellow (accent) + NotionBlue (tertiary)
+//
+//  LIGHT  60 % NotionWhite (bg/surface)
+//         30 % MangaBlack (text/borders) + NotionMuted (labels)
+//         10 % NotionYellow (accent) + NotionBlue (tertiary)
+// ─────────────────────────────────────────────────────────────
+
 private val DarkColorScheme = darkColorScheme(
     primary = NotionWhite,
     secondary = NotionYellow,
@@ -27,6 +39,8 @@ private val DarkColorScheme = darkColorScheme(
     onTertiary = MangaBlack,
     onBackground = NotionWhite,
     onSurface = NotionWhite,
+    outline = NotionMuted,              // secondary text / labels
+    outlineVariant = NotionDivider,     // dividers / separators
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -40,6 +54,8 @@ private val LightColorScheme = lightColorScheme(
     onTertiary = MangaBlack,
     onBackground = MangaBlack,
     onSurface = MangaBlack,
+    outline = NotionMuted,              // secondary text / labels
+    outlineVariant = NotionDivider,     // dividers / separators
 )
 
 @Composable
