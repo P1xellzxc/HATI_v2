@@ -60,6 +60,7 @@ import com.hativ2.ui.components.MangaDeleteDialog
 import com.hativ2.ui.theme.MangaBlack
 import com.hativ2.ui.theme.NotionBlue
 import com.hativ2.ui.theme.NotionGreen
+import com.hativ2.ui.theme.NotionMuted
 import com.hativ2.ui.theme.NotionRed
 import com.hativ2.ui.theme.NotionWhite
 import com.hativ2.ui.theme.NotionYellow
@@ -186,7 +187,7 @@ fun DashboardListScreen(
             Text(
                 "Each volume contains a separate expense arc.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray
+                color = NotionMuted
             )
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -366,7 +367,7 @@ fun VolumeCard(
                             Text(
                                 text = "${dashboard.dashboardType} • ${dashboard.expenseCount} ch.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.Gray
+                                color = NotionMuted
                             )
                         }
                         
@@ -378,7 +379,7 @@ fun VolumeCard(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text("Total", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                Text("Total", style = MaterialTheme.typography.bodySmall, color = NotionMuted)
                                 Text("${dashboard.currencySymbol}${String.format("%,.2f", dashboard.totalSpent)}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                             }
                         }
@@ -426,7 +427,7 @@ fun NewVolumeCard(onClick: () -> Unit) {
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text("New Volume", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                Text("Start a new arc", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Text("Start a new arc", style = MaterialTheme.typography.bodySmall, color = NotionMuted)
             }
         }
     }

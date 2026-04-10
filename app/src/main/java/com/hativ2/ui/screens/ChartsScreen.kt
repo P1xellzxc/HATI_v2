@@ -60,6 +60,8 @@ import com.hativ2.ui.theme.NotionOrange
 import com.hativ2.ui.theme.NotionPink
 import com.hativ2.ui.theme.NotionPurple
 import com.hativ2.ui.theme.NotionGray
+import com.hativ2.ui.theme.NotionMuted
+import com.hativ2.ui.theme.NotionDivider
 import com.hativ2.ui.components.MangaCard
 import com.hativ2.ui.components.MangaBackButton
 import java.text.SimpleDateFormat
@@ -190,7 +192,7 @@ fun ChartsScreen(
                             Text(
                                 currentDashboard.title,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.Gray
+                                color = NotionMuted
                             )
                         }
                     }
@@ -229,7 +231,7 @@ fun ChartsScreen(
                     modifier = Modifier.fillMaxWidth().padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Total Arc Spending", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                    Text("Total Arc Spending", style = MaterialTheme.typography.bodyMedium, color = NotionMuted)
                     Spacer(modifier = Modifier.height(8.dp))
                     Box(
                         modifier = Modifier
@@ -265,7 +267,7 @@ fun ChartsScreen(
                             Text(
                                 "$changeLabel than last month",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color.Gray
+                                color = NotionMuted
                             )
                         }
                     }
@@ -277,7 +279,7 @@ fun ChartsScreen(
                         Text(
                             "Top: ${topCategory.label} (${String.format("%.0f", topPct)}%)",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color.Gray
+                            color = NotionMuted
                         )
                     }
                 }
@@ -306,7 +308,7 @@ fun ChartsScreen(
                             modifier = Modifier.fillMaxWidth().height(200.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("No spending data yet", color = Color.Gray)
+                            Text("No spending data yet", color = NotionMuted)
                         }
                     } else {
                         // Donut Chart
@@ -332,7 +334,7 @@ fun ChartsScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .border(2.dp, MangaBlack, RoundedCornerShape(2.dp))
-                                        .background(Color.Gray.copy(alpha = 0.1f), RoundedCornerShape(2.dp))
+                                        .background(NotionGray, RoundedCornerShape(2.dp))
                                         .padding(12.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
@@ -350,7 +352,7 @@ fun ChartsScreen(
                                         Text(
                                             "(${String.format("%.0f", percentage)}%)",
                                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                                            color = Color.Gray
+                                            color = NotionMuted
                                         )
                                     }
                                     Text(
@@ -382,7 +384,7 @@ fun ChartsScreen(
                             modifier = Modifier.fillMaxWidth().height(200.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("No monthly data yet", color = Color.Gray)
+                            Text("No monthly data yet", color = NotionMuted)
                         }
                     } else {
                         val maxAmount = monthlyData.maxOfOrNull { it.value } ?: 1.0
@@ -451,7 +453,7 @@ fun ChartsScreen(
                                             fontSize = 9.sp,
                                             fontWeight = FontWeight.Bold,
                                             style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                                            color = Color.Gray
+                                            color = NotionMuted
                                         )
                                         Spacer(modifier = Modifier.height(4.dp))
                                         
@@ -523,10 +525,10 @@ fun ChartsScreen(
 
                         // Header Row
                         Row(modifier = Modifier.fillMaxWidth()) {
-                            Text("Member", modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
-                            Text("Paid", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
-                            Text("Share", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
-                            Text("Offset", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                            Text("Member", modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelSmall, color = NotionMuted, fontWeight = FontWeight.Bold)
+                            Text("Paid", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = NotionMuted, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                            Text("Share", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = NotionMuted, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                            Text("Offset", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = NotionMuted, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
                         }
                         
                         Spacer(modifier = Modifier.height(8.dp))
@@ -568,7 +570,7 @@ fun ChartsScreen(
                                         textAlign = androidx.compose.ui.text.style.TextAlign.End
                                     )
                                 }
-                                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.LightGray.copy(alpha=0.5f)))
+                                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(NotionDivider))
                             }
                         }
                     }
@@ -611,7 +613,7 @@ fun DonutChart(
         
         data.forEachIndexed { index, item ->
             val sweepAngle = (item.amount / total * 360).toFloat() * globalProgress
-            val color = CHART_COLORS.getOrElse(index) { Color.Gray }
+            val color = CHART_COLORS.getOrElse(index) { NotionGray }
             
             if (sweepAngle > 0) {
                 // Draw arc
@@ -627,7 +629,7 @@ fun DonutChart(
                 
                 // Draw border
                 drawArc(
-                    color = Color.Black,
+                    color = MangaBlack,
                     startAngle = startAngle,
                     sweepAngle = sweepAngle,
                     useCenter = false,

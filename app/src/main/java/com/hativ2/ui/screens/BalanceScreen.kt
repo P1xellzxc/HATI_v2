@@ -41,7 +41,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
@@ -54,6 +53,7 @@ import com.hativ2.ui.theme.NotionWhite
 import com.hativ2.ui.theme.NotionYellow
 import com.hativ2.ui.theme.NotionPurple
 import com.hativ2.ui.theme.NotionGray
+import com.hativ2.ui.theme.NotionMuted
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -120,7 +120,7 @@ fun BalanceScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
                             Text("ARC STATISTICS", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
-                            Text(dashboard?.title?.uppercase() ?: "TEST FOLDER", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                            Text(dashboard?.title?.uppercase() ?: "TEST FOLDER", style = MaterialTheme.typography.labelSmall, color = NotionMuted)
                         }
                     }
                     
@@ -155,7 +155,7 @@ fun BalanceScreen(
                         modifier = Modifier.fillMaxWidth().padding(32.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("Total Arc Spending", color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
+                        Text("Total Arc Spending", color = NotionMuted, style = MaterialTheme.typography.bodyMedium)
                         Spacer(modifier = Modifier.height(16.dp))
                         Box(
                             modifier = Modifier
@@ -180,7 +180,7 @@ fun BalanceScreen(
                 StatCard(title = "CATEGORY BREAKDOWN", icon = Icons.Default.DateRange) { // Using DateRange/Pie icon equivalent
                      if (filteredExpenses.isEmpty()) {
                          Box(modifier = Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
-                             Text("No chapters to display", color = Color.Gray, fontWeight = FontWeight.SemiBold)
+                             Text("No chapters to display", color = NotionMuted, fontWeight = FontWeight.SemiBold)
                          }
                      } else {
                          // Simple Category List

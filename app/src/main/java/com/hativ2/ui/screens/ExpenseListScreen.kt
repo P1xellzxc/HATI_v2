@@ -27,13 +27,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hativ2.data.entity.ExpenseEntity
 import com.hativ2.ui.MainViewModel
 import com.hativ2.ui.components.MangaCard
 import com.hativ2.ui.theme.MangaBlack
+import com.hativ2.ui.theme.NotionMuted
 import com.hativ2.ui.components.MangaBackButton
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -123,7 +123,7 @@ fun ExpenseListScreen(
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                Text("No expenses yet. Start the arc!", style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
+                Text("No expenses yet. Start the arc!", style = MaterialTheme.typography.bodyLarge, color = NotionMuted)
             }
         } else {
             LazyColumn(
@@ -173,7 +173,7 @@ fun ExpenseItem(
                 Text(
                     text = "Paid by $payerName",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
+                    color = NotionMuted
                 )
             }
             

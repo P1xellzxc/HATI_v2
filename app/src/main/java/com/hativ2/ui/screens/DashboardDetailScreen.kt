@@ -75,6 +75,8 @@ import com.hativ2.ui.theme.NotionGreen
 import com.hativ2.ui.theme.NotionRed
 import com.hativ2.ui.theme.NotionWhite
 import com.hativ2.ui.theme.NotionYellow
+import com.hativ2.ui.theme.NotionMuted
+import com.hativ2.ui.theme.NotionDivider
 import com.hativ2.ui.components.EditDashboardDialog
 import com.hativ2.ui.components.ExportWarningDialog
 import com.hativ2.data.entity.ExpenseEntity
@@ -480,7 +482,7 @@ fun DashboardDetailScreen(
                         Text(
                             "Start by adding people to split with",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray
+                            color = NotionMuted
                         )
                     }
                 }
@@ -556,7 +558,7 @@ fun BalanceOverviewCard(
                 Text(
                     text = "Your Balance in \"${title.uppercase()}\"",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray
+                    color = NotionMuted
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -582,7 +584,7 @@ fun BalanceOverviewCard(
                 Text(
                     text = "Total spent: ₱${String.format("%.2f", totalSpent)}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
+                    color = NotionMuted
                 )
             }
         }
@@ -619,10 +621,10 @@ fun SpendingByMemberCard(
 
                 // Table header
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    Text("Member", modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
-                    Text("Paid", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
-                    Text("Share", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
-                    Text("Offset", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                    Text("Member", modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelSmall, color = NotionMuted, fontWeight = FontWeight.Bold)
+                    Text("Paid", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = NotionMuted, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                    Text("Share", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = NotionMuted, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                    Text("Offset", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = NotionMuted, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -631,7 +633,7 @@ fun SpendingByMemberCard(
                 
                 if (memberShares.isEmpty()) {
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                         Text("No spending data yet", color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
+                         Text("No spending data yet", color = NotionMuted, style = MaterialTheme.typography.bodyMedium)
                     }
                 } else {
                      // Collect all user IDs (from both memberShares and balances)
@@ -698,7 +700,7 @@ fun MemberSpendingRow(
                 textAlign = androidx.compose.ui.text.style.TextAlign.End
             )
         }
-        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.LightGray.copy(alpha = 0.5f)))
+        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(NotionDivider))
     }
 }
 
@@ -855,7 +857,7 @@ fun SummaryCard(
                      Text(
                          if (amount > 0) "No details" else "All settled up", 
                          style = MaterialTheme.typography.labelSmall, 
-                         color = Color.Gray,
+                         color = NotionMuted,
                          fontWeight = FontWeight.Bold
                      )
                  } else {
@@ -868,7 +870,7 @@ fun SummaryCard(
                                  Text(
                                      name,
                                      style = MaterialTheme.typography.labelSmall,
-                                     color = Color.Gray,
+                                     color = NotionMuted,
                                      fontWeight = FontWeight.SemiBold
                                  )
                                  Text(

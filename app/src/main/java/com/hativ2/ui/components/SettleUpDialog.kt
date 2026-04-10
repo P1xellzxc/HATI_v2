@@ -23,7 +23,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.hativ2.data.entity.PersonEntity
-import com.hativ2.ui.theme.*
+import com.hativ2.ui.theme.MangaBlack
+import com.hativ2.ui.theme.MangaDarkGray
+import com.hativ2.ui.theme.MangaHeaderStyle
+import com.hativ2.ui.theme.MangaSuccess
+import com.hativ2.ui.theme.NotionDisabled
+import com.hativ2.ui.theme.NotionDivider
+import com.hativ2.ui.theme.NotionMuted
+import com.hativ2.ui.theme.NotionPurple
+import com.hativ2.ui.theme.NotionWhite
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -84,7 +92,7 @@ fun SettleUpDialog(
                         Text(
                             text = "Record a payment to clear a debt.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
+                            color = NotionMuted
                         )
                     }
                 }
@@ -242,7 +250,7 @@ fun SettleUpDialog(
                                 Text(
                                     text = "Matches owed amount",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color.Gray
+                                    color = NotionMuted
                                 )
                             }
                         }
@@ -282,12 +290,12 @@ fun SettleUpDialog(
                                 modifier = Modifier
                                     .matchParentSize()
                                     .offset(x = 2.dp, y = 2.dp)
-                                    .background(if (isValid) MangaDarkGray else Color.Gray, RoundedCornerShape(MangaCornerRadius))
+                                    .background(if (isValid) MangaDarkGray else NotionDisabled, RoundedCornerShape(MangaCornerRadius))
                             )
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .background(if (isValid) MangaBlack else Color.LightGray, RoundedCornerShape(MangaCornerRadius))
+                                    .background(if (isValid) MangaBlack else NotionDivider, RoundedCornerShape(MangaCornerRadius))
                                     .border(MangaBorderWidth, MangaBlack, RoundedCornerShape(MangaCornerRadius))
                                     .clickable(enabled = isValid) {
                                         onSettle(fromId, toId, amount)
@@ -298,7 +306,7 @@ fun SettleUpDialog(
                             ) {
                                 Text(
                                     "SETTLE UP",
-                                    color = if (isValid) NotionWhite else Color.Gray,
+                                    color = if (isValid) NotionWhite else NotionMuted,
                                     fontWeight = FontWeight.Bold,
                                     style = MangaHeaderStyle,
                                     fontSize = 14.sp
