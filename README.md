@@ -16,6 +16,8 @@ HATI² features a unique visual language that combines the bold, high-contrast e
 - **Notion Palette**: Soft, pastel category colors (`NotionYellow`, `NotionBlue`, `NotionRed`, `NotionGreen`, `NotionPurple`) for high readability.
 - **Antigravity Experience**: Micro-animations and responsive layouts that keep the interface feeling light and "alive."
 
+For the full UI/UX design reference — including color theory, typography rules, cinematography principles applied to layouts, motion design, and the design decision framework — see **[DESIGN.md](DESIGN.md)**.
+
 ---
 
 ## 📸 Screenshots
