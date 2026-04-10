@@ -35,11 +35,12 @@ class ExportDashboardCsvUseCaseTest {
     fun `execute returns header only for dashboard with no expenses`() = runTest {
         whenever(expenseDao.getExpensesForDashboard("dash-1")).thenReturn(flowOf(emptyList()))
         whenever(dashboardDao.getDashboardMembers("dash-1")).thenReturn(flowOf(emptyList()))
+        whenever(expenseDao.getSplitsForDashboard("dash-1")).thenReturn(flowOf(emptyList()))
 
         val csv = useCase.execute("dash-1")
         val lines = csv.trimEnd('\n').lines()
         assertEquals(1, lines.size)
-        assertEquals("Date,Description,Category,Total Amount,Paid By,Split Details", lines[0])
+        assertEquals("Date,Description,Category,Amount,Paid By,Split Details", lines[0])
     }
 
     @Test
@@ -56,7 +57,7 @@ class ExportDashboardCsvUseCaseTest {
 
         whenever(expenseDao.getExpensesForDashboard("dash-1")).thenReturn(flowOf(expenses))
         whenever(dashboardDao.getDashboardMembers("dash-1")).thenReturn(flowOf(people))
-        whenever(expenseDao.getSplitsForExpense("e1")).thenReturn(splits)
+        whenever(expenseDao.getSplitsForDashboard("dash-1")).thenReturn(flowOf(splits))
 
         val csv = useCase.execute("dash-1")
         val lines = csv.trimEnd('\n').lines()
@@ -79,8 +80,8 @@ class ExportDashboardCsvUseCaseTest {
 
         whenever(expenseDao.getExpensesForDashboard("dash-1")).thenReturn(flowOf(expenses))
         whenever(dashboardDao.getDashboardMembers("dash-1")).thenReturn(flowOf(people))
-        whenever(expenseDao.getSplitsForExpense("e1")).thenReturn(
-            listOf(SplitEntity("s1", "e1", "user-current", 5.0))
+        whenever(expenseDao.getSplitsForDashboard("dash-1")).thenReturn(
+            flowOf(listOf(SplitEntity("s1", "e1", "user-current", 5.0)))
         )
 
         val csv = useCase.execute("dash-1")
@@ -95,7 +96,7 @@ class ExportDashboardCsvUseCaseTest {
 
         whenever(expenseDao.getExpensesForDashboard("dash-1")).thenReturn(flowOf(expenses))
         whenever(dashboardDao.getDashboardMembers("dash-1")).thenReturn(flowOf(emptyList()))
-        whenever(expenseDao.getSplitsForExpense("e1")).thenReturn(emptyList())
+        whenever(expenseDao.getSplitsForDashboard("dash-1")).thenReturn(flowOf(emptyList()))
 
         val csv = useCase.execute("dash-1")
         assertTrue(csv.contains("Unknown"))
@@ -117,7 +118,7 @@ class ExportDashboardCsvUseCaseTest {
 
         whenever(expenseDao.getExpensesForDashboard("dash-1")).thenReturn(flowOf(expenses))
         whenever(dashboardDao.getDashboardMembers("dash-1")).thenReturn(flowOf(people))
-        whenever(expenseDao.getSplitsForExpense("e1")).thenReturn(splits)
+        whenever(expenseDao.getSplitsForDashboard("dash-1")).thenReturn(flowOf(splits))
 
         val csv = useCase.execute("dash-1")
         assertTrue(csv.contains("Alice: 100.00"))
@@ -133,7 +134,7 @@ class ExportDashboardCsvUseCaseTest {
 
         whenever(expenseDao.getExpensesForDashboard("dash-1")).thenReturn(flowOf(expenses))
         whenever(dashboardDao.getDashboardMembers("dash-1")).thenReturn(flowOf(people))
-        whenever(expenseDao.getSplitsForExpense("e1")).thenReturn(emptyList())
+        whenever(expenseDao.getSplitsForDashboard("dash-1")).thenReturn(flowOf(emptyList()))
 
         val csv = useCase.execute("dash-1")
         // Commas in description should cause quoting
@@ -152,8 +153,7 @@ class ExportDashboardCsvUseCaseTest {
 
         whenever(expenseDao.getExpensesForDashboard("dash-1")).thenReturn(flowOf(expenses))
         whenever(dashboardDao.getDashboardMembers("dash-1")).thenReturn(flowOf(people))
-        whenever(expenseDao.getSplitsForExpense("e1")).thenReturn(emptyList())
-        whenever(expenseDao.getSplitsForExpense("e2")).thenReturn(emptyList())
+        whenever(expenseDao.getSplitsForDashboard("dash-1")).thenReturn(flowOf(emptyList()))
 
         val csv = useCase.execute("dash-1")
         val lines = csv.trimEnd('\n').lines()

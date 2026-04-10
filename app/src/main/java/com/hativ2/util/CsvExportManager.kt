@@ -42,7 +42,7 @@ object CsvExportManager {
         return sb.toString()
     }
     
-    private fun escapeCsv(value: String): String {
+    fun escapeCsv(value: String): String {
         var result = value
         if (result.contains(",") || result.contains("\"") || result.contains("\n")) {
             result = result.replace("\"", "\"\"")

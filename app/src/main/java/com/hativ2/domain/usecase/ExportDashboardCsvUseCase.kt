@@ -2,6 +2,7 @@ package com.hativ2.domain.usecase
 
 import com.hativ2.data.dao.ExpenseDao
 import com.hativ2.data.dao.DashboardDao
+import com.hativ2.util.CsvExportManager
 import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -19,30 +20,33 @@ class ExportDashboardCsvUseCase @Inject constructor(
         
         val sb = StringBuilder()
         // Header
-        sb.append("Date,Description,Category,Total Amount,Paid By,Split Details\n")
+        sb.append("Date,Description,Category,Amount,Paid By,Split Details\n")
         
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+
+        val allSplits = expenseDao.getSplitsForDashboard(dashboardId).first()
+        val splitsByExpense = allSplits.groupBy { it.expenseId }
         
         expenses.forEach { expense ->
             val date = dateFormat.format(Date(expense.createdAt))
             // Escape description and category for CSV safety (wrap in quotes if contains comma)
-            val description = matchCsv(expense.description)
-            val category = matchCsv(expense.category)
+            val description = CsvExportManager.escapeCsv(expense.description)
+            val category = CsvExportManager.escapeCsv(expense.category)
             val amount = String.format(Locale.US, "%.2f", expense.amount)
             
             val payerName = if (expense.paidBy == "user-current") "You" 
                             else peopleMap[expense.paidBy]?.name ?: "Unknown"
-            val safePayer = matchCsv(payerName)
+            val safePayer = CsvExportManager.escapeCsv(payerName)
 
             // Get splits
-            val splits = expenseDao.getSplitsForExpense(expense.id)
+            val splits = splitsByExpense[expense.id].orEmpty()
             val splitDetails = splits.joinToString(" | ") { split ->
                 val name = if (split.personId == "user-current") "You" 
                            else peopleMap[split.personId]?.name ?: "Unknown"
                 val amountStr = String.format(Locale.US, "%.2f", split.amount)
                 "$name: $amountStr"
             }
-            val safeSplitDetails = matchCsv(splitDetails)
+            val safeSplitDetails = CsvExportManager.escapeCsv(splitDetails)
 
             sb.append("$date,$description,$category,$amount,$safePayer,$safeSplitDetails\n")
         }
@@ -50,11 +54,4 @@ class ExportDashboardCsvUseCase @Inject constructor(
         return sb.toString()
     }
 
-    private fun matchCsv(value: String): String {
-        var safe = value.replace("\"", "\"\"") // Escape double quotes
-        if (safe.contains(",") || safe.contains("\n") || safe.contains("\"")) {
-            safe = "\"$safe\""
-        }
-        return safe
-    }
 }
