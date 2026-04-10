@@ -69,12 +69,13 @@ object DatabaseKeyManager {
 
     private fun generateRandomPassphrase(): ByteArray {
         // 32 bytes = 256-bit passphrase. SQLCipher derives the actual key via PBKDF2.
-        // Why getInstanceStrong() instead of SecureRandom():
-        // The default SecureRandom constructor may use a PRNG with weak seeding
-        // on older Android devices. getInstanceStrong() guarantees the strongest
-        // available provider (typically /dev/urandom backed by the Linux kernel CSPRNG).
+        // Why SecureRandom() instead of SecureRandom.getInstanceStrong():
+        // On Android API 26+ (our minSdk), the default SecureRandom uses
+        // /dev/urandom which is non-blocking and cryptographically secure.
+        // getInstanceStrong() may use /dev/random which can block when entropy
+        // is low, potentially causing ANRs on first app launch.
         val bytes = ByteArray(32)
-        java.security.SecureRandom.getInstanceStrong().nextBytes(bytes)
+        java.security.SecureRandom().nextBytes(bytes)
         return bytes
     }
 

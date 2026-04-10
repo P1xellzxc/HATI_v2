@@ -77,7 +77,7 @@ dependencies {
     implementation(libs.androidx.sqlite.ktx)
 
     // Biometric — fingerprint / face unlock gate on app launch.
-    // Why 1.1.0 (stable) over 1.4.0-alpha: alpha releases can introduce
+    // Why 1.1.0 (stable) over alpha releases: alpha releases can introduce
     // regressions; stability is the priority for an auth gate.
     implementation(libs.androidx.biometric)
 
