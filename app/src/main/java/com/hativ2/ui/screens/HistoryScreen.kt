@@ -55,7 +55,7 @@ val CATEGORIES = listOf(
     CategoryItem("shopping", "Shopping", "🛍️", NotionRed),
     CategoryItem("entertainment", "Entertainment", "🎬", NotionPurple),
     CategoryItem("utilities", "Utilities", "💡", NotionGreen),
-    CategoryItem("other", "Other", "📦", Color.Gray)
+    CategoryItem("other", "Other", "📦", NotionGray)
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -329,7 +329,7 @@ fun HistoryScreen(
                     .padding(horizontal = 12.dp, vertical = 10.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Search, "Search", modifier = Modifier.size(16.dp), tint = Color.Gray)
+                    Icon(Icons.Default.Search, "Search", modifier = Modifier.size(16.dp), tint = NotionMuted)
                     Spacer(modifier = Modifier.width(8.dp))
                     BasicTextField(
                         value = searchQuery,
@@ -339,7 +339,7 @@ fun HistoryScreen(
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
                         decorationBox = { innerTextField ->
                             if (searchQuery.isEmpty()) {
-                                Text("Search expenses...", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                                Text("Search expenses...", style = MaterialTheme.typography.bodyMedium, color = NotionMuted)
                             }
                             innerTextField()
                         }
@@ -457,7 +457,7 @@ fun VolumeTab(
         Text(
             title,
             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-            color = if (isSelected) Color.White else MangaBlack,
+            color = if (isSelected) NotionWhite else MangaBlack,
             maxLines = 1
         )
     }

@@ -24,12 +24,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.hativ2.ui.theme.MangaBlack
 import com.hativ2.ui.theme.NotionBlue
+import com.hativ2.ui.theme.NotionDisabled
+import com.hativ2.ui.theme.NotionDivider
+import com.hativ2.ui.theme.NotionMuted
 import com.hativ2.ui.theme.NotionGray
 import com.hativ2.ui.theme.NotionGreen
 import com.hativ2.ui.theme.NotionOrange
@@ -193,12 +195,12 @@ fun EditDashboardDialog(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .offset(x = 4.dp, y = 4.dp)
-                                    .background(if (newTitle.isNotBlank()) MangaBlack else Color.Gray)
+                                    .background(if (newTitle.isNotBlank()) MangaBlack else NotionDisabled)
                             )
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(if (newTitle.isNotBlank()) NotionGreen else Color.LightGray)
+                                    .background(if (newTitle.isNotBlank()) NotionGreen else NotionDivider)
                                     .border(2.dp, MangaBlack)
                                     .clickable(enabled = newTitle.isNotBlank()) {
                                         onSave(newTitle, selectedType, selectedColor)
@@ -208,7 +210,7 @@ fun EditDashboardDialog(
                                 Text(
                                     "SAVE CHANGES", 
                                     fontWeight = FontWeight.Black,
-                                    color = if (newTitle.isNotBlank()) MangaBlack else Color.Gray
+                                    color = if (newTitle.isNotBlank()) MangaBlack else NotionMuted
                                 )
                             }
                         }

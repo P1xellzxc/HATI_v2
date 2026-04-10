@@ -44,6 +44,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.hativ2.ui.theme.MangaBlack
 import com.hativ2.ui.theme.MangaHeaderStyle
+import com.hativ2.ui.theme.NotionDisabled
+import com.hativ2.ui.theme.NotionMuted
 import com.hativ2.ui.theme.NotionWhite
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -133,7 +135,7 @@ fun MangaButton(
         Box(
             modifier = Modifier
                 .offset(x = if (isPressed) MangaShadowOffsetSmall else 0.dp, y = if (isPressed) MangaShadowOffsetSmall else 0.dp)
-                .background(if (enabled) backgroundColor else Color.Gray, RoundedCornerShape(MangaCornerRadius))
+                .background(if (enabled) backgroundColor else NotionDisabled, RoundedCornerShape(MangaCornerRadius))
                 .border(MangaBorderWidth, MangaBlack, RoundedCornerShape(MangaCornerRadius))
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             contentAlignment = Alignment.Center
@@ -188,7 +190,7 @@ fun MangaTextField(
                     if (value.isEmpty() && placeholder.isNotEmpty()) {
                         Text(
                             text = placeholder,
-                            color = Color.Gray,
+                            color = NotionMuted,
                             style = MaterialTheme.typography.bodyLarge
                         )
                     }
@@ -263,13 +265,13 @@ fun TransactionCard(
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        color = NotionMuted
                     )
                     if (date != null) {
                          Text(
                             text = date,
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color.Gray
+                            color = NotionMuted
                         )
                     }
                 }
