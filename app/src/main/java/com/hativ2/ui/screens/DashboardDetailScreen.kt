@@ -244,7 +244,7 @@ fun DashboardDetailScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
                                     getIconForType(dashboard.dashboardType), 
-                                    contentDescription = null, 
+                                    contentDescription = "Dashboard type: ${dashboard.dashboardType}", 
                                     tint = NotionBlue,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -442,7 +442,7 @@ fun DashboardDetailScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                         Icon(Icons.Default.List, contentDescription = null, modifier = Modifier.size(16.dp))
+                         Icon(Icons.Default.List, contentDescription = "Recent chapters", modifier = Modifier.size(16.dp))
                          Spacer(modifier = Modifier.width(8.dp))
                          Text(
                             "RECENT CHAPTERS",
@@ -608,7 +608,7 @@ fun SpendingByMemberCard(
         ) {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                     Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp)) 
+                     Icon(Icons.Default.DateRange, contentDescription = "Spending by member", modifier = Modifier.size(16.dp)) 
                      Spacer(modifier = Modifier.width(8.dp))
                      Text("SPENDING BY MEMBER", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 }
@@ -794,7 +794,7 @@ fun ActionCard(
              contentAlignment = Alignment.Center
          ) {
              Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                 Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
+                 Icon(icon, contentDescription = title, modifier = Modifier.size(24.dp))
                  Spacer(modifier = Modifier.height(4.dp))
                   Text(title, style = MaterialTheme.typography.labelSmall)
              }

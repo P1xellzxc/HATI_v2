@@ -207,7 +207,7 @@ fun ChartsScreen(
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.DateRange, null, modifier = Modifier.size(14.dp))
+                            Icon(Icons.Default.DateRange, "Select date range", modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(selectedPeriod, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                         }

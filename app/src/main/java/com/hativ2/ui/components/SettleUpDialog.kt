@@ -242,7 +242,7 @@ fun SettleUpDialog(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
                                     imageVector = Icons.Default.Check,
-                                    contentDescription = null,
+                                    contentDescription = "Amount matches",
                                     tint = MangaSuccess,
                                     modifier = Modifier.size(14.dp)
                                 )

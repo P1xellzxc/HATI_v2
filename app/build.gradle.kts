@@ -39,6 +39,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         // kotlinCompilerExtensionVersion = "1.5.1" // Not used with Kotlin 2.0+ Compose Compiler Plugin
@@ -81,6 +82,9 @@ dependencies {
     // regressions; stability is the priority for an auth gate.
     implementation(libs.androidx.biometric)
 
+    // LeakCanary — automatic memory leak detection in debug builds.
+    debugImplementation(libs.leakcanary.android)
+
     // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
@@ -92,6 +96,7 @@ dependencies {
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.kotlin)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
     androidTestImplementation(libs.mockito.android)
     androidTestImplementation(libs.mockito.kotlin)
     androidTestImplementation(libs.androidx.junit)

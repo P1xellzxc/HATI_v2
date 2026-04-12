@@ -50,7 +50,7 @@ val NotionDisabled = Color(0xFF9CA3AF) // Pantone Cool Gray 5 C — disabled sta
 
 // ── Manga High Contrast (60 % + 30 % structural layer) ─────
 val MangaBlack   = Color(0xFF000000) // Pantone Black C  — text, borders, shadows
-val MangaSuccess = Color(0xFF22C55E) // Pantone 7481 C   — positive / success
+val MangaSuccess = Color(0xFF16A34A) // Pantone 7482 C   — positive / success (WCAG AA ≥ 4.5:1 on white)
 val MangaDarkGray = Color(0xFF555555) // Pantone Cool Gray 10 C — heavy-disabled
 
 // ── Dark Mode Surface System ────────────────────────────────

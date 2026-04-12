@@ -492,7 +492,7 @@ fun NewVolumeCard(onClick: () -> Unit) {
                         .border(2.dp, MangaBlack, RoundedCornerShape(MangaCornerRadius)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null, tint = MangaBlack)
+                    Icon(Icons.Default.Add, contentDescription = "Add new dashboard", tint = MangaBlack)
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text("New Volume", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
