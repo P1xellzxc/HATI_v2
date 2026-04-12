@@ -291,36 +291,13 @@ fun DashboardDetailScreen(
                     Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(MaterialTheme.colorScheme.onBackground))
                 }
             },
-        floatingActionButton = {
-            // Manga Style FAB
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clickable { onAddExpenseClick(dashboardId) }
-            ) {
-                // Hard Shadow
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .offset(x = 4.dp, y = 4.dp)
-                        .background(MaterialTheme.colorScheme.onBackground, RoundedCornerShape(MangaCornerRadius))
-                )
-                // FAB Content
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(NotionGreen, RoundedCornerShape(MangaCornerRadius))
-                        .border(2.dp, MaterialTheme.colorScheme.onBackground, RoundedCornerShape(MangaCornerRadius)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.Add, 
-                        contentDescription = "Add Expense", 
-                        tint = MangaBlack, // Always black on Green
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
+        bottomBar = {
+            BottomActionBar(
+                onAddExpense = { onAddExpenseClick(dashboardId) },
+                onViewHistory = { onViewExpensesClick(dashboardId) },
+                onViewCharts = { onBalanceClick(dashboardId) },
+                onAddMember = { showAddPersonDialog = true }
+            )
         }
         ) { paddingValues ->
 
@@ -350,26 +327,6 @@ fun DashboardDetailScreen(
                 }
             }
 
-            // Action Grid
-            item {
-                var visible by remember { mutableStateOf(false) }
-                LaunchedEffect(Unit) { visible = true }
-                AnimatedVisibility(
-                    visible = visible,
-                    enter = fadeIn(tween(400, delayMillis = 100)) + slideInVertically(
-                        animationSpec = tween(400, delayMillis = 100, easing = FastOutSlowInEasing),
-                        initialOffsetY = { it / 3 }
-                    )
-                ) {
-                    ActionGrid(
-                        onAddExpense = { onAddExpenseClick(dashboardId) },
-                        onViewHistory = { onViewExpensesClick(dashboardId) },
-                        onViewCharts = { onBalanceClick(dashboardId) },
-                        onAddMember = { showAddPersonDialog = true }
-                    )
-                }
-            }
-            
             // Empty State
             if (expenses.isEmpty()) {
                 item {
@@ -1021,6 +978,93 @@ fun getIconForType(type: String): ImageVector {
         "household" -> Icons.Default.Settings // Placeholder
         "event" -> Icons.Default.Settings // Placeholder
         else -> Icons.Default.List
+    }
+}
+
+@Composable
+fun BottomActionBar(
+    onAddExpense: () -> Unit,
+    onViewHistory: () -> Unit,
+    onViewCharts: () -> Unit,
+    onAddMember: () -> Unit
+) {
+    Column {
+        // Top border line
+        Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(MangaBlack))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(NotionWhite)
+                .padding(vertical = 8.dp, horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            BottomBarItem(
+                icon = Icons.Default.List,
+                label = "History",
+                onClick = onViewHistory
+            )
+            BottomBarItem(
+                icon = Icons.Default.DateRange,
+                label = "Charts",
+                onClick = onViewCharts
+            )
+            BottomBarItem(
+                icon = Icons.Default.Add,
+                label = "Add",
+                onClick = onAddExpense,
+                isProminent = true
+            )
+            BottomBarItem(
+                icon = Icons.Default.Person,
+                label = "Member",
+                onClick = onAddMember
+            )
+        }
+    }
+}
+
+@Composable
+fun BottomBarItem(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    isProminent: Boolean = false
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(if (isProminent) 48.dp else 40.dp)
+                .background(
+                    if (isProminent) NotionGreen else Color.Transparent,
+                    RoundedCornerShape(MangaCornerRadius)
+                )
+                .then(
+                    if (isProminent) Modifier.border(MangaBorderWidth, MangaBlack, RoundedCornerShape(MangaCornerRadius))
+                    else Modifier
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                icon,
+                contentDescription = label,
+                tint = MangaBlack,
+                modifier = Modifier.size(if (isProminent) 28.dp else 24.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MangaBlack
+        )
     }
 }
 
