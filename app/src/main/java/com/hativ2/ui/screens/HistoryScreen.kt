@@ -345,8 +345,8 @@ fun HistoryScreen(
                         }
                     )
                     if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(20.dp)) {
-                            Icon(Icons.Default.Clear, "Clear", modifier = Modifier.size(14.dp))
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Clear, "Clear search", modifier = Modifier.size(20.dp))
                         }
                     }
                 }

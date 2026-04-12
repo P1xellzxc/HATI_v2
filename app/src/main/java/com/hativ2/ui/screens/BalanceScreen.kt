@@ -133,7 +133,7 @@ fun BalanceScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("Last 6 Months", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.width(4.dp))
-                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Dropdown menu", modifier = Modifier.size(16.dp))
                         }
                     }
                 }
@@ -237,7 +237,7 @@ fun StatCard(
                     ) {
                         if (icon != null) {
                              // Rotate arrow for trend if needed, or just standard icon
-                             Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) 
+                             Icon(icon, contentDescription = title, modifier = Modifier.size(18.dp)) 
                              Spacer(modifier = Modifier.width(8.dp))
                         }
                         Text(title, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)

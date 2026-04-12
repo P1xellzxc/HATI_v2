@@ -24,7 +24,7 @@ fun MangaBackButton(
 ) {
     Box(
         modifier = modifier
-            .size(32.dp)
+            .size(48.dp)
             .border(2.dp, MangaBlack, RoundedCornerShape(4.dp))
             .background(NotionWhite, RoundedCornerShape(4.dp))
             .clickable(onClick = onClick),

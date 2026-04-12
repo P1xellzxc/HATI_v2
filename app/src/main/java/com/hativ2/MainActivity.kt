@@ -173,7 +173,7 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            HatiV2Theme(darkTheme = false) {
+            HatiV2Theme {
                 Surface(
                     modifier = Modifier
                         .fillMaxSize()
