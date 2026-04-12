@@ -16,6 +16,8 @@
 7. [Dark Mode Strategy](#7-dark-mode-strategy)
 8. [Design Decision Framework](#8-design-decision-framework)
 9. [Implementation Reference](#9-implementation-reference)
+10. [Mobile-First Reachability Design](#10-mobile-first-reachability-design)
+11. [Animation System — The Antigravity Experience](#11-animation-system--the-antigravity-experience)
 
 ---
 
@@ -587,18 +589,145 @@ Before merging any UI change, verify:
 
 ---
 
+## 10. Mobile-First Reachability Design
+
+### 10.1 The Thumb Zone Problem
+
+> **In normie terms:** Most people hold their phone with one hand. The bottom of the screen is easy to reach with your thumb. The top corners are almost impossible to reach without shifting your grip — which means you might drop your phone. So we put all the important buttons at the bottom.
+
+On a modern 6"+ phone, the screen divides into three ergonomic zones when held in one hand:
+
+| Zone | Location | Comfort | What goes here |
+|---|---|---|---|
+| 🟢 Easy | Bottom 40% | Natural thumb arc | **Primary actions** — Add, Navigate, Confirm |
+| 🟡 Stretch | Middle 30% | Reachable with effort | **Content** — lists, cards, information |
+| 🔴 Hard | Top 30% | Requires grip shift | **Read-only info** — titles, status, back button |
+
+### 10.2 Bottom Action Bar
+
+The `DashboardDetailScreen` uses a **persistent bottom action bar** instead of inline action cards or a floating action button (FAB).
+
+**Why this is better than a FAB:**
+- A FAB gives you **one** action. The bottom bar gives you **four** (History, Charts, Add, Member) — all within thumb reach.
+- Users don't need to scroll back to find actions. They're always visible.
+- The "Add" action is visually prominent (green background, larger icon) so it still stands out as the primary action.
+
+**Why this is better than the old in-content ActionGrid:**
+- The ActionGrid scrolled with content, so you had to scroll to the top to find it.
+- Now the actions are always pinned to the bottom of the screen — zero scrolling needed.
+
+**Implementation details:**
+- 2dp `MangaBlack` top border (matches the manga ink aesthetic)
+- `NotionWhite` background (stays in the 60% dominant layer)
+- Touch targets ≥ 48dp (Google's minimum for accessibility)
+- "Add" button uses `NotionGreen` with border to pop visually
+
+### 10.3 Design Decisions in Plain English
+
+| Decision | Why (the normie version) |
+|---|---|
+| Bottom bar instead of top menu | Your thumb lives at the bottom of your phone. Put buttons where your thumb already is. |
+| "Add" is green and bigger | The thing you do most should be the easiest to spot and tap. Green = go. |
+| Cards scroll, actions don't | You want to browse your data freely without losing access to what you can DO about it. |
+| Back button stays at top-left | This is where every Android app puts it. Don't mess with muscle memory. |
+| Large touch targets (48dp+) | Small buttons = mis-taps = frustration. Fat buttons = happy thumbs. |
+
+---
+
+## 11. Animation System — The Antigravity Experience
+
+### 11.1 Animation Philosophy
+
+> **In normie terms:** Animations aren't just eye candy — they tell your brain what's happening. When a card slides in, your brain understands "this is new." When a button pushes down, your brain feels "I pressed something." Without animations, apps feel like flipping a light switch. With them, apps feel alive.
+
+Every animation in HATI² serves one of three purposes:
+
+| Purpose | What it does | Example |
+|---|---|---|
+| **Feedback** | Confirms your action | Button press depth, haptic buzz |
+| **Orientation** | Shows where things came from / are going | Screen slide transitions, staggered list entrance |
+| **Delight** | Makes the app feel polished and alive | Kaomoji breathing, pulse on "+" icon |
+
+### 11.2 Entrance Animations
+
+**Staggered List Entrance** (DashboardListScreen):
+- Each volume card fades in and slides up with a 50ms stagger per item
+- Duration: 400ms with `FastOutSlowInEasing`
+- This creates a "cascade" effect — like cards being dealt onto a table
+
+> **Why 50ms stagger?** Too fast (10ms) and everything appears at once — might as well not animate. Too slow (200ms) and users wait forever. 50ms is the sweet spot: fast enough to feel snappy, slow enough to notice the cascade.
+
+**Section Entrance** (DashboardDetailScreen):
+- Balance card, member list, and summary cards fade in and slide up as you scroll
+- Uses `AnimatedVisibility` with `fadeIn + slideInVertically`
+
+**Transaction Cards** (MangaComponents):
+- Slide in from the right with a fade
+- Creates a "swipe in" feel for list items
+
+### 11.3 Interaction Animations
+
+**Press Depth** (MangaCard, MangaButton, VolumeCard, ActionCard):
+- When pressed, the hard shadow offset decreases to 0dp and the card moves down by the same amount
+- Simulates physically pressing a card into a surface
+- Uses `spring` animation for a natural, bouncy feel
+
+> **Why spring instead of tween?** A tween (linear or eased animation) has a fixed duration. A spring naturally overshoots and settles — like pressing a physical button. It feels more real because real objects have momentum.
+
+**Scale Bounce** (MangaButton):
+- On press, button scales to 0.95x then springs back to 1.0x
+- Combined with haptic feedback for a tactile feel
+
+**Card Appearance Scale** (MangaCard):
+- Cards scale from 0.95f to 1.0f on first appearance with a low-bouncy spring
+- Subtle enough to not be annoying, noticeable enough to feel premium
+
+### 11.4 Ambient Animations
+
+**Kaomoji Breathing** (MangaEmptyState):
+- The `( ◕ ‿ ◕ )` face scales between 1.0x and 1.08x on an infinite loop
+- 1200ms per cycle with reverse repeat
+- Makes empty states feel friendly instead of dead
+
+**"+" Icon Pulse** (NewVolumeCard):
+- The add icon scales between 1.0x and 1.15x continuously
+- Draws attention to the creation entry point
+
+### 11.5 Screen Transitions (NavHost)
+
+| Transition | Animation | Duration |
+|---|---|---|
+| Enter (forward) | Fade in + slide from right (1/3 screen) | 400ms |
+| Exit (forward) | Fade out + scale down to 92% | 250ms |
+| Pop enter (back) | Fade in + slide from left (1/3 screen) | 400ms |
+| Pop exit (back) | Fade out + slide right (1/3 screen) | 250ms |
+
+> **Why scale-out on forward exit?** When you navigate forward, the current screen shrinks slightly as it fades — like it's receding into the background. This gives a sense of depth and forward motion. The standard slide-out feels flat by comparison.
+
+### 11.6 Animation Timing Rules
+
+| Guideline | Value | Reason |
+|---|---|---|
+| Max duration | 500ms | Anything longer feels sluggish |
+| Stagger delay | 50ms per item | Sweet spot between "instant" and "slow" |
+| Spring stiffness | `StiffnessLow` to `StiffnessMediumLow` | Bouncy enough to notice, not enough to distract |
+| Easing | `FastOutSlowInEasing` | Objects accelerate quickly, decelerate gradually — matches real-world physics |
+| Infinite animations | Scale only, max 8% change | Prevents eye strain; breathing, not bouncing |
+
+**Source:** `MangaComponents.kt`, `MangaEmptyState.kt`, `DashboardListScreen.kt`, `DashboardDetailScreen.kt`, `MainActivity.kt`
+
+---
+
 ## Known Deviations & Future Work
 
 The following are existing implementation gaps to be addressed in future updates:
 
-1. **Unreachable screens.** `BalanceScreen` and `ExpenseListScreen` have routes defined in `MainActivity.kt` but are not wired into the primary navigation flow from `DashboardDetailScreen`. They are accessible only via direct deep links.
-
-2. **Hardcoded colors in components.** Several components use `MangaBlack` and `NotionWhite` directly instead of `MaterialTheme.colorScheme` tokens. This means they will not fully adapt in dark mode:
+1. **Hardcoded colors in components.** Several components use `MangaBlack` and `NotionWhite` directly instead of `MaterialTheme.colorScheme` tokens. This means they will not fully adapt in dark mode:
    - `MangaTextField` — label color is hardcoded to `MangaBlack`
    - `TransactionCard` — title color is hardcoded to `MangaBlack`
    - `MangaBackButton` — border, background, and icon tint are all hardcoded
 
-3. **No `Shape.kt` file.** The corner radius is defined as a `MangaCornerRadius` constant in `MangaComponents.kt` but is not registered as a Material3 `Shapes` object in the theme. A future `Shape.kt` could centralize shape definitions and make them accessible via `MaterialTheme.shapes`.
+2. **No `Shape.kt` file.** The corner radius is defined as a `MangaCornerRadius` constant in `MangaComponents.kt` but is not registered as a Material3 `Shapes` object in the theme. A future `Shape.kt` could centralize shape definitions and make them accessible via `MaterialTheme.shapes`.
 
 ---
 

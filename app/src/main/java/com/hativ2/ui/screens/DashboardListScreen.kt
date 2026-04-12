@@ -71,6 +71,23 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -208,16 +225,38 @@ fun DashboardListScreen(
                     }
                 }
                 
-                items(
+                itemsIndexed(
                     items = dashboardsWithStats,
-                    key = { it.id }
-                ) { dashboard ->
-                    VolumeCard(
-                        dashboard = dashboard, 
-                        onClick = { onDashboardClick(dashboard.id) },
-                        onDelete = { showDeleteDialog = dashboard },
-                        onEdit = { showEditDialog = dashboard }
+                    key = { _, item -> item.id }
+                ) { index, dashboard ->
+                    var visible by remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) {
+                        delay(index * 50L)
+                        visible = true
+                    }
+                    val alpha by animateFloatAsState(
+                        targetValue = if (visible) 1f else 0f,
+                        animationSpec = tween(400, easing = FastOutSlowInEasing),
+                        label = "itemAlpha"
                     )
+                    val offsetY by animateDpAsState(
+                        targetValue = if (visible) 0.dp else 24.dp,
+                        animationSpec = tween(400, easing = FastOutSlowInEasing),
+                        label = "itemOffset"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .alpha(alpha)
+                            .offset(y = offsetY)
+                    ) {
+                        VolumeCard(
+                            dashboard = dashboard, 
+                            onClick = { onDashboardClick(dashboard.id) },
+                            onDelete = { showDeleteDialog = dashboard },
+                            onEdit = { showEditDialog = dashboard }
+                        )
+                    }
                 }
                 
                 item {
@@ -245,17 +284,34 @@ fun VolumeCard(
 
     var expanded by remember { mutableStateOf(false) }
 
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val volumeShadowOffset by animateDpAsState(
+        targetValue = if (isPressed) 0.dp else 4.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "volumeShadow"
+    )
+    val volumePressOffset by animateDpAsState(
+        targetValue = if (isPressed) 4.dp else 0.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "volumePress"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(0.75f)
-            .clickable(onClick = onClick)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
     ) {
         // Hard Shadow
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .offset(x = 4.dp, y = 4.dp)
+                .offset(x = volumeShadowOffset, y = volumeShadowOffset)
                 .background(MangaBlack, RoundedCornerShape(MangaCornerRadius))
         )
 
@@ -263,6 +319,7 @@ fun VolumeCard(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .offset(x = volumePressOffset, y = volumePressOffset)
                 .background(NotionWhite, RoundedCornerShape(MangaCornerRadius))
                 .border(2.dp, MangaBlack, RoundedCornerShape(MangaCornerRadius))
                 .clip(RoundedCornerShape(MangaCornerRadius))
@@ -392,6 +449,17 @@ fun VolumeCard(
 
 @Composable
 fun NewVolumeCard(onClick: () -> Unit) {
+    val infiniteTransition = rememberInfiniteTransition(label = "plusPulse")
+    val plusScale by infiniteTransition.animateFloat(
+        initialValue = 1.0f,
+        targetValue = 1.15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "plusScale"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -419,6 +487,7 @@ fun NewVolumeCard(onClick: () -> Unit) {
                 Box(
                     modifier = Modifier
                         .size(48.dp)
+                        .scale(plusScale)
                         .background(NotionWhite, RoundedCornerShape(MangaCornerRadius))
                         .border(2.dp, MangaBlack, RoundedCornerShape(MangaCornerRadius)),
                     contentAlignment = Alignment.Center

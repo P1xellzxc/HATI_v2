@@ -77,15 +77,9 @@ The latest stable Kotlin is **2.3.20**. Kept at 2.0.21 because:
 
 ---
 
-## 3. Cloud Sync (Supabase) — Future Feature
+## 3. ✅ RESOLVED: Cloud Sync — Removed
 
-The README mentions **opt-in Supabase synchronization** as a planned feature. If you proceed with this:
-- The `network_security_config.xml` already enforces HTTPS-only
-- You'll need to add proper API key management (NOT hardcoded — use `BuildConfig` or a secrets gradle plugin)
-- Consider end-to-end encryption for synced financial data
-- Implement proper auth (Supabase Auth with email/OAuth)
-
-**Question:** Is cloud sync still on the roadmap? If so, what timeline?
+**Decision:** Cloud sync has been permanently removed. HATI² is a local-only app. The network security config has been removed as the app requires no internet access.
 
 ---
 
@@ -117,5 +111,5 @@ The Compose BOM was upgraded to `2026.03.01`. While Compose UI libraries are gen
 | AndroidX libraries upgraded | Security patches, bug fixes |
 | R8 enabled for release | Code obfuscation + APK shrinking |
 | Backup rules hardened | Database excluded from cloud backup |
-| Network security config | HTTPS-only enforced |
+| Network security config | Removed — app is local-only, no internet needed |
 | Destructive migration scoped | Only v1→v2; future migrations must be explicit |

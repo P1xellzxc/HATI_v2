@@ -47,8 +47,18 @@ import com.hativ2.ui.theme.MangaHeaderStyle
 import com.hativ2.ui.theme.NotionDisabled
 import com.hativ2.ui.theme.NotionMuted
 import com.hativ2.ui.theme.NotionWhite
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.tween
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 
@@ -64,13 +74,39 @@ fun MangaCard(
     onClick: (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
-    // Hard shadow using a Box behind
-    Box(modifier = modifier) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    // Scale-up entrance animation
+    var appeared by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { appeared = true }
+    val scale by animateFloatAsState(
+        targetValue = if (appeared) 1f else 0.95f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "cardAppearScale"
+    )
+
+    // Spring-based press animation
+    val pressOffset by animateDpAsState(
+        targetValue = if (isPressed && onClick != null) MangaShadowOffset else 0.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "cardPressOffset"
+    )
+    val shadowOffset by animateDpAsState(
+        targetValue = if (isPressed && onClick != null) 0.dp else MangaShadowOffset,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "cardShadowOffset"
+    )
+
+    Box(modifier = modifier.scale(scale)) {
         // Shadow Box
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .offset(x = MangaShadowOffset, y = MangaShadowOffset)
+                .offset(x = shadowOffset, y = shadowOffset)
                 .background(MangaBlack, RoundedCornerShape(MangaCornerRadius))
         )
 
@@ -78,11 +114,16 @@ fun MangaCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .offset(x = pressOffset, y = pressOffset)
                 .background(backgroundColor, RoundedCornerShape(MangaCornerRadius))
                 .border(MangaBorderWidth, MangaBlack, RoundedCornerShape(MangaCornerRadius))
                 .clip(RoundedCornerShape(MangaCornerRadius))
                 .then(
-                    if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+                    if (onClick != null) Modifier.clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        onClick = onClick
+                    ) else Modifier
                 )
                 .padding(16.dp)
         ) {
@@ -103,6 +144,14 @@ fun MangaButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val haptic = LocalHapticFeedback.current
+    val buttonScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "buttonScale"
+    )
     val currentOffset by animateDpAsState(
         targetValue = if (isPressed) 0.dp else MangaShadowOffsetSmall,
         animationSpec = tween(durationMillis = 80),
@@ -111,6 +160,7 @@ fun MangaButton(
 
     Box(
         modifier = modifier
+            .scale(buttonScale)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null, // Custom indication via offset
@@ -214,10 +264,17 @@ fun TransactionCard(
     icon: @Composable (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
-    MangaCard(
-        modifier = modifier.fillMaxWidth(),
-        onClick = onClick
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(300)) + slideInHorizontally(tween(300)) { it / 2 }
     ) {
+        MangaCard(
+            modifier = modifier.fillMaxWidth(),
+            onClick = onClick
+        ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
@@ -284,7 +341,6 @@ fun TransactionCard(
                 color = amountColor
             )
         }
+        }
     }
 }
-
-
