@@ -25,6 +25,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.draw.scale
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -324,21 +333,41 @@ fun DashboardDetailScreen(
         ) {
             // Balance Overview Card
             item {
-                BalanceOverviewCard(
-                    title = dashboard.title,
-                    balance = debtSummary.balances["user-current"] ?: 0.0,
-                    totalSpent = expenses.sumOf { it.amount }
-                )
+                var visible by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) { visible = true }
+                AnimatedVisibility(
+                    visible = visible,
+                    enter = fadeIn(tween(400)) + slideInVertically(
+                        animationSpec = tween(400, easing = FastOutSlowInEasing),
+                        initialOffsetY = { it / 3 }
+                    )
+                ) {
+                    BalanceOverviewCard(
+                        title = dashboard.title,
+                        balance = debtSummary.balances["user-current"] ?: 0.0,
+                        totalSpent = expenses.sumOf { it.amount }
+                    )
+                }
             }
 
             // Action Grid
             item {
-                ActionGrid(
-                    onAddExpense = { onAddExpenseClick(dashboardId) },
-                    onViewHistory = { onViewExpensesClick(dashboardId) },
-                    onViewCharts = { onBalanceClick(dashboardId) },
-                    onAddMember = { showAddPersonDialog = true }
-                )
+                var visible by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) { visible = true }
+                AnimatedVisibility(
+                    visible = visible,
+                    enter = fadeIn(tween(400, delayMillis = 100)) + slideInVertically(
+                        animationSpec = tween(400, delayMillis = 100, easing = FastOutSlowInEasing),
+                        initialOffsetY = { it / 3 }
+                    )
+                ) {
+                    ActionGrid(
+                        onAddExpense = { onAddExpenseClick(dashboardId) },
+                        onViewHistory = { onViewExpensesClick(dashboardId) },
+                        onViewCharts = { onBalanceClick(dashboardId) },
+                        onAddMember = { showAddPersonDialog = true }
+                    )
+                }
             }
             
             // Empty State
@@ -355,11 +384,21 @@ fun DashboardDetailScreen(
             // Spending By Member
             if (expenses.isNotEmpty()) {
                 item {
-                    SpendingByMemberCard(
-                        memberShares = debtSummary.memberShares,
-                        balances = debtSummary.balances,
-                        people = people
-                    )
+                    var visible by remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) { visible = true }
+                    AnimatedVisibility(
+                        visible = visible,
+                        enter = fadeIn(tween(400, delayMillis = 200)) + slideInVertically(
+                            animationSpec = tween(400, delayMillis = 200, easing = FastOutSlowInEasing),
+                            initialOffsetY = { it / 3 }
+                        )
+                    ) {
+                        SpendingByMemberCard(
+                            memberShares = debtSummary.memberShares,
+                            balances = debtSummary.balances,
+                            people = people
+                        )
+                    }
                 }
             }
 
@@ -750,22 +789,49 @@ fun ActionCard(
     icon: ImageVector,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val shadowOffset by animateDpAsState(
+        targetValue = if (isPressed) 0.dp else 4.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "actionShadow"
+    )
+    val cardOffset by animateDpAsState(
+        targetValue = if (isPressed) 4.dp else 0.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "actionCardOffset"
+    )
+    val cardScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "actionScale"
+    )
+
     Box(
         modifier = modifier
-            .aspectRatio(1f) // Square
-            .clickable(onClick = onClick)
+            .aspectRatio(1f)
+            .scale(cardScale)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
     ) {
          // Hard Shadow
          Box(
              modifier = Modifier
                  .matchParentSize()
-                 .offset(x = 4.dp, y = 4.dp)
+                 .offset(x = shadowOffset, y = shadowOffset)
                  .background(MangaBlack)
          )
          // Main content
          Box(
              modifier = Modifier
                  .fillMaxSize()
+                 .offset(x = cardOffset, y = cardOffset)
                  .background(NotionWhite)
                  .border(MangaBorderWidth, MangaBlack),
              contentAlignment = Alignment.Center

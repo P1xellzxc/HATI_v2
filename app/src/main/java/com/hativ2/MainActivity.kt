@@ -16,7 +16,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.WindowInsets
@@ -42,10 +44,10 @@ fun AppNavigation() {
     NavHost(
         navController = navController,
         startDestination = "dashboard_list",
-        enterTransition = { fadeIn(tween(300)) + slideInHorizontally(tween(300)) { it / 4 } },
-        exitTransition = { fadeOut(tween(200)) },
-        popEnterTransition = { fadeIn(tween(300)) + slideInHorizontally(tween(300)) { -it / 4 } },
-        popExitTransition = { fadeOut(tween(200)) + slideOutHorizontally(tween(200)) { it / 4 } }
+        enterTransition = { fadeIn(tween(400)) + slideInHorizontally(tween(400, easing = FastOutSlowInEasing)) { it / 3 } },
+        exitTransition = { fadeOut(tween(250)) + scaleOut(tween(250), targetScale = 0.92f) },
+        popEnterTransition = { fadeIn(tween(400)) + slideInHorizontally(tween(400, easing = FastOutSlowInEasing)) { -it / 3 } },
+        popExitTransition = { fadeOut(tween(250)) + slideOutHorizontally(tween(250)) { it / 3 } }
     ) {
                 composable("dashboard_list") {
             DashboardListScreen(
