@@ -36,6 +36,7 @@ local.properties
 !README.md
 !QUESTIONS_FOR_REVIEW.md
 !DESIGN.md
+!TESTING.md
 /*.hprof
 /test_*.txt
 /instrumented_test_output*.txt
