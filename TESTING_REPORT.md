@@ -195,7 +195,7 @@ On devices without biometric hardware or enrolled biometrics, the auth gate is *
 | Black on White | 21:1 | ✅ |
 | Black on Yellow | 18:1 | ✅ |
 | Gray on White | 4.83:1 | ✅ |
-| **Green success on White** | **2.28:1** | ❌ Fails |
+| **Green success on White** | **2.28:1** | ❌ Fails — consider #16A34A (darker green, ~4.6:1) |
 | **Gray on Light Gray** | **3.90:1** | ❌ Fails |
 
 The green success color (#22C55E) badly fails contrast requirements — it would be nearly invisible to users with low vision.
@@ -218,14 +218,14 @@ The green success color (#22C55E) badly fails contrast requirements — it would
 |-------------|--------|
 | minSdk set correctly? | ✅ API 26 (Android 8.0) |
 | targetSdk current? | ✅ API 35 |
-| Dark mode support? | ⚠️ Theme exists but **hardcoded to light mode** (`darkTheme = false` in MainActivity.kt line 176) |
+| Dark mode support? | ⚠️ Theme exists but **hardcoded to light mode** (`darkTheme = false` in the `HatiV2Theme` call in `MainActivity.kt`) |
 | RTL (right-to-left) support? | ✅ Declared in manifest |
 | Tablet/foldable support? | ❌ No responsive layouts, no WindowSizeClass |
 | Multi-device testing? | ❌ No Firebase Test Lab config |
 
 ### The dark mode bug
 
-The app has a full dark color scheme defined in `Theme.kt`, but `MainActivity.kt` **hardcodes** `darkTheme = false`, so users never see it. This is likely a bug or leftover from development — it's a one-line fix.
+The app has a full dark color scheme defined in `Theme.kt`, but `MainActivity.kt` **hardcodes** `darkTheme = false` (in the `HatiV2Theme` call), so users never see it. This is likely a bug or leftover from development — it's a one-line fix.
 
 ### Verdict
 > Basic compatibility is fine (correct SDK levels, RTL support). The dark mode being disabled is a notable issue. No tablet/foldable support exists.
