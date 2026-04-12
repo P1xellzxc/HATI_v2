@@ -107,7 +107,7 @@ Why it works like that:
 - **Advanced Debt Calculation** — Automated split logic with "Settle Up" history and real-time dashboard stats.
 - **Unified UI Architecture** — Standardized components (`MangaCard`, `TransactionCard`, `MangaTextField`) ensured across all screens for a seamless experience.
 - **Performance Optimized** — Smooth scrolling and stable recompositions using efficient state management.
-- **100% Offline-First** — Local data persistence with Room. Your data stays on your device.
+- **100% Local-Only** — All data stays on your device with encrypted Room storage. No cloud, no accounts, no internet required.
 
 ---
 
@@ -145,7 +145,7 @@ app/src/main/java/com/hativ2/
 - [x] **Smart Calculation** — Implementation of `CalculateDebtsUseCase` and `Settle Up` logic.
 - [x] **Chart Enhancements** — Advanced spending analytics: category percentage breakdown, monthly average line, month-over-month trend indicator.
 - [x] **Data Export** — CSV and JSON export for manual backups with format selection and security warning.
-- [ ] **Cloud Sync** — Opt-in Supabase synchronization for multi-user party tracking.
+- [x] **Local-Only Architecture** — Fully offline, no cloud dependencies. Your data never leaves your device.
 
 ---
 
