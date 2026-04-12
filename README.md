@@ -109,7 +109,8 @@ Why it works like that:
 - **Advanced Debt Calculation** — Automated split logic with "Settle Up" history and real-time dashboard stats.
 - **Unified UI Architecture** — Standardized components (`MangaCard`, `TransactionCard`, `MangaTextField`) ensured across all screens for a seamless experience.
 - **Performance Optimized** — Smooth scrolling and stable recompositions using efficient state management.
-- **100% Local-Only** — All data stays on your device with encrypted Room storage. No cloud, no accounts, no internet required.
+- **Security-First** — Database encrypted at rest with SQLCipher (AES-256). Biometric/PIN authentication gate on launch. Passphrase stored via Android Keystore (hardware-backed TEE).
+- **100% Local-Only** — All data stays on your device. No cloud, no accounts, no internet required.
 
 ---
 
@@ -120,7 +121,8 @@ Why it works like that:
 | **Architecture** | Clean Architecture + MVVM + Usecases |
 | **UI Framework** | Jetpack Compose (Modern BOM) |
 | **DI** | Hilt (Dagger) |
-| **Storage** | Room (SQLite) |
+| **Storage** | Room + SQLCipher (AES-256 encrypted) |
+| **Security** | Android Keystore (AES-GCM), Biometric Auth (Fingerprint / PIN) |
 | **Concurrency** | Kotlin Coroutines & Flow |
 | **Testing** | JUnit 4, Kotlin-test, Hilt Testing |
 
@@ -133,8 +135,11 @@ The codebase is organized into three distinct layers to ensure testability and s
 ```text
 app/src/main/java/com/hativ2/
 ├── data/        # Room Database, DAOs, Repository Implementations
+│   └── security/    # DatabaseKeyManager (Android Keystore + AES-GCM passphrase)
 ├── domain/      # Pure business logic, Usecases, Repository Interfaces
-└── ui/          # Compose Screens, ViewModels, Theme, Shared Components
+├── ui/          # Compose Screens, ViewModels, Theme, Shared Components
+│   └── auth/        # BiometricAuthGate (launch-time authentication)
+└── util/        # InputValidator, CsvExportManager
 ```
 
 ---

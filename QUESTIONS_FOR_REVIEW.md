@@ -83,13 +83,9 @@ The latest stable Kotlin is **2.3.20**. Kept at 2.0.21 because:
 
 ---
 
-## 4. Compose BOM 2026.03.01 Compatibility
+## ✅ RESOLVED: Compose BOM 2026.03.01 Compatibility
 
-The Compose BOM was upgraded to `2026.03.01`. While Compose UI libraries are generally binary-compatible across Kotlin versions, there's a small risk that the newer Compose runtime has minimum Kotlin requirements.
-
-**Action needed:** After syncing this branch in Android Studio, run a clean build. If you see errors like `Incompatible Kotlin version`, you may need to either:
-- Downgrade Compose BOM to `2025.05.01` (known compatible with Kotlin 2.0.x)
-- Or upgrade Kotlin to 2.1.x+ (also requires KSP update)
+The Compose BOM was upgraded to `2026.03.01` and is confirmed compatible with Kotlin 2.0.21 (KSP 2.0.21-1.0.28). No `Incompatible Kotlin version` errors observed. No downgrade needed.
 
 ---
 
