@@ -97,7 +97,9 @@ Why it works like that:
 - The overall flow is understandable: Hub List → Dashboard Detail → Add Expense / History / Charts.
 - The design language is consistent across screens: thick borders, shadowed cards, accent colors, and high-contrast labels keep primary actions recognizable.
 - Validation is front-loaded on the expense form, which should reduce bad data entry during real-world use.
-- There is a navigation gap in the current implementation: `BalanceScreen` and `ExpenseListScreen` exist, but the main dashboard actions currently route to **History** and **Charts** from `MainActivity`, so those two dedicated routes are not part of the primary reachable flow right now.
+- Primary actions (History, Charts, Add, Member) are pinned in a persistent bottom action bar on the Dashboard Detail screen, keeping them reachable by thumb at all times.
+- Rich entrance animations (staggered grid items, fade+slide sections) give the app a polished, alive feel without adding latency.
+- Press animations on cards and buttons provide tactile feedback that confirms user actions.
 
 ---
 
