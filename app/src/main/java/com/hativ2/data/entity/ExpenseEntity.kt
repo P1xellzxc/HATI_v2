@@ -34,9 +34,11 @@ data class ExpenseEntity(
     val paidBy: String?, // Person ID
     val category: String, // "food", "transport", etc.
     val createdAt: Long,
-    
-    // Split details (simplified for now as JSON string or we can create a separate SplitEntity)
-    // For a robust implementation, a SplitEntity is better, but to match the rapid porting, 
-    // we might store splits as a JSON string or simplified structure if they are complex.
-    // However, the original schema had a `splits` table. Let's stick to the relational model.
+
+    // Optional user-provided note for the chapter/expense.
+    val note: String? = null,
+
+    // Absolute path under filesDir/receipts/ of a copied receipt image.
+    // Stored on disk inside the app sandbox; the DB only holds the path.
+    val receiptPath: String? = null,
 )

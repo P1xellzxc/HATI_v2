@@ -1,19 +1,18 @@
 package com.hativ2.ui.theme
 
 import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.Density
 import androidx.core.view.WindowCompat
 
 // ─────────────────────────────────────────────────────────────
@@ -90,19 +89,19 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun HatiV2Theme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // We prefer our custom colors over dynamic colors for the specific aesthetic
-    dynamicColor: Boolean = false, 
+    themeMode: ThemeMode = ThemeMode.System,
+    densityScale: Float = 1f,
+    textScale: Float = 1f,
+    // Back-compat: callers passing darkTheme directly still work.
+    darkTheme: Boolean = when (themeMode) {
+        ThemeMode.System -> isSystemInDarkTheme()
+        ThemeMode.Light  -> false
+        ThemeMode.Dark   -> true
+    },
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        // dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-        //     val context = LocalContext.current
-        //     if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        // }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
+    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -113,9 +112,24 @@ fun HatiV2Theme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
+    val baseDensity = LocalDensity.current
+    // Multiply only density — leave fontScale untouched so the Android
+    // system Settings → Display → Font size still works independently
+    // of the in-app text-size preference.
+    val scaledDensity = Density(
+        density = baseDensity.density * densityScale,
+        fontScale = baseDensity.fontScale
     )
+
+    CompositionLocalProvider(
+        LocalDensity provides scaledDensity,
+        LocalDensityScale provides densityScale,
+        LocalTextScale provides textScale
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography.scaledBy(textScale),
+            content = content
+        )
+    }
 }

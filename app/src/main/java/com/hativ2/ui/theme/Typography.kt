@@ -125,3 +125,31 @@ val Typography = Typography(
         letterSpacing = 0.5.sp            // increased for uppercase label use
     )
 )
+
+// Multiplies every fontSize and lineHeight in the Typography by [factor].
+// This is the in-app TextSizePreset axis — applied on top of the system
+// font scale (which Compose handles automatically via .sp units).
+fun Typography.scaledBy(factor: Float): Typography {
+    if (factor == 1f) return this
+    fun TextStyle.scale(): TextStyle = copy(
+        fontSize = fontSize * factor,
+        lineHeight = lineHeight * factor
+    )
+    return Typography(
+        displayLarge   = displayLarge.scale(),
+        displayMedium  = displayMedium.scale(),
+        displaySmall   = displaySmall.scale(),
+        headlineLarge  = headlineLarge.scale(),
+        headlineMedium = headlineMedium.scale(),
+        headlineSmall  = headlineSmall.scale(),
+        titleLarge     = titleLarge.scale(),
+        titleMedium    = titleMedium.scale(),
+        titleSmall     = titleSmall.scale(),
+        bodyLarge      = bodyLarge.scale(),
+        bodyMedium     = bodyMedium.scale(),
+        bodySmall      = bodySmall.scale(),
+        labelLarge     = labelLarge.scale(),
+        labelMedium    = labelMedium.scale(),
+        labelSmall     = labelSmall.scale()
+    )
+}

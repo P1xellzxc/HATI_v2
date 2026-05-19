@@ -1,3 +1,142 @@
 <resources>
     <string name="app_name">HATI v2</string>
+
+    <!-- ── Navigation ──────────────────────────────────────────── -->
+    <string name="nav_hub">Hub</string>
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_history">History</string>
+    <string name="nav_charts">Charts</string>
+
+    <!-- ── Concept words (narrative terminology) ───────────────── -->
+    <string name="concept_volume">Volume</string>
+    <string name="concept_volumes">Volumes</string>
+    <string name="concept_chapter">Chapter</string>
+    <string name="concept_chapters">Chapters</string>
+    <string name="concept_arc">Arc</string>
+    <string name="concept_character">Character</string>
+
+    <!-- ── Common ──────────────────────────────────────────────── -->
+    <string name="cta_back">Back</string>
+    <string name="cta_cancel">Cancel</string>
+    <string name="cta_save">Save</string>
+    <string name="cta_delete">Delete</string>
+    <string name="cta_add">Add</string>
+    <string name="cta_update">Update</string>
+    <string name="cta_help">Help &amp; Settings</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_export">Export</string>
+    <string name="action_view_all">View All &gt;</string>
+
+    <!-- ── Hub (Story Volumes) ─────────────────────────────────── -->
+    <string name="hub_headline">YOUR STORY VOLUMES</string>
+    <string name="hub_subtitle">Each volume contains a separate expense arc. Perfect for trips, projects, or events.</string>
+    <string name="cta_new_volume">+ NEW VOLUME</string>
+    <string name="cta_new_volume_short">New Volume</string>
+    <string name="hub_new_volume_helper">Start a new arc</string>
+    <string name="hub_empty_title">No volumes yet</string>
+    <string name="hub_empty_subtitle">Tap + NEW VOLUME to start your story.</string>
+    <string name="volume_total_label">Total</string>
+    <string name="volume_chapters_short">%1$d ch.</string>
+    <string name="volume_created">Volume \'%1$s\' created!</string>
+    <string name="volume_deleted">%1$s deleted</string>
+    <string name="volume_delete_title">Delete Volume?</string>
+    <string name="volume_delete_body">Are you sure you want to delete \'%1$s\'? This action cannot be undone.</string>
+
+    <!-- ── Dashboard ───────────────────────────────────────────── -->
+    <string name="dash_arc_suffix">%1$s Arc</string>
+    <string name="dash_balance_label">Your Balance in \"%1$s\"</string>
+    <string name="dash_total_spent">Total spent: ₱%1$s</string>
+    <string name="dash_action_history">History</string>
+    <string name="dash_action_charts">Charts</string>
+    <string name="dash_action_member">Member</string>
+    <string name="dash_section_spending_by_member">SPENDING BY MEMBER</string>
+    <string name="dash_section_owed_to_you">OWED TO YOU</string>
+    <string name="dash_section_you_owe">YOU OWE</string>
+    <string name="dash_section_recent_chapters">RECENT CHAPTERS</string>
+    <string name="dash_no_one_owes_you">No one owes you</string>
+    <string name="dash_you_dont_owe">You don\'t owe anyone</string>
+    <string name="dash_no_spending_yet">No spending data yet</string>
+    <string name="dash_no_chapters_yet">No chapters written yet</string>
+    <string name="dash_no_chapters_yet_sub">Tap + to add your first chapter.</string>
+    <string name="dash_volume_not_found">Volume not found or loading…</string>
+    <string name="dash_cta_settle_up">SETTLE UP</string>
+
+    <!-- ── New Chapter form ────────────────────────────────────── -->
+    <string name="chapter_form_title_new">NEW CHAPTER</string>
+    <string name="chapter_form_title_edit">EDIT CHAPTER</string>
+    <string name="chapter_form_subtitle">in %1$s</string>
+    <string name="chapter_section_expense_details">EXPENSE DETAILS</string>
+    <string name="chapter_section_split_between">SPLIT BETWEEN</string>
+    <string name="chapter_field_description">Description</string>
+    <string name="chapter_field_description_hint">What was this expense for?</string>
+    <string name="chapter_field_amount">Amount</string>
+    <string name="chapter_field_amount_hint">0.00</string>
+    <string name="chapter_field_paid_by">Paid by</string>
+    <string name="chapter_field_paid_by_you">You</string>
+    <string name="chapter_field_category">Category</string>
+    <string name="chapter_field_note">Note (optional)</string>
+    <string name="chapter_field_note_hint">Add a note…</string>
+    <string name="chapter_field_receipt">Receipt (optional)</string>
+    <string name="chapter_field_add_photo">📎 Add Photo</string>
+    <string name="chapter_field_receipt_attached">📎 Receipt attached — tap to replace</string>
+    <string name="chapter_field_receipt_remove">Remove</string>
+    <string name="chapter_split_equal">Equal</string>
+    <string name="chapter_split_exact">Exact</string>
+    <string name="chapter_split_percent">%</string>
+    <string name="chapter_split_shares">Shares</string>
+    <string name="chapter_cta_add">ADD EXPENSE</string>
+    <string name="chapter_cta_update">UPDATE</string>
+    <string name="chapter_select_all">Select All</string>
+    <string name="chapter_deselect_all">Deselect All</string>
+    <string name="chapter_preview_each_pays">Each person pays: ₱%1$s</string>
+    <string name="chapter_preview_each_share">Each share = ₱%1$s</string>
+    <string name="chapter_validation_total_percent">Total percentage must be 100%% (Current: %1$s%%)</string>
+    <string name="chapter_validation_total_exact">Exact amounts must equal ₱%1$s (Missing: ₱%2$s)</string>
+    <string name="chapter_validation_description">Please enter a description</string>
+    <string name="chapter_validation_amount">Amount must be greater than 0</string>
+    <string name="chapter_validation_split">Select at least one person to split with</string>
+    <string name="chapter_delete_title">Delete Chapter?</string>
+    <string name="chapter_delete_body">Are you sure you want to delete this chapter? This cannot be undone.</string>
+
+    <!-- ── Category labels ─────────────────────────────────────── -->
+    <string name="category_food">Food &amp; Drinks</string>
+    <string name="category_transport">Transport</string>
+    <string name="category_entertainment">Entertainment</string>
+    <string name="category_utilities">Utilities</string>
+    <string name="category_shopping">Shopping</string>
+    <string name="category_other">Other</string>
+
+    <!-- ── Charts (Arc Statistics) ─────────────────────────────── -->
+    <string name="charts_title">ARC STATISTICS</string>
+    <string name="charts_title_all">ALL VOLUMES</string>
+    <string name="charts_total_spending">Total Arc Spending</string>
+    <string name="charts_category_breakdown">CATEGORY BREAKDOWN</string>
+    <string name="charts_monthly_trend">MONTHLY TREND</string>
+    <string name="charts_offset_computation">OFFSET COMPUTATION</string>
+    <string name="charts_range_last_6_months">Last 6 Months</string>
+    <string name="charts_no_chapters_to_display">No chapters to display</string>
+    <string name="charts_no_monthly_data">No monthly data yet</string>
+    <string name="charts_change_more">more than last month</string>
+    <string name="charts_change_less">less than last month</string>
+    <string name="charts_avg_label">Avg: ₱%1$s</string>
+    <string name="charts_top_category">Top: %1$s (%2$s%%)</string>
+
+    <!-- ── Settings ────────────────────────────────────────────── -->
+    <string name="settings_title">SETTINGS</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_density">Display Density</string>
+    <string name="settings_density_helper">Scales icons, padding and card sizes. Independent of system font size.</string>
+    <string name="settings_density_compact">Compact</string>
+    <string name="settings_density_standard">Standard</string>
+    <string name="settings_density_comfortable">Comfortable</string>
+    <string name="settings_text_size">Text Size</string>
+    <string name="settings_text_size_helper">Adjusts in-app text. Stacks on top of the system font scale (Settings → Display → Font size).</string>
+    <string name="settings_text_size_small">Small</string>
+    <string name="settings_text_size_medium">Medium</string>
+    <string name="settings_text_size_large">Large</string>
+    <string name="settings_about">About</string>
+    <string name="settings_about_body">HATI² — Offline-first expense splitter. All data lives encrypted on your device.</string>
 </resources>

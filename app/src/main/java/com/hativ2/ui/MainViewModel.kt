@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.MutableStateFlow
 import com.hativ2.domain.usecase.ExportDashboardCsvUseCase
 import com.hativ2.domain.usecase.ExportDashboardJsonUseCase
 import android.net.Uri
@@ -40,19 +39,24 @@ open class MainViewModel @javax.inject.Inject constructor(
     private val calculateDebtsUseCase: CalculateDebtsUseCase,
     private val updateExpenseUseCase: com.hativ2.domain.usecase.UpdateExpenseUseCase,
     private val exportDashboardCsvUseCase: ExportDashboardCsvUseCase,
-    private val exportDashboardJsonUseCase: ExportDashboardJsonUseCase
+    private val exportDashboardJsonUseCase: ExportDashboardJsonUseCase,
+    private val userPreferencesRepository: com.hativ2.data.prefs.UserPreferencesRepository
 ) : AndroidViewModel(application) {
-    
-    // Dark mode state
-    private val _isDarkMode = MutableStateFlow<Boolean?>(null) // null = follow system
-    val isDarkMode: StateFlow<Boolean?> = _isDarkMode
-    
-    fun toggleDarkMode() {
-        _isDarkMode.value = when (_isDarkMode.value) {
-            null -> true   // system -> dark
-            true -> false  // dark -> light
-            false -> null  // light -> system
-        }
+
+    // User preferences (theme, density, text size) — persisted in DataStore.
+    val prefs: StateFlow<com.hativ2.data.prefs.UserPrefs> = userPreferencesRepository.flow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, com.hativ2.data.prefs.UserPrefs())
+
+    fun setThemeMode(mode: com.hativ2.ui.theme.ThemeMode) {
+        viewModelScope.launch { userPreferencesRepository.setThemeMode(mode) }
+    }
+
+    fun setDensity(density: com.hativ2.ui.theme.DensityPreset) {
+        viewModelScope.launch { userPreferencesRepository.setDensity(density) }
+    }
+
+    fun setTextSize(size: com.hativ2.ui.theme.TextSizePreset) {
+        viewModelScope.launch { userPreferencesRepository.setTextSize(size) }
     }
 
     val dashboards: StateFlow<List<DashboardEntity>> = dashboardDao.getAllDashboards()
@@ -150,7 +154,9 @@ open class MainViewModel @javax.inject.Inject constructor(
         amount: Double,
         paidBy: String,
         category: String,
-        splitWith: List<String> 
+        splitWith: List<String>,
+        note: String? = null,
+        receiptPath: String? = null,
     ) {
         viewModelScope.launch {
             val descResult = com.hativ2.util.InputValidator.validateExpenseDescription(description)
@@ -164,7 +170,9 @@ open class MainViewModel @javax.inject.Inject constructor(
                 amount = amountResult.amount,
                 paidBy = paidBy,
                 category = category,
-                splitWith = splitWith
+                splitWith = splitWith,
+                note = note,
+                receiptPath = receiptPath
             )
         }
     }
@@ -232,7 +240,9 @@ open class MainViewModel @javax.inject.Inject constructor(
         amount: Double,
         paidBy: String,
         category: String,
-        splitWith: List<String>
+        splitWith: List<String>,
+        note: String? = null,
+        receiptPath: String? = null,
     ) {
         viewModelScope.launch {
             val descResult = com.hativ2.util.InputValidator.validateExpenseDescription(description)
@@ -252,7 +262,9 @@ open class MainViewModel @javax.inject.Inject constructor(
                 paidBy = paidBy,
                 category = category,
                 splitWith = splitWith,
-                originalCreatedAt = createdAt
+                originalCreatedAt = createdAt,
+                note = note,
+                receiptPath = receiptPath
             )
         }
     }

@@ -1,8 +1,21 @@
 package com.hativ2.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,93 +25,74 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.ui.draw.scale
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.hativ2.R
 import com.hativ2.ui.MainViewModel
-import com.hativ2.ui.components.MangaButton
-import com.hativ2.ui.components.MangaCard
-import com.hativ2.ui.components.MangaTextField
-import com.hativ2.ui.components.SettleUpDialog
-import com.hativ2.ui.theme.MangaBlack
-import com.hativ2.ui.theme.NotionBlue
-import com.hativ2.ui.theme.NotionGreen
-import com.hativ2.ui.theme.NotionRed
-import com.hativ2.ui.theme.NotionWhite
-import com.hativ2.ui.theme.NotionYellow
-import com.hativ2.ui.theme.NotionMuted
-import com.hativ2.ui.theme.NotionDivider
+import com.hativ2.ui.TransactionDisplayItem
 import com.hativ2.ui.components.EditDashboardDialog
 import com.hativ2.ui.components.ExportWarningDialog
-import com.hativ2.data.entity.ExpenseEntity
-import com.hativ2.ui.TransactionDisplayItem
-import com.hativ2.ui.components.MangaBackButton
-import com.hativ2.ui.components.MangaCornerRadius
 import com.hativ2.ui.components.MangaBorderWidth
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.runtime.mutableDoubleStateOf
+import com.hativ2.ui.components.MangaButton
+import com.hativ2.ui.components.MangaCard
+import com.hativ2.ui.components.MangaCornerRadius
+import com.hativ2.ui.components.MangaIconButton
+import com.hativ2.ui.components.MangaTextField
+import com.hativ2.ui.components.MangaTopBar
+import com.hativ2.ui.components.SettleUpDialog
+import com.hativ2.ui.components.TransactionCard
+import com.hativ2.ui.theme.AccentDebit
+import com.hativ2.ui.theme.AccentPositive
+import com.hativ2.ui.theme.MangaBlack
+import com.hativ2.ui.theme.NotionBlue
+import com.hativ2.ui.theme.NotionDivider
+import com.hativ2.ui.theme.NotionGreen
+import com.hativ2.ui.theme.NotionMuted
+import com.hativ2.ui.theme.NotionRed
+import com.hativ2.ui.theme.NotionYellow
+import com.hativ2.ui.theme.SurfaceHero
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardDetailScreen(
     dashboardId: String,
@@ -107,42 +101,31 @@ fun DashboardDetailScreen(
     onAddExpenseClick: (String) -> Unit,
     onBalanceClick: (String) -> Unit,
     onViewExpensesClick: (String) -> Unit,
-    onExpenseClick: (String) -> Unit
+    onExpenseClick: (String) -> Unit,
 ) {
     val dashboards by viewModel.dashboards.collectAsState()
     val dashboard = dashboards.find { it.id == dashboardId }
-    
-    // Remember flows to avoid re-creating them on every recomposition
+
     val debtSummaryFlow = remember(dashboardId) { viewModel.getDebtSummary(dashboardId) }
     val debtSummary by debtSummaryFlow.collectAsState()
 
-    val context = LocalContext.current
-    // CSV export launcher
-    val csvExportLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("text/csv")
-    ) { uri ->
-        if (uri != null) {
-            viewModel.exportCsv(dashboardId, uri, context)
-        }
-    }
-    // JSON export launcher
-    val jsonExportLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/json")
-    ) { uri ->
-        if (uri != null) {
-            viewModel.exportJson(dashboardId, uri, context)
-        }
-    }
-    
     val transactionsFlow = remember(dashboardId) { viewModel.getTransactions(dashboardId) }
     val transactions by transactionsFlow.collectAsState()
 
     val expensesFlow = remember(dashboardId) { viewModel.getExpenses(dashboardId) }
     val expenses by expensesFlow.collectAsState()
-    
-    // We need people to map creator IDs to names if needed, but for now we just show simplistic info
+
     val peopleFlow = remember(dashboardId) { viewModel.getPeople(dashboardId) }
     val people by peopleFlow.collectAsState()
+
+    val context = LocalContext.current
+
+    val csvExportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri -> if (uri != null) viewModel.exportCsv(dashboardId, uri, context) }
+    val jsonExportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri -> if (uri != null) viewModel.exportJson(dashboardId, uri, context) }
 
     var showAddPersonDialog by remember { mutableStateOf(false) }
     var showEditDashboardDialog by remember { mutableStateOf(false) }
@@ -151,11 +134,10 @@ fun DashboardDetailScreen(
     var settleUpFromId by remember { mutableStateOf<String?>(null) }
     var settleUpToId by remember { mutableStateOf<String?>(null) }
     var settleUpAmount by remember { mutableStateOf(0.0) }
-    
+
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    // Pre-compute name lookup map for O(1) access
     val nameMap = remember(people) {
         buildMap {
             put("user-current", "You")
@@ -165,150 +147,126 @@ fun DashboardDetailScreen(
     val dateFormat = remember { java.text.SimpleDateFormat("MMM dd", java.util.Locale.getDefault()) }
 
     if (dashboard == null) {
-        // Handle loading or deleted state
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Volume not found or loading...")
+            Text(stringResource(R.string.dash_volume_not_found))
         }
         return
     }
 
-        if (showExportWarning) {
-            ExportWarningDialog(
-                onConfirm = { format ->
-                    showExportWarning = false
-                    val filename = "dashboard_${dashboard.title}_export.${format.extension}"
-                    when (format) {
-                        com.hativ2.ui.components.ExportFormat.CSV -> csvExportLauncher.launch(filename)
-                        com.hativ2.ui.components.ExportFormat.JSON -> jsonExportLauncher.launch(filename)
-                    }
-                },
-                onDismiss = { showExportWarning = false }
-            )
-        }
-
-        if (showEditDashboardDialog) {
-            EditDashboardDialog(
-                title = dashboard.title,
-                type = dashboard.dashboardType,
-                color = dashboard.themeColor,
-                onDismiss = { showEditDashboardDialog = false },
-                onSave = { newTitle, newType, newColor ->
-                    viewModel.updateDashboard(dashboardId, newTitle, newType, newColor)
-                    showEditDashboardDialog = false
+    if (showExportWarning) {
+        ExportWarningDialog(
+            onConfirm = { format ->
+                showExportWarning = false
+                val filename = "dashboard_${dashboard.title}_export.${format.extension}"
+                when (format) {
+                    com.hativ2.ui.components.ExportFormat.CSV  -> csvExportLauncher.launch(filename)
+                    com.hativ2.ui.components.ExportFormat.JSON -> jsonExportLauncher.launch(filename)
                 }
-            )
-        }
-
-        SettleUpDialog(
-            isOpen = showSettleUpDialog,
-            onDismiss = { showSettleUpDialog = false },
-            onSettle = { fromId, toId, amount ->
-                viewModel.settleUp(dashboardId, fromId, toId, amount)
-                scope.launch { snackbarHostState.showSnackbar("Settled up ₱${String.format("%,.2f", amount)}!") }
             },
-            initialFromId = settleUpFromId,
-            initialToId = settleUpToId,
-            initialAmount = settleUpAmount,
-            allPeople = people
+            onDismiss = { showExportWarning = false }
         )
+    }
 
-        if (showAddPersonDialog) {
-            AddPersonDialog(
-                onDismiss = { showAddPersonDialog = false },
-                onAdd = { name ->
-                    viewModel.addPerson(dashboardId, name)
-                    showAddPersonDialog = false
-                    scope.launch { snackbarHostState.showSnackbar("Added $name to the party!") }
+    if (showEditDashboardDialog) {
+        EditDashboardDialog(
+            title = dashboard.title,
+            type = dashboard.dashboardType,
+            color = dashboard.themeColor,
+            onDismiss = { showEditDashboardDialog = false },
+            onSave = { newTitle, newType, newColor ->
+                viewModel.updateDashboard(dashboardId, newTitle, newType, newColor)
+                showEditDashboardDialog = false
+            }
+        )
+    }
+
+    SettleUpDialog(
+        isOpen = showSettleUpDialog,
+        onDismiss = { showSettleUpDialog = false },
+        onSettle = { fromId, toId, amount ->
+            viewModel.settleUp(dashboardId, fromId, toId, amount)
+            scope.launch { snackbarHostState.showSnackbar("Settled up ₱${"%,.2f".format(amount)}!") }
+        },
+        initialFromId = settleUpFromId,
+        initialToId = settleUpToId,
+        initialAmount = settleUpAmount,
+        allPeople = people
+    )
+
+    if (showAddPersonDialog) {
+        AddPersonDialog(
+            onDismiss = { showAddPersonDialog = false },
+            onAdd = { name ->
+                viewModel.addPerson(dashboardId, name)
+                showAddPersonDialog = false
+                scope.launch { snackbarHostState.showSnackbar("Added $name to the party!") }
+            }
+        )
+    }
+
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            MangaTopBar(
+                title = dashboard.title.uppercase(),
+                subtitle = stringResource(
+                    R.string.dash_arc_suffix,
+                    dashboard.dashboardType.replaceFirstChar { it.uppercase() }
+                ),
+                left = {
+                    MangaIconButton(
+                        icon = Icons.AutoMirrored.Filled.ArrowBack,
+                        onClick = onBackClick,
+                        contentDescription = stringResource(R.string.cta_back)
+                    )
+                },
+                right = {
+                    MangaIconButton(
+                        icon = Icons.Default.Share,
+                        onClick = { showExportWarning = true },
+                        contentDescription = stringResource(R.string.action_export)
+                    )
                 }
             )
         }
-
-        Scaffold(
-            containerColor = MaterialTheme.colorScheme.background,
-            snackbarHost = { SnackbarHost(snackbarHostState) },
-            topBar = {
-                // Custom Top Bar to match mockup
-                Column(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        // Left: Back Button
-                        MangaBackButton(onClick = onBackClick)
-
-                        // Center: Title and Subtitle
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    getIconForType(dashboard.dashboardType), 
-                                    contentDescription = null, 
-                                    tint = NotionBlue,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = dashboard.title.uppercase(),
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Black,
-                                    color = MaterialTheme.colorScheme.onBackground
-                                )
-                            }
-                            Text(
-                                text = "${dashboard.dashboardType} Arc",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onBackground.copy(alpha=0.6f)
-                            )
-                        }
-
-                        // Right: Actions (Download & Add)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                             // Download Button
-                             Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .border(2.dp, MaterialTheme.colorScheme.onBackground, RoundedCornerShape(4.dp))
-                                    .clickable { 
-                                        showExportWarning = true
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Share, // Using Share icon as closest proxy for Export/Download if Download not avail
-                                    contentDescription = "Export CSV", 
-                                    tint = MaterialTheme.colorScheme.onBackground
-                                )
-                            }
-                            
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            // + ADD Button Removed (Moved to FAB)
-                        }
-                    }
-                    // Divider
-                    Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(MaterialTheme.colorScheme.onBackground))
-                }
-            },
-        bottomBar = {
-            BottomActionBar(
-                onAddExpense = { onAddExpenseClick(dashboardId) },
-                onViewHistory = { onViewExpensesClick(dashboardId) },
-                onViewCharts = { onBalanceClick(dashboardId) },
-                onAddMember = { showAddPersonDialog = true }
-            )
-        }
-        ) { paddingValues ->
-
+    ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
+                .padding(paddingValues)
+                .widthIn(max = 600.dp),
             contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Balance Overview Card
+            // ── Quick action cards row ───────────────────────
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    QuickActionCard(
+                        modifier = Modifier.weight(1f),
+                        title = stringResource(R.string.dash_action_history),
+                        icon = Icons.Default.List,
+                        onClick = { onViewExpensesClick(dashboardId) }
+                    )
+                    QuickActionCard(
+                        modifier = Modifier.weight(1f),
+                        title = stringResource(R.string.dash_action_charts),
+                        icon = Icons.Default.DateRange,
+                        onClick = { onBalanceClick(dashboardId) }
+                    )
+                    QuickActionCard(
+                        modifier = Modifier.weight(1f),
+                        title = stringResource(R.string.dash_action_member),
+                        icon = Icons.Default.Person,
+                        onClick = { showAddPersonDialog = true }
+                    )
+                }
+            }
+
+            // ── Balance Overview ─────────────────────────────
             item {
                 var visible by remember { mutableStateOf(false) }
                 LaunchedEffect(Unit) { visible = true }
@@ -327,18 +285,6 @@ fun DashboardDetailScreen(
                 }
             }
 
-            // Empty State
-            if (expenses.isEmpty()) {
-                item {
-                    com.hativ2.ui.components.MangaEmptyState(
-                        message = "No chapters written yet",
-                        subMessage = "Start the story by adding an expense!",
-                        modifier = Modifier.padding(top = 32.dp)
-                    )
-                }
-            }
-            
-            // Spending By Member
             if (expenses.isNotEmpty()) {
                 item {
                     var visible by remember { mutableStateOf(false) }
@@ -357,49 +303,53 @@ fun DashboardDetailScreen(
                         )
                     }
                 }
+            } else {
+                item {
+                    com.hativ2.ui.components.MangaEmptyState(
+                        message = stringResource(R.string.dash_no_chapters_yet),
+                        subMessage = stringResource(R.string.dash_no_chapters_yet_sub),
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+                }
             }
 
-            // Owed To You & You Owe
+            // ── OWED TO YOU / YOU OWE row ────────────────────
             item {
-                // Calculate dynamic names for debts
-                // Calculate detailed debts
                 val owedToYouDetails = debtSummary.transactions
                     .filter { it.toId == "user-current" }
-                    .map { tx -> 
-                        val name = nameMap[tx.fromId]?.split(" ")?.firstOrNull() ?: "Unknown"
+                    .map { tx ->
+                        val name = nameMap[tx.fromId]?.split(" ")?.firstOrNull() ?: "—"
+                        name to tx.amount
+                    }
+                val youOweDetails = debtSummary.transactions
+                    .filter { it.fromId == "user-current" }
+                    .map { tx ->
+                        val name = nameMap[tx.toId]?.split(" ")?.firstOrNull() ?: "—"
                         name to tx.amount
                     }
 
-                val youOweDetails = debtSummary.transactions
-                    .filter { it.fromId == "user-current" }
-                    .map { tx -> 
-                         val name = nameMap[tx.toId]?.split(" ")?.firstOrNull() ?: "Unknown"
-                         name to tx.amount
-                    }
-
                 Row(
-                   modifier = Modifier.fillMaxWidth(),
-                   horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Owed To You
                     SummaryCard(
                         modifier = Modifier.weight(1f),
-                        title = "OWED TO YOU",
+                        title = stringResource(R.string.dash_section_owed_to_you),
                         amount = debtSummary.totalOwedToYou,
                         details = owedToYouDetails,
-                        headerColor = NotionGreen.copy(alpha=0.15f),
-                        icon = null, // Icons.Default.ArrowBack (rotated)
+                        headerColor = AccentPositive.copy(alpha = 0.35f),
+                        emptyText = stringResource(R.string.dash_no_one_owes_you),
+                        amountColor = AccentPositive,
+                        arrow = "↙",
                         onSettleUpClick = if (debtSummary.totalOwedToYou > 0) {
                             {
-                                val owedToYouList = debtSummary.transactions.filter { it.toId == "user-current" }
-                                if (owedToYouList.size == 1) {
-                                    val first = owedToYouList.first()
-                                    settleUpFromId = first.fromId
+                                val owed = debtSummary.transactions.filter { it.toId == "user-current" }
+                                if (owed.size == 1) {
+                                    settleUpFromId = owed.first().fromId
                                     settleUpToId = "user-current"
-                                    settleUpAmount = first.amount
+                                    settleUpAmount = owed.first().amount
                                 } else {
-                                    // Multiple people owe you, default to generic or let user pick payer
-                                    settleUpFromId = null 
+                                    settleUpFromId = null
                                     settleUpToId = "user-current"
                                     settleUpAmount = 0.0
                                 }
@@ -407,22 +357,22 @@ fun DashboardDetailScreen(
                             }
                         } else null
                     )
-                    // You Owe
                     SummaryCard(
                         modifier = Modifier.weight(1f),
-                        title = "YOU OWE",
+                        title = stringResource(R.string.dash_section_you_owe),
                         amount = debtSummary.totalYouOwe,
                         details = youOweDetails,
-                        headerColor = NotionRed.copy(alpha=0.15f),
+                        headerColor = AccentDebit.copy(alpha = 0.45f),
+                        emptyText = stringResource(R.string.dash_you_dont_owe),
+                        amountColor = NotionRed,
+                        arrow = "↗",
                         onSettleUpClick = if (debtSummary.totalYouOwe > 0) {
                             {
-                                val youOweList = debtSummary.youOwe
-                                if (youOweList.size == 1) {
-                                    val first = youOweList.first()
-                                    settleUpToId = first.toId
-                                    settleUpAmount = first.amount
+                                val youOwe = debtSummary.youOwe
+                                if (youOwe.size == 1) {
+                                    settleUpToId = youOwe.first().toId
+                                    settleUpAmount = youOwe.first().amount
                                 } else {
-                                    // Multiple people or generic settle up
                                     settleUpToId = null
                                     settleUpAmount = 0.0
                                 }
@@ -434,7 +384,7 @@ fun DashboardDetailScreen(
                 }
             }
 
-            // Recent Chapters (Transactions)
+            // ── RECENT CHAPTERS header ───────────────────────
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -442,27 +392,29 @@ fun DashboardDetailScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                         Icon(Icons.Default.List, contentDescription = null, modifier = Modifier.size(16.dp))
-                         Spacer(modifier = Modifier.width(8.dp))
-                         Text(
-                            "RECENT CHAPTERS",
+                        Icon(Icons.Default.List, null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            stringResource(R.string.dash_section_recent_chapters),
                             style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Black
                         )
                     }
-                    
                     if (expenses.isNotEmpty()) {
-                         Box(
+                        Box(
                             modifier = Modifier
-                                .border(1.dp, MangaBlack, RoundedCornerShape(2.dp))
+                                .border(MangaBorderWidth, MangaBlack, RoundedCornerShape(MangaCornerRadius))
                                 .clickable { onViewExpensesClick(dashboardId) }
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
                         ) {
-                            Text("View All >", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                            Text(
+                                stringResource(R.string.action_view_all),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
             }
 
             if (transactions.isEmpty()) {
@@ -483,46 +435,104 @@ fun DashboardDetailScreen(
                     }
                 }
             } else {
-                items(
-                    items = transactions.take(5),
-                    key = { it.id }
-                ) { item ->
-                     when(item) {
-                         is TransactionDisplayItem.ExpenseItem -> {
-                             val expense = item.expense
-                             val isPayer = expense.paidBy == "user-current"
-                             val payerName = nameMap[expense.paidBy] ?: "Unknown"
-                             
-                             com.hativ2.ui.components.TransactionCard(
+                items(transactions.take(5), key = { it.id }) { item ->
+                    when (item) {
+                        is TransactionDisplayItem.ExpenseItem -> {
+                            val expense = item.expense
+                            val isPayer = expense.paidBy == "user-current"
+                            val payerName = nameMap[expense.paidBy] ?: "—"
+                            TransactionCard(
                                 title = expense.description,
                                 subtitle = "paid by $payerName",
-                                amount = "₱${String.format("%,.2f", expense.amount)}",
+                                amount = "₱${"%,.2f".format(expense.amount)}",
                                 amountColor = if (isPayer) NotionGreen else MangaBlack,
                                 date = dateFormat.format(java.util.Date(expense.createdAt)),
                                 avatarText = payerName,
                                 avatarColor = if (isPayer) "default" else "white",
                                 onClick = { onExpenseClick(expense.id) }
                             )
-                         }
-                         is TransactionDisplayItem.SettlementItem -> {
-                             val settlement = item.settlement
-                             val fromName = nameMap[settlement.fromId] ?: "Unknown"
-                             val toName = nameMap[settlement.toId] ?: "Unknown"
-                             
-                             com.hativ2.ui.components.TransactionCard(
+                        }
+                        is TransactionDisplayItem.SettlementItem -> {
+                            val settlement = item.settlement
+                            val fromName = nameMap[settlement.fromId] ?: "—"
+                            val toName = nameMap[settlement.toId] ?: "—"
+                            TransactionCard(
                                 title = "Settlement",
-                                subtitle = "$fromName -> $toName",
-                                amount = "₱${String.format("%,.2f", settlement.amount)}",
+                                subtitle = "$fromName → $toName",
+                                amount = "₱${"%,.2f".format(settlement.amount)}",
                                 amountColor = NotionBlue,
-                                date = java.text.SimpleDateFormat("MMM dd", java.util.Locale.getDefault()).format(java.util.Date(settlement.createdAt)),
+                                date = dateFormat.format(java.util.Date(settlement.createdAt)),
                                 icon = { Icon(Icons.Default.Check, null, tint = MangaBlack) },
                                 onClick = { }
                             )
-                         }
-                     }
-                     Spacer(modifier = Modifier.height(8.dp))
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
+
+            item { Spacer(modifier = Modifier.height(72.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun QuickActionCard(
+    modifier: Modifier = Modifier,
+    title: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val shadow by animateDpAsState(
+        targetValue = if (isPressed) 0.dp else 4.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "qaShadow"
+    )
+    val pressOffset by animateDpAsState(
+        targetValue = if (isPressed) 4.dp else 0.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "qaPress"
+    )
+    val scaleF by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "qaScale"
+    )
+
+    Box(
+        modifier = modifier
+            .aspectRatio(1.1f)
+            .scale(scaleF)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
+    ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .offset(x = shadow, y = shadow)
+                .background(MangaBlack, RoundedCornerShape(MangaCornerRadius))
+        )
+        Column(
+            modifier = Modifier
+                .matchParentSize()
+                .offset(x = pressOffset, y = pressOffset)
+                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(MangaCornerRadius))
+                .border(MangaBorderWidth, MangaBlack, RoundedCornerShape(MangaCornerRadius)),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(icon, null, modifier = Modifier.size(28.dp))
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                title,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
@@ -531,58 +541,47 @@ fun DashboardDetailScreen(
 fun BalanceOverviewCard(
     title: String,
     balance: Double,
-    totalSpent: Double
+    totalSpent: Double,
 ) {
-    Box(modifier = Modifier.fillMaxWidth()) {
-        // Hard Shadow
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .offset(x = 6.dp, y = 6.dp)
-                .background(MangaBlack)
-        )
-        
-        // Card Content
-        Box(
+    MangaCard {
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(NotionWhite)
-                .border(MangaBorderWidth, MangaBlack)
-                .padding(24.dp)
+                .padding(vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = stringResource(R.string.dash_balance_label, title),
+                style = MaterialTheme.typography.bodyMedium,
+                color = NotionMuted
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Hero pill — cream tint (warm focal), per cinematography rule
+            // of one focal point per screen.
+            Box(
+                modifier = Modifier
+                    .background(SurfaceHero, RoundedCornerShape(MangaCornerRadius))
+                    .border(MangaBorderWidth, MangaBlack, RoundedCornerShape(MangaCornerRadius))
+                    .padding(horizontal = 28.dp, vertical = 12.dp)
+            ) {
+                val sign = if (balance >= 0) "+" else ""
                 Text(
-                    text = "Your Balance in \"${title.uppercase()}\"",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = NotionMuted
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Balance Box
-                Box(
-                    modifier = Modifier
-                        .background(NotionGreen.copy(alpha = 0.1f)) // Light Green
-                        .border(MangaBorderWidth, MangaBlack)
-                        .padding(horizontal = 32.dp, vertical = 12.dp)
-                ) {
-                    Text(
-                        text = "₱${String.format("%,.2f", balance)}",
-                        style = MaterialTheme.typography.displayMedium, // Large text
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 2.sp,
-                        color = MangaBlack
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Text(
-                    text = "Total spent: ₱${String.format("%.2f", totalSpent)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = NotionMuted
+                    text = "$sign₱${"%,.2f".format(balance)}",
+                    style = MaterialTheme.typography.displaySmall,
+                    fontWeight = FontWeight.Black,
+                    color = MangaBlack,
+                    textAlign = TextAlign.Center
                 )
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = stringResource(R.string.dash_total_spent, "%,.2f".format(totalSpent)),
+                style = MaterialTheme.typography.bodySmall,
+                color = NotionMuted
+            )
         }
     }
 }
@@ -591,109 +590,74 @@ fun BalanceOverviewCard(
 fun SpendingByMemberCard(
     memberShares: Map<String, Double>,
     balances: Map<String, Double> = emptyMap(),
-    people: List<com.hativ2.data.entity.PersonEntity>
+    people: List<com.hativ2.data.entity.PersonEntity>,
 ) {
-    Box(modifier = Modifier.fillMaxWidth()) {
-        // Hard Shadow
-        Box(
-             modifier = Modifier.matchParentSize().offset(x = 6.dp, y = 6.dp).background(MangaBlack)
-        )
-        // Card Content
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(NotionWhite)
-                .border(MangaBorderWidth, MangaBlack)
-                .padding(16.dp)
-        ) {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                     Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp)) 
-                     Spacer(modifier = Modifier.width(8.dp))
-                     Text("SPENDING BY MEMBER", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
+    MangaCard {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.ShoppingCart, null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    stringResource(R.string.dash_section_spending_by_member),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Black
+                )
+            }
 
-                // Table header
+            Spacer(modifier = Modifier.height(12.dp))
+            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MangaBlack.copy(alpha = 0.15f)))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (memberShares.isEmpty()) {
+                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        stringResource(R.string.dash_no_spending_yet),
+                        color = NotionMuted,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            } else {
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Text("Member", modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelSmall, color = NotionMuted, fontWeight = FontWeight.Bold)
-                    Text("Paid", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = NotionMuted, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
-                    Text("Share", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = NotionMuted, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
-                    Text("Offset", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = NotionMuted, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                    Text("Paid", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = NotionMuted, fontWeight = FontWeight.Bold, textAlign = TextAlign.End)
+                    Text("Share", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = NotionMuted, fontWeight = FontWeight.Bold, textAlign = TextAlign.End)
+                    Text("Offset", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = NotionMuted, fontWeight = FontWeight.Bold, textAlign = TextAlign.End)
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(MangaBlack))
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                if (memberShares.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                         Text("No spending data yet", color = NotionMuted, style = MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.height(6.dp))
+                val allUserIds = (memberShares.keys + balances.keys).distinct()
+                allUserIds.forEach { userId ->
+                    key(userId) {
+                        val name = if (userId == "user-current") "You" else people.find { it.id == userId }?.name?.split(" ")?.firstOrNull() ?: "—"
+                        val paid = memberShares[userId] ?: 0.0
+                        val bal = balances[userId] ?: 0.0
+                        val fairShare = paid - bal
+                        MemberSpendingRow(name = name, paid = paid, fairShare = fairShare, offset = bal)
                     }
-                } else {
-                     // Collect all user IDs (from both memberShares and balances)
-                     val allUserIds = (memberShares.keys + balances.keys).distinct()
-                     allUserIds.forEach { userId ->
-                         key(userId) {
-                             val name = if(userId == "user-current") "You" else people.find { it.id == userId }?.name?.split(" ")?.firstOrNull() ?: "Unknown"
-                             val paid = memberShares[userId] ?: 0.0
-                             val balance = balances[userId] ?: 0.0
-                             val fairShare = paid - balance // Derived: Paid - Offset = Share
-                             
-                             MemberSpendingRow(
-                                 name = name,
-                                 paid = paid,
-                                 fairShare = fairShare,
-                                 offset = balance
-                             )
-                         }
-                     }
                 }
-                
-                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }
 }
 
 @Composable
-fun MemberSpendingRow(
-    name: String,
-    paid: Double,
-    fairShare: Double,
-    offset: Double
-) {
+fun MemberSpendingRow(name: String, paid: Double, fairShare: Double, offset: Double) {
     Column {
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Text(name, modifier = Modifier.weight(1.5f), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+            Text("₱${"%,.0f".format(paid)}", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.End)
+            Text("₱${"%,.0f".format(fairShare)}", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.End)
             Text(
-                name, 
-                modifier = Modifier.weight(1.5f), 
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Text(
-                "₱${String.format("%,.0f", paid)}", 
-                modifier = Modifier.weight(1f), 
-                style = MaterialTheme.typography.bodySmall,
-                textAlign = androidx.compose.ui.text.style.TextAlign.End
-            )
-            Text(
-                "₱${String.format("%,.0f", fairShare)}", 
-                modifier = Modifier.weight(1f), 
-                style = MaterialTheme.typography.bodySmall,
-                textAlign = androidx.compose.ui.text.style.TextAlign.End
-            )
-            Text(
-                "₱${String.format("%,.0f", offset)}", 
-                modifier = Modifier.weight(1f), 
+                "₱${"%,.0f".format(offset)}",
+                modifier = Modifier.weight(1f),
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.bodySmall,
-                color = if (offset >= 0) NotionGreen else NotionRed,
-                textAlign = androidx.compose.ui.text.style.TextAlign.End
+                color = if (offset >= 0) AccentPositive else NotionRed,
+                textAlign = TextAlign.End
             )
         }
         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(NotionDivider))
@@ -701,249 +665,112 @@ fun MemberSpendingRow(
 }
 
 @Composable
-fun ActionGrid(
-    onAddExpense: () -> Unit,
-    onViewHistory: () -> Unit,
-    onViewCharts: () -> Unit,
-    onAddMember: () -> Unit
-) {
-    // 1x4 Row Grid
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        ActionCard(
-            modifier = Modifier.weight(1f),
-            title = "History",
-            icon = Icons.Default.List, // History Icon
-            onClick = onViewHistory
-        )
-        ActionCard(
-            modifier = Modifier.weight(1f),
-            title = "Charts",
-            icon = Icons.Default.DateRange, // Charts Icon
-            onClick = onViewCharts
-        )
-        ActionCard(
-            modifier = Modifier.weight(1f),
-            title = "Add",
-            icon = Icons.Default.Add,
-            onClick = onAddExpense
-        )
-        ActionCard(
-            modifier = Modifier.weight(1f),
-            title = "Member",
-            icon = Icons.Default.Person,
-            onClick = onAddMember
-        )
-    }
-}
-
-@Composable
-fun ActionCard(
-    modifier: Modifier = Modifier,
-    title: String,
-    icon: ImageVector,
-    onClick: () -> Unit
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val shadowOffset by animateDpAsState(
-        targetValue = if (isPressed) 0.dp else 4.dp,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "actionShadow"
-    )
-    val cardOffset by animateDpAsState(
-        targetValue = if (isPressed) 4.dp else 0.dp,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "actionCardOffset"
-    )
-    val cardScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.95f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "actionScale"
-    )
-
-    Box(
-        modifier = modifier
-            .aspectRatio(1f)
-            .scale(cardScale)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            )
-    ) {
-         // Hard Shadow
-         Box(
-             modifier = Modifier
-                 .matchParentSize()
-                 .offset(x = shadowOffset, y = shadowOffset)
-                 .background(MangaBlack)
-         )
-         // Main content
-         Box(
-             modifier = Modifier
-                 .fillMaxSize()
-                 .offset(x = cardOffset, y = cardOffset)
-                 .background(NotionWhite)
-                 .border(MangaBorderWidth, MangaBlack),
-             contentAlignment = Alignment.Center
-         ) {
-             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                 Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
-                 Spacer(modifier = Modifier.height(4.dp))
-                  Text(title, style = MaterialTheme.typography.labelSmall)
-             }
-         }
-    }
-}
-
-@Composable
-fun SummaryCard(
+private fun SummaryCard(
     modifier: Modifier = Modifier,
     title: String,
     amount: Double,
-    details: List<Pair<String, Double>> = emptyList(),
+    details: List<Pair<String, Double>>,
     headerColor: Color,
-    icon: ImageVector? = null,
-    onSettleUpClick: (() -> Unit)? = null
+    emptyText: String,
+    amountColor: Color,
+    arrow: String,
+    onSettleUpClick: (() -> Unit)? = null,
 ) {
     Box(modifier = modifier) {
-         // Hard Shadow
-         Box(
-             modifier = Modifier.matchParentSize().offset(x = 4.dp, y = 4.dp).background(MangaBlack)
-         )
-         
-         // Card Container
-         Column(
-             modifier = Modifier
-                 .fillMaxWidth()
-                 .background(NotionWhite)
-                 .border(MangaBorderWidth, MangaBlack)
-         ) {
-             // Header
-             Box(
-                 modifier = Modifier
-                     .fillMaxWidth()
-                     .background(headerColor)
-                     .border(width = 0.dp, color = Color.Transparent) // No border for header itself inside the card
-             ) {
-                 Box(
-                     modifier = Modifier
-                         .fillMaxWidth()
-                         .height(1.dp)
-                         .align(Alignment.BottomCenter)
-                         .background(MangaBlack)
-                 )
-                 
-                 Row(
-                     verticalAlignment = Alignment.CenterVertically,
-                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-                 ) {
-                     // Arrow Icon
-                     Text(
-                         if(title.contains("OWED TO YOU")) "↙" else "↗", 
-                          style = MaterialTheme.typography.labelMedium,
-                         color = MangaBlack
-                     )
-                     Spacer(modifier = Modifier.width(8.dp))
-                     Text(
-                         title, 
-                          style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
-                         color = MangaBlack
-                     )
-                 }
-             }
-
-             // Body
-             Column(
-                 modifier = Modifier
-                     .fillMaxWidth()
-                     .padding(16.dp)
-             ) {
-                 Text(
-                     "₱${String.format("%,.2f", amount)}", 
-                     fontWeight = FontWeight.Black, 
-                     fontSize = 20.sp, 
-                     color = MangaBlack
-                 )
-                 
-                 Spacer(modifier = Modifier.height(4.dp))
-                 
-                 Spacer(modifier = Modifier.height(4.dp))
-                 
-                 if (details.isEmpty()) {
-                     Text(
-                         if (amount > 0) "No details" else "All settled up", 
-                         style = MaterialTheme.typography.labelSmall, 
-                         color = NotionMuted,
-                         fontWeight = FontWeight.Bold
-                     )
-                 } else {
-                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                         details.forEach { (name, debt) ->
-                             Row(
-                                 modifier = Modifier.fillMaxWidth(),
-                                 horizontalArrangement = Arrangement.SpaceBetween
-                             ) {
-                                 Text(
-                                     name,
-                                     style = MaterialTheme.typography.labelSmall,
-                                     color = NotionMuted,
-                                     fontWeight = FontWeight.SemiBold
-                                 )
-                                 Text(
-                                     "₱${String.format("%,.0f", debt)}",
-                                     style = MaterialTheme.typography.labelLarge,
-                                     color = if(title.contains("OWED")) NotionGreen else NotionRed,
-                                     fontWeight = FontWeight.Bold
-                                 )
-                             }
-                         }
-                     }
-                 }
-                 
-                 // Settle Up Button
-                 if (onSettleUpClick != null) {
-                     Spacer(modifier = Modifier.height(8.dp))
-                     Box(
-                         modifier = Modifier
-                             .fillMaxWidth()
-                             .background(NotionYellow)
-                             .border(1.dp, MangaBlack)
-                             .clickable(onClick = onSettleUpClick)
-                             .padding(vertical = 6.dp),
-                         contentAlignment = Alignment.Center
-                     ) {
-                         Text(
-                             "SETTLE UP",
-                             fontWeight = FontWeight.Bold,
-                             style = MaterialTheme.typography.labelMedium,
-                             letterSpacing = 1.sp
-                         )
-                     }
-                 }
-             }
-         }
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .offset(x = 4.dp, y = 4.dp)
+                .background(MangaBlack, RoundedCornerShape(MangaCornerRadius))
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(MangaCornerRadius))
+                .border(MangaBorderWidth, MangaBlack, RoundedCornerShape(MangaCornerRadius))
+        ) {
+            // Tinted header strip — AccentPositive for credit, AccentDebit for debt.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(headerColor)
+            ) {
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
+                    ) {
+                        Text(arrow, style = MaterialTheme.typography.labelLarge, color = MangaBlack)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            title,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Black,
+                            color = MangaBlack
+                        )
+                    }
+                    Box(modifier = Modifier.fillMaxWidth().height(MangaBorderWidth).background(MangaBlack))
+                }
+            }
+            Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                Text(
+                    text = "₱${"%,.2f".format(amount)}",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black,
+                    color = MangaBlack
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                if (details.isEmpty()) {
+                    Text(emptyText, style = MaterialTheme.typography.bodySmall, color = NotionMuted)
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        details.forEach { (name, debt) ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(name, style = MaterialTheme.typography.labelSmall, color = NotionMuted, fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    "₱${"%,.0f".format(debt)}",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = amountColor,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+                if (onSettleUpClick != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(NotionYellow, RoundedCornerShape(MangaCornerRadius))
+                            .border(1.dp, MangaBlack, RoundedCornerShape(MangaCornerRadius))
+                            .clickable(onClick = onSettleUpClick)
+                            .padding(vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            stringResource(R.string.dash_cta_settle_up),
+                            fontWeight = FontWeight.Black,
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                }
+            }
+        }
     }
 }
-
-
-
-
 
 @Composable
 fun AddPersonDialog(onDismiss: () -> Unit, onAdd: (String) -> Unit) {
     var name by remember { mutableStateOf("") }
-    
+
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        MangaCard(modifier = Modifier.fillMaxWidth(), backgroundColor = NotionWhite) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("New Character", style = MaterialTheme.typography.headlineSmall)
+        MangaCard {
+            Column(modifier = Modifier.padding(8.dp)) {
+                Text("New Character", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
                 Spacer(modifier = Modifier.height(16.dp))
                 MangaTextField(
                     value = name,
@@ -953,119 +780,16 @@ fun AddPersonDialog(onDismiss: () -> Unit, onAdd: (String) -> Unit) {
                 Spacer(modifier = Modifier.height(24.dp))
                 Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
                     MangaButton(
-                        onClick = onDismiss, 
-                        backgroundColor = NotionRed, 
+                        onClick = onDismiss,
+                        backgroundColor = NotionRed,
                         modifier = Modifier.padding(end = 8.dp)
-                    ) {
-                        Text("Cancel")
-                    }
+                    ) { Text(stringResource(R.string.cta_cancel), fontWeight = FontWeight.Bold) }
                     MangaButton(
-                        onClick = { if(name.isNotBlank()) onAdd(name) },
+                        onClick = { if (name.isNotBlank()) onAdd(name) },
                         backgroundColor = NotionGreen
-                    ) {
-                        Text("Add")
-                    }
+                    ) { Text(stringResource(R.string.cta_add), fontWeight = FontWeight.Bold) }
                 }
             }
         }
     }
 }
-
-// Helper for Icons
-fun getIconForType(type: String): ImageVector {
-    return when(type.lowercase()) {
-        "travel" -> Icons.Default.DateRange // Placeholder, ideally specific icons
-        "household" -> Icons.Default.Settings // Placeholder
-        "event" -> Icons.Default.Settings // Placeholder
-        else -> Icons.Default.List
-    }
-}
-
-@Composable
-fun BottomActionBar(
-    onAddExpense: () -> Unit,
-    onViewHistory: () -> Unit,
-    onViewCharts: () -> Unit,
-    onAddMember: () -> Unit
-) {
-    Column {
-        // Top border line
-        Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(MangaBlack))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(NotionWhite)
-                .padding(vertical = 8.dp, horizontal = 16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            BottomBarItem(
-                icon = Icons.Default.List,
-                label = "History",
-                onClick = onViewHistory
-            )
-            BottomBarItem(
-                icon = Icons.Default.DateRange,
-                label = "Charts",
-                onClick = onViewCharts
-            )
-            BottomBarItem(
-                icon = Icons.Default.Add,
-                label = "Add",
-                onClick = onAddExpense,
-                isProminent = true
-            )
-            BottomBarItem(
-                icon = Icons.Default.Person,
-                label = "Member",
-                onClick = onAddMember
-            )
-        }
-    }
-}
-
-@Composable
-fun BottomBarItem(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-    isProminent: Boolean = false
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 4.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(if (isProminent) 48.dp else 40.dp)
-                .background(
-                    if (isProminent) NotionGreen else Color.Transparent,
-                    RoundedCornerShape(MangaCornerRadius)
-                )
-                .then(
-                    if (isProminent) Modifier.border(MangaBorderWidth, MangaBlack, RoundedCornerShape(MangaCornerRadius))
-                    else Modifier
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                icon,
-                contentDescription = label,
-                tint = MangaBlack,
-                modifier = Modifier.size(if (isProminent) 28.dp else 24.dp)
-            )
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            color = MangaBlack
-        )
-    }
-}
-
-

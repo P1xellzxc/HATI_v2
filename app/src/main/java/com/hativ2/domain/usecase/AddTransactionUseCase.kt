@@ -15,7 +15,9 @@ class AddTransactionUseCase @Inject constructor(
         amount: Double,
         paidBy: String,
         category: String,
-        splitWith: List<String>
+        splitWith: List<String>,
+        note: String? = null,
+        receiptPath: String? = null,
     ): Result<String> {
         if (amount <= 0) {
             return Result.failure(IllegalArgumentException("Amount must be greater than 0"))
@@ -33,7 +35,9 @@ class AddTransactionUseCase @Inject constructor(
             amount = amount,
             paidBy = paidBy,
             category = category,
-            createdAt = System.currentTimeMillis()
+            createdAt = System.currentTimeMillis(),
+            note = note?.takeIf { it.isNotBlank() },
+            receiptPath = receiptPath
         )
 
         // Default split strategy: Equal split among selected people
