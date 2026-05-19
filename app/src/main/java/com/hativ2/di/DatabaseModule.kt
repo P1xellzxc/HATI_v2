@@ -39,13 +39,11 @@ object DatabaseModule {
             "hati_database"
         )
             .openHelperFactory(factory)
-            // Why fallbackToDestructiveMigrationFrom(1) instead of
-            // fallbackToDestructiveMigration():
-            // The blanket fallback silently wipes ALL user data on ANY schema
-            // change. By specifying version 1 only, we limit destructive
-            // migration to the initial v1→v2 change. Future upgrades MUST
-            // provide explicit Migration objects to preserve user data.
+            // v1→v2 was a wipe (pre-encryption schema). v2→v3 adds optional
+            // note + receiptPath columns to the expenses table and is a
+            // safe, additive migration that preserves all user data.
             .fallbackToDestructiveMigrationFrom(1)
+            .addMigrations(AppDatabase.MIGRATION_2_3)
             .build()
     }
 

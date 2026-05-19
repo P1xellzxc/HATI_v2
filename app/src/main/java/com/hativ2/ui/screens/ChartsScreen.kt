@@ -25,14 +25,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.layout.widthIn
+import com.hativ2.R
+import com.hativ2.ui.components.MangaIconButton
+import com.hativ2.ui.components.MangaTopBar
+import com.hativ2.ui.theme.SurfaceHero
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -62,8 +65,9 @@ import com.hativ2.ui.theme.NotionPurple
 import com.hativ2.ui.theme.NotionGray
 import com.hativ2.ui.theme.NotionMuted
 import com.hativ2.ui.theme.NotionDivider
+import com.hativ2.ui.components.MangaBorderWidth
 import com.hativ2.ui.components.MangaCard
-import com.hativ2.ui.components.MangaBackButton
+import com.hativ2.ui.components.MangaCornerRadius
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -80,7 +84,6 @@ val CHART_COLORS = listOf(
     NotionGray,
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChartsScreen(
     viewModel: MainViewModel,
@@ -172,48 +175,38 @@ fun ChartsScreen(
     }
 
     Scaffold(
-        containerColor = NotionWhite,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    MangaBackButton(
+            MangaTopBar(
+                title = if (dashboardId == null) stringResource(R.string.charts_title_all)
+                else stringResource(R.string.charts_title),
+                subtitle = currentDashboard?.title,
+                left = {
+                    MangaIconButton(
+                        icon = Icons.AutoMirrored.Filled.ArrowBack,
                         onClick = onBack,
-                        modifier = Modifier.padding(start = 8.dp)
+                        contentDescription = stringResource(R.string.cta_back)
                     )
                 },
-                title = {
-                    Column {
-                        Text(
-                            if (dashboardId == null) "All Volumes" else "Arc Statistics",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Black
-                        )
-                        if (currentDashboard != null) {
-                            Text(
-                                currentDashboard.title,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = NotionMuted
-                            )
-                        }
-                    }
-                },
-                actions = {
-                    // Period selector
+                right = {
+                    // Range selector chip — mimics the Mockup 4 "Last 6 Months ▼".
                     Box(
                         modifier = Modifier
-                            .padding(end = 8.dp)
-                            .border(2.dp, MangaBlack, RoundedCornerShape(2.dp))
-                            .background(NotionWhite, RoundedCornerShape(2.dp))
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            .border(MangaBorderWidth, MangaBlack, RoundedCornerShape(MangaCornerRadius))
+                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(MangaCornerRadius))
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.DateRange, null, modifier = Modifier.size(14.dp))
+                            Text(
+                                selectedPeriod,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold
+                            )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text(selectedPeriod, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                            Icon(Icons.Default.KeyboardArrowDown, null, modifier = Modifier.size(14.dp))
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = NotionWhite)
+                }
             )
         }
     ) { paddingValues ->
@@ -222,26 +215,27 @@ fun ChartsScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
+                .widthIn(max = 600.dp)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             // Total Spending Card with Month-over-Month Indicator
             MangaCard {
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(24.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Total Arc Spending", style = MaterialTheme.typography.bodyMedium, color = NotionMuted)
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(stringResource(R.string.charts_total_spending), style = MaterialTheme.typography.bodyMedium, color = NotionMuted)
+                    Spacer(modifier = Modifier.height(12.dp))
                     Box(
                         modifier = Modifier
-                            .background(NotionYellow, RoundedCornerShape(2.dp))
-                            .border(2.dp, MangaBlack, RoundedCornerShape(2.dp))
-                            .padding(horizontal = 24.dp, vertical = 12.dp)
+                            .background(SurfaceHero, RoundedCornerShape(MangaCornerRadius))
+                            .border(MangaBorderWidth, MangaBlack, RoundedCornerShape(MangaCornerRadius))
+                            .padding(horizontal = 28.dp, vertical = 12.dp)
                     ) {
                         Text(
-                            "₱${String.format("%,.2f", totalSpending)}",
-                            style = MaterialTheme.typography.headlineLarge,
+                            "₱${"%,.2f".format(totalSpending)}",
+                            style = MaterialTheme.typography.displaySmall,
                             fontWeight = FontWeight.Black
                         )
                     }
@@ -297,7 +291,7 @@ fun ChartsScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("📊", fontSize = 16.sp)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("CATEGORY BREAKDOWN", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.charts_category_breakdown), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                         }
                     }
                     Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(MangaBlack))
@@ -308,7 +302,7 @@ fun ChartsScreen(
                             modifier = Modifier.fillMaxWidth().height(200.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("No spending data yet", color = NotionMuted)
+                            Text(stringResource(R.string.charts_no_chapters_to_display), color = NotionMuted)
                         }
                     } else {
                         // Donut Chart
@@ -373,7 +367,7 @@ fun ChartsScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("📈", fontSize = 16.sp)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("MONTHLY TREND", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.charts_monthly_trend), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(MangaBlack))
@@ -384,7 +378,7 @@ fun ChartsScreen(
                             modifier = Modifier.fillMaxWidth().height(200.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("No monthly data yet", color = NotionMuted)
+                            Text(stringResource(R.string.charts_no_monthly_data), color = NotionMuted)
                         }
                     } else {
                         val maxAmount = monthlyData.maxOfOrNull { it.value } ?: 1.0
@@ -517,7 +511,7 @@ fun ChartsScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("🧮", fontSize = 16.sp)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("OFFSET COMPUTATION", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.charts_offset_computation), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                         }
                         Spacer(modifier = Modifier.height(16.dp))
                         Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(MangaBlack))

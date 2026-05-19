@@ -59,15 +59,19 @@ class MainViewModelTest {
     @Mock
     private lateinit var exportDashboardJsonUseCase: com.hativ2.domain.usecase.ExportDashboardJsonUseCase
 
+    @Mock
+    private lateinit var userPreferencesRepository: com.hativ2.data.prefs.UserPreferencesRepository
+
     private lateinit var viewModel: MainViewModel
 
     @Before
     fun setup() {
         MockitoAnnotations.openMocks(this)
-        
+
         // Default mocks
         whenever(dashboardDao.getAllDashboards()).thenReturn(flowOf(emptyList()))
-        
+        whenever(userPreferencesRepository.flow).thenReturn(flowOf(com.hativ2.data.prefs.UserPrefs()))
+
         viewModel = MainViewModel(
             application,
             dashboardDao,
@@ -78,7 +82,8 @@ class MainViewModelTest {
             calculateDebtsUseCase,
             updateExpenseUseCase,
             exportDashboardCsvUseCase,
-            exportDashboardJsonUseCase
+            exportDashboardJsonUseCase,
+            userPreferencesRepository
         )
     }
 
@@ -167,7 +172,8 @@ class MainViewModelTest {
             application, dashboardDao, personDao, expenseDao,
             addTransactionUseCase, calculateDashboardStatsUseCase,
             calculateDebtsUseCase, updateExpenseUseCase,
-            exportDashboardCsvUseCase, exportDashboardJsonUseCase
+            exportDashboardCsvUseCase, exportDashboardJsonUseCase,
+            userPreferencesRepository
         )
 
         viewModel.updateDashboard("dash-1", "New Title", "household", "#111111")
@@ -325,26 +331,27 @@ class MainViewModelTest {
         verify(expenseDao).deleteSettlement("set-1")
     }
 
-    // -------- Dark mode tests --------
+    // -------- Preferences tests --------
 
     @Test
-    fun `initial dark mode is null (system default)`() {
-        assertNull(viewModel.isDarkMode.value)
+    fun `setThemeMode delegates to repository`() = runTest {
+        viewModel.setThemeMode(com.hativ2.ui.theme.ThemeMode.Dark)
+        advanceUntilIdle()
+        verify(userPreferencesRepository).setThemeMode(com.hativ2.ui.theme.ThemeMode.Dark)
     }
 
     @Test
-    fun `toggleDarkMode cycles null to true to false to null`() {
-        // null → true
-        viewModel.toggleDarkMode()
-        assertEquals(true, viewModel.isDarkMode.value)
+    fun `setDensity delegates to repository`() = runTest {
+        viewModel.setDensity(com.hativ2.ui.theme.DensityPreset.Comfortable)
+        advanceUntilIdle()
+        verify(userPreferencesRepository).setDensity(com.hativ2.ui.theme.DensityPreset.Comfortable)
+    }
 
-        // true → false
-        viewModel.toggleDarkMode()
-        assertEquals(false, viewModel.isDarkMode.value)
-
-        // false → null
-        viewModel.toggleDarkMode()
-        assertNull(viewModel.isDarkMode.value)
+    @Test
+    fun `setTextSize delegates to repository`() = runTest {
+        viewModel.setTextSize(com.hativ2.ui.theme.TextSizePreset.Large)
+        advanceUntilIdle()
+        verify(userPreferencesRepository).setTextSize(com.hativ2.ui.theme.TextSizePreset.Large)
     }
 
     // -------- getExpenseById / getSplitsForExpense tests --------

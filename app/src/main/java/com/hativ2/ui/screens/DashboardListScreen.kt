@@ -1,5 +1,14 @@
 package com.hativ2.ui.screens
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,99 +18,82 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.foundation.Image
-import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.hativ2.data.entity.DashboardEntity
+import com.hativ2.R
 import com.hativ2.domain.model.DashboardWithStats
 import com.hativ2.ui.MainViewModel
 import com.hativ2.ui.components.AddDashboardDialog
+import com.hativ2.ui.components.EditDashboardDialog
+import com.hativ2.ui.components.MangaBorderWidth
+import com.hativ2.ui.components.MangaButton
+import com.hativ2.ui.components.MangaCornerRadius
+import com.hativ2.ui.components.MangaDashedCard
 import com.hativ2.ui.components.MangaDeleteDialog
+import com.hativ2.ui.components.MangaIconButton
+import com.hativ2.ui.components.MangaTopBar
+import com.hativ2.ui.theme.AccentPositive
 import com.hativ2.ui.theme.MangaBlack
-import com.hativ2.ui.theme.NotionBlue
 import com.hativ2.ui.theme.NotionGreen
 import com.hativ2.ui.theme.NotionMuted
 import com.hativ2.ui.theme.NotionRed
-import com.hativ2.ui.theme.NotionWhite
 import com.hativ2.ui.theme.NotionYellow
-import com.hativ2.ui.components.EditDashboardDialog
-import com.hativ2.ui.components.MangaCornerRadius
-import com.hativ2.ui.components.MangaBorderWidth
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.scale
-import androidx.compose.foundation.lazy.grid.itemsIndexed
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardListScreen(
     viewModel: MainViewModel = viewModel(),
-    onDashboardClick: (String) -> Unit
+    onDashboardClick: (String) -> Unit,
+    onOpenSettings: () -> Unit = {},
 ) {
     val dashboardsWithStats by viewModel.dashboardsWithStats.collectAsState()
     var showDeleteDialog by remember { mutableStateOf<DashboardWithStats?>(null) }
     var showEditDialog by remember { mutableStateOf<DashboardWithStats?>(null) }
     var showAddDialog by remember { mutableStateOf(false) }
-    
+
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     if (showAddDialog) {
         AddDashboardDialog(
@@ -109,128 +101,134 @@ fun DashboardListScreen(
             onCreate = { title, type, color ->
                 viewModel.createDashboard(title, type, color)
                 showAddDialog = false
-                scope.launch { snackbarHostState.showSnackbar("Volume '$title' created!") }
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        context.getString(R.string.volume_created, title)
+                    )
+                }
             }
         )
     }
 
-    if (showDeleteDialog != null) {
+    showDeleteDialog?.let { dashboard ->
         MangaDeleteDialog(
-            title = "Delete Volume?",
-            text = "Are you sure you want to delete '${showDeleteDialog?.title}'? This action cannot be undone.",
+            title = stringResource(R.string.volume_delete_title),
+            text = stringResource(R.string.volume_delete_body, dashboard.title),
             onConfirm = {
-                val title = showDeleteDialog?.title ?: "Volume"
-                showDeleteDialog?.let { viewModel.deleteDashboard(it.id) }
+                val title = dashboard.title
+                viewModel.deleteDashboard(dashboard.id)
                 showDeleteDialog = null
-                scope.launch { snackbarHostState.showSnackbar("$title deleted") }
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        context.getString(R.string.volume_deleted, title)
+                    )
+                }
             },
             onDismiss = { showDeleteDialog = null }
         )
     }
 
-    if (showEditDialog != null) {
+    showEditDialog?.let { dashboard ->
         EditDashboardDialog(
-            title = showEditDialog!!.title,
-            type = showEditDialog!!.dashboardType,
-            color = showEditDialog!!.themeColor,
+            title = dashboard.title,
+            type = dashboard.dashboardType,
+            color = dashboard.themeColor,
             onDismiss = { showEditDialog = null },
             onSave = { newTitle, newType, newColor ->
-                showEditDialog?.let { dashboard ->
-                    viewModel.updateDashboard(dashboard.id, newTitle, newType, newColor)
-                }
+                viewModel.updateDashboard(dashboard.id, newTitle, newType, newColor)
                 showEditDialog = null
             }
         )
     }
 
     Scaffold(
-        containerColor = NotionWhite,
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Logo box
-                        Image(
-                            painter = androidx.compose.ui.res.painterResource(id = com.hativ2.R.drawable.app_logo),
-                            contentDescription = "App Logo",
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .border(2.dp, MangaBlack, RoundedCornerShape(4.dp))
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "HATI", 
-                            style = MaterialTheme.typography.displaySmall,
-                            color = MangaBlack
-                        )
-                    }
+            MangaTopBar(
+                title = "HATI",
+                left = {
+                    Image(
+                        painter = painterResource(id = R.drawable.app_logo),
+                        contentDescription = stringResource(R.string.app_name),
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(MangaCornerRadius))
+                            .border(MangaBorderWidth, MangaBlack, RoundedCornerShape(MangaCornerRadius))
+                    )
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = NotionWhite,
-                    titleContentColor = MangaBlack
-                )
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddDialog = true },
-                containerColor = NotionYellow,
-                contentColor = MangaBlack,
-                modifier = Modifier.border(MangaBorderWidth, MangaBlack, RoundedCornerShape(MangaCornerRadius))
-            ) {
-                Row(modifier = Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Dashboard")
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("New Volume", fontWeight = FontWeight.Bold)
+                right = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        MangaIconButton(
+                            icon = Icons.Default.Info,
+                            onClick = onOpenSettings,
+                            contentDescription = stringResource(R.string.cta_help),
+                        )
+                        MangaButton(
+                            onClick = { showAddDialog = true },
+                            backgroundColor = NotionYellow,
+                            contentColor = MangaBlack,
+                        ) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.size(4.dp))
+                            Text(
+                                text = stringResource(R.string.cta_new_volume_short).uppercase(),
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        }
+                    }
                 }
-            }
+            )
         }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp)
+                .widthIn(max = 600.dp)
         ) {
-            // Header Section
             Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                "Your Story Volumes",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MangaBlack
-            )
-            Text(
-                "Each volume contains a separate expense arc.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = NotionMuted
-            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = stringResource(R.string.hub_headline),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.hub_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Grid Content
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 160.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
-                contentPadding = PaddingValues(bottom = 80.dp)
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                if (dashboardsWithStats.isEmpty()) {
-                    item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
-                         com.hativ2.ui.components.MangaEmptyState(
-                            message = "No volumes found", 
-                            subMessage = "Create a new volume to start your journey!",
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
-                    }
-                }
-                
-                itemsIndexed(
-                    items = dashboardsWithStats,
-                    key = { _, item -> item.id }
-                ) { index, dashboard ->
+                items(dashboardsWithStats, key = { it.id }) { dashboard ->
+                    val index = dashboardsWithStats.indexOf(dashboard)
                     var visible by remember { mutableStateOf(false) }
-                    LaunchedEffect(Unit) {
+                    LaunchedEffect(dashboard.id) {
                         delay(index * 50L)
                         visible = true
                     }
@@ -245,214 +243,172 @@ fun DashboardListScreen(
                         label = "itemOffset"
                     )
 
-                    Box(
-                        modifier = Modifier
-                            .alpha(alpha)
-                            .offset(y = offsetY)
-                    ) {
+                    Box(modifier = Modifier.alpha(alpha).offset(y = offsetY)) {
                         VolumeCard(
-                            dashboard = dashboard, 
+                            dashboard = dashboard,
                             onClick = { onDashboardClick(dashboard.id) },
                             onDelete = { showDeleteDialog = dashboard },
                             onEdit = { showEditDialog = dashboard }
                         )
                     }
                 }
-                
+
                 item {
-                    NewVolumeCard(onClick = { showAddDialog = true })
+                    NewVolumeDashedCard(onClick = { showAddDialog = true })
                 }
+
+                item { Spacer(modifier = Modifier.height(16.dp)) }
             }
         }
     }
 }
 
+/**
+ * Mockup 1 layout: full-width card with a top "cover" section
+ * (corner edit / trash buttons + centered hero emoji + balance pill)
+ * and a bottom "spine" section with title / type / total. Rule of
+ * thirds — the hero claims ~⅓ of the card vertically, info ⅔.
+ */
 @Composable
 fun VolumeCard(
-    dashboard: DashboardWithStats, 
+    dashboard: DashboardWithStats,
     onClick: () -> Unit,
     onDelete: () -> Unit,
-    onEdit: () -> Unit
+    onEdit: () -> Unit,
 ) {
-    val spineColor = when (dashboard.themeColor) {
-        "blue" -> NotionBlue
-        "green" -> NotionGreen
-        "red" -> NotionRed
-        "yellow" -> NotionYellow
-        else -> NotionWhite
-    }
-
-    var expanded by remember { mutableStateOf(false) }
-
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val volumeShadowOffset by animateDpAsState(
-        targetValue = if (isPressed) 0.dp else 4.dp,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "volumeShadow"
-    )
-    val volumePressOffset by animateDpAsState(
-        targetValue = if (isPressed) 4.dp else 0.dp,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "volumePress"
-    )
+    val coverTint = MaterialTheme.colorScheme.surfaceVariant
+    val balanceColor = if (dashboard.netBalance >= 0) AccentPositive else NotionRed
+    val balanceSign = if (dashboard.netBalance >= 0) "+" else ""
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(0.75f)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            )
+            .padding(end = 4.dp, bottom = 4.dp)
     ) {
-        // Hard Shadow
+        // Hard offset shadow — the "Surface" depth layer.
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .offset(x = volumeShadowOffset, y = volumeShadowOffset)
+                .matchParentSize()
+                .offset(x = 4.dp, y = 4.dp)
                 .background(MangaBlack, RoundedCornerShape(MangaCornerRadius))
         )
 
-        // Main Card
-        Box(
+        Column(
             modifier = Modifier
-                .fillMaxSize()
-                .offset(x = volumePressOffset, y = volumePressOffset)
-                .background(NotionWhite, RoundedCornerShape(MangaCornerRadius))
-                .border(2.dp, MangaBlack, RoundedCornerShape(MangaCornerRadius))
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(MangaCornerRadius))
+                .border(MangaBorderWidth, MangaBlack, RoundedCornerShape(MangaCornerRadius))
                 .clip(RoundedCornerShape(MangaCornerRadius))
         ) {
-            Row(modifier = Modifier.fillMaxSize()) {
-                // Spine
-                Box(
-                    modifier = Modifier
-                        .width(8.dp)
-                        .fillMaxSize()
-                        .background(spineColor)
+            // ── Cover (hero) section ──────────────────────────
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp)
+                    .background(coverTint)
+                    .padding(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    MangaIconButton(
+                        icon = Icons.Default.Edit,
+                        onClick = onEdit,
+                        contentDescription = stringResource(R.string.action_edit),
+                        size = 36.dp,
+                        iconSize = 18.dp
+                    )
+                    MangaIconButton(
+                        icon = Icons.Default.Delete,
+                        onClick = onDelete,
+                        contentDescription = stringResource(R.string.cta_delete),
+                        size = 36.dp,
+                        iconSize = 18.dp,
+                        tint = NotionRed
+                    )
+                }
+
+                Text(
+                    text = emojiFor(dashboard.dashboardType),
+                    style = MaterialTheme.typography.displayMedium,
+                    modifier = Modifier.align(Alignment.Center)
                 )
 
-                Column(modifier = Modifier.weight(1f)) {
-                    // Cover Image Area
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(0.5f)
-                            .background(spineColor.copy(alpha = 0.4f))
-                            .border(width = 0.dp, color = Color.Transparent)
-                    ) {
-                        // Border bottom for cover
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .fillMaxWidth()
-                                .height(2.dp)
-                                .background(MangaBlack)
-                        )
-                        
-                        // Menu Button
-                        Box(modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)) {
-                             IconButton(
-                                 onClick = { expanded = true }, 
-                                 modifier = Modifier.size(48.dp) // Increased touch target
-                             ) {
-                                Icon(Icons.Default.MoreVert, contentDescription = "Menu", tint = MangaBlack, modifier = Modifier.size(24.dp))
-                             }
-                             DropdownMenu(
-                                expanded = expanded,
-                                onDismissRequest = { expanded = false },
-                                containerColor = NotionWhite,
-                                modifier = Modifier.background(NotionWhite).border(2.dp, MangaBlack)
-                             ) {
-                                  DropdownMenuItem(
-                                    text = { Text("Edit") },
-                                    onClick = { onEdit(); expanded = false }
-                                  )
-                                  DropdownMenuItem(
-                                    text = { Text("Delete", color = NotionRed) },
-                                    onClick = { expanded = false; onDelete() }
-                                  )
-                             }
-                        }
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .background(balanceColor.copy(alpha = 0.35f), RoundedCornerShape(MangaCornerRadius))
+                        .border(MangaBorderWidth, MangaBlack, RoundedCornerShape(MangaCornerRadius))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "$balanceSign${dashboard.currencySymbol}${"%,.2f".format(dashboard.netBalance)}",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Black,
+                        color = MangaBlack
+                    )
+                }
+            }
 
-                        // Icon placeholder
-                        Text(
-                            text = when(dashboard.dashboardType) {
-                                "travel" -> "✈️"
-                                "household" -> "🏠"
-                                "event" -> "🎉"
-                                else -> "📁"
-                            },
-                            style = MaterialTheme.typography.displayMedium,
-                            modifier = Modifier.align(Alignment.Center)
-                        )
-                        
-                        // Balance Tag (Bottom Right) - Now with real data
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(4.dp)
-                                .background(if (dashboard.netBalance >= 0) NotionGreen else NotionRed, RoundedCornerShape(MangaCornerRadius))
-                                .border(2.dp, MangaBlack, RoundedCornerShape(MangaCornerRadius))
-                                .padding(horizontal = 4.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                "${if (dashboard.netBalance >= 0) "+" else ""}${dashboard.currencySymbol}${String.format("%.0f", dashboard.netBalance)}",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
+            // 2dp section divider.
+            Box(modifier = Modifier.fillMaxWidth().height(MangaBorderWidth).background(MangaBlack))
 
-                    // Content Area
-                    Column(
-                        modifier = Modifier
-                            .weight(0.5f)
-                            .padding(12.dp),
-                        verticalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column {
-                            Text(
-                                text = dashboard.title,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Black,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "${dashboard.dashboardType} • ${dashboard.expenseCount} ch.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = NotionMuted
-                            )
-                        }
-                        
-                        // Total - Now with real data
-                        Column {
-                            Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(MangaBlack))
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("Total", style = MaterialTheme.typography.bodySmall, color = NotionMuted)
-                                Text("${dashboard.currencySymbol}${String.format("%,.2f", dashboard.totalSpent)}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
+            // ── Info section ─────────────────────────────────
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onClick)
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = dashboard.title.uppercase(),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "${emojiFor(dashboard.dashboardType)} ${dashboard.dashboardType.replaceFirstChar { it.uppercase() }} · ${
+                        stringResource(R.string.volume_chapters_short, dashboard.expenseCount)
+                    }",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MangaBlack))
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.volume_total_label),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "${dashboard.currencySymbol}${"%,.2f".format(dashboard.totalSpent)}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
             }
         }
     }
 }
 
+/** Dashed-border "+ NEW VOLUME" empty slot at the bottom of the list. */
 @Composable
-fun NewVolumeCard(onClick: () -> Unit) {
-    val infiniteTransition = rememberInfiniteTransition(label = "plusPulse")
-    val plusScale by infiniteTransition.animateFloat(
-        initialValue = 1.0f,
-        targetValue = 1.15f,
+fun NewVolumeDashedCard(onClick: () -> Unit) {
+    val infinite = rememberInfiniteTransition(label = "plusPulse")
+    val pulseScale by infinite.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.1f,
         animationSpec = infiniteRepeatable(
             animation = tween(800, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
@@ -460,44 +416,40 @@ fun NewVolumeCard(onClick: () -> Unit) {
         label = "plusScale"
     )
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(0.75f)
-            .clickable(onClick = onClick)
+    MangaDashedCard(
+        onClick = onClick,
+        padding = 24.dp
     ) {
-         // Shadow
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .matchParentSize()
-                .offset(x = 4.dp, y = 4.dp)
-                .background(MangaBlack.copy(alpha = 0.2f), RoundedCornerShape(MangaCornerRadius))
-        )
-        
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(NotionWhite.copy(alpha = 0.5f), RoundedCornerShape(MangaCornerRadius))
-                .border(2.dp, MangaBlack, RoundedCornerShape(MangaCornerRadius)) 
-                .clip(RoundedCornerShape(MangaCornerRadius)),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .scale(plusScale)
-                        .background(NotionWhite, RoundedCornerShape(MangaCornerRadius))
-                        .border(2.dp, MangaBlack, RoundedCornerShape(MangaCornerRadius)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null, tint = MangaBlack)
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("New Volume", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                Text("Start a new arc", style = MaterialTheme.typography.bodySmall, color = NotionMuted)
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .scale(pulseScale)
+                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(MangaCornerRadius))
+                    .border(MangaBorderWidth, MangaBlack, RoundedCornerShape(MangaCornerRadius)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, tint = MangaBlack)
             }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.cta_new_volume_short).uppercase(),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Black
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = stringResource(R.string.hub_new_volume_helper),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
+}
+
+private fun emojiFor(type: String) = when (type.lowercase()) {
+    "travel"    -> "✈️"
+    "household" -> "🏠"
+    "event"     -> "🎉"
+    else        -> "📁"
 }

@@ -80,3 +80,36 @@ val DarkErrorContainer  = Color(0xFF8C1D18) // Dark-mode error container
 
 // ── Hex Constants for Data Layer ────────────────────────────
 const val HEX_NOTION_ORANGE = "#FED7AA"
+
+// ─────────────────────────────────────────────────────────────
+// CINEMATOGRAPHY SEMANTIC TOKENS
+// ─────────────────────────────────────────────────────────────
+//
+// Each screen picks ≤3 hues from this layer (the "film LUT" rule):
+// a single warm focal pill + one cool accent for status + the
+// neutral surface. Do not freelance with raw NotionX colors in
+// new code — pick a semantic token that documents the intent.
+//
+// Warm/cool contrast: warm (cream/peach) focal pills sit on the
+// cool neutral surface to feel "lit" rather than flat — the same
+// trick used in film color grading.
+// ─────────────────────────────────────────────────────────────
+
+// Focal cream pill — the single hero amount on each screen.
+// Used by: Dashboard balance, Charts total spending, AddExpense
+// amount input. Never repeated more than once per screen.
+val SurfaceHero        = Color(0xFFFFF5D6) // warm cream — focal pill
+val DarkSurfaceHero    = Color(0xFF3A3422) // desaturated dark equivalent
+
+// Status accents. Always paired warm/cool (positive=cool-green,
+// debit=warm-pink) so glance-readability is preserved.
+val AccentPositive     = NotionGreen
+val AccentDebit        = NotionPink
+val DarkAccentPositive = DarkNotionGreen
+val DarkAccentDebit    = Color(0xFFE8B8C8)
+
+// Selected-category fills for the chip grid. The peach for Food &
+// Drinks is the warm signature in the AddExpense screen; the rest
+// stay outlined to keep ≤3 hues active at once.
+val AccentCategoryFood = Color(0xFFFFC9A8) // peach/coral selected chip
+val DarkAccentCategoryFood = Color(0xFFB37A5A)
