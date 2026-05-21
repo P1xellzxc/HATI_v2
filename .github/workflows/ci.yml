@@ -27,10 +27,22 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run lint
-        run: ./gradlew lint
+        run: ./gradlew lint --stacktrace
 
       - name: Run unit tests
-        run: ./gradlew test
+        run: ./gradlew test --stacktrace
+
+      - name: Print reports on failure
+        if: failure()
+        run: |
+          echo "::group::Lint results"
+          for f in app/build/reports/lint-results-*.txt; do
+            [ -f "$f" ] && { echo "--- $f ---"; cat "$f"; }
+          done
+          echo "::endgroup::"
+          echo "::group::Unit test failures"
+          find app/build/reports/tests -name '*.txt' -exec sh -c 'echo "--- $1 ---"; cat "$1"' _ {} \; 2>/dev/null || true
+          echo "::endgroup::"
 
       - name: Upload unit test results
         uses: actions/upload-artifact@v4
@@ -100,10 +112,10 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --stacktrace
 
       - name: Build release APK
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease --stacktrace
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
