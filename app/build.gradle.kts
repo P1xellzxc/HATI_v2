@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.hativ2"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.hativ2"
