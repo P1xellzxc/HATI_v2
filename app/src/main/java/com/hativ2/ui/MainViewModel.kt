@@ -59,6 +59,10 @@ open class MainViewModel @javax.inject.Inject constructor(
         viewModelScope.launch { userPreferencesRepository.setTextSize(size) }
     }
 
+    fun setPalette(id: String) {
+        viewModelScope.launch { userPreferencesRepository.setPalette(id) }
+    }
+
     val dashboards: StateFlow<List<DashboardEntity>> = dashboardDao.getAllDashboards()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 

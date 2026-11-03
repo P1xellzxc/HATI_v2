@@ -40,6 +40,7 @@ import com.hativ2.ui.theme.NotionPurple
 import com.hativ2.ui.theme.NotionRed
 import com.hativ2.ui.theme.NotionWhite
 import com.hativ2.ui.theme.NotionYellow
+import com.hativ2.ui.theme.PastelYellow
 
 @Composable
 fun EditDashboardDialog(
@@ -57,7 +58,7 @@ fun EditDashboardDialog(
         "gray" to NotionGray,
         "blue" to NotionBlue,
         "green" to NotionGreen,
-        "yellow" to NotionYellow,
+        "yellow" to PastelYellow,
         "pink" to NotionPink,
         "purple" to NotionPurple,
         "orange" to NotionOrange

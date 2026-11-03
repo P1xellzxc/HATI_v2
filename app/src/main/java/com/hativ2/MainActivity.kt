@@ -264,6 +264,7 @@ class MainActivity : FragmentActivity() {
             val prefs by viewModel.prefs.collectAsState()
             HatiV2Theme(
                 themeMode    = prefs.themeMode,
+                palette      = com.hativ2.ui.theme.HatiPalettes.byId(prefs.paletteId),
                 densityScale = prefs.density.factor,
                 textScale    = prefs.textSize.factor,
             ) {

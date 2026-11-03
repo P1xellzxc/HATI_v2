@@ -8,7 +8,9 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -33,10 +35,10 @@ import androidx.core.view.WindowCompat
 //  - Each elevation level adds ~5% lightness to the surface
 // ─────────────────────────────────────────────────────────────
 
-private val DarkColorScheme = darkColorScheme(
+private fun darkSchemeFor(p: HatiPalette) = darkColorScheme(
     primary = DarkOnSurface,
-    secondary = DarkNotionYellow,
-    tertiary = DarkNotionBlue,
+    secondary = p.darkAccent,
+    tertiary = p.darkTertiary,
     background = DarkSurface,
     surface = DarkSurface,
     surfaceVariant = DarkSurfaceElevated1,
@@ -46,13 +48,13 @@ private val DarkColorScheme = darkColorScheme(
     onBackground = DarkOnSurface,
     onSurface = DarkOnSurface,
     onSurfaceVariant = DarkOnSurface.copy(alpha = 0.8f),
-    outline = NotionMuted,
+    outline = p.muted,
     outlineVariant = Color(0xFF444444),
     error = DarkErrorRed,
     errorContainer = DarkErrorContainer,
     onError = DarkSurface,
     onErrorContainer = DarkErrorRed,
-    inverseSurface = NotionWhite,
+    inverseSurface = p.paper,
     inverseOnSurface = DarkSurface,
     surfaceContainerHighest = DarkSurfaceElevated3,
     surfaceContainerHigh = DarkSurfaceElevated2,
@@ -60,36 +62,37 @@ private val DarkColorScheme = darkColorScheme(
     surfaceContainerLow = DarkSurface,
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = MangaBlack,
-    secondary = NotionYellow,
-    tertiary = NotionBlue,
-    background = NotionWhite,
-    surface = NotionWhite,
-    surfaceVariant = NotionGray,
-    onPrimary = NotionWhite,
-    onSecondary = MangaBlack,
-    onTertiary = MangaBlack,
-    onBackground = MangaBlack,
-    onSurface = MangaBlack,
-    onSurfaceVariant = NotionMuted,
-    outline = NotionMuted,
-    outlineVariant = NotionDivider,
+private fun lightSchemeFor(p: HatiPalette) = lightColorScheme(
+    primary = p.ink,
+    secondary = p.accent,
+    tertiary = p.tertiary,
+    background = p.paper,
+    surface = p.paper,
+    surfaceVariant = p.surfaceVariant,
+    onPrimary = p.paper,
+    onSecondary = p.ink,
+    onTertiary = p.ink,
+    onBackground = p.ink,
+    onSurface = p.ink,
+    onSurfaceVariant = p.muted,
+    outline = p.muted,
+    outlineVariant = p.divider,
     error = ErrorRed,
     errorContainer = ErrorRedContainer,
-    onError = NotionWhite,
+    onError = Color.White,
     onErrorContainer = ErrorRed,
-    inverseSurface = MangaBlack,
-    inverseOnSurface = NotionWhite,
-    surfaceContainerHighest = NotionGray,
-    surfaceContainerHigh = Color(0xFFF0F0F0),
-    surfaceContainer = Color(0xFFF5F5F5),
-    surfaceContainerLow = NotionWhite,
+    inverseSurface = p.ink,
+    inverseOnSurface = p.paper,
+    surfaceContainerHighest = p.surfaceVariant,
+    surfaceContainerHigh = lerp(p.paper, p.surfaceVariant, 0.6f),
+    surfaceContainer = lerp(p.paper, p.surfaceVariant, 0.35f),
+    surfaceContainerLow = p.paper,
 )
 
 @Composable
 fun HatiV2Theme(
     themeMode: ThemeMode = ThemeMode.System,
+    palette: HatiPalette = HatiPalettes.Classic,
     densityScale: Float = 1f,
     textScale: Float = 1f,
     // Back-compat: callers passing darkTheme directly still work.
@@ -100,7 +103,10 @@ fun HatiV2Theme(
     },
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    val colorScheme = remember(palette, darkTheme) {
+        if (darkTheme) darkSchemeFor(palette) else lightSchemeFor(palette)
+    }
+    SideEffect { ActivePalette.current = palette }
 
     val view = LocalView.current
     if (!view.isInEditMode) {

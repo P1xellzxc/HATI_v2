@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.hativ2.ui.theme.DensityPreset
+import com.hativ2.ui.theme.HatiPalettes
 import com.hativ2.ui.theme.TextSizePreset
 import com.hativ2.ui.theme.ThemeMode
 import kotlinx.coroutines.flow.Flow
@@ -15,7 +16,8 @@ import javax.inject.Singleton
 data class UserPrefs(
     val themeMode: ThemeMode = ThemeMode.System,
     val density: DensityPreset = DensityPreset.Standard,
-    val textSize: TextSizePreset = TextSizePreset.Medium
+    val textSize: TextSizePreset = TextSizePreset.Medium,
+    val paletteId: String = HatiPalettes.Classic.id
 )
 
 @Singleton
@@ -26,7 +28,8 @@ class UserPreferencesRepository @Inject constructor(
         UserPrefs(
             themeMode = prefs[Keys.THEME_MODE]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.System,
             density   = prefs[Keys.DENSITY]?.let { runCatching { DensityPreset.valueOf(it) }.getOrNull() } ?: DensityPreset.Standard,
-            textSize  = prefs[Keys.TEXT_SIZE]?.let { runCatching { TextSizePreset.valueOf(it) }.getOrNull() } ?: TextSizePreset.Medium
+            textSize  = prefs[Keys.TEXT_SIZE]?.let { runCatching { TextSizePreset.valueOf(it) }.getOrNull() } ?: TextSizePreset.Medium,
+            paletteId = prefs[Keys.PALETTE] ?: HatiPalettes.Classic.id
         )
     }
 
@@ -42,9 +45,14 @@ class UserPreferencesRepository @Inject constructor(
         ds.edit { it[Keys.TEXT_SIZE] = size.name }
     }
 
+    suspend fun setPalette(id: String) {
+        ds.edit { it[Keys.PALETTE] = id }
+    }
+
     private object Keys {
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val DENSITY    = stringPreferencesKey("density_scale")
         val TEXT_SIZE  = stringPreferencesKey("text_size")
+        val PALETTE    = stringPreferencesKey("palette")
     }
 }
