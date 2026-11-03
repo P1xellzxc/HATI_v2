@@ -113,3 +113,26 @@ val DarkAccentDebit    = Color(0xFFE8B8C8)
 // stay outlined to keep ≤3 hues active at once.
 val AccentCategoryFood = Color(0xFFFFC9A8) // peach/coral selected chip
 val DarkAccentCategoryFood = Color(0xFFB37A5A)
+
+// ─────────────────────────────────────────────────────────────
+// GLASSMORPHISM LAYER SYSTEM
+// ─────────────────────────────────────────────────────────────
+// Glass surfaces use translucent fills + blur (via Modifier.blur
+// on API 31+). Three opacity levels for layering depth.
+// Light: white-tinted glass. Dark: white at lower opacity (dark bg
+// already provides depth). Border is always very subtle.
+// ─────────────────────────────────────────────────────────────
+
+// Light mode glass layers (white-tinted)
+val GlassSurfaceLight    = Color(0x0DFFFFFF) // 5% white
+val GlassSurfaceMidLight = Color(0x1AFFFFFF) // 10% white
+val GlassBorderLight     = Color(0x26000000) // 15% black border
+
+// Dark mode glass layers (white on dark bg)
+val GlassSurfaceDark     = Color(0x0EFFFFFF) // 5.5% white
+val GlassSurfaceMidDark  = Color(0x1CFFFFFF) // 11% white
+val GlassBorderDark      = Color(0x24FFFFFF) // 14% white border
+
+// Dark gradient bg for glass screens
+val GlassBgStart         = Color(0xFF08091C)
+val GlassBgEnd           = Color(0xFF0F0B2C)

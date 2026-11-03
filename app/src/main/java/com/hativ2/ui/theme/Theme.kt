@@ -129,6 +129,7 @@ fun HatiV2Theme(
         MaterialTheme(
             colorScheme = colorScheme,
             typography = Typography.scaledBy(textScale),
+            shapes = Shapes,
             content = content
         )
     }

@@ -133,6 +133,34 @@ fun MangaCard(
 }
 
 @Composable
+fun GlassCard(
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    content: @Composable () -> Unit
+) {
+    val glassBg     = MaterialTheme.colorScheme.surface.copy(alpha = 0.08f)
+    val glassBorder = MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)
+    val interactionSource = remember { MutableInteractionSource() }
+
+    Box(
+        modifier = modifier
+            .background(glassBg, RoundedCornerShape(16.dp))
+            .border(1.dp, glassBorder, RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(16.dp))
+            .then(
+                if (onClick != null) Modifier.clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onClick
+                ) else Modifier
+            )
+            .padding(16.dp)
+    ) {
+        content()
+    }
+}
+
+@Composable
 fun MangaButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -219,12 +247,13 @@ fun MangaTextField(
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 4.dp),
-            color = MangaBlack
+            color = MaterialTheme.colorScheme.onSurface
         )
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MangaBlack),
+            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
             keyboardOptions = keyboardOptions,
             singleLine = singleLine,
             visualTransformation = visualTransformation,
@@ -233,7 +262,7 @@ fun MangaTextField(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(NotionWhite, RoundedCornerShape(MangaCornerRadius))
+                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(MangaCornerRadius))
                         .border(MangaBorderWidth, MangaBlack, RoundedCornerShape(MangaCornerRadius))
                         .padding(horizontal = 12.dp, vertical = 12.dp)
                 ) {
@@ -317,7 +346,7 @@ fun TransactionCard(
                         text = title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MangaBlack
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = subtitle,

@@ -9,13 +9,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.hativ2.ui.theme.MangaBlack
-import com.hativ2.ui.theme.NotionWhite
 
 @Composable
 fun MangaBackButton(
@@ -25,15 +23,15 @@ fun MangaBackButton(
     Box(
         modifier = modifier
             .size(32.dp)
-            .border(2.dp, MangaBlack, RoundedCornerShape(4.dp))
-            .background(NotionWhite, RoundedCornerShape(4.dp))
+            .border(2.dp, MaterialTheme.colorScheme.onSurface, RoundedCornerShape(4.dp))
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(4.dp))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
             contentDescription = "Back",
-            tint = MangaBlack,
+            tint = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.size(20.dp)
         )
     }
