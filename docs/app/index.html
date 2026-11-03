@@ -815,7 +815,7 @@ if (window.matchMedia) matchMedia("(prefers-color-scheme: dark)").addEventListen
 
 applyTheme();
 render();
-if ("serviceWorker" in navigator && location.protocol === "https:") {
+if ("serviceWorker" in navigator && window.isSecureContext) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
 }
 </script>
