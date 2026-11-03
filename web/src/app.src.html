@@ -1,0 +1,1024 @@
+<title>HATI² Glass</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap">
+<style>
+/* Layout: one phone-width column of ink-bordered panels on flat paper; volumes are numbered spines, lists are ruled ledgers, the balance panel carries screentone. */
+:root {
+  /* Palette inputs from the chosen Sanzo Wada plate */
+  --ink-l: #000000; --paper-l: #FFFFFF; --acc-l: #FEF08A; --acc-d: #FFF3B0;
+  --hero-l: #FFF5D6; --hero-d: #3A3422; --food-l: #FFC9A8; --muted-l: #6B7280;
+  --b1: #FEF08A; --b2: #BFDBFE; --b3: #BBF7D0; --b4: #E9D5FF;
+
+  /* Light: ink on paper */
+  --bg: var(--paper-l);
+  --fg: var(--ink-l);
+  --sub: var(--muted-l);
+  --label: var(--muted-l);
+  --panel: var(--paper-l);
+  --sunk: color-mix(in srgb, var(--ink-l) 5%, var(--paper-l));
+  --line: color-mix(in srgb, var(--ink-l) 22%, var(--paper-l));
+  --rule: var(--ink-l);
+  --accent: var(--acc-l);
+  --on-accent: var(--ink-l);
+  --hero: var(--hero-l);
+  --chip: var(--food-l);
+  --tone: color-mix(in srgb, var(--ink-l) 16%, transparent);
+  --pos: #166534; --neg: #9D174D; --err: #B3261E;
+  --nav: var(--paper-l);
+
+  --font-disp: 'Black Han Sans', 'Arial Black', Impact, sans-serif;
+  --font-body: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --r: 3px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131217; --fg: #EDEBE4; --sub: #A8A6B0; --label: #A8A6B0;
+    --panel: #1B1A21; --sunk: #17161C; --line: #3A3842; --rule: #EDEBE4;
+    --accent: var(--acc-d); --on-accent: #131217; --hero: var(--hero-d);
+    --chip: color-mix(in srgb, var(--food-l) 28%, #1B1A21);
+    --tone: rgba(237, 235, 228, 0.14);
+    --pos: #BBF7D0; --neg: #FBCFE8; --err: #F2B8B5; --nav: #131217;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131217; --fg: #EDEBE4; --sub: #A8A6B0; --label: #A8A6B0;
+  --panel: #1B1A21; --sunk: #17161C; --line: #3A3842; --rule: #EDEBE4;
+  --accent: var(--acc-d); --on-accent: #131217; --hero: var(--hero-d);
+  --chip: color-mix(in srgb, var(--food-l) 28%, #1B1A21);
+  --tone: rgba(237, 235, 228, 0.14);
+  --pos: #BBF7D0; --neg: #FBCFE8; --err: #F2B8B5; --nav: #131217;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.45 var(--font-body); -webkit-tap-highlight-color: transparent; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--nav); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; box-shadow: 0 0 0 6px var(--accent); }
+h1, h2 { text-wrap: balance; }
+
+#app {
+  max-width: 520px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 calc(96px + env(safe-area-inset-bottom, 0px));
+  min-height: 100%;
+}
+
+/* Top bar */
+.topbar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  display: flex; align-items: center; gap: 10px;
+  margin: 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px))) 14px;
+  padding: 10px max(16px, env(safe-area-inset-left, 0px));
+  background: var(--nav); border-bottom: 2px solid var(--rule);
+}
+.topbar h1 { flex: 1; min-width: 0; margin: 0; font: 400 1.35rem/1.1 var(--font-disp); letter-spacing: .02em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.topbar h1:focus, .topbar h1:focus-visible { outline: none; box-shadow: none; }
+.topbar .sub { font-size: .85rem; max-width: 40%; }
+@media (max-width: 360px) { .topbar .sub { display: none; } }
+.logo { width: 36px; height: 36px; border-radius: var(--r); background: var(--accent); color: var(--on-accent); display: grid; place-items: center; font: 400 .95rem var(--font-disp); flex-shrink: 0; border: 2px solid var(--rule); }
+.logo svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; }
+.ico { width: 44px; height: 44px; border-radius: var(--r); background: transparent; border: 2px solid var(--rule); display: grid; place-items: center; flex-shrink: 0; }
+.ico svg, .btn svg, .tx-ic svg, .cat svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.tagline { margin: 0 0 4px; font-size: .95rem; color: var(--sub); max-width: 34ch; }
+
+/* Generic structure */
+.stack { display: flex; flex-direction: column; gap: 12px; }
+section { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.panel { background: var(--panel); border: 2px solid var(--rule); border-radius: var(--r); }
+.pad { padding: 14px; }
+.label { margin: 18px 0 2px; font: 400 1.05rem/1.2 var(--font-disp); letter-spacing: .02em; color: var(--fg); }
+section > .label, section > .row > .label { margin-top: 6px; }
+.muted { color: var(--sub); }
+.small { font-size: .85rem; }
+.num { font-variant-numeric: tabular-nums; }
+.row { display: flex; align-items: center; gap: 10px; }
+.between { justify-content: space-between; }
+.grow { flex: 1; min-width: 0; }
+.ellip { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.date { white-space: nowrap; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Buttons: only pressable things carry the hard ink shadow */
+.btn {
+  min-height: 44px; border: 2px solid var(--rule); border-radius: var(--r);
+  background: var(--panel); padding: 10px 14px;
+  font-weight: 700; font-size: .9rem;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 3px 3px 0 var(--rule); transition: transform .08s, box-shadow .08s;
+}
+.btn:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--rule); }
+.btn.primary { background: var(--accent); color: var(--on-accent); }
+.btn.quiet { box-shadow: none; border-width: 2px; }
+.btn.quiet:active { transform: none; background: var(--sunk); }
+.btn.danger { color: var(--err); border-color: var(--err); box-shadow: 3px 3px 0 var(--err); }
+.btn.block { width: 100%; }
+.btns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 360px) { .btns { grid-template-columns: 1fr; } }
+
+/* Hub: volumes as numbered spines */
+.vol { display: grid; grid-template-columns: 64px 1fr; text-align: left; padding: 0; width: 100%; background: var(--panel); border: 2px solid var(--rule); border-radius: var(--r); box-shadow: 4px 4px 0 var(--rule); transition: transform .08s, box-shadow .08s; }
+.vol:active { transform: translate(4px, 4px); box-shadow: 0 0 0 var(--rule); }
+.spine { background: var(--accent); color: var(--on-accent); border-right: 2px solid var(--rule); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 10px 4px; }
+.spine span { font-size: .68rem; font-weight: 700; letter-spacing: .12em; }
+.spine b { font: 400 1.6rem/1 var(--font-disp); }
+.vol-info { padding: 12px 14px; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.vol-name { font: 400 1.1rem/1.2 var(--font-disp); letter-spacing: .02em; }
+.vol-bal { font-weight: 700; font-size: .95rem; }
+.vol-bal.pos { color: var(--pos); } .vol-bal.neg { color: var(--neg); } .vol-bal.even { color: var(--sub); }
+.dashed { border: 2px dashed var(--line); border-radius: var(--r); background: transparent; padding: 16px; width: 100%; display: flex; align-items: center; gap: 12px; text-align: left; }
+.dashed b { font-size: 1rem; display: block; }
+
+/* Volume: balance panel with screentone */
+.hero { position: relative; overflow: hidden; padding: 16px 16px 14px; background: var(--hero); border: 2px solid var(--rule); border-radius: var(--r); box-shadow: 4px 4px 0 var(--rule); }
+.hero::after { content: ""; position: absolute; right: -10px; top: -10px; width: 46%; height: 140%; background: radial-gradient(circle, var(--tone) 1.3px, transparent 1.6px) 0 0 / 7px 7px; transform: rotate(8deg); pointer-events: none; -webkit-mask-image: linear-gradient(to left, #000 30%, transparent); mask-image: linear-gradient(to left, #000 30%, transparent); }
+.hero > * { position: relative; }
+.hero .k { font-weight: 700; font-size: .95rem; }
+.hero .amt { font: 400 clamp(1.9rem, 10vw, 2.6rem)/1.1 var(--font-disp); letter-spacing: .01em; overflow-wrap: anywhere; margin: 2px 0 6px; }
+.hero .meta { font-size: .85rem; color: var(--sub); }
+.hero .mine { margin: 8px 0 0; padding: 8px 0 0; border-top: 1.5px solid var(--rule); display: flex; flex-direction: column; gap: 4px; font-size: .92rem; list-style: none; }
+.amt.pos, .k.pos { color: var(--pos); } .amt.neg, .k.neg { color: var(--neg); }
+
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; border-radius: var(--r); border: 1.5px solid var(--line); background: var(--panel); font-size: .9rem; font-weight: 600; }
+.chip .num { font-weight: 500; }
+.chip.add { padding: 4px 14px; min-height: 44px; border: 2px dashed var(--line); background: transparent; }
+.av { width: 30px; height: 30px; border-radius: var(--r); display: grid; place-items: center; font-size: .75rem; font-weight: 700; color: var(--on-accent); border: 1.5px solid var(--rule); flex-shrink: 0; }
+
+/* Ledger: ruled rows inside one panel */
+.ledger { background: var(--panel); border: 2px solid var(--rule); border-radius: var(--r); display: flex; flex-direction: column; }
+.ledger > * + * { border-top: 1px solid var(--line); }
+.tx, .debt { display: flex; align-items: center; gap: 12px; padding: 12px; width: 100%; min-height: 56px; text-align: left; background: transparent; border: 0; }
+.ledger > .tx + .tx, .ledger > .debt + .debt, .ledger > * + .tx, .ledger > * + .debt { border-top: 1px solid var(--line); }
+button.tx:active, button.debt:active { background: var(--sunk); }
+.tx-ic { width: 36px; height: 36px; border-radius: var(--r); display: grid; place-items: center; border: 1.5px solid var(--rule); background: var(--sunk); flex-shrink: 0; }
+.tx-a { font-weight: 700; white-space: nowrap; }
+.debt .grow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bars { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.bar { height: 10px; border: 1.5px solid var(--rule); border-radius: 1px; background: var(--panel); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--fg); }
+.empty { text-align: center; padding: 20px 16px; background: radial-gradient(circle, var(--tone) 1px, transparent 1.3px) 0 0 / 6px 6px; }
+.empty .kao { font: 400 1.3rem var(--font-disp); }
+.empty .muted { background: var(--panel); display: inline-block; padding: 2px 8px; margin-top: 4px; }
+
+/* Forms */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > label, .legend { font-size: .85rem; font-weight: 700; color: var(--fg); }
+fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+legend { padding: 0; margin-bottom: 6px; }
+.input, select.input, textarea.input { width: 100%; padding: 11px 12px; border-radius: var(--r); font-size: 16px; border: 2px solid var(--line); background: var(--panel); outline: none; -webkit-appearance: none; appearance: none; }
+.input:focus { border-color: var(--rule); }
+.input[aria-invalid="true"] { border-color: var(--err); }
+.input:disabled { background: var(--sunk); color: var(--sub); }
+select.input { background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%); background-position: calc(100% - 18px) 52%, calc(100% - 13px) 52%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 34px; }
+.amount-box { padding: 12px 14px; background: var(--hero); border: 2px solid var(--rule); border-radius: var(--r); }
+.amount-box:focus-within { outline: 3px solid var(--fg); outline-offset: 2px; }
+.amount-box .row { gap: 6px; }
+.amount-box .cur { font: 400 1.6rem var(--font-disp); }
+.amount-box input { flex: 1; min-width: 0; font: 400 2.2rem/1.1 var(--font-disp); background: transparent; border: none; outline: none; padding: 0; }
+.seg { display: flex; flex-wrap: wrap; border: 2px solid var(--rule); border-radius: var(--r); overflow: hidden; }
+.seg button { flex: 1 1 auto; min-height: 44px; border: none; background: var(--panel); padding: 8px 10px; font-size: .9rem; font-weight: 700; color: var(--fg); }
+.seg button + button { border-left: 2px solid var(--rule); }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.cats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cat { border: 2px solid var(--line); border-radius: var(--r); background: var(--panel); padding: 10px 6px; min-height: 60px; font-size: .85rem; font-weight: 600; display: grid; justify-items: center; gap: 4px; }
+.cat[aria-pressed="true"] { background: var(--chip); border-color: var(--rule); box-shadow: 2px 2px 0 var(--rule); }
+.split-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 12px; min-height: 52px; }
+.split-row.typed { grid-template-columns: auto minmax(0, 1fr); }
+.split-row.typed > .row:last-child { grid-column: 2; justify-content: flex-end; }
+.split-row input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--fg); }
+.split-row .share { text-align: right; font-weight: 700; white-space: nowrap; }
+.split-row .input { width: 110px; padding: 8px 10px; text-align: right; }
+.split-in { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.msg { font-size: .9rem; font-weight: 600; color: var(--err); min-height: 1.2em; }
+.msg.ok { color: var(--pos); }
+
+/* Bottom nav */
+.nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 6;
+  display: flex; justify-content: center; gap: 8px;
+  padding: 6px max(16px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: var(--nav); border-top: 2px solid var(--rule);
+}
+.nav button { flex: 1; max-width: 160px; min-height: 52px; border: 2px solid transparent; background: none; display: grid; justify-items: center; gap: 2px; padding: 4px; border-radius: var(--r); font-size: .78rem; font-weight: 700; color: var(--sub); }
+.nav button[aria-current="page"] { color: var(--on-accent); background: var(--accent); border-color: var(--rule); }
+.nav svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Sheet */
+.scrim { position: fixed; inset: 0; z-index: 20; background: rgba(10, 10, 14, 0.5); display: flex; align-items: flex-end; justify-content: center; }
+.sheet {
+  width: 100%; max-width: 520px; max-height: min(88%, var(--vvh, 100dvh)); overflow: auto; overscroll-behavior: contain;
+  border-radius: 6px 6px 0 0; border: 2px solid var(--rule); border-bottom: none; background: var(--bg);
+  padding: 16px max(16px, env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+.sheet h2 { margin: 0 0 12px; font: 400 1.35rem var(--font-disp); letter-spacing: .02em; }
+.sheet h2:focus { outline: none; }
+
+/* Settings palettes */
+.pal { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border-radius: var(--r); text-align: left; border: 2px solid; min-height: 56px; }
+.pal[aria-checked="true"] { box-shadow: 3px 3px 0 currentColor; }
+.sw { display: flex; width: 72px; height: 28px; border: 1.5px solid currentColor; flex-shrink: 0; }
+.sw i { flex: 1; }
+.pal .dot { width: 28px; height: 28px; border-radius: var(--r); border: 2px solid currentColor; display: grid; place-items: center; font-weight: 700; flex-shrink: 0; }
+.banner { font-size: .9rem; padding: 10px 12px; margin-top: 12px; }
+.toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 30; padding: 10px 14px; border-radius: var(--r); background: var(--fg); color: var(--bg); font-size: .9rem; font-weight: 700; max-width: min(90vw, 480px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 3px 3px 0 var(--accent); }
+.toast.top { top: calc(12px + env(safe-area-inset-top, 0px)); bottom: auto; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } .btn:active, .vol:active { transform: none; } }
+</style>
+
+<main id="app"></main>
+<div id="status" class="sr" role="status" aria-live="polite"></div>
+<nav class="nav" id="nav" aria-label="Main"></nav>
+<div id="layer"></div>
+
+<script>
+"use strict";
+const PALETTES = /*PALETTES*/;
+const CAT_ICON = {
+  food: '<svg viewBox="0 0 24 24"><path d="M7 3v7a2 2 0 0 0 2 2v9M11 3v7a2 2 0 0 1-2 2M7 3v4M18 3c-2.5 1.5-3 5-3 8h3v10"/></svg>',
+  transport: '<svg viewBox="0 0 24 24"><path d="M5 16V9l2-4h10l2 4v7M3 16h18M7 16v3M17 16v3M5 11h14"/></svg>',
+  entertainment: '<svg viewBox="0 0 24 24"><path d="M3 7h18v3a2 2 0 0 0 0 4v3H3v-3a2 2 0 0 0 0-4z"/><path d="M15 8v2M15 12v1M15 15v1"/></svg>',
+  utilities: '<svg viewBox="0 0 24 24"><path d="M13 3 5 14h6l-1 7 8-11h-6z"/></svg>',
+  shopping: '<svg viewBox="0 0 24 24"><path d="M5 8h14l-1 13H6zM9 8V6a3 3 0 0 1 6 0v2"/></svg>',
+  other: '<svg viewBox="0 0 24 24"><path d="M3 7.5 12 3l9 4.5-9 4.5zM3 7.5v9L12 21l9-4.5v-9M12 12v9"/></svg>',
+  settle: '<svg viewBox="0 0 24 24"><path d="M5 8h13l-3-3M19 16H6l3 3"/></svg>'
+};
+const CATEGORIES = [["food", "Food"], ["transport", "Transport"], ["entertainment", "Fun"], ["utilities", "Utilities"], ["shopping", "Shopping"], ["other", "Other"]];
+const TYPES = [["travel", "Travel"], ["household", "Household"], ["event", "Event"], ["other", "Other"]];
+const CURRENCIES = ["₱", "$", "€", "£", "¥", "Rp", "₩", "฿", "₹", "RM"];
+const KEY = "hati2.mock.v1";
+const MAX_CENTS = 100000000000; // 1,000,000,000.00
+
+// ── Utilities ─────────────────────────────────────────────
+const $ = (s, r = document) => r.querySelector(s);
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pad2 = n => String(n).padStart(2, "0");
+const isoLocal = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const today = () => isoLocal(new Date());
+const fmt = (c, cur) => (c < 0 ? "−" : "") + (cur || "") + (Math.abs(c) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const signed = (c, cur) => (c > 0 ? "+" : "") + fmt(c, cur);
+function parseMoney(s) {
+  let t = String(s).trim().replace(/\s/g, "");
+  if (/^\d+,\d{1,2}$/.test(t)) t = t.replace(",", ".");
+  else if (/^\d{1,3}(,\d{3})+(\.\d{0,2})?$/.test(t)) t = t.replace(/,/g, "");
+  if (!/^(\d+(\.\d{0,2})?|\.\d{1,2})$/.test(t)) return NaN;
+  return Math.round(parseFloat(t) * 100);
+}
+function parseWeight(s) {
+  const t = String(s).trim().replace(",", ".");
+  if (!/^\d{1,7}(\.\d+)?$/.test(t)) return NaN;
+  const x = parseFloat(t);
+  return Number.isFinite(x) && x <= 1e6 ? x : NaN;
+}
+const ID_RE = /^[A-Za-z0-9]{1,40}$/;
+const initials = n => n.trim().split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
+const typeOf = id => TYPES.find(t => t[0] === id) || TYPES[3];
+const catOf = id => CATEGORIES.find(c => c[0] === id) || CATEGORIES[5];
+
+// ── Storage ───────────────────────────────────────────────
+let storageOk = true, recovered = false;
+const DEFAULT_SETTINGS = { palette: "classic", mode: "system", strategy: "simplify" };
+function load() {
+  let raw;
+  try { raw = localStorage.getItem(KEY); } catch (e) { storageOk = false; return null; }
+  if (!raw) return null;
+  try { return normalize(JSON.parse(raw)); }
+  catch (e) {
+    recovered = true;
+    try { localStorage.setItem("hati2.corrupt." + Date.now(), raw); } catch (_) {}
+    return null;
+  }
+}
+function normalize(d) {
+  if (!d || typeof d !== "object" || !Array.isArray(d.volumes)) throw new Error("bad shape");
+  const st = { ...DEFAULT_SETTINGS, ...(d.settings && typeof d.settings === "object" ? d.settings : {}) };
+  const volumes = [];
+  for (const v of d.volumes) {
+    if (!v || typeof v !== "object") { recovered = true; continue; }
+    const fixed = { ...v, expenses: Array.isArray(v.expenses) ? v.expenses : [], settlements: Array.isArray(v.settlements) ? v.settlements : [] };
+    fixed.expenses = fixed.expenses.filter(e => e && typeof e === "object").map(e => ({ ...e, date: typeof e.date === "string" ? e.date : today(), splits: e.splits && typeof e.splits === "object" ? e.splits : {} }));
+    if (validVolume(fixed)) volumes.push(cleanVolume(fixed)); else recovered = true;
+  }
+  return { settings: st, volumes };
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(S)); storageOk = true; return true; }
+  catch (e) { storageOk = false; toast("Couldn't save on this device. Storage may be full or turned off."); return false; }
+}
+
+function exampleVolume() {
+  const me = "me", mira = uid(), rio = uid();
+  const d = n => { const x = new Date(); x.setDate(x.getDate() - n); return isoLocal(x); };
+  const eq = (amount, ids) => splitEqual(amount, ids);
+  return {
+    id: uid(), title: "Tokyo Trip (example)", type: "travel", currency: "¥", meId: me, created: Date.now(),
+    members: [{ id: me, name: "Alex" }, { id: mira, name: "Mira" }, { id: rio, name: "Rio" }],
+    expenses: [
+      { id: uid(), desc: "Ramen at Ichiran", amount: 330000, paidBy: me, category: "food", date: d(1), splitType: "equal", splits: eq(330000, [me, mira, rio]), inputs: {} },
+      { id: uid(), desc: "Shinkansen tickets", amount: 1410000, paidBy: mira, category: "transport", date: d(2), splitType: "equal", splits: eq(1410000, [me, mira, rio]), inputs: {} },
+      { id: uid(), desc: "Shibuya hotel, 2 nights", amount: 2100000, paidBy: rio, category: "other", date: d(3), splitType: "equal", splits: eq(2100000, [me, mira, rio]), inputs: {} },
+      { id: uid(), desc: "teamLab tickets", amount: 960000, paidBy: me, category: "entertainment", date: d(3), splitType: "shares", splits: splitShares(960000, { [me]: 1, [mira]: 1, [rio]: 2 }), inputs: { [me]: "1", [mira]: "1", [rio]: "2" } }
+    ],
+    settlements: [{ id: uid(), from: me, to: rio, amount: 100000, date: d(0) }]
+  };
+}
+
+// ── Split math (integer cents, sums always exact) ─────────
+function splitEqual(total, ids) {
+  const out = {}, n = ids.length, base = Math.floor(total / n);
+  let rem = total - base * n;
+  ids.forEach(id => { out[id] = base + (rem-- > 0 ? 1 : 0); });
+  return out;
+}
+function splitWeighted(total, weights) {
+  const ids = Object.keys(weights), W = ids.reduce((a, id) => a + weights[id], 0), out = {};
+  let used = 0;
+  const parts = ids.map(id => { const exact = total * weights[id] / W, fl = Math.floor(exact); out[id] = fl; used += fl; return [id, exact - fl]; });
+  parts.sort((a, b) => b[1] - a[1]);
+  for (let i = 0; used < total; i++, used++) out[parts[i % parts.length][0]]++;
+  return out;
+}
+const splitShares = (total, w) => splitWeighted(total, w);
+
+// ── Debt engine (port of CalculateDebtsUseCase, in cents) ─
+function balances(v) {
+  const b = Object.fromEntries(v.members.map(m => [m.id, 0]));
+  for (const e of v.expenses) {
+    b[e.paidBy] = (b[e.paidBy] || 0) + e.amount;
+    for (const [pid, amt] of Object.entries(e.splits)) b[pid] = (b[pid] || 0) - amt;
+  }
+  for (const s of v.settlements) { b[s.from] = (b[s.from] || 0) + s.amount; b[s.to] = (b[s.to] || 0) - s.amount; }
+  return b;
+}
+function simplify(b) {
+  const givers = [], receivers = [], out = [];
+  for (const [id, c] of Object.entries(b)) { if (c < -1) givers.push({ id, a: -c }); else if (c > 1) receivers.push({ id, a: c }); }
+  givers.sort((x, y) => y.a - x.a); receivers.sort((x, y) => y.a - x.a);
+  let i = 0, j = 0;
+  while (i < givers.length && j < receivers.length) {
+    const t = Math.min(givers[i].a, receivers[j].a);
+    if (t > 1) out.push({ from: givers[i].id, to: receivers[j].id, amount: t });
+    givers[i].a -= t; receivers[j].a -= t;
+    if (givers[i].a < 1) i++;
+    if (receivers[j].a < 1) j++;
+  }
+  return out;
+}
+function pairwise(v) {
+  const m = {};
+  const add = (f, t, a) => { (m[f] = m[f] || {})[t] = (m[f][t] || 0) + a; };
+  for (const e of v.expenses) for (const [pid, a] of Object.entries(e.splits)) if (pid !== e.paidBy && a > 0) add(pid, e.paidBy, a);
+  for (const s of v.settlements) if (m[s.from]) m[s.from][s.to] = (m[s.from][s.to] || 0) - s.amount;
+  const out = [], seen = new Set();
+  for (const [d, targets] of Object.entries(m)) for (const [c, a] of Object.entries(targets)) {
+    const key = [d, c].sort().join(":"); if (seen.has(key)) continue; seen.add(key);
+    const net = a - ((m[c] && m[c][d]) || 0);
+    if (net > 1) out.push({ from: d, to: c, amount: net }); else if (net < -1) out.push({ from: c, to: d, amount: -net });
+  }
+  return out;
+}
+const debts = v => S.settings.strategy === "pairwise" ? pairwise(v) : simplify(balances(v));
+
+// ── State ─────────────────────────────────────────────────
+let S = load();
+if (!S) { S = { settings: { ...DEFAULT_SETTINGS }, volumes: recovered ? [] : [exampleVolume()] }; if (storageOk) save(); }
+const ui = { view: "hub", volId: null, form: null, from: "volume", histLimit: 100 };
+const vol = () => S.volumes.find(v => v.id === ui.volId);
+const nameOf = (v, id) => (v.members.find(m => m.id === id) || { name: "Unknown" }).name;
+const meName = (v, id) => id === v.meId ? "You" : nameOf(v, id);
+const meObj = (v, id) => id === v.meId ? "you" : nameOf(v, id);
+const pays = (v, from) => from === v.meId ? "pay" : "pays";
+const plural = (n, one, many = one + "s") => `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
+function niceDate(d) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+  if (d === today()) return "Today";
+  if (d === isoLocal(new Date(Date.now() - 864e5))) return "Yesterday";
+  const [Y, M, D] = d.split("-").map(Number);
+  return new Date(Y, M - 1, D).toLocaleDateString("en-US", { month: "short", day: "numeric", ...(Y !== new Date().getFullYear() ? { year: "numeric" } : {}) });
+}
+
+// ── Theme ─────────────────────────────────────────────────
+const hostTheme = document.documentElement.getAttribute("data-theme");
+function applyTheme() {
+  const p = PALETTES.find(x => x.id === S.settings.palette) || PALETTES[0];
+  const r = document.documentElement.style;
+  r.setProperty("--ink-l", p.ink); r.setProperty("--paper-l", p.paper);
+  r.setProperty("--acc-l", p.acc); r.setProperty("--acc-d", p.accD);
+  r.setProperty("--hero-l", p.hero); r.setProperty("--hero-d", p.heroD);
+  r.setProperty("--food-l", p.food); r.setProperty("--muted-l", p.muted);
+  const sw = p.sw.length >= 4 ? p.sw : [...p.sw, p.tert];
+  ["--b1", "--b2", "--b3", "--b4"].forEach((k, i) => r.setProperty(k, sw[i % sw.length]));
+  const m = S.settings.mode, root = document.documentElement;
+  if (m === "system") { hostTheme ? root.setAttribute("data-theme", hostTheme) : root.removeAttribute("data-theme"); }
+  else root.setAttribute("data-theme", m);
+  const attr = root.getAttribute("data-theme");
+  const dark = attr ? attr === "dark" : !!(window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", dark ? "#0B0A18" : p.paper);
+}
+
+// ── Icons ─────────────────────────────────────────────────
+const I = {
+  back: '<svg viewBox="0 0 24 24"><path d="M19 12H5m7-7-7 7 7 7"/></svg>',
+  plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  hub: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+  gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  dots: '<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>',
+  settle: '<svg viewBox="0 0 24 24"><path d="M7 17 17 7M17 7H8M17 7v9"/></svg>',
+  list: '<svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>',
+  clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  share: '<svg viewBox="0 0 24 24"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/></svg>',
+  import: '<svg viewBox="0 0 24 24"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M8 11l4 4 4-4M12 15V3"/></svg>'
+};
+
+// ── Rendering ─────────────────────────────────────────────
+function avatar(v, id) {
+  const i = v.members.findIndex(m => m.id === id), p = PALETTES.find(x => x.id === S.settings.palette) || PALETTES[0];
+  const colors = [p.acc, p.tert, p.food, p.hero];
+  return `<span class="av" aria-hidden="true" style="background:${colors[Math.max(i, 0) % colors.length]}">${esc(initials(nameOf(v, id)))}</span>`;
+}
+function balancePill(c, cur) {
+  if (Math.abs(c) <= 1) return `<span class="pill even">Settled</span>`;
+  return c > 0 ? `<span class="pill pos num">You're owed ${esc(fmt(c, cur))}</span>` : `<span class="pill neg num">You owe ${esc(fmt(-c, cur))}</span>`;
+}
+const total = v => v.expenses.reduce((a, e) => a + e.amount, 0);
+const volNo = v => String([...S.volumes].sort((a, b) => (a.created || 0) - (b.created || 0)).indexOf(v) + 1).padStart(2, "0");
+const timeline = v => [...v.expenses.map(e => ({ k: "e", d: e.date, x: e })), ...v.settlements.map(s => ({ k: "s", d: s.date, x: s }))].sort((a, b) => b.d.localeCompare(a.d));
+
+function topbar(title, { back, right = "" } = {}) {
+  return `<header class="topbar">${back ? `<button class="ico" data-act="back" aria-label="Back">${I.back}</button>` : `<span class="logo" aria-hidden="true">H²</span>`}<h1 tabindex="-1">${esc(title)}</h1>${right}</header>`;
+}
+function banner() {
+  if (!storageOk) return `<div class="banner panel" role="status">This browser has storage turned off. Your changes last until you close the page.</div>`;
+  if (recovered && ui.view === "hub") return `<div class="banner panel row between" role="status"><span>Some saved data couldn't be read, so it was set aside. A backup is kept on this device.</span><button class="btn quiet" data-act="dismissRecovered">OK</button></div>`;
+  return "";
+}
+function memberChip(v, m, c) {
+  const say = Math.abs(c) <= 1 ? "is settled" : c > 0 ? `is owed ${fmt(c, v.currency)}` : `owes ${fmt(-c, v.currency)}`;
+  const show = Math.abs(c) <= 1 ? "settled" : signed(c, v.currency);
+  return `<span class="chip">${avatar(v, m.id)}${esc(meName(v, m.id))}<span class="muted num small" aria-hidden="true">${esc(show)}</span><span class="sr">${esc(say)}</span></span>`;
+}
+function debtRow(v, d, tag = "div", extra = "") {
+  return `<${tag} class="debt" ${extra}>${avatar(v, d.from)}<span class="grow small"><b>${esc(meName(v, d.from))}</b> ${pays(v, d.from)} <b>${esc(meObj(v, d.to))}</b></span><b class="num">${esc(fmt(d.amount, v.currency))}</b></${tag}>`;
+}
+function itemRow(v, it) {
+  if (it.k === "e") return expenseRow(v, it.x);
+  const s = it.x;
+  return `<button class="tx" data-act="editSettle" data-id="${esc(s.id)}"><span class="tx-ic" aria-hidden="true">${CAT_ICON.settle}</span><span class="grow"><b class="ellip" style="display:block">${esc(meName(v, s.from))} paid ${esc(meObj(v, s.to))}</b><span class="muted small ellip" style="display:block">Payment · <span class="date">${esc(niceDate(s.date))}</span></span></span><span class="tx-a num">${esc(fmt(s.amount, v.currency))}</span></button>`;
+}
+function expenseRow(v, e) {
+  const c = catOf(e.category), mineShare = e.splits[v.meId] || 0;
+  const effect = (e.paidBy === v.meId ? e.amount : 0) - mineShare;
+  return `<button class="tx" data-act="editExpense" data-id="${esc(e.id)}"><span class="tx-ic" aria-hidden="true">${CAT_ICON[c[0]]}</span>
+    <span class="grow"><b class="ellip" style="display:block">${esc(e.desc)}</b><span class="muted small ellip" style="display:block">${esc(meName(v, e.paidBy))} paid ${esc(fmt(e.amount, v.currency))} · <span class="date">${esc(niceDate(e.date))}</span></span></span>
+    <span class="tx-a num" style="color:${effect > 0 ? "var(--pos)" : effect < 0 ? "var(--neg)" : "var(--sub)"}">${effect === 0 ? "—" : esc(signed(effect, v.currency))}</span></button>`;
+}
+const emptyCard = (kao, text) => `<div class="panel empty"><div class="kao" aria-hidden="true">${kao}</div><div class="muted small">${text}</div></div>`;
+
+const views = {
+  hub() {
+    const vs = S.volumes;
+    const cards = vs.map(v => {
+      const b = balances(v)[v.meId] || 0, t = typeOf(v.type), n = volNo(v);
+      const settled = Math.abs(b) <= 1;
+      const bal = settled ? "All settled" : b > 0 ? `You're owed ${fmt(b, v.currency)}` : `You owe ${fmt(-b, v.currency)}`;
+      return `<button class="vol" data-act="open" data-id="${esc(v.id)}" aria-label="${esc(`Volume ${n}, ${v.title}, ${bal}, ${plural(v.expenses.length, "expense")}`)}">
+        <span class="spine" aria-hidden="true"><span>VOL.</span><b>${n}</b></span>
+        <span class="vol-info" aria-hidden="true"><span class="vol-name ellip">${esc(v.title)}</span>
+        <span class="vol-bal num ${settled ? "even" : b > 0 ? "pos" : "neg"}">${esc(bal)}</span>
+        <span class="muted small ellip">${t[1]} · ${plural(v.members.length, "member")} · ${esc(fmt(total(v), v.currency))} spent</span></span></button>`;
+    }).join("");
+    return topbar("HATI²", { right: `<button class="btn quiet" data-act="import">${I.import} Import</button>` }) +
+      `<p class="tagline">Split costs with the people you travel or live with. Each volume is one trip or group.</p>
+      <h2 class="label">Your volumes</h2><div class="stack">${cards}
+      <button class="dashed" data-act="newVolume"><span class="logo" aria-hidden="true">${I.plus}</span><span><b>New volume</b><span class="muted small">Start tracking a group's expenses</span></span></button></div>`;
+  },
+
+  volume() {
+    const v = vol(); if (!v) { ui.view = "hub"; return views.hub(); }
+    const b = balances(v), mine = b[v.meId] || 0, ds = debts(v), t = typeOf(v.type), settled = Math.abs(mine) <= 1;
+    const cls = settled ? "" : mine > 0 ? "pos" : "neg";
+    const items = timeline(v), tot = total(v);
+    const byCat = {}; v.expenses.forEach(e => byCat[e.category] = (byCat[e.category] || 0) + e.amount);
+    const catRows = Object.entries(byCat).sort((a, c) => c[1] - a[1]);
+    const myDebts = ds.filter(d => d.from === v.meId || d.to === v.meId);
+    const hist = items.length ? `<button class="ico" data-act="history" aria-label="History">${I.clock}</button>` : "";
+    return topbar(v.title, { back: true, right: `${hist}<button class="ico" data-act="volMenu" aria-label="Volume options">${I.dots}</button>` }) +
+      `<div class="stack">
+      <section class="hero" aria-label="Your balance" style="margin:0">
+        <div class="meta">Vol. ${volNo(v)} · ${t[1]} · ${plural(v.members.length, "member")} · ${esc(fmt(tot, v.currency))} spent</div>
+        <div class="k ${cls}">${settled ? "You're all settled" : mine > 0 ? "You are owed" : "You owe"}</div>
+        ${settled ? "" : `<div class="amt num ${cls}">${esc(fmt(Math.abs(mine), v.currency))}</div>`}
+        ${myDebts.length ? `<ul class="mine">${myDebts.map(d => `<li class="row between"><span class="ellip">${d.from === v.meId ? `Pay ${esc(nameOf(v, d.to))}` : `${esc(nameOf(v, d.from))} pays you`}</span><b class="num">${esc(fmt(d.amount, v.currency))}</b></li>`).join("")}</ul>` : ""}
+      </section>
+      <div class="btns">
+        <button class="btn primary" data-act="addExpense">${I.plus} Add expense</button>
+        <button class="btn" data-act="settle">${I.settle} Settle up</button>
+      </div>
+      ${v.members.length < 2 ? `<div class="panel pad row between"><span class="small">You're the only member so far.</span><button class="btn quiet" data-act="addMember">Add someone</button></div>` : ""}
+      <section><h2 class="label">Members</h2><div class="chips">
+        ${v.members.map(m => memberChip(v, m, b[m.id] || 0)).join("")}
+        <button class="chip add" data-act="addMember">+ Add</button></div></section>
+      <section><h2 class="label">Who pays whom <span class="muted small" style="font-family:var(--font-body)">${S.settings.strategy === "pairwise" ? "pairwise" : "fewest payments"}</span></h2>
+        ${ds.length ? `<div class="ledger">${ds.map(d => debtRow(v, d)).join("")}</div>` : emptyCard("(＾▽＾)", "Nobody owes anything.")}</section>
+      <section><div class="row between"><h2 class="label">Recent</h2>${items.length > 4 ? `<button class="btn quiet" data-act="history">${I.list} See all ${items.length}</button>` : ""}</div>
+        ${items.length ? `<div class="ledger">${items.slice(0, 4).map(it => itemRow(v, it)).join("")}</div>` : emptyCard("(・_・;)", "No expenses yet. Add the first one.")}</section>
+      ${catRows.length ? `<section><h2 class="label">Spending by category</h2><div class="panel bars">${catRows.map(([c, a]) => {
+        const k = catOf(c); return `<div><div class="row between small"><span>${k[1]}</span><b class="num">${esc(fmt(a, v.currency))} · ${Math.round(a * 100 / tot)}%</b></div><div class="bar" aria-hidden="true"><i style="width:${(a * 100 / tot).toFixed(1)}%"></i></div></div>`;
+      }).join("")}</div></section>` : ""}
+      </div>`;
+  },
+
+  history() {
+    const v = vol(); if (!v) { ui.view = "hub"; return views.hub(); }
+    const items = timeline(v), shown = items.slice(0, ui.histLimit);
+    return topbar("History", { back: true, right: `<span class="muted sub ellip">${esc(v.title)}</span>` }) +
+      `<p class="muted small" style="margin:0 0 8px">${plural(v.expenses.length, "expense")} and ${plural(v.settlements.length, "payment")}. Tap one to edit it.</p>` +
+      (shown.length ? `<div class="ledger">${shown.map(it => itemRow(v, it)).join("")}</div>` : emptyCard("(・_・;)", "Nothing recorded yet.")) +
+      (items.length > shown.length ? `<button class="btn block" data-act="more" style="margin-top:12px">Show ${Math.min(100, items.length - shown.length)} more</button>` : "");
+  },
+
+  expense() {
+    const v = vol(), f = ui.form;
+    if (!v || !f) { ui.view = "hub"; return views.hub(); }
+    return topbar(f.id ? "Edit expense" : "New expense", { back: true, right: `<span class="muted sub ellip">${esc(v.title)}</span>` }) +
+      `<form id="expForm" class="stack" novalidate>
+      <div class="amount-box"><label for="f-amount" class="legend">Amount</label>
+        <div class="row"><span class="cur" aria-hidden="true">${esc(v.currency)}</span><input id="f-amount" inputmode="decimal" autocomplete="off" placeholder="0.00" value="${esc(f.amount)}"></div></div>
+      <div class="field"><label for="f-desc">Description</label><input id="f-desc" class="input" maxlength="100" placeholder="Ramen dinner" autocomplete="off" value="${esc(f.desc)}" aria-describedby="descMsg"><div class="msg" id="descMsg"></div></div>
+      <div class="btns">
+        <div class="field"><label for="f-paid">Paid by</label><select id="f-paid" class="input">${v.members.map(m => `<option value="${esc(m.id)}" ${m.id === f.paidBy ? "selected" : ""}>${esc(meName(v, m.id))}</option>`).join("")}</select></div>
+        <div class="field"><label for="f-date">Date</label><input id="f-date" type="date" class="input" value="${esc(f.date)}"></div>
+      </div>
+      <fieldset><legend class="legend">Category</legend><div class="cats">${CATEGORIES.map(c => `<button type="button" class="cat" data-cat="${c[0]}" aria-pressed="${c[0] === f.category}"><span aria-hidden="true">${CAT_ICON[c[0]]}</span>${c[1]}</button>`).join("")}</div></fieldset>
+      <fieldset><legend class="legend">Split</legend><div class="seg">${[["equal", "Equal"], ["exact", "Exact"], ["percent", "Percent"], ["shares", "Shares"]].map(s => `<button type="button" data-split="${s[0]}" aria-pressed="${s[0] === f.splitType}">${s[1]}</button>`).join("")}</div></fieldset>
+      <div class="ledger" id="splitRows">${v.members.map(m => splitRow(v, m)).join("")}</div>
+      <div class="muted small" id="splitSum" aria-live="polite"></div>
+      <div class="field"><label for="f-note">Note (optional)</label><input id="f-note" class="input" maxlength="200" autocomplete="off" value="${esc(f.note || "")}"></div>
+      <div class="msg" id="formMsg" role="alert"></div>
+      <button class="btn primary block" type="submit">${f.id ? "Update expense" : "Save expense"}</button>
+      ${f.id ? `<button type="button" class="btn danger block" data-act="deleteExpense">Delete expense</button>` : ""}
+      </form>`;
+  },
+
+  settings() {
+    const st = S.settings;
+    const seg = (key, label, opts) => `<div class="seg" role="group" aria-label="${label}">${opts.map(o => `<button type="button" data-set="${key}" data-val="${o[0]}" aria-pressed="${st[key] === o[0]}">${o[1]}</button>`).join("")}</div>`;
+    return topbar("Settings") + `<div class="stack">
+      <section class="panel pad stack"><h2 class="label" style="margin:0">Appearance</h2>${seg("mode", "Appearance", [["system", "System"], ["light", "Light"], ["dark", "Dark"]])}</section>
+      <section class="panel pad stack"><div><h2 class="label" style="margin:0" id="palLabel">Color theme</h2><div class="muted small">Palettes from Sanzo Wada's A Dictionary of Color Combinations (1918). Saved on this device only.</div></div>
+        <div class="stack" role="radiogroup" aria-labelledby="palLabel">${PALETTES.map(p => `<button type="button" class="pal" role="radio" aria-checked="${p.id === st.palette}" tabindex="${p.id === st.palette ? 0 : -1}" data-pal="${p.id}" style="background:${p.paper};color:${p.ink};border-color:${p.ink}">
+          <span class="sw" aria-hidden="true">${p.sw.map(c => `<i style="background:${c}"></i>`).join("")}</span>
+          <span class="grow"><b style="display:block;letter-spacing:.06em">${p.name.toUpperCase()}</b><span class="small" style="color:${p.muted}">${p.n ? "No. " + String(p.n).padStart(3, "0") : "HATI original"}</span></span>
+          <span class="dot" style="background:${p.acc}" aria-hidden="true">${p.id === st.palette ? "✓" : ""}</span></button>`).join("")}</div></section>
+      <section class="panel pad stack"><div><h2 class="label" style="margin:0">Debt calculation</h2><div class="muted small">Fewest payments merges debts across the group. Pairwise only cancels debts between the same two people.</div></div>
+        ${seg("strategy", "Debt calculation", [["simplify", "Fewest payments"], ["pairwise", "Pairwise"]])}</section>
+      <section class="panel pad stack"><div><h2 class="label" style="margin:0">Data</h2><div class="muted small">Everything stays on this device. Use Share on a volume to send it to someone else.</div></div>
+        <div class="btns"><button class="btn" data-act="seed">Add example</button><button class="btn danger" data-act="reset">Erase all</button></div></section>
+      <div class="muted small" style="text-align:center">HATI² · ${plural(S.volumes.length, "volume")} on this device</div>
+      </div>`;
+  }
+};
+
+function splitRow(v, m) {
+  const f = ui.form, on = f.include[m.id], t = f.splitType;
+  const inp = t === "equal" ? "" : `<span class="split-in"><input class="input num" data-in="${esc(m.id)}" inputmode="decimal" aria-label="${esc(meName(v, m.id))} ${t}" value="${esc(f.inputs[m.id] || "")}" ${on ? "" : "disabled"}>${t === "percent" ? "%" : t === "shares" ? "×" : ""}</span>`;
+  return `<label class="split-row${t === "equal" ? "" : " typed"}"><input type="checkbox" data-inc="${esc(m.id)}" ${on ? "checked" : ""}>
+    <span class="row grow">${avatar(v, m.id)}<span class="ellip">${esc(meName(v, m.id))}</span></span>
+    <span class="row">${inp}<span class="share num" data-share="${esc(m.id)}"></span></span></label>`;
+}
+
+// ── Expense form logic ────────────────────────────────────
+function computeSplits() {
+  const f = ui.form, v = vol(), amount = parseMoney(f.amount);
+  const ids = v.members.filter(m => f.include[m.id]).map(m => m.id);
+  if (isNaN(amount)) return { error: "Use numbers like 12.50 (up to 2 decimals)." };
+  if (!(amount > 0)) return { error: "Enter an amount greater than zero." };
+  if (amount > MAX_CENTS) return { error: "That amount is too large." };
+  if (!ids.length) return { error: "Pick at least one person to split with." };
+  if (f.splitType === "equal") return { splits: splitEqual(amount, ids), amount };
+  if (f.splitType === "exact") {
+    const out = {}; let sum = 0;
+    for (const id of ids) { const c = parseMoney(f.inputs[id] || "0"); if (isNaN(c)) return { error: `Check the amount for ${meName(v, id)}.` }; out[id] = c; sum += c; }
+    if (sum !== amount) return { error: sum < amount ? `Exact amounts add up to ${fmt(sum, v.currency)}; ${fmt(amount - sum, v.currency)} left to assign.` : `Exact amounts add up to ${fmt(sum, v.currency)}; that's ${fmt(sum - amount, v.currency)} over.`, partial: out, amount };
+    return { splits: out, amount };
+  }
+  const w = {};
+  for (const id of ids) { const x = parseWeight(f.inputs[id] || ""); if (isNaN(x)) return { error: `Check the ${f.splitType === "percent" ? "percent" : "shares"} for ${meName(v, id)}.` }; w[id] = x; }
+  const W = Object.values(w).reduce((a, b) => a + b, 0);
+  if (f.splitType === "percent" && Math.round(W * 100) !== 10000) return { error: `Percentages add up to ${W.toFixed(2)}%; they need to total 100%.` };
+  if (W <= 0) return { error: "Give at least one person a share." };
+  return { splits: splitWeighted(amount, w), amount };
+}
+function refreshSplitPreview() {
+  const v = vol(), r = computeSplits();
+  document.querySelectorAll("[data-share]").forEach(el => {
+    const id = el.dataset.share, val = r.splits ? r.splits[id] : r.partial ? r.partial[id] : undefined;
+    el.textContent = ui.form.include[id] && val !== undefined ? fmt(val, v.currency) : "";
+  });
+  $("#splitSum").textContent = r.splits ? `Split ${Object.keys(r.splits).length} ways · totals ${fmt(r.amount, v.currency)}` : "";
+  $("#formMsg").textContent = ui.form.touched ? (r.error || "") : "";
+}
+const DRAFT = "hati2.draft";
+function saveDraft() { try { sessionStorage.setItem(DRAFT, JSON.stringify({ volId: ui.volId, form: ui.form })); } catch (e) {} }
+function loadDraft() { try { return JSON.parse(sessionStorage.getItem(DRAFT) || "null"); } catch (e) { return null; } }
+function clearDraft() { try { sessionStorage.removeItem(DRAFT); } catch (e) {} }
+function formFrom(e) {
+  const v = vol();
+  const f = e ? { id: e.id, amount: (e.amount / 100).toFixed(2), desc: e.desc, paidBy: e.paidBy, date: e.date, category: e.category, splitType: e.splitType || "equal", note: e.note || "",
+    include: Object.fromEntries(v.members.map(m => [m.id, m.id in e.splits])), inputs: { ...(e.inputs || {}) } }
+    : { amount: "", desc: "", paidBy: v.meId, date: today(), category: "food", splitType: "equal", note: "", include: Object.fromEntries(v.members.map(m => [m.id, true])), inputs: {} };
+  if (e && e.splitType === "exact") v.members.forEach(m => { if (m.id in e.splits) f.inputs[m.id] = (e.splits[m.id] / 100).toFixed(2); });
+  return f;
+}
+function draftFor(id) {
+  const d = loadDraft(), v = vol();
+  if (!d || d.volId !== ui.volId || (d.form.id || null) !== id || !d.form.include) return null;
+  if (!v.members.some(m => m.id === d.form.paidBy)) return null;
+  v.members.forEach(m => { if (!(m.id in d.form.include)) d.form.include[m.id] = false; });
+  return d.form;
+}
+function openExpense(e) {
+  ui.from = ui.view === "history" ? "history" : "volume";
+  ui.form = draftFor(e ? e.id : null) || formFrom(e);
+  go("expense");
+}
+function submitExpense() {
+  const f = ui.form, v = vol(); f.touched = true;
+  if (!f.desc.trim()) {
+    const d = $("#f-desc"); d.setAttribute("aria-invalid", "true"); $("#descMsg").textContent = "Add a short description."; d.focus(); return;
+  }
+  const r = computeSplits();
+  if (r.error) { refreshSplitPreview(); $("#formMsg").scrollIntoView({ block: "center" }); return; }
+  const rec = { id: f.id || uid(), desc: f.desc.trim(), amount: r.amount, paidBy: f.paidBy, category: f.category, date: f.date || today(), splitType: f.splitType, splits: r.splits, inputs: f.splitType === "equal" || f.splitType === "exact" ? {} : { ...f.inputs }, note: f.note.trim() };
+  const i = v.expenses.findIndex(e => e.id === rec.id);
+  if (i >= 0) v.expenses[i] = rec; else v.expenses.push(rec);
+  clearDraft(); save(); leave(); toast(i >= 0 ? "Expense updated" : "Expense saved");
+}
+
+// ── Sheets ────────────────────────────────────────────────
+let lastFocus = null;
+const sheetOpen = () => !!$("#layer").firstChild;
+function sheet(html, onSubmit) {
+  lastFocus = document.activeElement;
+  $("#layer").innerHTML = `<div class="scrim"><form class="sheet" id="sheetForm" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" novalidate>${html.replace("<h2>", '<h2 id="sheetTitle" tabindex="-1">')}</form></div>`;
+  $("#app").inert = true; $("#nav").inert = true;
+  const form = $("#sheetForm");
+  form.addEventListener("submit", ev => { ev.preventDefault(); onSubmit && onSubmit(form); });
+  form.addEventListener("input", () => { const m = $("#sheetMsg"); if (m && !m.classList.contains("ok")) m.textContent = ""; });
+  $("#sheetTitle").focus();
+}
+function dropSheet() { $("#layer").innerHTML = ""; $("#app").inert = false; $("#nav").inert = false; }
+function closeSheet() { dropSheet(); if (lastFocus && document.contains(lastFocus)) lastFocus.focus(); }
+const sheetMsg = t => { const m = $("#sheetMsg"); if (m) m.textContent = t; };
+const sheetButtons = (label, cls = "primary") => `<div class="btns"><button type="button" class="btn quiet" data-act="closeSheet">Cancel</button><button class="btn ${cls}">${label}</button></div>`;
+
+function volumeSheet(v) {
+  sheet(`<h2>${v ? "Edit volume" : "New volume"}</h2><div class="stack">
+    <div class="field"><label for="s-title">Name</label><input id="s-title" class="input" maxlength="40" placeholder="Bali trip" autocomplete="off" value="${v ? esc(v.title) : ""}"></div>
+    <div class="btns">
+      <div class="field"><label for="s-type">Type</label><select id="s-type" class="input">${TYPES.map(t => `<option value="${t[0]}" ${v && v.type === t[0] ? "selected" : ""}>${t[1]}</option>`).join("")}</select></div>
+      <div class="field"><label for="s-cur">Currency</label><select id="s-cur" class="input">${CURRENCIES.map(c => `<option ${(v ? v.currency : lastCurrency()) === c ? "selected" : ""}>${c}</option>`).join("")}</select></div>
+    </div>
+    ${v ? "" : `<div class="field"><label for="s-me">Your name in this volume</label><input id="s-me" class="input" maxlength="40" placeholder="So others know who you are" autocomplete="off"></div>`}
+    <div class="msg" id="sheetMsg" role="alert"></div>
+    ${sheetButtons(v ? "Save" : "Create")}</div>`,
+    () => {
+      const title = $("#s-title").value.trim();
+      if (!title) return sheetMsg("Give the volume a name.");
+      if (v) { Object.assign(v, { title, type: $("#s-type").value, currency: $("#s-cur").value }); save(); closeSheet(); render(); toast("Volume updated"); return; }
+      const meId = uid(), myName = $("#s-me").value.trim() || "Me";
+      const nv = { id: uid(), title, type: $("#s-type").value, currency: $("#s-cur").value, meId, created: Date.now(), members: [{ id: meId, name: myName }], expenses: [], settlements: [] };
+      S.volumes.unshift(nv); save(); ui.volId = nv.id; go("volume"); toast(`${title} created`);
+    });
+}
+const lastCurrency = () => (S.volumes[0] && S.volumes[0].currency) || "$";
+function memberSheet() {
+  const v = vol();
+  sheet(`<h2>Add member</h2><div class="stack">
+    <div class="field"><label for="s-name">Name</label><input id="s-name" class="input" maxlength="40" placeholder="Mira" autocomplete="off"></div>
+    <div class="msg" id="sheetMsg" role="alert"></div>
+    ${sheetButtons("Add")}</div>`,
+    () => {
+      const n = $("#s-name").value.trim().replace(/\s+/g, " ");
+      if (!n) return sheetMsg("Enter a name.");
+      if (n.toLowerCase() === "you") return sheetMsg("\"You\" is how the app shows you. Use the person's name.");
+      if (v.members.some(m => m.name.toLowerCase() === n.toLowerCase())) return sheetMsg(`${n} is already in this volume.`);
+      v.members.push({ id: uid(), name: n }); save(); closeSheet(); render(); toast(`${n} added`);
+    });
+}
+function settleSheet(existing) {
+  const v = vol(), ds = debts(v);
+  if (!existing && v.members.length < 2) {
+    sheet(`<h2>Settle up</h2><div class="stack"><p class="muted" style="margin:0">Add someone to this volume first, then record payments between you.</p>
+      <div class="btns"><button type="button" class="btn quiet" data-act="closeSheet">Cancel</button><button type="button" class="btn primary" data-act="addMember">Add someone</button></div></div>`);
+    return;
+  }
+  const s = existing || ds[0] || { from: v.meId, to: (v.members.find(m => m.id !== v.meId) || {}).id };
+  const opt = sel => v.members.map(m => `<option value="${esc(m.id)}" ${m.id === sel ? "selected" : ""}>${esc(meName(v, m.id))}</option>`).join("");
+  const sugg = !existing && ds.length > 1 ? `<div class="legend">Suggested payments</div><div class="ledger">${ds.map((d, i) => debtRow(v, d, "button", `type="button" data-sugg="${i}"`)).join("")}</div>` : "";
+  sheet(`<h2>${existing ? "Edit payment" : "Settle up"}</h2><div class="stack">${sugg}
+    <div class="btns"><div class="field"><label for="s-from">From</label><select id="s-from" class="input">${opt(s.from)}</select></div>
+    <div class="field"><label for="s-to">To</label><select id="s-to" class="input">${opt(s.to)}</select></div></div>
+    <div class="field"><label for="s-amt">Amount (${esc(v.currency)})</label><input id="s-amt" class="input num" inputmode="decimal" placeholder="0.00" autocomplete="off" value="${s.amount ? (s.amount / 100).toFixed(2) : ""}"></div>
+    <div class="msg" id="sheetMsg" role="alert"></div>
+    ${sheetButtons("Record payment")}
+    ${existing ? `<button type="button" class="btn danger block" data-act="deleteSettle" data-id="${esc(existing.id)}">Delete payment</button>` : ""}</div>`,
+    () => {
+      const from = $("#s-from").value, to = $("#s-to").value, amt = parseMoney($("#s-amt").value);
+      if (from === to) return sheetMsg("Pick two different people.");
+      if (isNaN(amt)) return sheetMsg("Use numbers like 12.50 (up to 2 decimals).");
+      if (!(amt > 0)) return sheetMsg("Enter an amount greater than zero.");
+      if (amt > MAX_CENTS) return sheetMsg("That amount is too large.");
+      if (existing) Object.assign(existing, { from, to, amount: amt });
+      else v.settlements.push({ id: uid(), from, to, amount: amt, date: today() });
+      save(); closeSheet(); render(); toast("Payment recorded");
+    });
+  $("#sheetForm").addEventListener("click", ev => {
+    const b = ev.target.closest("[data-sugg]"); if (!b) return;
+    const d = ds[+b.dataset.sugg]; $("#s-from").value = d.from; $("#s-to").value = d.to; $("#s-amt").value = (d.amount / 100).toFixed(2);
+  });
+}
+function confirmSheet(title, body, label, onYes) {
+  sheet(`<h2>${esc(title)}</h2><p class="muted">${esc(body)}</p>${sheetButtons(esc(label), "danger")}`, () => { dropSheet(); onYes(); });
+}
+function volMenuSheet() {
+  const v = vol();
+  sheet(`<h2>${esc(v.title)}</h2><div class="stack">
+    <button type="button" class="btn block" data-act="editVolume">Edit volume</button>
+    <button type="button" class="btn block" data-act="share">${I.share} Share with someone</button>
+    <button type="button" class="btn danger block" data-act="deleteVolume">Delete volume</button>
+    <button type="button" class="btn quiet block" data-act="closeSheet">Close</button></div>`);
+}
+function shareSheet() {
+  const v = vol(), code = JSON.stringify({ app: "hati2-mock", v: 1, volume: v });
+  sheet(`<h2>Share volume</h2><div class="stack">
+    <p class="muted small" style="margin:0">Send this code in any chat. The other person opens HATI², taps Import at the top of Volumes, pastes it, and picks who they are.</p>
+    <label class="sr" for="s-code">Share code</label><textarea id="s-code" class="input num" rows="5" readonly>${esc(code)}</textarea>
+    <div class="msg ok" id="sheetMsg" role="status"></div>
+    <div class="btns"><button type="button" class="btn quiet" data-act="closeSheet">Done</button><button type="button" class="btn primary" data-act="copyCode">Copy code</button></div></div>`);
+}
+
+function validVolume(x) {
+  const str = (v, max) => typeof v === "string" && v.trim().length > 0 && v.length <= max;
+  const int = n => Number.isInteger(n) && n >= 0 && n <= MAX_CENTS;
+  const date = d => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d);
+  if (!x || typeof x !== "object" || !ID_RE.test(x.id) || !str(x.title, 40)) return false;
+  if (!Array.isArray(x.members) || !Array.isArray(x.expenses) || !Array.isArray(x.settlements)) return false;
+  if (!x.members.length || x.members.length > 200 || x.expenses.length > 20000 || x.settlements.length > 20000) return false;
+  if (!x.members.every(m => m && ID_RE.test(m.id) && str(m.name, 40))) return false;
+  const ids = new Set(x.members.map(m => m.id));
+  if (ids.size !== x.members.length) return false;
+  const uniq = list => new Set(list.map(i => i.id)).size === list.length;
+  return uniq(x.expenses) && uniq(x.settlements) &&
+    x.expenses.every(e => e && ID_RE.test(e.id) && str(e.desc, 100) && int(e.amount) && e.amount > 0 && ids.has(e.paidBy) && date(e.date) &&
+      (e.note === undefined || (typeof e.note === "string" && e.note.length <= 200)) &&
+      e.splits && typeof e.splits === "object" && Object.keys(e.splits).length > 0 &&
+      Object.entries(e.splits).every(([k, a]) => ids.has(k) && int(a)) && Object.values(e.splits).reduce((a, b) => a + b, 0) === e.amount) &&
+    x.settlements.every(t => t && ID_RE.test(t.id) && ids.has(t.from) && ids.has(t.to) && t.from !== t.to && int(t.amount) && t.amount > 0 && date(t.date));
+}
+function cleanVolume(x) {
+  return {
+    id: x.id, title: x.title.trim(), type: typeOf(x.type)[0], currency: CURRENCIES.includes(x.currency) ? x.currency : "$",
+    meId: ID_RE.test(x.meId) && x.members.some(m => m.id === x.meId) ? x.meId : x.members[0].id, created: Number(x.created) || Date.now(),
+    members: x.members.map(m => ({ id: m.id, name: m.name.trim() })),
+    expenses: x.expenses.map(e => ({ id: e.id, desc: e.desc.trim(), amount: e.amount, paidBy: e.paidBy, category: catOf(e.category)[0], date: e.date,
+      splitType: ["equal", "exact", "percent", "shares"].includes(e.splitType) ? e.splitType : "exact",
+      splits: { ...e.splits }, inputs: Object.fromEntries(Object.entries(e.inputs && typeof e.inputs === "object" ? e.inputs : {}).filter(([k, v]) => x.members.some(m => m.id === k) && typeof v === "string" && v.length <= 12)),
+      note: typeof e.note === "string" ? e.note : "" })),
+    settlements: x.settlements.map(t => ({ id: t.id, from: t.from, to: t.to, amount: t.amount, date: t.date }))
+  };
+}
+function importSheet() {
+  sheet(`<h2>Import volume</h2><div class="stack">
+    <div class="field"><label for="s-paste">Paste a share code</label><textarea id="s-paste" class="input" rows="4" placeholder='{"app":"hati2-mock",…}'></textarea></div>
+    <div class="field"><label for="s-file">Or choose a .json file</label><input id="s-file" type="file" accept=".json,application/json,text/plain" class="input"></div>
+    <div id="s-pick"></div>
+    <div class="msg" id="sheetMsg" role="alert"></div>
+    <div class="btns"><button type="button" class="btn quiet" data-act="closeSheet">Cancel</button><button class="btn primary" id="s-go">Check code</button></div></div>`,
+    () => {
+      let data;
+      try { data = JSON.parse($("#s-paste").value.trim()); } catch (e) { return sheetMsg("That code isn't valid. Copy the whole code and try again."); }
+      const x = data && data.app === "hati2-mock" ? data.volume : null;
+      if (!validVolume(x)) return sheetMsg("This code doesn't contain a HATI² volume, or its totals don't add up.");
+      const pick = $("#s-pick");
+      if (!pick.innerHTML) {
+        const exists = S.volumes.some(v => v.id === x.id);
+        pick.innerHTML = `<div class="field"><label for="s-who">Which member are you?</label><select id="s-who" class="input">${x.members.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("")}</select></div>` +
+          (exists ? `<div class="field"><label for="s-mode">You already have this volume</label><select id="s-mode" class="input"><option value="replace">Replace my copy with this one</option><option value="copy">Keep both</option></select></div>` : "");
+        const go = $("#s-go"); go.textContent = "Import"; go.disabled = true; setTimeout(() => { go.disabled = false; }, 500);
+        sheetMsg(""); return;
+      }
+      const nv = cleanVolume(x), who = $("#s-who").value;
+      if (!nv.members.some(m => m.id === who)) return sheetMsg("Choose which member you are.");
+      nv.meId = who;
+      const mode = $("#s-mode") ? $("#s-mode").value : "new";
+      if (mode === "replace") S.volumes = S.volumes.map(v => v.id === nv.id ? nv : v);
+      else { if (mode === "copy") nv.id = uid(); S.volumes.unshift(nv); }
+      save(); closeSheet(); ui.volId = nv.id; go("volume"); toast("Volume imported");
+    });
+  $("#s-paste").addEventListener("input", () => { $("#s-pick").innerHTML = ""; $("#s-go").textContent = "Check code"; sheetMsg(""); });
+  $("#s-file").addEventListener("change", ev => {
+    const file = ev.target.files[0]; if (!file) return;
+    const rd = new FileReader(); rd.onload = () => { $("#s-paste").value = String(rd.result); $("#s-paste").dispatchEvent(new Event("input")); }; rd.readAsText(file);
+  });
+}
+
+
+// ── Navigation ────────────────────────────────────────────
+function hashFor() {
+  switch (ui.view) {
+    case "settings": return "#prefs";
+    case "volume": return "#v-" + ui.volId;
+    case "history": return "#v-" + ui.volId + "-history";
+    case "expense": return "#v-" + ui.volId + (ui.form && ui.form.id ? "-edit-" + ui.form.id : "-new");
+    default: return "";
+  }
+}
+function parseHash() {
+  const h = location.hash.slice(1);
+  if (h === "prefs") return { view: "settings" };
+  const m = /^v-([A-Za-z0-9]+)(?:-(history|new|edit-([A-Za-z0-9]+)))?$/.exec(h);
+  if (!m || !S.volumes.some(v => v.id === m[1])) return { view: "hub" };
+  if (!m[2]) return { view: "volume", volId: m[1] };
+  if (m[2] === "history") return { view: "history", volId: m[1] };
+  return { view: "expense", volId: m[1], expId: m[3] || null };
+}
+const depth = () => (history.state && history.state.depth) || 0;
+function setUrl(replace) {
+  const h = hashFor(), url = h || location.pathname + location.search;
+  if (!replace && (location.hash || "") === h) return;
+  try { history[replace ? "replaceState" : "pushState"]({ depth: replace ? depth() : depth() + 1 }, "", url); } catch (e) {}
+}
+function applyRoute() {
+  const r = parseHash();
+  ui.view = r.view; ui.volId = r.volId || null;
+  if (r.view === "expense") {
+    const v = vol(), e = r.expId ? v.expenses.find(x => x.id === r.expId) : null;
+    if (r.expId && !e) ui.view = "volume";
+    else ui.form = draftFor(r.expId || null) || formFrom(e);
+  }
+}
+function parentOf() {
+  if (ui.view === "expense") return ui.from || "volume";
+  if (ui.view === "history") return "volume";
+  return "hub";
+}
+function go(view, { replace = false } = {}) {
+  const had = sheetOpen();
+  if (had) dropSheet();
+  if (view !== "expense" && ui.view === "expense") clearDraft();
+  ui.view = view; ui.histLimit = 100;
+  setUrl(replace || had);
+  render(); window.scrollTo(0, 0); focusTitle();
+}
+function leave() {
+  if (ui.view === "expense") clearDraft();
+  if (depth() > 0) history.back();
+  else go(parentOf(), { replace: true });
+}
+function focusTitle() { const h = $("#app h1"); if (h) h.focus({ preventScroll: true }); }
+addEventListener("popstate", () => {
+  if (sheetOpen()) { dropSheet(); setUrl(false); return; }
+  applyRoute(); render(); window.scrollTo(0, 0); focusTitle();
+});
+
+function render() {
+  try { $("#app").innerHTML = views[ui.view]() + banner(); }
+  catch (e) {
+    $("#app").innerHTML = topbar("HATI²") + `<div class="panel pad stack"><b>This screen couldn't be shown.</b><p class="muted small" style="margin:0">Your data is still on this device. Go back to your volumes; if this keeps happening, erase the damaged volume in Settings.</p><button class="btn primary" data-act="home">Back to volumes</button></div>`;
+    ui.view = "hub";
+  }
+  const top = ui.view === "settings" ? "settings" : "hub";
+  $("#nav").innerHTML = `<button data-act="home" ${top === "hub" ? 'aria-current="page"' : ""}>${I.hub}Volumes</button><button data-act="settings" ${top === "settings" ? 'aria-current="page"' : ""}>${I.gear}Settings</button>`;
+  if (ui.view === "expense" && $("#expForm")) bindExpenseForm();
+}
+let toastTimer;
+function toast(t) {
+  document.querySelectorAll(".toast").forEach(n => n.remove());
+  const n = document.createElement("div"); n.className = "toast" + (sheetOpen() ? " top" : ""); n.setAttribute("aria-hidden", "true"); n.textContent = t;
+  document.body.appendChild(n); clearTimeout(toastTimer); toastTimer = setTimeout(() => n.remove(), 2400);
+  const live = $("#status"); live.textContent = ""; setTimeout(() => { live.textContent = t; }, 30);
+}
+function bindExpenseForm() {
+  const f = ui.form, form = $("#expForm");
+  form.addEventListener("input", ev => {
+    const t = ev.target;
+    if (t.id === "f-amount") f.amount = t.value;
+    else if (t.id === "f-desc") { f.desc = t.value; if (t.value.trim()) { t.removeAttribute("aria-invalid"); $("#descMsg").textContent = ""; } }
+    else if (t.id === "f-note") f.note = t.value;
+    else if (t.id === "f-date") f.date = t.value;
+    else if (t.dataset.in) f.inputs[t.dataset.in] = t.value;
+    refreshSplitPreview(); saveDraft();
+  });
+  form.addEventListener("change", ev => {
+    const t = ev.target;
+    if (t.id === "f-paid") f.paidBy = t.value;
+    if (t.id === "f-date") f.date = t.value;
+    if (t.dataset.inc) {
+      const id = t.dataset.inc, i = form.querySelector(`[data-in="${CSS.escape(id)}"]`);
+      f.include[id] = t.checked;
+      if (t.checked && f.splitType === "shares" && !f.inputs[id]) { f.inputs[id] = "1"; if (i) i.value = "1"; }
+      if (i) i.disabled = !t.checked;
+    }
+    refreshSplitPreview(); saveDraft();
+  });
+  form.addEventListener("click", ev => {
+    const c = ev.target.closest("[data-cat]"), s = ev.target.closest("[data-split]");
+    if (c) { f.category = c.dataset.cat; form.querySelectorAll("[data-cat]").forEach(b => b.setAttribute("aria-pressed", b === c)); saveDraft(); }
+    if (s && f.splitType !== s.dataset.split) {
+      f.splitType = s.dataset.split; f.inputs = {};
+      const v = vol(), ids = v.members.filter(m => f.include[m.id]).map(m => m.id), amt = parseMoney(f.amount);
+      if (f.splitType === "shares") ids.forEach(id => f.inputs[id] = "1");
+      if (f.splitType === "percent" && ids.length) { const eq = splitEqual(10000, ids); ids.forEach(id => f.inputs[id] = (eq[id] / 100).toFixed(2)); }
+      if (f.splitType === "exact" && amt > 0 && ids.length) { const eq = splitEqual(amt, ids); ids.forEach(id => f.inputs[id] = (eq[id] / 100).toFixed(2)); }
+      form.querySelectorAll("[data-split]").forEach(b => b.setAttribute("aria-pressed", b === s));
+      $("#splitRows").innerHTML = v.members.map(m => splitRow(v, m)).join("");
+      refreshSplitPreview(); saveDraft();
+    }
+  });
+  form.addEventListener("submit", ev => { ev.preventDefault(); submitExpense(); });
+  refreshSplitPreview();
+}
+function selectPalette(id) {
+  S.settings.palette = id; save(); applyTheme(); render();
+  const b = $(`[data-pal="${CSS.escape(id)}"]`); if (b) b.focus();
+}
+
+document.addEventListener("click", async ev => {
+  if (ev.target.classList && ev.target.classList.contains("scrim")) return closeSheet();
+  const el = ev.target.closest("[data-act],[data-pal],[data-set]"); if (!el) return;
+  if (el.dataset.pal) return selectPalette(el.dataset.pal);
+  if (el.dataset.set) {
+    S.settings[el.dataset.set] = el.dataset.val; save(); applyTheme(); render();
+    const b = $(`[data-set="${el.dataset.set}"][data-val="${el.dataset.val}"]`); if (b) b.focus();
+    return;
+  }
+  const a = el.dataset.act, v = vol();
+  switch (a) {
+    case "home": if (ui.view !== "hub" || sheetOpen()) go("hub"); break;
+    case "settings": if (ui.view !== "settings" || sheetOpen()) go("settings"); break;
+    case "back": leave(); break;
+    case "open": ui.volId = el.dataset.id; go("volume"); break;
+    case "closeSheet": closeSheet(); break;
+    case "newVolume": volumeSheet(null); break;
+    case "editVolume": volumeSheet(v); break;
+    case "volMenu": volMenuSheet(); break;
+    case "share": shareSheet(); break;
+    case "import": importSheet(); break;
+    case "dismissRecovered": recovered = false; render(); break;
+    case "more": ui.histLimit += 100; render(); break;
+    case "copyCode": {
+      const ta = $("#s-code");
+      try { await navigator.clipboard.writeText(ta.value); sheetMsg("Copied. Paste it in a chat."); }
+      catch (e) { ta.focus(); ta.select(); sheetMsg("Text selected. Use your phone's Copy."); }
+      break;
+    }
+    case "deleteVolume": confirmSheet("Delete volume?", `${v.title} and all its expenses and payments will be removed from this device.`, "Delete", () => { S.volumes = S.volumes.filter(x => x.id !== v.id); save(); go("hub", { replace: true }); toast("Volume deleted"); }); break;
+    case "addMember": if (sheetOpen()) dropSheet(); memberSheet(); break;
+    case "addExpense": openExpense(null); break;
+    case "editExpense": openExpense(v.expenses.find(e => e.id === el.dataset.id)); break;
+    case "deleteExpense": confirmSheet("Delete expense?", `${ui.form.desc || "This expense"} will be removed and balances recalculated.`, "Delete", () => { v.expenses = v.expenses.filter(e => e.id !== ui.form.id); save(); leave(); toast("Expense deleted"); }); break;
+    case "settle": settleSheet(null); break;
+    case "editSettle": settleSheet(v.settlements.find(s => s.id === el.dataset.id)); break;
+    case "deleteSettle": v.settlements = v.settlements.filter(s => s.id !== el.dataset.id); save(); closeSheet(); render(); toast("Payment deleted"); break;
+    case "history": go("history"); break;
+    case "seed": S.volumes.unshift(exampleVolume()); save(); render(); toast("Example volume added"); break;
+    case "reset": confirmSheet("Erase all data?", "Every volume on this device will be deleted. Copies shared to other phones are not affected.", "Erase", () => { S.volumes = []; save(); go("hub", { replace: true }); toast("All data erased"); }); break;
+  }
+});
+document.addEventListener("keydown", ev => {
+  if (ev.key === "Escape" && sheetOpen()) { closeSheet(); return; }
+  const p = ev.target.closest && ev.target.closest("[data-pal]");
+  if (p && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(ev.key)) {
+    ev.preventDefault();
+    const i = PALETTES.findIndex(x => x.id === p.dataset.pal), d = ev.key === "ArrowDown" || ev.key === "ArrowRight" ? 1 : -1;
+    selectPalette(PALETTES[(i + d + PALETTES.length) % PALETTES.length].id);
+  }
+});
+addEventListener("storage", ev => {
+  if (ev.key !== KEY || ev.newValue === null) return;
+  const fresh = load(); if (!fresh) return;
+  S = fresh; applyTheme();
+  if (sheetOpen()) { dropSheet(); toast("Updated from another tab"); }
+  if (ui.view === "expense") return;
+  if (!vol() && ui.view !== "hub" && ui.view !== "settings") ui.view = "hub";
+  render();
+});
+if (window.matchMedia) { const mq = matchMedia("(prefers-color-scheme: dark)"); mq.addEventListener && mq.addEventListener("change", () => applyTheme()); }
+if (window.visualViewport) { const vv = () => document.documentElement.style.setProperty("--vvh", visualViewport.height + "px"); visualViewport.addEventListener("resize", vv); vv(); }
+
+applyTheme();
+try { history.replaceState({ depth: depth() }, ""); } catch (e) {}
+applyRoute();
+if (hashFor() !== (location.hash || "")) setUrl(true);
+render();
+
+/*PWA*/
+</script>
