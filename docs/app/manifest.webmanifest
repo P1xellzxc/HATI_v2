@@ -1,4 +1,5 @@
 {
+  "id": "./",
   "name": "HATI\u00b2",
   "short_name": "HATI\u00b2",
   "description": "Split group expenses offline.",
@@ -20,7 +21,7 @@
       "type": "image/png"
     },
     {
-      "src": "icon-512.png",
+      "src": "icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

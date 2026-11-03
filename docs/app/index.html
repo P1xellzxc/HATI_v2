@@ -4,8 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>HATI²</title>
-<meta name="description" content="Split group expenses offline. HATI² mock app for manual testing.">
-<meta name="theme-color" content="#FEF08A">
+<meta name="description" content="Split trip and group expenses offline.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#FFFFFF">
+<link rel="preload" href="fonts/black-han-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -13,12 +15,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="HATI²">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:0}[hidden]{display:none!important}img{max-width:100%}</style>
+<style>@font-face{font-family:'Black Han Sans';font-style:normal;font-weight:400;font-display:swap;src:url(fonts/black-han-sans-latin.woff2) format('woff2');unicode-range:U+20-21, U+24-29, U+2b-3a, U+3f, U+41-5a, U+61-7a, U+a3, U+a5, U+b2, U+b7, U+d7, U+e3f, U+2026, U+20a9, U+20ac, U+20b1, U+20b9, U+2212}@font-face{font-family:'DM Sans';font-style:normal;font-weight:400 700;font-display:swap;src:url(fonts/dm-sans-latin.woff2) format('woff2')}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:0}[hidden]{display:none!important}img{max-width:100%}html{background:#FFFFFF}@media (prefers-color-scheme:dark){html{background:#0B0A18}}</style>
 </head>
 <body>
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap">
 <style>
 /* Layout: one phone-width column; sticky top bar, scrolling glass cards over a palette-tinted blob field, fixed bottom nav. */
 :root {
@@ -43,7 +43,9 @@
   --err: #B3261E;
   --blob-a: 0.55;
   --shadow: 0 10px 30px color-mix(in srgb, var(--ink-l) 10%, transparent);
-  --nav: rgba(255, 255, 255, 0.72);
+  --nav: rgba(255, 255, 255, 0.86);
+  --label: color-mix(in srgb, var(--fg) 80%, transparent);
+  --card: rgba(255, 255, 255, 0.74);
 
   --font-disp: 'Black Han Sans', 'Arial Black', Impact, sans-serif;
   --font-body: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -61,7 +63,7 @@
     --neg: #FBCFE8; --neg-bg: rgba(251, 207, 232, 0.13);
     --err: #F2B8B5; --blob-a: 0.32;
     --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-    --nav: rgba(10, 9, 24, 0.72);
+    --nav: rgba(10, 9, 24, 0.86); --card: rgba(22, 22, 38, 0.72);
     color-scheme: dark;
   }
 }
@@ -76,7 +78,7 @@
   --neg: #FBCFE8; --neg-bg: rgba(251, 207, 232, 0.13);
   --err: #F2B8B5; --blob-a: 0.32;
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-  --nav: rgba(10, 9, 24, 0.72);
+  --nav: rgba(10, 9, 24, 0.86); --card: rgba(22, 22, 38, 0.72);
   color-scheme: dark;
 }
 
@@ -95,17 +97,18 @@ body::before {
 }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
-:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; box-shadow: 0 0 0 6px var(--accent); }
+.amount-box:focus-within { outline: 3px solid var(--fg); outline-offset: 2px; }
 
 /* Blob field */
 .blobs { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-.blob { position: absolute; border-radius: 50%; filter: blur(70px); opacity: var(--blob-a); animation: drift 26s ease-in-out infinite; }
+.blobs { contain: strict; }
+.blob { position: absolute; border-radius: 50%; filter: blur(70px); opacity: var(--blob-a); }
 .blob:nth-child(1) { width: 60vmax; height: 60vmax; left: -22vmax; top: -18vmax; background: var(--b1); }
 .blob:nth-child(2) { width: 50vmax; height: 50vmax; right: -20vmax; top: 18vh; background: var(--b2); animation-delay: -8s; }
 .blob:nth-child(3) { width: 46vmax; height: 46vmax; left: -10vmax; bottom: -20vmax; background: var(--b3); animation-delay: -15s; }
 .blob:nth-child(4) { width: 34vmax; height: 34vmax; right: -6vmax; bottom: 8vh; background: var(--b4); animation-delay: -4s; }
-@keyframes drift { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(4vmax,-5vmax) scale(1.06); } 66% { transform: translate(-3vmax,3vmax) scale(.95); } }
-@media (prefers-reduced-motion: reduce) { .blob { animation: none; } * { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } .btn:active { transform: none; } }
 
 /* Shell */
 #app {
@@ -125,19 +128,23 @@ button { cursor: pointer; }
   backdrop-filter: blur(22px) saturate(160%); -webkit-backdrop-filter: blur(22px) saturate(160%);
   border-bottom: 1px solid var(--line);
 }
-.topbar h1 { flex: 1; min-width: 0; margin: 0; font: 400 1.35rem/1.1 var(--font-disp); letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar h1 { flex: 1; min-width: 0; margin: 0; font: 400 1.3rem/1.1 var(--font-disp); letter-spacing: .04em; text-transform: uppercase; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.topbar h1:focus { outline: none; }
+.topbar .sub { font-size: .8rem; max-width: 40%; }
+@media (max-width: 360px) { .topbar .sub { display: none; } }
+.tagline { margin: 6px 2px 0; font-size: .9rem; color: var(--label); }
 .logo { width: 34px; height: 34px; border-radius: 10px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; font: 400 .9rem var(--font-disp); flex-shrink: 0; border: 2px solid var(--fg); }
-.ico { width: 38px; height: 38px; border-radius: var(--r-sm); background: var(--glass); border: 1px solid var(--line); display: grid; place-items: center; flex-shrink: 0; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.ico { width: 44px; height: 44px; border-radius: var(--r-sm); background: var(--glass); border: 1px solid var(--line); display: grid; place-items: center; flex-shrink: 0; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
 .ico svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 .stack { display: flex; flex-direction: column; gap: 12px; }
 .glass {
-  background: var(--glass); border: 1px solid var(--line); border-radius: var(--r-lg);
-  backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%);
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg);
   box-shadow: var(--shadow);
 }
 .pad { padding: 16px; }
-.label { font-size: .68rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--sub); margin: 14px 2px 6px; }
+.label { font-size: .75rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--label); margin: 14px 2px 6px; }
+h2.label { font-family: var(--font-body); }
 .muted { color: var(--sub); }
 .small { font-size: .8rem; }
 .num { font-variant-numeric: tabular-nums; }
@@ -148,6 +155,7 @@ button { cursor: pointer; }
 
 /* Buttons */
 .btn {
+  min-height: 44px;
   border: 2px solid var(--fg); border-radius: var(--r-md);
   background: var(--glass-strong); padding: 11px 14px;
   font-weight: 700; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase;
@@ -161,11 +169,12 @@ button { cursor: pointer; }
 .btn.block { width: 100%; }
 .btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 360px) { .btns { grid-template-columns: 1fr; } }
 
 /* Hub */
 .vol { overflow: hidden; text-align: left; padding: 0; width: 100%; display: block; }
 .vol-cover { height: 92px; position: relative; display: grid; place-items: center; font-size: 2.6rem; background: radial-gradient(ellipse at center, color-mix(in srgb, var(--accent) 45%, transparent), transparent 72%); border-bottom: 1px solid var(--line); }
-.pill { font-size: .72rem; font-weight: 700; padding: 3px 10px; border-radius: var(--r-pill); border: 1px solid var(--line); white-space: nowrap; }
+.pill { font-size: .78rem; font-weight: 700; padding: 3px 10px; border-radius: var(--r-pill); border: 1px solid var(--line); white-space: nowrap; }
 .pill.pos { background: var(--pos-bg); color: var(--pos); }
 .pill.neg { background: var(--neg-bg); color: var(--neg); }
 .pill.even { background: var(--glass-strong); color: var(--sub); }
@@ -186,15 +195,18 @@ button { cursor: pointer; }
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .stat { padding: 10px; text-align: center; border-radius: var(--r-md); }
 .stat b { display: block; font: 400 1.05rem var(--font-disp); }
-.stat span { font-size: .62rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--sub); }
+.stat span { font-size: .75rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--sub); }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px 5px 5px; border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--glass); font-size: .8rem; font-weight: 600; }
-.chip.add { padding: 5px 12px; border-style: dashed; background: transparent; }
-.av { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: .62rem; font-weight: 700; color: var(--on-accent); border: 1.5px solid var(--fg); flex-shrink: 0; }
+.chip.add { padding: 5px 14px; min-height: 44px; border-style: dashed; background: transparent; }
+.av { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: .72rem; font-weight: 700; color: var(--on-accent); border: 1.5px solid var(--fg); flex-shrink: 0; }
 .tx { display: flex; align-items: center; gap: 12px; padding: 11px 13px; border-radius: var(--r-md); width: 100%; text-align: left; }
 .tx-ic { width: 38px; height: 38px; border-radius: var(--r-sm); display: grid; place-items: center; font-size: 1.1rem; background: var(--glass-strong); border: 1px solid var(--line); flex-shrink: 0; }
 .tx-a { font-weight: 700; white-space: nowrap; }
-.debt { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: var(--r-md); }
+.debt { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: var(--r-md); width: 100%; text-align: left; min-height: 48px; }
+.logo svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; }
+.topbar h1:focus-visible { outline: none; box-shadow: none; }
+.vol-cover .pill { max-width: calc(100% - 20px); overflow: hidden; text-overflow: ellipsis; }
 .bar { height: 10px; border-radius: 99px; background: var(--line); overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--accent); border-right: 2px solid var(--fg); }
 .empty { text-align: center; padding: 22px 16px; }
@@ -202,29 +214,34 @@ button { cursor: pointer; }
 
 /* Forms */
 .field { display: flex; flex-direction: column; gap: 6px; }
-.field > label, .legend { font-size: .66rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--sub); }
+.field > label, .legend { font-size: .75rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--label); }
+fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+legend { padding: 0; margin-bottom: 6px; }
 .input, select.input, textarea.input {
-  width: 100%; padding: 12px 14px; border-radius: var(--r-md);
+  width: 100%; padding: 12px 14px; border-radius: var(--r-md); font-size: 16px;
   border: 1.5px solid var(--line); background: var(--glass-strong);
   outline: none; -webkit-appearance: none; appearance: none;
 }
 .input:focus { border-color: var(--fg); }
+.input[aria-invalid="true"] { border-color: var(--err); }
 select.input { background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%); background-position: calc(100% - 18px) 52%, calc(100% - 13px) 52%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 34px; }
 .amount-box { text-align: center; padding: 16px; background: color-mix(in srgb, var(--hero) 80%, transparent); }
 .amount-box .row { justify-content: center; }
 .amount-box .cur { font: 400 1.4rem var(--font-disp); opacity: .6; }
 .amount-box input { width: 100%; max-width: 260px; text-align: center; font: 400 2.4rem var(--font-disp); background: transparent; border: none; outline: none; letter-spacing: .02em; }
-.seg { display: flex; padding: 4px; gap: 4px; border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--glass); }
-.seg button { flex: 1; border: none; background: none; border-radius: var(--r-pill); padding: 8px 6px; font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--sub); }
+.seg { display: flex; flex-wrap: wrap; padding: 4px; gap: 4px; border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--glass); }
+.seg button { flex: 1 1 auto; min-height: 44px; border: none; background: none; border-radius: var(--r-pill); padding: 8px 10px; font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--sub); }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); box-shadow: inset 0 0 0 2px var(--fg); }
 .cats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .cat { border: 1.5px solid var(--line); border-radius: var(--r-md); background: var(--glass); padding: 10px 6px; font-size: .78rem; font-weight: 600; display: grid; justify-items: center; gap: 2px; }
 .cat span { font-size: 1.2rem; }
 .cat[aria-pressed="true"] { background: var(--chip); border-color: var(--fg); box-shadow: 2px 2px 0 var(--fg); }
-.split-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--r-md); }
+.split-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--r-md); min-height: 52px; }
+.split-row.typed { grid-template-columns: auto minmax(0, 1fr); }
+.split-row.typed > .row:last-child { grid-column: 2; justify-content: flex-end; }
 .split-row input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--fg); }
-.split-row .share { min-width: 84px; text-align: right; font-weight: 700; }
-.split-row .input { width: 92px; padding: 8px 10px; text-align: right; }
+.split-row .share { text-align: right; font-weight: 700; white-space: nowrap; }
+.split-row .input { width: 110px; padding: 8px 10px; text-align: right; }
 .split-in { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
 .msg { font-size: .82rem; font-weight: 600; color: var(--err); min-height: 1.2em; }
 .msg.ok { color: var(--pos); }
@@ -237,14 +254,14 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
   background: var(--nav); border-top: 1px solid var(--line);
   backdrop-filter: blur(28px) saturate(170%); -webkit-backdrop-filter: blur(28px) saturate(170%);
 }
-.nav button { flex: 1; max-width: 160px; border: none; background: none; display: grid; justify-items: center; gap: 2px; padding: 6px; border-radius: var(--r-md); font-size: .62rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--sub); }
-.nav button[aria-current="page"] { color: var(--fg); background: color-mix(in srgb, var(--accent) 55%, transparent); }
+.nav button { flex: 1; max-width: 160px; min-height: 52px; border: none; background: none; display: grid; justify-items: center; gap: 2px; padding: 6px; border-radius: var(--r-md); font-size: .75rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--sub); }
+.nav button[aria-current="page"] { color: var(--on-accent); background: var(--accent); box-shadow: inset 0 0 0 2px var(--fg); }
 .nav svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 
 /* Sheet (modal) */
 .scrim { position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.38); display: flex; align-items: flex-end; justify-content: center; }
 .sheet {
-  width: 100%; max-width: 520px; max-height: 88%; overflow: auto;
+  width: 100%; max-width: 520px; max-height: min(88%, var(--vvh, 100dvh)); overflow: auto; overscroll-behavior: contain;
   border-radius: 24px 24px 0 0; border: 1px solid var(--line); border-bottom: none;
   background: color-mix(in srgb, var(--bg) 82%, transparent);
   backdrop-filter: blur(30px) saturate(170%); -webkit-backdrop-filter: blur(30px) saturate(170%);
@@ -259,11 +276,17 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 .sw i { flex: 1; }
 .pal .dot { width: 28px; height: 28px; border-radius: 8px; border: 2px solid currentColor; display: grid; place-items: center; font-weight: 700; flex-shrink: 0; }
 .banner { font-size: .78rem; padding: 10px 12px; border-radius: var(--r-md); margin-top: 8px; }
-.toast { position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 30; padding: 10px 16px; border-radius: var(--r-pill); background: var(--fg); color: var(--bg); font-size: .82rem; font-weight: 700; max-width: calc(100% - 32px); }
+.toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 30; padding: 10px 16px; border-radius: var(--r-pill); background: var(--fg); color: var(--bg); font-size: .85rem; font-weight: 700; max-width: min(90vw, 480px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.toast.top { top: calc(12px + env(safe-area-inset-top, 0px)); bottom: auto; }
+.date { white-space: nowrap; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.debt .grow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hero .amt { font-size: clamp(1.6rem, 9vw, 2.3rem); overflow-wrap: anywhere; }
 </style>
 
 <div class="blobs" aria-hidden="true"><div class="blob"></div><div class="blob"></div><div class="blob"></div><div class="blob"></div></div>
-<main id="app" aria-live="polite"></main>
+<main id="app"></main>
+<div id="status" class="sr" role="status" aria-live="polite"></div>
 <nav class="nav" id="nav" aria-label="Main"></nav>
 <div id="layer"></div>
 
@@ -283,43 +306,74 @@ const MAX_CENTS = 100000000000; // 1,000,000,000.00
 const $ = (s, r = document) => r.querySelector(s);
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const today = () => new Date().toISOString().slice(0, 10);
+const pad2 = n => String(n).padStart(2, "0");
+const isoLocal = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const today = () => isoLocal(new Date());
 const fmt = (c, cur) => (c < 0 ? "−" : "") + (cur || "") + (Math.abs(c) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const signed = (c, cur) => (c > 0 ? "+" : "") + fmt(c, cur);
 function parseMoney(s) {
-  const t = String(s).replace(/[,\s]/g, "");
-  if (!/^\d+(\.\d{0,2})?$/.test(t)) return NaN;
+  let t = String(s).trim().replace(/\s/g, "");
+  if (/^\d+,\d{1,2}$/.test(t)) t = t.replace(",", ".");
+  else if (/^\d{1,3}(,\d{3})+(\.\d{0,2})?$/.test(t)) t = t.replace(/,/g, "");
+  if (!/^(\d+(\.\d{0,2})?|\.\d{1,2})$/.test(t)) return NaN;
   return Math.round(parseFloat(t) * 100);
 }
+function parseWeight(s) {
+  const t = String(s).trim().replace(",", ".");
+  if (!/^\d{1,7}(\.\d+)?$/.test(t)) return NaN;
+  const x = parseFloat(t);
+  return Number.isFinite(x) && x <= 1e6 ? x : NaN;
+}
+const ID_RE = /^[A-Za-z0-9]{1,40}$/;
 const initials = n => n.trim().split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 const typeOf = id => TYPES.find(t => t[0] === id) || TYPES[3];
 const catOf = id => CATEGORIES.find(c => c[0] === id) || CATEGORIES[5];
 
 // ── Storage ───────────────────────────────────────────────
-let storageOk = true;
+let storageOk = true, recovered = false;
+const DEFAULT_SETTINGS = { palette: "classic", mode: "system", strategy: "simplify" };
 function load() {
-  try { const raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : null; }
-  catch (e) { storageOk = false; return null; }
+  let raw;
+  try { raw = localStorage.getItem(KEY); } catch (e) { storageOk = false; return null; }
+  if (!raw) return null;
+  try { return normalize(JSON.parse(raw)); }
+  catch (e) {
+    recovered = true;
+    try { localStorage.setItem("hati2.corrupt." + Date.now(), raw); } catch (_) {}
+    return null;
+  }
+}
+function normalize(d) {
+  if (!d || typeof d !== "object" || !Array.isArray(d.volumes)) throw new Error("bad shape");
+  const st = { ...DEFAULT_SETTINGS, ...(d.settings && typeof d.settings === "object" ? d.settings : {}) };
+  const volumes = [];
+  for (const v of d.volumes) {
+    if (!v || typeof v !== "object") { recovered = true; continue; }
+    const fixed = { ...v, expenses: Array.isArray(v.expenses) ? v.expenses : [], settlements: Array.isArray(v.settlements) ? v.settlements : [] };
+    fixed.expenses = fixed.expenses.filter(e => e && typeof e === "object").map(e => ({ ...e, date: typeof e.date === "string" ? e.date : today(), splits: e.splits && typeof e.splits === "object" ? e.splits : {} }));
+    if (validVolume(fixed)) volumes.push(cleanVolume(fixed)); else recovered = true;
+  }
+  return { settings: st, volumes };
 }
 function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(S)); storageOk = true; }
-  catch (e) { storageOk = false; }
+  try { localStorage.setItem(KEY, JSON.stringify(S)); storageOk = true; return true; }
+  catch (e) { storageOk = false; toast("Couldn't save on this device. Storage may be full or turned off."); return false; }
 }
 
 function exampleVolume() {
   const me = "me", mira = uid(), rio = uid();
-  const d = n => { const x = new Date(); x.setDate(x.getDate() - n); return x.toISOString().slice(0, 10); };
+  const d = n => { const x = new Date(); x.setDate(x.getDate() - n); return isoLocal(x); };
   const eq = (amount, ids) => splitEqual(amount, ids);
   return {
     id: uid(), title: "Tokyo Trip (example)", type: "travel", currency: "¥", meId: me, created: Date.now(),
     members: [{ id: me, name: "Alex" }, { id: mira, name: "Mira" }, { id: rio, name: "Rio" }],
     expenses: [
-      { id: uid(), desc: "Ramen at Ichiran", amount: 340000, paidBy: me, category: "food", date: d(1), splitType: "equal", splits: eq(340000, [me, mira, rio]), inputs: {} },
-      { id: uid(), desc: "Shinkansen tickets", amount: 1400000, paidBy: mira, category: "transport", date: d(2), splitType: "equal", splits: eq(1400000, [me, mira, rio]), inputs: {} },
+      { id: uid(), desc: "Ramen at Ichiran", amount: 330000, paidBy: me, category: "food", date: d(1), splitType: "equal", splits: eq(330000, [me, mira, rio]), inputs: {} },
+      { id: uid(), desc: "Shinkansen tickets", amount: 1410000, paidBy: mira, category: "transport", date: d(2), splitType: "equal", splits: eq(1410000, [me, mira, rio]), inputs: {} },
       { id: uid(), desc: "Shibuya hotel, 2 nights", amount: 2100000, paidBy: rio, category: "other", date: d(3), splitType: "equal", splits: eq(2100000, [me, mira, rio]), inputs: {} },
       { id: uid(), desc: "teamLab tickets", amount: 960000, paidBy: me, category: "entertainment", date: d(3), splitType: "shares", splits: splitShares(960000, { [me]: 1, [mira]: 1, [rio]: 2 }), inputs: { [me]: "1", [mira]: "1", [rio]: "2" } }
     ],
-    settlements: [{ id: uid(), from: me, to: rio, amount: 300000, date: d(0) }]
+    settlements: [{ id: uid(), from: me, to: rio, amount: 100000, date: d(0) }]
   };
 }
 
@@ -381,12 +435,21 @@ const debts = v => S.settings.strategy === "pairwise" ? pairwise(v) : simplify(b
 
 // ── State ─────────────────────────────────────────────────
 let S = load();
-if (!S || !Array.isArray(S.volumes)) S = { settings: { palette: "classic", mode: "system", strategy: "simplify" }, volumes: [exampleVolume()] };
-const ui = { view: "hub", volId: null, expId: null, form: null };
+if (!S) { S = { settings: { ...DEFAULT_SETTINGS }, volumes: recovered ? [] : [exampleVolume()] }; if (storageOk) save(); }
+const ui = { view: "hub", volId: null, form: null, from: "volume", histLimit: 100 };
 const vol = () => S.volumes.find(v => v.id === ui.volId);
 const nameOf = (v, id) => (v.members.find(m => m.id === id) || { name: "Unknown" }).name;
 const meName = (v, id) => id === v.meId ? "You" : nameOf(v, id);
+const meObj = (v, id) => id === v.meId ? "you" : nameOf(v, id);
 const pays = (v, from) => from === v.meId ? "pay" : "pays";
+const plural = (n, one, many = one + "s") => `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
+function niceDate(d) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+  if (d === today()) return "Today";
+  if (d === isoLocal(new Date(Date.now() - 864e5))) return "Yesterday";
+  const [Y, M, D] = d.split("-").map(Number);
+  return new Date(Y, M - 1, D).toLocaleDateString("en-US", { month: "short", day: "numeric", ...(Y !== new Date().getFullYear() ? { year: "numeric" } : {}) });
+}
 
 // ── Theme ─────────────────────────────────────────────────
 const hostTheme = document.documentElement.getAttribute("data-theme");
@@ -399,9 +462,13 @@ function applyTheme() {
   r.setProperty("--food-l", p.food); r.setProperty("--muted-l", p.muted);
   const sw = p.sw.length >= 4 ? p.sw : [...p.sw, p.tert];
   ["--b1", "--b2", "--b3", "--b4"].forEach((k, i) => r.setProperty(k, sw[i % sw.length]));
-  const m = S.settings.mode;
-  if (m === "system") { hostTheme ? document.documentElement.setAttribute("data-theme", hostTheme) : document.documentElement.removeAttribute("data-theme"); }
-  else document.documentElement.setAttribute("data-theme", m);
+  const m = S.settings.mode, root = document.documentElement;
+  if (m === "system") { hostTheme ? root.setAttribute("data-theme", hostTheme) : root.removeAttribute("data-theme"); }
+  else root.setAttribute("data-theme", m);
+  const attr = root.getAttribute("data-theme");
+  const dark = attr ? attr === "dark" : !!(window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", dark ? "#0B0A18" : p.paper);
 }
 
 // ── Icons ─────────────────────────────────────────────────
@@ -413,6 +480,7 @@ const I = {
   dots: '<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>',
   settle: '<svg viewBox="0 0 24 24"><path d="M7 17 17 7M17 7H8M17 7v9"/></svg>',
   list: '<svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>',
+  clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   share: '<svg viewBox="0 0 24 24"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/></svg>',
   import: '<svg viewBox="0 0 24 24"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M8 11l4 4 4-4M12 15V3"/></svg>'
 };
@@ -421,135 +489,159 @@ const I = {
 function avatar(v, id) {
   const i = v.members.findIndex(m => m.id === id), p = PALETTES.find(x => x.id === S.settings.palette) || PALETTES[0];
   const colors = [p.acc, p.tert, p.food, p.hero];
-  return `<span class="av" style="background:${colors[Math.max(i, 0) % colors.length]}">${esc(initials(nameOf(v, id)))}</span>`;
+  return `<span class="av" aria-hidden="true" style="background:${colors[Math.max(i, 0) % colors.length]}">${esc(initials(nameOf(v, id)))}</span>`;
 }
 function balancePill(c, cur) {
   if (Math.abs(c) <= 1) return `<span class="pill even">Settled</span>`;
-  return `<span class="pill ${c > 0 ? "pos" : "neg"} num">${esc(signed(c, cur))}</span>`;
+  return c > 0 ? `<span class="pill pos num">You're owed ${esc(fmt(c, cur))}</span>` : `<span class="pill neg num">You owe ${esc(fmt(-c, cur))}</span>`;
 }
 const total = v => v.expenses.reduce((a, e) => a + e.amount, 0);
+const timeline = v => [...v.expenses.map(e => ({ k: "e", d: e.date, x: e })), ...v.settlements.map(s => ({ k: "s", d: s.date, x: s }))].sort((a, b) => b.d.localeCompare(a.d));
 
 function topbar(title, { back, right = "" } = {}) {
-  return `<header class="topbar">${back ? `<button class="ico" data-act="${back}" aria-label="Back">${I.back}</button>` : `<span class="logo" aria-hidden="true">H²</span>`}<h1>${esc(title)}</h1>${right}</header>`;
+  return `<header class="topbar">${back ? `<button class="ico" data-act="back" aria-label="Back">${I.back}</button>` : `<span class="logo" aria-hidden="true">H²</span>`}<h1 tabindex="-1">${esc(title)}</h1>${right}</header>`;
 }
+function banner() {
+  if (!storageOk) return `<div class="banner glass" role="status">This browser has storage turned off. Your changes last until you close the page.</div>`;
+  if (recovered && ui.view === "hub") return `<div class="banner glass row between" role="status"><span>Some saved data couldn't be read, so it was set aside. A backup is kept on this device.</span><button class="btn quiet" data-act="dismissRecovered">OK</button></div>`;
+  return "";
+}
+function memberChip(v, m, c) {
+  const say = Math.abs(c) <= 1 ? "is settled" : c > 0 ? `is owed ${fmt(c, v.currency)}` : `owes ${fmt(-c, v.currency)}`;
+  const show = Math.abs(c) <= 1 ? "settled" : signed(c, v.currency);
+  return `<span class="chip">${avatar(v, m.id)}${esc(meName(v, m.id))}<span class="muted num small" aria-hidden="true">${esc(show)}</span><span class="sr">${esc(say)}</span></span>`;
+}
+function debtRow(v, d, tag = "div", extra = "") {
+  return `<${tag} class="glass debt" ${extra}>${avatar(v, d.from)}<span class="grow small"><b>${esc(meName(v, d.from))}</b> ${pays(v, d.from)} <b>${esc(meObj(v, d.to))}</b></span><b class="num">${esc(fmt(d.amount, v.currency))}</b></${tag}>`;
+}
+function itemRow(v, it) {
+  if (it.k === "e") return expenseRow(v, it.x);
+  const s = it.x;
+  return `<button class="glass tx" data-act="editSettle" data-id="${esc(s.id)}"><span class="tx-ic" aria-hidden="true">🤝</span><span class="grow"><b class="ellip" style="display:block">${esc(meName(v, s.from))} paid ${esc(meObj(v, s.to))}</b><span class="muted small ellip" style="display:block">Payment · <span class="date">${esc(niceDate(s.date))}</span></span></span><span class="tx-a num">${esc(fmt(s.amount, v.currency))}</span></button>`;
+}
+function expenseRow(v, e) {
+  const c = catOf(e.category), mineShare = e.splits[v.meId] || 0;
+  const effect = (e.paidBy === v.meId ? e.amount : 0) - mineShare;
+  return `<button class="glass tx" data-act="editExpense" data-id="${esc(e.id)}"><span class="tx-ic" aria-hidden="true">${c[2]}</span>
+    <span class="grow"><b class="ellip" style="display:block">${esc(e.desc)}</b><span class="muted small ellip" style="display:block">${esc(meName(v, e.paidBy))} paid ${esc(fmt(e.amount, v.currency))} · <span class="date">${esc(niceDate(e.date))}</span></span></span>
+    <span class="tx-a num" style="color:${effect > 0 ? "var(--pos)" : effect < 0 ? "var(--neg)" : "var(--sub)"}">${effect === 0 ? "—" : esc(signed(effect, v.currency))}</span></button>`;
+}
+const emptyCard = (kao, text) => `<div class="glass empty"><div class="kao" aria-hidden="true">${kao}</div><div class="muted small">${text}</div></div>`;
 
 const views = {
   hub() {
     const vs = S.volumes;
     const cards = vs.map(v => {
       const b = balances(v)[v.meId] || 0, t = typeOf(v.type);
-      return `<button class="glass vol" data-act="open" data-id="${v.id}">
-        <div class="vol-cover"><span aria-hidden="true">${t[2]}</span>${balancePill(b, v.currency)}</div>
-        <div class="vol-info"><div class="vol-name ellip">${esc(v.title)}</div>
-        <div class="muted small">${t[1]} · ${v.members.length} members · ${v.expenses.length} chapters</div>
+      const bal = Math.abs(b) <= 1 ? "settled" : b > 0 ? `you're owed ${fmt(b, v.currency)}` : `you owe ${fmt(-b, v.currency)}`;
+      return `<button class="glass vol" data-act="open" data-id="${esc(v.id)}" aria-label="${esc(`${v.title}, ${bal}, ${plural(v.expenses.length, "expense")}`)}">
+        <div class="vol-cover" aria-hidden="true"><span>${t[2]}</span>${balancePill(b, v.currency)}</div>
+        <div class="vol-info" aria-hidden="true"><div class="vol-name ellip">${esc(v.title)}</div>
+        <div class="muted small">${t[1]} · ${plural(v.members.length, "member")} · ${plural(v.expenses.length, "expense")}</div>
         <div class="vol-tot"><span class="muted">Total spent</span><b class="num">${esc(fmt(total(v), v.currency))}</b></div></div></button>`;
     }).join("");
-    return topbar("HATI", { right: `<button class="ico" data-act="import" aria-label="Import a shared volume">${I.import}</button>` }) +
-      `<div class="label">Your volumes · ${vs.length}</div><div class="stack">${cards}
-      <button class="dashed" data-act="newVolume"><span class="logo" aria-hidden="true">+</span><b>New volume</b><span class="muted small">Start tracking a group's expenses</span></button></div>` +
-      (storageOk ? "" : `<div class="banner glass">This browser has storage turned off. Your changes last until you close the page.</div>`);
+    return topbar("HATI²", { right: `<button class="btn quiet" data-act="import">${I.import} Import</button>` }) +
+      `<p class="tagline">Split trip and group costs. Each volume is one trip or group.</p>
+      <h2 class="label">Your volumes · ${vs.length}</h2><div class="stack">${cards}
+      <button class="dashed" data-act="newVolume"><span class="logo" aria-hidden="true">${I.plus}</span><b>New volume</b><span class="muted small">Start tracking a group's expenses</span></button></div>`;
   },
 
   volume() {
     const v = vol(); if (!v) { ui.view = "hub"; return views.hub(); }
-    const b = balances(v), mine = b[v.meId] || 0, ds = debts(v), t = typeOf(v.type);
-    const heroK = Math.abs(mine) <= 1 ? "All settled" : mine > 0 ? "You are owed" : "You owe";
-    const cls = Math.abs(mine) <= 1 ? "" : mine > 0 ? "pos" : "neg";
-    const recent = [...v.expenses].sort((a, c) => c.date.localeCompare(a.date)).slice(0, 4);
+    const b = balances(v), mine = b[v.meId] || 0, ds = debts(v), t = typeOf(v.type), settled = Math.abs(mine) <= 1;
+    const cls = settled ? "" : mine > 0 ? "pos" : "neg";
+    const items = timeline(v), tot = total(v);
     const byCat = {}; v.expenses.forEach(e => byCat[e.category] = (byCat[e.category] || 0) + e.amount);
-    const tot = total(v), catRows = Object.entries(byCat).sort((a, c) => c[1] - a[1]);
-    return topbar(v.title, { back: "home", right: `<button class="ico" data-act="volMenu" aria-label="Volume options">${I.dots}</button>` }) +
+    const catRows = Object.entries(byCat).sort((a, c) => c[1] - a[1]);
+    const hist = items.length ? `<button class="ico" data-act="history" aria-label="History">${I.clock}</button>` : "";
+    return topbar(v.title, { back: true, right: `${hist}<button class="ico" data-act="volMenu" aria-label="Volume options">${I.dots}</button>` }) +
       `<div class="stack">
       <section class="glass hero" aria-label="Your balance"><div class="emoji" aria-hidden="true">${t[2]}</div>
-        <div class="k ${cls}">${heroK}</div><div class="amt num ${cls}">${esc(fmt(Math.abs(mine), v.currency))}</div>
-        <div class="muted small">${v.members.length} members · ${v.expenses.length} chapters · ${esc(fmt(tot, v.currency))} total</div></section>
+        <div class="k ${cls}">${settled ? "All settled" : mine > 0 ? "You are owed" : "You owe"}</div>
+        ${settled ? "" : `<div class="amt num ${cls}">${esc(fmt(Math.abs(mine), v.currency))}</div>`}
+        <div class="muted small">${plural(v.members.length, "member")} · ${plural(v.expenses.length, "expense")} · ${esc(fmt(tot, v.currency))} spent</div></section>
       <div class="btns">
         <button class="btn primary" data-act="addExpense">${I.plus} Add expense</button>
         <button class="btn" data-act="settle">${I.settle} Settle up</button>
       </div>
-      <div><div class="label">Members</div><div class="chips">
-        ${v.members.map(m => `<span class="chip">${avatar(v, m.id)}${esc(meName(v, m.id))}<span class="muted num small">${esc(signed(b[m.id] || 0, ""))}</span></span>`).join("")}
-        <button class="chip add" data-act="addMember">+ Add</button></div></div>
-      <div><div class="label">Who pays whom · ${S.settings.strategy === "pairwise" ? "pairwise" : "fewest payments"}</div>
-        <div class="stack">${ds.length ? ds.map(d => `<div class="glass debt">${avatar(v, d.from)}<span class="grow small"><b>${esc(meName(v, d.from))}</b> ${pays(v, d.from)} <b>${esc(meName(v, d.to))}</b></span><b class="num">${esc(fmt(d.amount, v.currency))}</b></div>`).join("")
-          : `<div class="glass empty"><div class="kao">(＾▽＾)</div><div class="muted small">Nobody owes anything.</div></div>`}</div></div>
-      <div><div class="row between"><div class="label">Recent chapters</div>${v.expenses.length ? `<button class="btn quiet" data-act="history">${I.list} History</button>` : ""}</div>
-        <div class="stack">${recent.length ? recent.map(e => expenseRow(v, e)).join("") : `<div class="glass empty"><div class="kao">(・_・;)</div><div class="muted small">No expenses yet. Add the first one.</div></div>`}</div></div>
-      ${catRows.length ? `<div><div class="label">Spending by category</div><div class="glass pad stack">${catRows.map(([c, a]) => {
-        const k = catOf(c); return `<div><div class="row between small"><span>${k[2]} ${k[1]}</span><b class="num">${esc(fmt(a, v.currency))} · ${Math.round(a * 100 / tot)}%</b></div><div class="bar"><i style="width:${(a * 100 / tot).toFixed(1)}%"></i></div></div>`;
-      }).join("")}</div></div>` : ""}
+      ${v.members.length < 2 ? `<div class="glass pad row between"><span class="small">You're the only member so far.</span><button class="btn quiet" data-act="addMember">Add someone</button></div>` : ""}
+      <section><h2 class="label">Members</h2><div class="chips">
+        ${v.members.map(m => memberChip(v, m, b[m.id] || 0)).join("")}
+        <button class="chip add" data-act="addMember">+ Add</button></div></section>
+      <section><h2 class="label">Who pays whom · ${S.settings.strategy === "pairwise" ? "pairwise" : "fewest payments"}</h2>
+        <div class="stack">${ds.length ? ds.map(d => debtRow(v, d)).join("") : emptyCard("(＾▽＾)", "Nobody owes anything.")}</div></section>
+      <section><div class="row between"><h2 class="label">Recent</h2>${items.length > 4 ? `<button class="btn quiet" data-act="history">${I.list} See all ${items.length}</button>` : ""}</div>
+        <div class="stack">${items.length ? items.slice(0, 4).map(it => itemRow(v, it)).join("") : emptyCard("(・_・;)", "No expenses yet. Add the first one.")}</div></section>
+      ${catRows.length ? `<section><h2 class="label">Spending by category</h2><div class="glass pad stack">${catRows.map(([c, a]) => {
+        const k = catOf(c); return `<div><div class="row between small"><span>${k[2]} ${k[1]}</span><b class="num">${esc(fmt(a, v.currency))} · ${Math.round(a * 100 / tot)}%</b></div><div class="bar" aria-hidden="true"><i style="width:${(a * 100 / tot).toFixed(1)}%"></i></div></div>`;
+      }).join("")}</div></section>` : ""}
       </div>`;
   },
 
   history() {
     const v = vol(); if (!v) { ui.view = "hub"; return views.hub(); }
-    const items = [...v.expenses.map(e => ({ k: "e", d: e.date, x: e })), ...v.settlements.map(s => ({ k: "s", d: s.date, x: s }))].sort((a, b) => b.d.localeCompare(a.d));
-    return topbar("History", { back: "open" }) + `<div class="label">${items.length} entries · tap to edit</div><div class="stack">` +
-      (items.length ? items.map(it => it.k === "e" ? expenseRow(v, it.x) :
-        `<button class="glass tx" data-act="editSettle" data-id="${it.x.id}"><span class="tx-ic" aria-hidden="true">🤝</span><span class="grow"><b class="ellip" style="display:block">${esc(meName(v, it.x.from))} paid ${esc(meName(v, it.x.to))}</b><span class="muted small">Settlement · ${esc(it.d)}</span></span><span class="tx-a num">${esc(fmt(it.x.amount, v.currency))}</span></button>`).join("")
-        : `<div class="glass empty"><div class="muted">Nothing recorded yet.</div></div>`) + `</div>`;
+    const items = timeline(v), shown = items.slice(0, ui.histLimit);
+    return topbar("History", { back: true, right: `<span class="muted sub ellip">${esc(v.title)}</span>` }) +
+      `<h2 class="label">${plural(v.expenses.length, "expense")} · ${plural(v.settlements.length, "payment")} · tap to edit</h2><div class="stack">` +
+      (shown.length ? shown.map(it => itemRow(v, it)).join("") : emptyCard("(・_・;)", "Nothing recorded yet.")) + `</div>` +
+      (items.length > shown.length ? `<button class="btn block" data-act="more" style="margin-top:12px">Show ${Math.min(100, items.length - shown.length)} more</button>` : "");
   },
 
   expense() {
     const v = vol(), f = ui.form;
-    return topbar(f.id ? "Edit chapter" : "New chapter", { back: "open", right: `<span class="muted small ellip" style="max-width:40%">${esc(v.title)}</span>` }) +
+    if (!v || !f) { ui.view = "hub"; return views.hub(); }
+    return topbar(f.id ? "Edit expense" : "New expense", { back: true, right: `<span class="muted sub ellip">${esc(v.title)}</span>` }) +
       `<form id="expForm" class="stack" novalidate>
       <div class="glass amount-box"><label for="f-amount" class="legend">Amount</label>
-        <div class="row"><span class="cur">${esc(v.currency)}</span><input id="f-amount" inputmode="decimal" autocomplete="off" placeholder="0.00" value="${esc(f.amount)}"></div></div>
-      <div class="field"><label for="f-desc">Description</label><input id="f-desc" class="input" maxlength="100" placeholder="Ramen dinner" value="${esc(f.desc)}"></div>
+        <div class="row"><span class="cur" aria-hidden="true">${esc(v.currency)}</span><input id="f-amount" inputmode="decimal" autocomplete="off" placeholder="0.00" value="${esc(f.amount)}"></div></div>
+      <div class="field"><label for="f-desc">Description</label><input id="f-desc" class="input" maxlength="100" placeholder="Ramen dinner" autocomplete="off" value="${esc(f.desc)}" aria-describedby="descMsg"><div class="msg" id="descMsg"></div></div>
       <div class="btns">
-        <div class="field"><label for="f-paid">Paid by</label><select id="f-paid" class="input">${v.members.map(m => `<option value="${m.id}" ${m.id === f.paidBy ? "selected" : ""}>${esc(meName(v, m.id))}</option>`).join("")}</select></div>
+        <div class="field"><label for="f-paid">Paid by</label><select id="f-paid" class="input">${v.members.map(m => `<option value="${esc(m.id)}" ${m.id === f.paidBy ? "selected" : ""}>${esc(meName(v, m.id))}</option>`).join("")}</select></div>
         <div class="field"><label for="f-date">Date</label><input id="f-date" type="date" class="input" value="${esc(f.date)}"></div>
       </div>
-      <div class="field"><span class="legend">Category</span><div class="cats">${CATEGORIES.map(c => `<button type="button" class="cat" data-cat="${c[0]}" aria-pressed="${c[0] === f.category}"><span aria-hidden="true">${c[2]}</span>${c[1]}</button>`).join("")}</div></div>
-      <div class="field"><span class="legend">Split</span><div class="seg" role="group" aria-label="Split type">${[["equal", "Equal"], ["exact", "Exact"], ["percent", "Percent"], ["shares", "Shares"]].map(s => `<button type="button" data-split="${s[0]}" aria-pressed="${s[0] === f.splitType}">${s[1]}</button>`).join("")}</div></div>
+      <fieldset><legend class="legend">Category</legend><div class="cats">${CATEGORIES.map(c => `<button type="button" class="cat" data-cat="${c[0]}" aria-pressed="${c[0] === f.category}"><span aria-hidden="true">${c[2]}</span>${c[1]}</button>`).join("")}</div></fieldset>
+      <fieldset><legend class="legend">Split</legend><div class="seg">${[["equal", "Equal"], ["exact", "Exact"], ["percent", "Percent"], ["shares", "Shares"]].map(s => `<button type="button" data-split="${s[0]}" aria-pressed="${s[0] === f.splitType}">${s[1]}</button>`).join("")}</div></fieldset>
       <div class="stack" id="splitRows">${v.members.map(m => splitRow(v, m)).join("")}</div>
       <div class="muted small" id="splitSum" aria-live="polite"></div>
-      <div class="field"><label for="f-note">Note (optional)</label><input id="f-note" class="input" maxlength="200" value="${esc(f.note || "")}"></div>
+      <div class="field"><label for="f-note">Note (optional)</label><input id="f-note" class="input" maxlength="200" autocomplete="off" value="${esc(f.note || "")}"></div>
       <div class="msg" id="formMsg" role="alert"></div>
-      <button class="btn primary block" type="submit">${f.id ? "Update entry" : "Save entry"}</button>
-      ${f.id ? `<button type="button" class="btn danger block" data-act="deleteExpense">Delete entry</button>` : ""}
+      <button class="btn primary block" type="submit">${f.id ? "Update expense" : "Save expense"}</button>
+      ${f.id ? `<button type="button" class="btn danger block" data-act="deleteExpense">Delete expense</button>` : ""}
       </form>`;
   },
 
   settings() {
     const st = S.settings;
-    const seg = (key, opts) => `<div class="seg" role="group">${opts.map(o => `<button type="button" data-set="${key}" data-val="${o[0]}" aria-pressed="${st[key] === o[0]}">${o[1]}</button>`).join("")}</div>`;
+    const seg = (key, label, opts) => `<div class="seg" role="group" aria-label="${label}">${opts.map(o => `<button type="button" data-set="${key}" data-val="${o[0]}" aria-pressed="${st[key] === o[0]}">${o[1]}</button>`).join("")}</div>`;
     return topbar("Settings") + `<div class="stack">
-      <div class="glass pad stack"><b>Appearance</b>${seg("mode", [["system", "System"], ["light", "Light"], ["dark", "Dark"]])}</div>
-      <div class="glass pad stack"><div><b>Color theme</b><div class="muted small">Palettes from Sanzo Wada's A Dictionary of Color Combinations (1918). Saved on this device only.</div></div>
-        <div class="stack" role="radiogroup" aria-label="Color theme">${PALETTES.map(p => `<button type="button" class="pal" role="radio" aria-checked="${p.id === st.palette}" data-pal="${p.id}" style="background:${p.paper};color:${p.ink};border-color:${p.ink}">
-          <span class="sw">${p.sw.map(c => `<i style="background:${c}"></i>`).join("")}</span>
+      <section class="glass pad stack"><h2 class="label" style="margin:0">Appearance</h2>${seg("mode", "Appearance", [["system", "System"], ["light", "Light"], ["dark", "Dark"]])}</section>
+      <section class="glass pad stack"><div><h2 class="label" style="margin:0" id="palLabel">Color theme</h2><div class="muted small">Palettes from Sanzo Wada's A Dictionary of Color Combinations (1918). Saved on this device only.</div></div>
+        <div class="stack" role="radiogroup" aria-labelledby="palLabel">${PALETTES.map(p => `<button type="button" class="pal" role="radio" aria-checked="${p.id === st.palette}" tabindex="${p.id === st.palette ? 0 : -1}" data-pal="${p.id}" style="background:${p.paper};color:${p.ink};border-color:${p.ink}">
+          <span class="sw" aria-hidden="true">${p.sw.map(c => `<i style="background:${c}"></i>`).join("")}</span>
           <span class="grow"><b style="display:block;letter-spacing:.06em">${p.name.toUpperCase()}</b><span class="small" style="color:${p.muted}">${p.n ? "No. " + String(p.n).padStart(3, "0") : "HATI original"}</span></span>
-          <span class="dot" style="background:${p.acc}" aria-hidden="true">${p.id === st.palette ? "✓" : ""}</span></button>`).join("")}</div></div>
-      <div class="glass pad stack"><div><b>Debt calculation</b><div class="muted small">Fewest payments merges debts across the group. Pairwise only cancels debts between the same two people.</div></div>
-        ${seg("strategy", [["simplify", "Fewest payments"], ["pairwise", "Pairwise"]])}</div>
-      <div class="glass pad stack"><div><b>Test data</b><div class="muted small">Everything stays in this browser. Use Share on a volume to send it to someone else.</div></div>
-        <div class="btns"><button class="btn" data-act="seed">Add example</button><button class="btn danger" data-act="reset">Erase all</button></div></div>
-      <div class="muted small" style="text-align:center">HATI² mock · ${S.volumes.length} volumes stored</div>
+          <span class="dot" style="background:${p.acc}" aria-hidden="true">${p.id === st.palette ? "✓" : ""}</span></button>`).join("")}</div></section>
+      <section class="glass pad stack"><div><h2 class="label" style="margin:0">Debt calculation</h2><div class="muted small">Fewest payments merges debts across the group. Pairwise only cancels debts between the same two people.</div></div>
+        ${seg("strategy", "Debt calculation", [["simplify", "Fewest payments"], ["pairwise", "Pairwise"]])}</section>
+      <section class="glass pad stack"><div><h2 class="label" style="margin:0">Data</h2><div class="muted small">Everything stays on this device. Use Share on a volume to send it to someone else.</div></div>
+        <div class="btns"><button class="btn" data-act="seed">Add example</button><button class="btn danger" data-act="reset">Erase all</button></div></section>
+      <div class="muted small" style="text-align:center">HATI² · ${plural(S.volumes.length, "volume")} on this device</div>
       </div>`;
   }
 };
 
-function expenseRow(v, e) {
-  const c = catOf(e.category), mineShare = e.splits[v.meId] || 0;
-  const effect = (e.paidBy === v.meId ? e.amount : 0) - mineShare;
-  return `<button class="glass tx" data-act="editExpense" data-id="${e.id}"><span class="tx-ic" aria-hidden="true">${c[2]}</span>
-    <span class="grow"><b class="ellip" style="display:block">${esc(e.desc)}</b><span class="muted small">${esc(meName(v, e.paidBy))} paid ${esc(fmt(e.amount, v.currency))} · ${esc(e.date)}</span></span>
-    <span class="tx-a num" style="color:${effect > 0 ? "var(--pos)" : effect < 0 ? "var(--neg)" : "var(--sub)"}">${effect === 0 ? "—" : esc(signed(effect, v.currency))}</span></button>`;
-}
 function splitRow(v, m) {
   const f = ui.form, on = f.include[m.id], t = f.splitType;
-  const inp = t === "equal" ? "" : `<span class="split-in"><input class="input num" data-in="${m.id}" inputmode="decimal" aria-label="${esc(meName(v, m.id))} ${t}" value="${esc(f.inputs[m.id] || "")}" ${on ? "" : "disabled"}>${t === "percent" ? "%" : t === "shares" ? "×" : ""}</span>`;
-  return `<label class="glass split-row"><input type="checkbox" data-inc="${m.id}" ${on ? "checked" : ""}>
+  const inp = t === "equal" ? "" : `<span class="split-in"><input class="input num" data-in="${esc(m.id)}" inputmode="decimal" aria-label="${esc(meName(v, m.id))} ${t}" value="${esc(f.inputs[m.id] || "")}" ${on ? "" : "disabled"}>${t === "percent" ? "%" : t === "shares" ? "×" : ""}</span>`;
+  return `<label class="glass split-row${t === "equal" ? "" : " typed"}"><input type="checkbox" data-inc="${esc(m.id)}" ${on ? "checked" : ""}>
     <span class="row grow">${avatar(v, m.id)}<span class="ellip">${esc(meName(v, m.id))}</span></span>
-    <span class="row">${inp}<span class="share num" data-share="${m.id}"></span></span></label>`;
+    <span class="row">${inp}<span class="share num" data-share="${esc(m.id)}"></span></span></label>`;
 }
 
 // ── Expense form logic ────────────────────────────────────
 function computeSplits() {
   const f = ui.form, v = vol(), amount = parseMoney(f.amount);
   const ids = v.members.filter(m => f.include[m.id]).map(m => m.id);
+  if (isNaN(amount)) return { error: "Use numbers like 12.50 (up to 2 decimals)." };
   if (!(amount > 0)) return { error: "Enter an amount greater than zero." };
   if (amount > MAX_CENTS) return { error: "That amount is too large." };
   if (!ids.length) return { error: "Pick at least one person to split with." };
@@ -557,13 +649,13 @@ function computeSplits() {
   if (f.splitType === "exact") {
     const out = {}; let sum = 0;
     for (const id of ids) { const c = parseMoney(f.inputs[id] || "0"); if (isNaN(c)) return { error: `Check the amount for ${meName(v, id)}.` }; out[id] = c; sum += c; }
-    if (sum !== amount) return { error: `Exact amounts add up to ${fmt(sum, v.currency)}; ${fmt(amount - sum, v.currency)} left to assign.`, partial: out, amount };
+    if (sum !== amount) return { error: sum < amount ? `Exact amounts add up to ${fmt(sum, v.currency)}; ${fmt(amount - sum, v.currency)} left to assign.` : `Exact amounts add up to ${fmt(sum, v.currency)}; that's ${fmt(sum - amount, v.currency)} over.`, partial: out, amount };
     return { splits: out, amount };
   }
   const w = {};
-  for (const id of ids) { const x = parseFloat(String(f.inputs[id] || "").replace(",", ".")); if (!(x >= 0)) return { error: `Check the ${f.splitType === "percent" ? "percent" : "shares"} for ${meName(v, id)}.` }; w[id] = x; }
+  for (const id of ids) { const x = parseWeight(f.inputs[id] || ""); if (isNaN(x)) return { error: `Check the ${f.splitType === "percent" ? "percent" : "shares"} for ${meName(v, id)}.` }; w[id] = x; }
   const W = Object.values(w).reduce((a, b) => a + b, 0);
-  if (f.splitType === "percent" && Math.abs(W - 100) > 0.01) return { error: `Percentages add up to ${W.toFixed(2)}%; they need to total 100%.` };
+  if (f.splitType === "percent" && Math.round(W * 100) !== 10000) return { error: `Percentages add up to ${W.toFixed(2)}%; they need to total 100%.` };
   if (W <= 0) return { error: "Give at least one person a share." };
   return { splits: splitWeighted(amount, w), amount };
 }
@@ -576,80 +668,117 @@ function refreshSplitPreview() {
   $("#splitSum").textContent = r.splits ? `Split ${Object.keys(r.splits).length} ways · totals ${fmt(r.amount, v.currency)}` : "";
   $("#formMsg").textContent = ui.form.touched ? (r.error || "") : "";
 }
-function openExpense(e) {
+const DRAFT = "hati2.draft";
+function saveDraft() { try { sessionStorage.setItem(DRAFT, JSON.stringify({ volId: ui.volId, form: ui.form })); } catch (e) {} }
+function loadDraft() { try { return JSON.parse(sessionStorage.getItem(DRAFT) || "null"); } catch (e) { return null; } }
+function clearDraft() { try { sessionStorage.removeItem(DRAFT); } catch (e) {} }
+function formFrom(e) {
   const v = vol();
-  ui.form = e ? { id: e.id, amount: (e.amount / 100).toFixed(2), desc: e.desc, paidBy: e.paidBy, date: e.date, category: e.category, splitType: e.splitType || "equal", note: e.note || "",
+  const f = e ? { id: e.id, amount: (e.amount / 100).toFixed(2), desc: e.desc, paidBy: e.paidBy, date: e.date, category: e.category, splitType: e.splitType || "equal", note: e.note || "",
     include: Object.fromEntries(v.members.map(m => [m.id, m.id in e.splits])), inputs: { ...(e.inputs || {}) } }
     : { amount: "", desc: "", paidBy: v.meId, date: today(), category: "food", splitType: "equal", note: "", include: Object.fromEntries(v.members.map(m => [m.id, true])), inputs: {} };
-  if (e && e.splitType === "exact") v.members.forEach(m => { if (m.id in e.splits) ui.form.inputs[m.id] = (e.splits[m.id] / 100).toFixed(2); });
+  if (e && e.splitType === "exact") v.members.forEach(m => { if (m.id in e.splits) f.inputs[m.id] = (e.splits[m.id] / 100).toFixed(2); });
+  return f;
+}
+function draftFor(id) {
+  const d = loadDraft(), v = vol();
+  if (!d || d.volId !== ui.volId || (d.form.id || null) !== id || !d.form.include) return null;
+  if (!v.members.some(m => m.id === d.form.paidBy)) return null;
+  v.members.forEach(m => { if (!(m.id in d.form.include)) d.form.include[m.id] = false; });
+  return d.form;
+}
+function openExpense(e) {
+  ui.from = ui.view === "history" ? "history" : "volume";
+  ui.form = draftFor(e ? e.id : null) || formFrom(e);
   go("expense");
 }
 function submitExpense() {
   const f = ui.form, v = vol(); f.touched = true;
-  if (!f.desc.trim()) { $("#formMsg").textContent = "Add a short description."; $("#f-desc").focus(); return; }
+  if (!f.desc.trim()) {
+    const d = $("#f-desc"); d.setAttribute("aria-invalid", "true"); $("#descMsg").textContent = "Add a short description."; d.focus(); return;
+  }
   const r = computeSplits();
-  if (r.error) { refreshSplitPreview(); return; }
+  if (r.error) { refreshSplitPreview(); $("#formMsg").scrollIntoView({ block: "center" }); return; }
   const rec = { id: f.id || uid(), desc: f.desc.trim(), amount: r.amount, paidBy: f.paidBy, category: f.category, date: f.date || today(), splitType: f.splitType, splits: r.splits, inputs: f.splitType === "equal" || f.splitType === "exact" ? {} : { ...f.inputs }, note: f.note.trim() };
   const i = v.expenses.findIndex(e => e.id === rec.id);
   if (i >= 0) v.expenses[i] = rec; else v.expenses.push(rec);
-  save(); toast(i >= 0 ? "Entry updated" : "Entry saved"); go("volume");
+  clearDraft(); save(); leave(); toast(i >= 0 ? "Expense updated" : "Expense saved");
 }
 
 // ── Sheets ────────────────────────────────────────────────
+let lastFocus = null;
+const sheetOpen = () => !!$("#layer").firstChild;
 function sheet(html, onSubmit) {
-  $("#layer").innerHTML = `<div class="scrim"><form class="sheet" id="sheetForm" novalidate>${html}</form></div>`;
+  lastFocus = document.activeElement;
+  $("#layer").innerHTML = `<div class="scrim"><form class="sheet" id="sheetForm" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" novalidate>${html.replace("<h2>", '<h2 id="sheetTitle" tabindex="-1">')}</form></div>`;
+  $("#app").inert = true; $("#nav").inert = true;
   const form = $("#sheetForm");
   form.addEventListener("submit", ev => { ev.preventDefault(); onSubmit && onSubmit(form); });
-  const first = form.querySelector("input,select,textarea,button"); first && first.focus();
+  form.addEventListener("input", () => { const m = $("#sheetMsg"); if (m && !m.classList.contains("ok")) m.textContent = ""; });
+  $("#sheetTitle").focus();
 }
-const closeSheet = () => { $("#layer").innerHTML = ""; };
+function dropSheet() { $("#layer").innerHTML = ""; $("#app").inert = false; $("#nav").inert = false; }
+function closeSheet() { dropSheet(); if (lastFocus && document.contains(lastFocus)) lastFocus.focus(); }
 const sheetMsg = t => { const m = $("#sheetMsg"); if (m) m.textContent = t; };
+const sheetButtons = (label, cls = "primary") => `<div class="btns"><button type="button" class="btn quiet" data-act="closeSheet">Cancel</button><button class="btn ${cls}">${label}</button></div>`;
 
 function volumeSheet(v) {
   sheet(`<h2>${v ? "Edit volume" : "New volume"}</h2><div class="stack">
-    <div class="field"><label for="s-title">Name</label><input id="s-title" class="input" maxlength="40" placeholder="Bali trip" value="${v ? esc(v.title) : ""}"></div>
-    <div class="field"><label for="s-type">Type</label><select id="s-type" class="input">${TYPES.map(t => `<option value="${t[0]}" ${v && v.type === t[0] ? "selected" : ""}>${t[2]} ${t[1]}</option>`).join("")}</select></div>
-    <div class="field"><label for="s-cur">Currency symbol</label><select id="s-cur" class="input">${CURRENCIES.map(c => `<option ${v && v.currency === c ? "selected" : ""}>${c}</option>`).join("")}</select></div>
-    ${v ? "" : `<div class="field"><label for="s-me">Your name in this volume</label><input id="s-me" class="input" maxlength="40" placeholder="So others know who you are" value=""></div>`}
+    <div class="field"><label for="s-title">Name</label><input id="s-title" class="input" maxlength="40" placeholder="Bali trip" autocomplete="off" value="${v ? esc(v.title) : ""}"></div>
+    <div class="btns">
+      <div class="field"><label for="s-type">Type</label><select id="s-type" class="input">${TYPES.map(t => `<option value="${t[0]}" ${v && v.type === t[0] ? "selected" : ""}>${t[2]} ${t[1]}</option>`).join("")}</select></div>
+      <div class="field"><label for="s-cur">Currency</label><select id="s-cur" class="input">${CURRENCIES.map(c => `<option ${(v ? v.currency : lastCurrency()) === c ? "selected" : ""}>${c}</option>`).join("")}</select></div>
+    </div>
+    ${v ? "" : `<div class="field"><label for="s-me">Your name in this volume</label><input id="s-me" class="input" maxlength="40" placeholder="So others know who you are" autocomplete="off"></div>`}
     <div class="msg" id="sheetMsg" role="alert"></div>
-    <div class="btns"><button type="button" class="btn quiet" data-act="closeSheet">Cancel</button><button class="btn primary">${v ? "Save" : "Create"}</button></div></div>`,
-    f => {
+    ${sheetButtons(v ? "Save" : "Create")}</div>`,
+    () => {
       const title = $("#s-title").value.trim();
       if (!title) return sheetMsg("Give the volume a name.");
       if (v) { Object.assign(v, { title, type: $("#s-type").value, currency: $("#s-cur").value }); save(); closeSheet(); render(); toast("Volume updated"); return; }
       const meId = uid(), myName = $("#s-me").value.trim() || "Me";
       const nv = { id: uid(), title, type: $("#s-type").value, currency: $("#s-cur").value, meId, created: Date.now(), members: [{ id: meId, name: myName }], expenses: [], settlements: [] };
-      S.volumes.unshift(nv); save(); closeSheet(); ui.volId = nv.id; go("volume"); toast(`${title} created`);
+      S.volumes.unshift(nv); save(); ui.volId = nv.id; go("volume"); toast(`${title} created`);
     });
 }
+const lastCurrency = () => (S.volumes[0] && S.volumes[0].currency) || "$";
 function memberSheet() {
   const v = vol();
   sheet(`<h2>Add member</h2><div class="stack">
-    <div class="field"><label for="s-name">Name</label><input id="s-name" class="input" maxlength="40" placeholder="Mira"></div>
+    <div class="field"><label for="s-name">Name</label><input id="s-name" class="input" maxlength="40" placeholder="Mira" autocomplete="off"></div>
     <div class="msg" id="sheetMsg" role="alert"></div>
-    <div class="btns"><button type="button" class="btn quiet" data-act="closeSheet">Cancel</button><button class="btn primary">Add</button></div></div>`,
+    ${sheetButtons("Add")}</div>`,
     () => {
-      const n = $("#s-name").value.trim();
+      const n = $("#s-name").value.trim().replace(/\s+/g, " ");
       if (!n) return sheetMsg("Enter a name.");
+      if (n.toLowerCase() === "you") return sheetMsg("\"You\" is how the app shows you. Use the person's name.");
       if (v.members.some(m => m.name.toLowerCase() === n.toLowerCase())) return sheetMsg(`${n} is already in this volume.`);
       v.members.push({ id: uid(), name: n }); save(); closeSheet(); render(); toast(`${n} added`);
     });
 }
-function settleSheet(existing, preset) {
-  const v = vol(), s = existing || preset || {}, ds = debts(v);
-  const opt = sel => v.members.map(m => `<option value="${m.id}" ${m.id === sel ? "selected" : ""}>${esc(meName(v, m.id))}</option>`).join("");
-  const sugg = !existing && ds.length ? `<div class="legend">Suggested</div><div class="stack">${ds.map((d, i) => `<button type="button" class="glass debt" data-sugg="${i}"><span class="grow small"><b>${esc(meName(v, d.from))}</b> ${pays(v, d.from)} <b>${esc(meName(v, d.to))}</b></span><b class="num">${esc(fmt(d.amount, v.currency))}</b></button>`).join("")}</div>` : "";
+function settleSheet(existing) {
+  const v = vol(), ds = debts(v);
+  if (!existing && v.members.length < 2) {
+    sheet(`<h2>Settle up</h2><div class="stack"><p class="muted" style="margin:0">Add someone to this volume first, then record payments between you.</p>
+      <div class="btns"><button type="button" class="btn quiet" data-act="closeSheet">Cancel</button><button type="button" class="btn primary" data-act="addMember">Add someone</button></div></div>`);
+    return;
+  }
+  const s = existing || ds[0] || { from: v.meId, to: (v.members.find(m => m.id !== v.meId) || {}).id };
+  const opt = sel => v.members.map(m => `<option value="${esc(m.id)}" ${m.id === sel ? "selected" : ""}>${esc(meName(v, m.id))}</option>`).join("");
+  const sugg = !existing && ds.length > 1 ? `<div class="legend">Suggested payments</div><div class="stack">${ds.map((d, i) => debtRow(v, d, "button", `type="button" data-sugg="${i}"`)).join("")}</div>` : "";
   sheet(`<h2>${existing ? "Edit payment" : "Settle up"}</h2><div class="stack">${sugg}
-    <div class="btns"><div class="field"><label for="s-from">From</label><select id="s-from" class="input">${opt(s.from || v.meId)}</select></div>
-    <div class="field"><label for="s-to">To</label><select id="s-to" class="input">${opt(s.to || (v.members.find(m => m.id !== v.meId) || {}).id)}</select></div></div>
-    <div class="field"><label for="s-amt">Amount (${esc(v.currency)})</label><input id="s-amt" class="input num" inputmode="decimal" placeholder="0.00" value="${s.amount ? (s.amount / 100).toFixed(2) : ""}"></div>
+    <div class="btns"><div class="field"><label for="s-from">From</label><select id="s-from" class="input">${opt(s.from)}</select></div>
+    <div class="field"><label for="s-to">To</label><select id="s-to" class="input">${opt(s.to)}</select></div></div>
+    <div class="field"><label for="s-amt">Amount (${esc(v.currency)})</label><input id="s-amt" class="input num" inputmode="decimal" placeholder="0.00" autocomplete="off" value="${s.amount ? (s.amount / 100).toFixed(2) : ""}"></div>
     <div class="msg" id="sheetMsg" role="alert"></div>
-    <div class="btns"><button type="button" class="btn quiet" data-act="closeSheet">Cancel</button><button class="btn primary">Record payment</button></div>
-    ${existing ? `<button type="button" class="btn danger block" data-act="deleteSettle" data-id="${existing.id}">Delete payment</button>` : ""}</div>`,
+    ${sheetButtons("Record payment")}
+    ${existing ? `<button type="button" class="btn danger block" data-act="deleteSettle" data-id="${esc(existing.id)}">Delete payment</button>` : ""}</div>`,
     () => {
       const from = $("#s-from").value, to = $("#s-to").value, amt = parseMoney($("#s-amt").value);
       if (from === to) return sheetMsg("Pick two different people.");
+      if (isNaN(amt)) return sheetMsg("Use numbers like 12.50 (up to 2 decimals).");
       if (!(amt > 0)) return sheetMsg("Enter an amount greater than zero.");
+      if (amt > MAX_CENTS) return sheetMsg("That amount is too large.");
       if (existing) Object.assign(existing, { from, to, amount: amt });
       else v.settlements.push({ id: uid(), from, to, amount: amt, date: today() });
       save(); closeSheet(); render(); toast("Payment recorded");
@@ -660,12 +789,12 @@ function settleSheet(existing, preset) {
   });
 }
 function confirmSheet(title, body, label, onYes) {
-  sheet(`<h2>${esc(title)}</h2><p class="muted">${esc(body)}</p><div class="btns"><button type="button" class="btn quiet" data-act="closeSheet">Keep</button><button class="btn danger">${esc(label)}</button></div>`, () => { onYes(); closeSheet(); });
+  sheet(`<h2>${esc(title)}</h2><p class="muted">${esc(body)}</p>${sheetButtons(esc(label), "danger")}`, () => { dropSheet(); onYes(); });
 }
 function volMenuSheet() {
   const v = vol();
   sheet(`<h2>${esc(v.title)}</h2><div class="stack">
-    <button type="button" class="btn block" data-act="editVolume">Edit name, type, currency</button>
+    <button type="button" class="btn block" data-act="editVolume">Edit volume</button>
     <button type="button" class="btn block" data-act="share">${I.share} Share with someone</button>
     <button type="button" class="btn danger block" data-act="deleteVolume">Delete volume</button>
     <button type="button" class="btn quiet block" data-act="closeSheet">Close</button></div>`);
@@ -673,19 +802,41 @@ function volMenuSheet() {
 function shareSheet() {
   const v = vol(), code = JSON.stringify({ app: "hati2-mock", v: 1, volume: v });
   sheet(`<h2>Share volume</h2><div class="stack">
-    <p class="muted small" style="margin:0">Copy this code and send it in any chat. The other person opens HATI², taps Import on the home screen and pastes it. They pick which member they are.</p>
-    <textarea id="s-code" class="input num" rows="5" readonly>${esc(code)}</textarea>
+    <p class="muted small" style="margin:0">Send this code in any chat. The other person opens HATI², taps Import at the top of Volumes, pastes it, and picks who they are.</p>
+    <label class="sr" for="s-code">Share code</label><textarea id="s-code" class="input num" rows="5" readonly>${esc(code)}</textarea>
     <div class="msg ok" id="sheetMsg" role="status"></div>
     <div class="btns"><button type="button" class="btn quiet" data-act="closeSheet">Done</button><button type="button" class="btn primary" data-act="copyCode">Copy code</button></div></div>`);
 }
+
 function validVolume(x) {
-  if (!x || typeof x !== "object" || typeof x.title !== "string" || !Array.isArray(x.members) || !Array.isArray(x.expenses) || !Array.isArray(x.settlements)) return false;
-  const ids = new Set(x.members.map(m => m && typeof m.id === "string" && typeof m.name === "string" ? m.id : null));
-  if (ids.has(null) || !ids.size) return false;
+  const str = (v, max) => typeof v === "string" && v.trim().length > 0 && v.length <= max;
   const int = n => Number.isInteger(n) && n >= 0 && n <= MAX_CENTS;
-  return x.expenses.every(e => e && typeof e.desc === "string" && int(e.amount) && ids.has(e.paidBy) && e.splits && typeof e.splits === "object" &&
+  const date = d => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d);
+  if (!x || typeof x !== "object" || !ID_RE.test(x.id) || !str(x.title, 40)) return false;
+  if (!Array.isArray(x.members) || !Array.isArray(x.expenses) || !Array.isArray(x.settlements)) return false;
+  if (!x.members.length || x.members.length > 200 || x.expenses.length > 20000 || x.settlements.length > 20000) return false;
+  if (!x.members.every(m => m && ID_RE.test(m.id) && str(m.name, 40))) return false;
+  const ids = new Set(x.members.map(m => m.id));
+  if (ids.size !== x.members.length) return false;
+  const uniq = list => new Set(list.map(i => i.id)).size === list.length;
+  return uniq(x.expenses) && uniq(x.settlements) &&
+    x.expenses.every(e => e && ID_RE.test(e.id) && str(e.desc, 100) && int(e.amount) && e.amount > 0 && ids.has(e.paidBy) && date(e.date) &&
+      (e.note === undefined || (typeof e.note === "string" && e.note.length <= 200)) &&
+      e.splits && typeof e.splits === "object" && Object.keys(e.splits).length > 0 &&
       Object.entries(e.splits).every(([k, a]) => ids.has(k) && int(a)) && Object.values(e.splits).reduce((a, b) => a + b, 0) === e.amount) &&
-    x.settlements.every(s => s && ids.has(s.from) && ids.has(s.to) && int(s.amount));
+    x.settlements.every(t => t && ID_RE.test(t.id) && ids.has(t.from) && ids.has(t.to) && t.from !== t.to && int(t.amount) && t.amount > 0 && date(t.date));
+}
+function cleanVolume(x) {
+  return {
+    id: x.id, title: x.title.trim(), type: typeOf(x.type)[0], currency: CURRENCIES.includes(x.currency) ? x.currency : "$",
+    meId: ID_RE.test(x.meId) && x.members.some(m => m.id === x.meId) ? x.meId : x.members[0].id, created: Number(x.created) || Date.now(),
+    members: x.members.map(m => ({ id: m.id, name: m.name.trim() })),
+    expenses: x.expenses.map(e => ({ id: e.id, desc: e.desc.trim(), amount: e.amount, paidBy: e.paidBy, category: catOf(e.category)[0], date: e.date,
+      splitType: ["equal", "exact", "percent", "shares"].includes(e.splitType) ? e.splitType : "exact",
+      splits: { ...e.splits }, inputs: Object.fromEntries(Object.entries(e.inputs && typeof e.inputs === "object" ? e.inputs : {}).filter(([k, v]) => x.members.some(m => m.id === k) && typeof v === "string" && v.length <= 12)),
+      note: typeof e.note === "string" ? e.note : "" })),
+    settlements: x.settlements.map(t => ({ id: t.id, from: t.from, to: t.to, amount: t.amount, date: t.date }))
+  };
 }
 function importSheet() {
   sheet(`<h2>Import volume</h2><div class="stack">
@@ -704,11 +855,12 @@ function importSheet() {
         const exists = S.volumes.some(v => v.id === x.id);
         pick.innerHTML = `<div class="field"><label for="s-who">Which member are you?</label><select id="s-who" class="input">${x.members.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("")}</select></div>` +
           (exists ? `<div class="field"><label for="s-mode">You already have this volume</label><select id="s-mode" class="input"><option value="replace">Replace my copy with this one</option><option value="copy">Keep both</option></select></div>` : "");
-        $("#s-go").textContent = "Import"; sheetMsg(""); return;
+        const go = $("#s-go"); go.textContent = "Import"; go.disabled = true; setTimeout(() => { go.disabled = false; }, 500);
+        sheetMsg(""); return;
       }
-      const nv = JSON.parse(JSON.stringify(x)); nv.meId = $("#s-who").value;
-      nv.currency = CURRENCIES.includes(nv.currency) ? nv.currency : "$";
-      nv.type = typeOf(nv.type)[0];
+      const nv = cleanVolume(x), who = $("#s-who").value;
+      if (!nv.members.some(m => m.id === who)) return sheetMsg("Choose which member you are.");
+      nv.meId = who;
       const mode = $("#s-mode") ? $("#s-mode").value : "new";
       if (mode === "replace") S.volumes = S.volumes.map(v => v.id === nv.id ? nv : v);
       else { if (mode === "copy") nv.id = uid(); S.volumes.unshift(nv); }
@@ -721,45 +873,108 @@ function importSheet() {
   });
 }
 
-// ── Navigation & events ───────────────────────────────────
-function go(view) { ui.view = view; render(); window.scrollTo(0, 0); }
+
+// ── Navigation ────────────────────────────────────────────
+function hashFor() {
+  switch (ui.view) {
+    case "settings": return "#prefs";
+    case "volume": return "#v-" + ui.volId;
+    case "history": return "#v-" + ui.volId + "-history";
+    case "expense": return "#v-" + ui.volId + (ui.form && ui.form.id ? "-edit-" + ui.form.id : "-new");
+    default: return "";
+  }
+}
+function parseHash() {
+  const h = location.hash.slice(1);
+  if (h === "prefs") return { view: "settings" };
+  const m = /^v-([A-Za-z0-9]+)(?:-(history|new|edit-([A-Za-z0-9]+)))?$/.exec(h);
+  if (!m || !S.volumes.some(v => v.id === m[1])) return { view: "hub" };
+  if (!m[2]) return { view: "volume", volId: m[1] };
+  if (m[2] === "history") return { view: "history", volId: m[1] };
+  return { view: "expense", volId: m[1], expId: m[3] || null };
+}
+const depth = () => (history.state && history.state.depth) || 0;
+function setUrl(replace) {
+  const h = hashFor(), url = h || location.pathname + location.search;
+  if (!replace && (location.hash || "") === h) return;
+  try { history[replace ? "replaceState" : "pushState"]({ depth: replace ? depth() : depth() + 1 }, "", url); } catch (e) {}
+}
+function applyRoute() {
+  const r = parseHash();
+  ui.view = r.view; ui.volId = r.volId || null;
+  if (r.view === "expense") {
+    const v = vol(), e = r.expId ? v.expenses.find(x => x.id === r.expId) : null;
+    if (r.expId && !e) ui.view = "volume";
+    else ui.form = draftFor(r.expId || null) || formFrom(e);
+  }
+}
+function parentOf() {
+  if (ui.view === "expense") return ui.from || "volume";
+  if (ui.view === "history") return "volume";
+  return "hub";
+}
+function go(view, { replace = false } = {}) {
+  const had = sheetOpen();
+  if (had) dropSheet();
+  if (view !== "expense" && ui.view === "expense") clearDraft();
+  ui.view = view; ui.histLimit = 100;
+  setUrl(replace || had);
+  render(); window.scrollTo(0, 0); focusTitle();
+}
+function leave() {
+  if (ui.view === "expense") clearDraft();
+  if (depth() > 0) history.back();
+  else go(parentOf(), { replace: true });
+}
+function focusTitle() { const h = $("#app h1"); if (h) h.focus({ preventScroll: true }); }
+addEventListener("popstate", () => {
+  if (sheetOpen()) { dropSheet(); setUrl(false); return; }
+  applyRoute(); render(); window.scrollTo(0, 0); focusTitle();
+});
+
 function render() {
-  $("#app").innerHTML = views[ui.view]();
+  try { $("#app").innerHTML = views[ui.view]() + banner(); }
+  catch (e) {
+    $("#app").innerHTML = topbar("HATI²") + `<div class="glass pad stack"><b>This screen couldn't be shown.</b><p class="muted small" style="margin:0">Your data is still on this device. Go back to your volumes; if this keeps happening, erase the damaged volume in Settings.</p><button class="btn primary" data-act="home">Back to volumes</button></div>`;
+    ui.view = "hub";
+  }
   const top = ui.view === "settings" ? "settings" : "hub";
   $("#nav").innerHTML = `<button data-act="home" ${top === "hub" ? 'aria-current="page"' : ""}>${I.hub}Volumes</button><button data-act="settings" ${top === "settings" ? 'aria-current="page"' : ""}>${I.gear}Settings</button>`;
-  if (ui.view === "expense") bindExpenseForm();
+  if (ui.view === "expense" && $("#expForm")) bindExpenseForm();
 }
 let toastTimer;
 function toast(t) {
   document.querySelectorAll(".toast").forEach(n => n.remove());
-  const n = document.createElement("div"); n.className = "toast"; n.setAttribute("role", "status"); n.textContent = t;
-  document.body.appendChild(n); clearTimeout(toastTimer); toastTimer = setTimeout(() => n.remove(), 2200);
+  const n = document.createElement("div"); n.className = "toast" + (sheetOpen() ? " top" : ""); n.setAttribute("aria-hidden", "true"); n.textContent = t;
+  document.body.appendChild(n); clearTimeout(toastTimer); toastTimer = setTimeout(() => n.remove(), 2400);
+  const live = $("#status"); live.textContent = ""; setTimeout(() => { live.textContent = t; }, 30);
 }
 function bindExpenseForm() {
   const f = ui.form, form = $("#expForm");
   form.addEventListener("input", ev => {
     const t = ev.target;
     if (t.id === "f-amount") f.amount = t.value;
-    else if (t.id === "f-desc") f.desc = t.value;
+    else if (t.id === "f-desc") { f.desc = t.value; if (t.value.trim()) { t.removeAttribute("aria-invalid"); $("#descMsg").textContent = ""; } }
     else if (t.id === "f-note") f.note = t.value;
     else if (t.id === "f-date") f.date = t.value;
     else if (t.dataset.in) f.inputs[t.dataset.in] = t.value;
-    refreshSplitPreview();
+    refreshSplitPreview(); saveDraft();
   });
   form.addEventListener("change", ev => {
     const t = ev.target;
     if (t.id === "f-paid") f.paidBy = t.value;
+    if (t.id === "f-date") f.date = t.value;
     if (t.dataset.inc) {
-      const id = t.dataset.inc, i = form.querySelector(`[data-in="${id}"]`);
+      const id = t.dataset.inc, i = form.querySelector(`[data-in="${CSS.escape(id)}"]`);
       f.include[id] = t.checked;
       if (t.checked && f.splitType === "shares" && !f.inputs[id]) { f.inputs[id] = "1"; if (i) i.value = "1"; }
       if (i) i.disabled = !t.checked;
     }
-    refreshSplitPreview();
+    refreshSplitPreview(); saveDraft();
   });
   form.addEventListener("click", ev => {
     const c = ev.target.closest("[data-cat]"), s = ev.target.closest("[data-split]");
-    if (c) { f.category = c.dataset.cat; form.querySelectorAll("[data-cat]").forEach(b => b.setAttribute("aria-pressed", b === c)); }
+    if (c) { f.category = c.dataset.cat; form.querySelectorAll("[data-cat]").forEach(b => b.setAttribute("aria-pressed", b === c)); saveDraft(); }
     if (s && f.splitType !== s.dataset.split) {
       f.splitType = s.dataset.split; f.inputs = {};
       const v = vol(), ids = v.members.filter(m => f.include[m.id]).map(m => m.id), amt = parseMoney(f.amount);
@@ -768,53 +983,86 @@ function bindExpenseForm() {
       if (f.splitType === "exact" && amt > 0 && ids.length) { const eq = splitEqual(amt, ids); ids.forEach(id => f.inputs[id] = (eq[id] / 100).toFixed(2)); }
       form.querySelectorAll("[data-split]").forEach(b => b.setAttribute("aria-pressed", b === s));
       $("#splitRows").innerHTML = v.members.map(m => splitRow(v, m)).join("");
-      refreshSplitPreview();
+      refreshSplitPreview(); saveDraft();
     }
   });
   form.addEventListener("submit", ev => { ev.preventDefault(); submitExpense(); });
   refreshSplitPreview();
 }
+function selectPalette(id) {
+  S.settings.palette = id; save(); applyTheme(); render();
+  const b = $(`[data-pal="${CSS.escape(id)}"]`); if (b) b.focus();
+}
 
 document.addEventListener("click", async ev => {
   if (ev.target.classList && ev.target.classList.contains("scrim")) return closeSheet();
   const el = ev.target.closest("[data-act],[data-pal],[data-set]"); if (!el) return;
-  if (el.dataset.pal) { S.settings.palette = el.dataset.pal; save(); applyTheme(); render(); return; }
-  if (el.dataset.set) { S.settings[el.dataset.set] = el.dataset.val; save(); applyTheme(); render(); return; }
+  if (el.dataset.pal) return selectPalette(el.dataset.pal);
+  if (el.dataset.set) {
+    S.settings[el.dataset.set] = el.dataset.val; save(); applyTheme(); render();
+    const b = $(`[data-set="${el.dataset.set}"][data-val="${el.dataset.val}"]`); if (b) b.focus();
+    return;
+  }
   const a = el.dataset.act, v = vol();
   switch (a) {
-    case "home": closeSheet(); go("hub"); break;
-    case "settings": closeSheet(); go("settings"); break;
-    case "open": ui.volId = el.dataset.id || ui.volId; go("volume"); break;
+    case "home": if (ui.view !== "hub" || sheetOpen()) go("hub"); break;
+    case "settings": if (ui.view !== "settings" || sheetOpen()) go("settings"); break;
+    case "back": leave(); break;
+    case "open": ui.volId = el.dataset.id; go("volume"); break;
     case "closeSheet": closeSheet(); break;
     case "newVolume": volumeSheet(null); break;
     case "editVolume": volumeSheet(v); break;
     case "volMenu": volMenuSheet(); break;
     case "share": shareSheet(); break;
     case "import": importSheet(); break;
+    case "dismissRecovered": recovered = false; render(); break;
+    case "more": ui.histLimit += 100; render(); break;
     case "copyCode": {
       const ta = $("#s-code");
       try { await navigator.clipboard.writeText(ta.value); sheetMsg("Copied. Paste it in a chat."); }
       catch (e) { ta.focus(); ta.select(); sheetMsg("Text selected. Use your phone's Copy."); }
       break;
     }
-    case "deleteVolume": confirmSheet("Delete volume?", `${v.title} and all its entries will be removed from this device.`, "Delete", () => { S.volumes = S.volumes.filter(x => x.id !== v.id); save(); go("hub"); toast("Volume deleted"); }); break;
-    case "addMember": memberSheet(); break;
+    case "deleteVolume": confirmSheet("Delete volume?", `${v.title} and all its expenses and payments will be removed from this device.`, "Delete", () => { S.volumes = S.volumes.filter(x => x.id !== v.id); save(); go("hub", { replace: true }); toast("Volume deleted"); }); break;
+    case "addMember": if (sheetOpen()) dropSheet(); memberSheet(); break;
     case "addExpense": openExpense(null); break;
     case "editExpense": openExpense(v.expenses.find(e => e.id === el.dataset.id)); break;
-    case "deleteExpense": confirmSheet("Delete entry?", `${ui.form.desc || "This entry"} will be removed and balances recalculated.`, "Delete", () => { v.expenses = v.expenses.filter(e => e.id !== ui.form.id); save(); go("volume"); toast("Entry deleted"); }); break;
+    case "deleteExpense": confirmSheet("Delete expense?", `${ui.form.desc || "This expense"} will be removed and balances recalculated.`, "Delete", () => { v.expenses = v.expenses.filter(e => e.id !== ui.form.id); save(); leave(); toast("Expense deleted"); }); break;
     case "settle": settleSheet(null); break;
     case "editSettle": settleSheet(v.settlements.find(s => s.id === el.dataset.id)); break;
     case "deleteSettle": v.settlements = v.settlements.filter(s => s.id !== el.dataset.id); save(); closeSheet(); render(); toast("Payment deleted"); break;
     case "history": go("history"); break;
     case "seed": S.volumes.unshift(exampleVolume()); save(); render(); toast("Example volume added"); break;
-    case "reset": confirmSheet("Erase all data?", "Every volume on this device will be deleted. Shared copies on other phones are not affected.", "Erase", () => { S.volumes = []; save(); go("hub"); toast("All data erased"); }); break;
+    case "reset": confirmSheet("Erase all data?", "Every volume on this device will be deleted. Copies shared to other phones are not affected.", "Erase", () => { S.volumes = []; save(); go("hub", { replace: true }); toast("All data erased"); }); break;
   }
 });
-document.addEventListener("keydown", ev => { if (ev.key === "Escape" && $("#layer").innerHTML) closeSheet(); });
-if (window.matchMedia) matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => render());
+document.addEventListener("keydown", ev => {
+  if (ev.key === "Escape" && sheetOpen()) { closeSheet(); return; }
+  const p = ev.target.closest && ev.target.closest("[data-pal]");
+  if (p && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(ev.key)) {
+    ev.preventDefault();
+    const i = PALETTES.findIndex(x => x.id === p.dataset.pal), d = ev.key === "ArrowDown" || ev.key === "ArrowRight" ? 1 : -1;
+    selectPalette(PALETTES[(i + d + PALETTES.length) % PALETTES.length].id);
+  }
+});
+addEventListener("storage", ev => {
+  if (ev.key !== KEY || ev.newValue === null) return;
+  const fresh = load(); if (!fresh) return;
+  S = fresh; applyTheme();
+  if (sheetOpen()) { dropSheet(); toast("Updated from another tab"); }
+  if (ui.view === "expense") return;
+  if (!vol() && ui.view !== "hub" && ui.view !== "settings") ui.view = "hub";
+  render();
+});
+if (window.matchMedia) { const mq = matchMedia("(prefers-color-scheme: dark)"); mq.addEventListener && mq.addEventListener("change", () => applyTheme()); }
+if (window.visualViewport) { const vv = () => document.documentElement.style.setProperty("--vvh", visualViewport.height + "px"); visualViewport.addEventListener("resize", vv); vv(); }
 
 applyTheme();
+try { history.replaceState({ depth: depth() }, ""); } catch (e) {}
+applyRoute();
+if (hashFor() !== (location.hash || "")) setUrl(true);
 render();
+
 if ("serviceWorker" in navigator && window.isSecureContext) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
 }
