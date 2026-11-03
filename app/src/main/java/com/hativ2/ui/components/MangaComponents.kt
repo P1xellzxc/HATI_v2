@@ -133,34 +133,6 @@ fun MangaCard(
 }
 
 @Composable
-fun GlassCard(
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null,
-    content: @Composable () -> Unit
-) {
-    val glassBg     = MaterialTheme.colorScheme.surface.copy(alpha = 0.08f)
-    val glassBorder = MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)
-    val interactionSource = remember { MutableInteractionSource() }
-
-    Box(
-        modifier = modifier
-            .background(glassBg, RoundedCornerShape(16.dp))
-            .border(1.dp, glassBorder, RoundedCornerShape(16.dp))
-            .clip(RoundedCornerShape(16.dp))
-            .then(
-                if (onClick != null) Modifier.clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
-                    onClick = onClick
-                ) else Modifier
-            )
-            .padding(16.dp)
-    ) {
-        content()
-    }
-}
-
-@Composable
 fun MangaButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
