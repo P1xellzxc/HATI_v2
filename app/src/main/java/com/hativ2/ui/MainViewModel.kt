@@ -63,10 +63,12 @@ open class MainViewModel @javax.inject.Inject constructor(
         viewModelScope.launch { userPreferencesRepository.setPalette(id) }
     }
 
-    val dashboards: StateFlow<List<DashboardEntity>> = dashboardDao.getAllDashboards()
+    // open: screen tests stub these on a mockito-android mock, which cannot
+    // stub final members (same reason getPeople is open).
+    open val dashboards: StateFlow<List<DashboardEntity>> = dashboardDao.getAllDashboards()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    val dashboardsWithStats: StateFlow<List<DashboardWithStats>> = dashboardDao.getAllDashboards()
+    open val dashboardsWithStats: StateFlow<List<DashboardWithStats>> = dashboardDao.getAllDashboards()
         .flatMapLatest { dashboardList ->
             if (dashboardList.isEmpty()) {
                 flowOf(emptyList())
@@ -93,7 +95,7 @@ open class MainViewModel @javax.inject.Inject constructor(
             }
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    fun getExpenses(dashboardId: String): StateFlow<List<com.hativ2.data.entity.ExpenseEntity>> {
+    open fun getExpenses(dashboardId: String): StateFlow<List<com.hativ2.data.entity.ExpenseEntity>> {
         return expenseDao.getExpensesForDashboard(dashboardId)
             .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     }
