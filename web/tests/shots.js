@@ -23,7 +23,7 @@ const VIEWS = {
   'sheet-import-merge': p => p.evaluate(() => {
     const v = JSON.parse(JSON.stringify(S.volumes[0])); v.expenses.push({ ...v.expenses[0], id: 'fromb1', desc: 'From B', upd: Date.now() }); v.expenses.splice(1, 1);
     go('hub'); importSheet(); $('#s-paste').value = JSON.stringify({ app: 'hati2-mock', v: 1, volume: v });
-  }).then(() => p.click('#s-go')),
+  }).then(() => p.click('#s-go')).then(() => p.waitForTimeout(600)), // Import is disabled for 500 ms after Check code
   'settings-data': p => p.evaluate(() => { go('settings'); window.scrollTo(0, document.body.scrollHeight); }),
   'state-empty': p => p.evaluate(() => { S.volumes = []; save(); go('hub'); }),
   'state-one-member': p => p.evaluate(() => { const id = 'solo' + 1; S.volumes.unshift({ id: 'solo1', title: 'Solo test', type: 'other', currency: '$', meId: 'me1', created: 1, members: [{ id: 'me1', name: 'Me' }], expenses: [], settlements: [] }); save(); ui.volId = 'solo1'; go('volume'); }),
