@@ -12,7 +12,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import net.sqlcipher.database.SupportFactory
+import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 import javax.inject.Singleton
 
 @Module
@@ -22,16 +22,18 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
-        // Why SupportFactory(passphrase) instead of plain Room.databaseBuilder:
+        // Why SupportOpenHelperFactory(passphrase) instead of plain Room.databaseBuilder:
         // Plain Room stores all data in unencrypted SQLite. Anyone with root access
         // or physical access to the device can read every expense, person name, and
-        // debt record. SupportFactory wraps Room's SQLiteOpenHelper with SQLCipher,
+        // debt record. SupportOpenHelperFactory wraps Room's SQLiteOpenHelper with SQLCipher,
         // which encrypts the entire database file using AES-256.
         //
         // The passphrase is stored encrypted in SharedPreferences and unwrapped
         // using a hardware-backed Android Keystore key (see DatabaseKeyManager).
+        // sqlcipher-android (net.zetetic) does not load its native library itself.
+        System.loadLibrary("sqlcipher")
         val passphrase = DatabaseKeyManager.getPassphrase(context)
-        val factory = SupportFactory(passphrase)
+        val factory = SupportOpenHelperFactory(passphrase)
 
         return Room.databaseBuilder(
             context.applicationContext,
