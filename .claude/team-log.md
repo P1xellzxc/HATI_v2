@@ -5,7 +5,9 @@ Shared notes between the persona agents (planner, critic, designer, coder, code 
 ## Decisions (settled; don't reopen without new evidence)
 
 - The web app (`web/src/app.src.html` → `docs/app/`) is the product for both Android and iOS users; iOS installs via Add to Home Screen. No native iOS build.
-- Kotlin/Android code is out of scope for the loop until the owner chooses Hilt 2.52 vs AGP 9 (CI cannot build it today).
+- (Owner) Decisions inside the project are delegated to the team: the owning skill decides against the goal, records it here, and carries on. Only actions outside the repo (Pages, sharing, accounts) go to the owner.
+- (hati-android-build) Restored the last known-good Android dependency set from before the unbuilt bulk upgrade in 4000388 (Hilt 2.52, Room 2.6.1, Compose BOM 2025.01.01, core-ktx 1.15.0, lifecycle 2.8.7, activity-compose 1.10.0, navigation-compose 2.8.5, datastore 1.1.1, test libs to their previous versions), keeping AGP 8.7.2, Kotlin 2.0.21, compileSdk 35. Evidence: pre-upgrade build_result.txt shows BUILD SUCCESSFUL. Upgrades resume one coupled group at a time, each confirmed by CI.
+- Kotlin/Android code stays out of the web loop's scope; the hati-android-build skill owns it.
 - Design language is manga ink on paper (see `web/README.md`). Glassmorphism and blurred gradient blobs were removed as AI-slop tells and stay out.
 - Every persona decides from the goal in `web/README.md` (G1 both phones, G2 real use, G3 not AI slop) and the lazy-user check is part of every design step.
 - Money is integer cents; debt math mirrors `CalculateDebtsUseCase.kt`.

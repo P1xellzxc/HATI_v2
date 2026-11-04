@@ -25,7 +25,7 @@ Never edit `docs/app/` by hand; it is build output.
 
 ## Goal
 
-Every persona skill decides what to do from this goal, not from the task list.
+Every persona skill decides what to do from this goal, not from the task list, and makes decisions in its area itself instead of waiting on the owner (see "Decide, don't wait" in the skills).
 
 An app Android and iOS users can install from a link and use for real group expenses, that does not read as AI-generated design. Done means:
 1. `web/test.sh` passes, including a check for every shipped behavior.

@@ -9,6 +9,10 @@ description: Check and fix HATI² accessibility (keyboard, screen reader semanti
 
 Use this skill only for work that moves the project goal in `web/README.md`: **G1** works on Android and iOS from a link (offline included), **G2** real group use with correct money and no data loss, **G3** not AI slop. Say which criterion your use of this skill serves. G1 and G2 for everyone, including screen reader, keyboard and low-vision users.
 
+## Decide, don't wait
+
+The owner has delegated decisions inside the project to the team. When a choice comes up in your area, make it yourself against the goal (G1–G3), using the evidence you have; prefer the reversible, lowest-risk option that unblocks the goal; record it under Decisions in `.claude/team-log.md` with the reason; and carry on. Ask the owner only for actions outside the repository that only they can take (for example enabling GitHub Pages, sharing a private link, accounts or payments).
+
 ## Before you start: deepen your assignment
 
 Apply this prompt to the specific assignment you were just given (not to the skill in general), every time:
