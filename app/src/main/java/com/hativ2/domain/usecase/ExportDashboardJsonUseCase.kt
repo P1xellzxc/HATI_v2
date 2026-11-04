@@ -126,8 +126,8 @@ class ExportDashboardJsonUseCase @Inject constructor(
     }
 
     private fun resolveName(
-        personId: String,
+        personId: String?,
         membersMap: Map<String, com.hativ2.data.entity.PersonEntity>
     ): String = if (personId == CURRENT_USER_ID) "You"
-        else membersMap[personId]?.name ?: "Unknown"
+        else personId?.let { membersMap[it]?.name } ?: "Unknown"
 }

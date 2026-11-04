@@ -50,10 +50,9 @@
 
 # --- SQLCipher ---
 # SQLCipher uses native libraries and reflection for database factory creation.
-# Without these rules, R8 strips the JNI bindings and the SupportFactory class.
--keep class net.sqlcipher.** { *; }
--keep class net.sqlcipher.database.** { *; }
--dontwarn net.sqlcipher.**
+# Without these rules, R8 strips the JNI bindings and the SupportOpenHelperFactory class.
+-keep class net.zetetic.database.** { *; }
+-dontwarn net.zetetic.database.**
 
 # --- Biometric ---
 # Biometric library uses fragment transactions internally.

@@ -2,6 +2,8 @@ package com.hativ2.ui.screens
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -40,9 +42,9 @@ class DashboardListScreenTest {
 
         // Hub headline always visible
         composeTestRule.onNodeWithText("YOUR STORY VOLUMES").assertIsDisplayed()
-        // Empty state copy
-        composeTestRule.onNodeWithText("No volumes yet").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Tap + NEW VOLUME to start your story.").assertIsDisplayed()
+        // Empty state: the dashed "+ NEW VOLUME" slot invites the first volume
+        composeTestRule.onNodeWithText("Start a new arc").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("NEW VOLUME").onFirst().assertIsDisplayed()
     }
 
     // -------- List state --------
@@ -63,8 +65,8 @@ class DashboardListScreenTest {
             )
         }
 
-        composeTestRule.onNodeWithText("Family Trip").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Household Bills").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Family Trip", ignoreCase = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Household Bills", ignoreCase = true).assertIsDisplayed()
     }
 
     @Test
@@ -83,7 +85,7 @@ class DashboardListScreenTest {
         }
 
         // expense count chip label
-        composeTestRule.onNodeWithText("5 ch.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("5 ch.", substring = true).assertIsDisplayed()
         // total spend label
         composeTestRule.onNodeWithText("Total").assertIsDisplayed()
     }
@@ -104,7 +106,7 @@ class DashboardListScreenTest {
             )
         }
 
-        composeTestRule.onNodeWithText("Trip to Bali").performClick()
+        composeTestRule.onNodeWithText("Trip to Bali", ignoreCase = true).performClick()
 
         assert(clickedId == "d1") { "Expected d1 to be clicked, got $clickedId" }
     }
@@ -123,10 +125,11 @@ class DashboardListScreenTest {
             )
         }
 
-        composeTestRule.onNodeWithText("NEW VOLUME", substring = true).performClick()
+        // Both the top-bar button and the dashed slot say NEW VOLUME; either opens the dialog.
+        composeTestRule.onAllNodesWithText("NEW VOLUME").onFirst().performClick()
 
         // Dialog should appear with its title
-        composeTestRule.onNodeWithText("New Volume", ignoreCase = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("CREATE NEW VOLUME").assertIsDisplayed()
     }
 
     // -------- Helpers --------

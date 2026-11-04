@@ -24,6 +24,7 @@ import org.junit.Test
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
@@ -219,14 +220,14 @@ class MainViewModelTest {
 
     @Test
     fun `createExpense validates and delegates to useCase`() = runTest {
-        whenever(addTransactionUseCase.execute(any(), any(), any(), any(), any(), any()))
+        whenever(addTransactionUseCase.execute(any(), any(), any(), any(), any(), any(), anyOrNull(), anyOrNull()))
             .thenReturn(Result.success("exp-1"))
 
         viewModel.createExpense("dash-1", "Lunch", 50.0, "u1", "Food", listOf("u1", "u2"))
         advanceUntilIdle()
 
         verify(addTransactionUseCase).execute(
-            any(), any(), any(), any(), any(), any()
+            any(), any(), any(), any(), any(), any(), anyOrNull(), anyOrNull()
         )
     }
 
@@ -235,7 +236,7 @@ class MainViewModelTest {
         viewModel.createExpense("dash-1", "  ", 50.0, "u1", "Food", listOf("u1"))
         advanceUntilIdle()
 
-        verify(addTransactionUseCase, never()).execute(any(), any(), any(), any(), any(), any())
+        verify(addTransactionUseCase, never()).execute(any(), any(), any(), any(), any(), any(), anyOrNull(), anyOrNull())
     }
 
     @Test
@@ -243,7 +244,7 @@ class MainViewModelTest {
         viewModel.createExpense("dash-1", "Lunch", 0.0, "u1", "Food", listOf("u1"))
         advanceUntilIdle()
 
-        verify(addTransactionUseCase, never()).execute(any(), any(), any(), any(), any(), any())
+        verify(addTransactionUseCase, never()).execute(any(), any(), any(), any(), any(), any(), anyOrNull(), anyOrNull())
     }
 
     // -------- People tests --------

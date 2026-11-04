@@ -219,12 +219,13 @@ fun MangaTextField(
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 4.dp),
-            color = MangaBlack
+            color = MaterialTheme.colorScheme.onSurface
         )
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MangaBlack),
+            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
             keyboardOptions = keyboardOptions,
             singleLine = singleLine,
             visualTransformation = visualTransformation,
@@ -233,7 +234,7 @@ fun MangaTextField(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(NotionWhite, RoundedCornerShape(MangaCornerRadius))
+                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(MangaCornerRadius))
                         .border(MangaBorderWidth, MangaBlack, RoundedCornerShape(MangaCornerRadius))
                         .padding(horizontal = 12.dp, vertical = 12.dp)
                 ) {
@@ -317,7 +318,7 @@ fun TransactionCard(
                         text = title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MangaBlack
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = subtitle,

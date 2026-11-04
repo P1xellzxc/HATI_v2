@@ -60,6 +60,8 @@ private object Routes {
     const val SETTINGS         = "settings"
 
     fun dashboardDetail(id: String) = "dashboard_detail/$id"
+    fun balance(id: String) = "balance/$id"
+    fun expenseList(id: String) = "expense_list/$id"
     fun addExpense(id: String, expenseId: String? = null) =
         if (expenseId == null) "add_expense/$id" else "add_expense/$id?expenseId=$expenseId"
     fun history(id: String? = null) = "history/${id ?: "all"}"
@@ -138,8 +140,8 @@ private fun AppNavHost(
                 viewModel = viewModel,
                 onBackClick = { navController.popBackStack() },
                 onAddExpenseClick = { navController.navigate(Routes.addExpense(id)) },
-                onBalanceClick = { navController.navigate(Routes.charts(id)) },
-                onViewExpensesClick = { navController.navigate(Routes.history(id)) },
+                onBalanceClick = { navController.navigate(Routes.balance(id)) },
+                onViewExpensesClick = { navController.navigate(Routes.expenseList(id)) },
                 onExpenseClick = { eid -> navController.navigate(Routes.addExpense(id, eid)) }
             )
         }
@@ -262,6 +264,7 @@ class MainActivity : FragmentActivity() {
             val prefs by viewModel.prefs.collectAsState()
             HatiV2Theme(
                 themeMode    = prefs.themeMode,
+                palette      = com.hativ2.ui.theme.HatiPalettes.byId(prefs.paletteId),
                 densityScale = prefs.density.factor,
                 textScale    = prefs.textSize.factor,
             ) {

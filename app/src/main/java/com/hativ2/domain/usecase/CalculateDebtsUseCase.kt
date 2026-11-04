@@ -85,11 +85,14 @@ class CalculateDebtsUseCase @Inject constructor() {
         // Process expenses
         for (expense in expenses) {
             val payerId = expense.paidBy ?: continue
+            // Credit the payer with exactly what the counted splits debit, so
+            // balances always sum to zero. Non-positive splits are malformed
+            // and skipped, as in calculatePairwiseDebts. For valid data the
+            // splits sum to expense.amount, so the result is unchanged.
+            val expenseSplits = allSplits.filter { it.expenseId == expense.id && it.amount > 0 }
             val payerBalance = balances[payerId] ?: 0.0
-            balances[payerId] = payerBalance + expense.amount
+            balances[payerId] = payerBalance + expenseSplits.sumOf { it.amount }
 
-            val expenseSplits = allSplits.filter { it.expenseId == expense.id }
-            
             for (split in expenseSplits) {
                 val debtorId = split.personId
                 val amount = split.amount

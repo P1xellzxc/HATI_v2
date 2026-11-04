@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
@@ -59,10 +60,16 @@ open class MainViewModel @javax.inject.Inject constructor(
         viewModelScope.launch { userPreferencesRepository.setTextSize(size) }
     }
 
-    val dashboards: StateFlow<List<DashboardEntity>> = dashboardDao.getAllDashboards()
+    fun setPalette(id: String) {
+        viewModelScope.launch { userPreferencesRepository.setPalette(id) }
+    }
+
+    // open: screen tests stub these on a mockito-android mock, which cannot
+    // stub final members (same reason getPeople is open).
+    open val dashboards: StateFlow<List<DashboardEntity>> = dashboardDao.getAllDashboards()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    val dashboardsWithStats: StateFlow<List<DashboardWithStats>> = dashboardDao.getAllDashboards()
+    open val dashboardsWithStats: StateFlow<List<DashboardWithStats>> = dashboardDao.getAllDashboards()
         .flatMapLatest { dashboardList ->
             if (dashboardList.isEmpty()) {
                 flowOf(emptyList())
@@ -89,7 +96,7 @@ open class MainViewModel @javax.inject.Inject constructor(
             }
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    fun getExpenses(dashboardId: String): StateFlow<List<com.hativ2.data.entity.ExpenseEntity>> {
+    open fun getExpenses(dashboardId: String): StateFlow<List<com.hativ2.data.entity.ExpenseEntity>> {
         return expenseDao.getExpensesForDashboard(dashboardId)
             .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     }
@@ -212,8 +219,10 @@ open class MainViewModel @javax.inject.Inject constructor(
             val titleResult = com.hativ2.util.InputValidator.validateDashboardTitle(title)
             if (titleResult !is com.hativ2.util.InputValidator.ValidationResult.Valid) return@launch
 
-            val currentList = dashboards.value
-            val current = currentList.find { it.id == dashboardId } ?: return@launch
+            // Read from the DAO: `dashboards` is lazily shared and stays empty
+            // unless some screen collects it (the list screen does not).
+            val current = dashboardDao.getAllDashboards().first()
+                .find { it.id == dashboardId } ?: return@launch
             dashboardDao.updateDashboard(current.copy(title = titleResult.sanitized, dashboardType = type, themeColor = themeColor))
         }
     }

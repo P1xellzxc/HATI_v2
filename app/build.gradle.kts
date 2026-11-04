@@ -92,6 +92,8 @@ dependencies {
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.kotlin)
     testImplementation(libs.kotlinx.coroutines.test)
+    // android.jar stubs org.json for JVM tests ("not mocked"); use the real one.
+    testImplementation(libs.org.json)
     androidTestImplementation(libs.mockito.android)
     androidTestImplementation(libs.mockito.kotlin)
     androidTestImplementation(libs.androidx.junit)
