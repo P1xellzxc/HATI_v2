@@ -109,5 +109,40 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
  await q.waitForTimeout(500); await c2.setOffline(true); await q.reload();
  ok(await q.locator('h1').count()===1,'app opens offline from the service worker');
  ok(await q.evaluate(async()=>{await document.fonts.ready; return document.fonts.check("16px 'Black Han Sans'")}),'display font available offline');
+ // R1-4/R1-5 (design): share sheet, import sheet, palette grid
+ { const c3=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780}}); const d=await c3.newPage(); const derr=[]; d.on('pageerror',e=>derr.push(e.message));
+   await d.goto(URL);
+   await d.locator('.vol').first().click(); await d.locator('[data-act=volMenu]').click(); await d.locator('[data-act=share]').click();
+   ok(/3 members · \d+ expenses/.test(await d.locator('.share-sum').innerText()),'share sheet names what is shared: '+(await d.locator('.share-sum').innerText()).replace(/\n/g,' | '));
+   ok(!(await d.locator('#s-code').isVisible()) && !(await d.locator('#sheetForm').innerText()).includes('"app"'),'no raw code is visible before "Show code"');
+   await d.getByText('Show code').click(); ok(await d.locator('#s-code').isVisible(),'"Show code" reveals the code');
+   await d.getByText('Show code').click();
+   await d.evaluate(()=>{ Object.defineProperty(navigator,'clipboard',{value:{writeText:()=>Promise.reject(new Error('denied'))},configurable:true}); });
+   await d.getByRole('button',{name:'Copy code'}).click(); await d.waitForTimeout(100);
+   ok(await d.locator('#s-code').isVisible() && await d.evaluate(()=>{const t=$('#s-code'); return document.activeElement===t && t.selectionEnd-t.selectionStart===t.value.length;}),'clipboard denied: Copy opens the code and selects all of it');
+   await d.locator('[data-act=closeSheet]').click();
+   await d.evaluate(()=>{ window.__shared=null; navigator.share=d=>{window.__shared=d; return Promise.resolve();}; window.__copied=0; Object.defineProperty(navigator,'clipboard',{value:{writeText:()=>{window.__copied++; return Promise.resolve();}},configurable:true}); });
+   await d.locator('[data-act=volMenu]').click(); await d.locator('[data-act=share]').click();
+   await d.getByRole('button',{name:/Send/}).click(); await d.waitForTimeout(100);
+   ok(await d.evaluate(()=>!!window.__shared && window.__shared.text===$('#s-code').value && window.__copied===0),'Send passes the code to the native share sheet');
+   await d.evaluate(()=>{ navigator.share=()=>Promise.reject(new DOMException('cancel','AbortError')); });
+   await d.getByRole('button',{name:/Send/}).click(); await d.waitForTimeout(100);
+   ok(await d.evaluate(()=>window.__copied===0 && !$('#sheetMsg').textContent),'cancelling the share sheet is silent and does not copy');
+   await d.locator('[data-act=closeSheet]').click(); await d.locator('#nav [data-act=home]').click(); await d.getByRole('button',{name:'Import'}).click();
+   const ph=await d.locator('#s-paste').getAttribute('placeholder'); ok(!/[{}"]/.test(ph),'import placeholder has no JSON: '+ph);
+   ok(await d.getByText('Open file').isVisible(),'file import is a labeled button, not a bare file input');
+   await d.locator('[data-act=closeSheet]').click();
+   await d.locator('#nav [data-act=settings]').click();
+   ok(await d.evaluate(()=>document.scrollingElement.scrollHeight)<=1300,'settings is at most 1300px tall at 360 (got '+await d.evaluate(()=>document.scrollingElement.scrollHeight)+')');
+   const names=await d.evaluate(()=>PALETTES.map(x=>x.name)); let allSel=true;
+   for (const n of names) { await d.getByRole('radio',{name:new RegExp(n,'i')}).click(); if(await d.getByRole('radio',{name:new RegExp(n,'i')}).getAttribute('aria-checked')!=='true') allSel=false; }
+   ok(allSel && names.length===13,'all 13 palettes are selectable by name');
+   ok(await d.locator('.pal[aria-checked=true] .dot').innerText()==='✓' && await d.locator('.pal .dot').count()===1,'current palette carries a check mark, not only colour');
+   await d.getByRole('radio',{name:/Classic/i}).click(); const seen=new Set();
+   for (let i=0;i<13;i++){ seen.add(await d.evaluate(()=>document.activeElement.dataset.pal)); await d.keyboard.press('ArrowRight'); }
+   ok(seen.size===13 && await d.locator('.pal[tabindex="0"]').count()===1 && await d.evaluate(()=>document.activeElement.dataset.pal)==='classic','arrow keys walk all 13 palettes with one tab stop');
+   await d.setViewportSize({width:320,height:700}); ok(await d.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'palette grid has no horizontal scroll at 320');
+   ok(derr.length===0,'no page errors in design checks '+JSON.stringify(derr));
+   await c3.close(); }
  await b.close();
 })();

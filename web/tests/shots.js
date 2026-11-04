@@ -16,6 +16,8 @@ const VIEWS = {
   'sheet-settle': p => p.evaluate(() => { ui.volId = S.volumes[0].id; go('volume'); settleSheet(null); }),
   'sheet-new-volume': p => p.evaluate(() => { go('hub'); volumeSheet(null); }),
   'sheet-share': p => p.evaluate(() => { ui.volId = S.volumes[0].id; go('volume'); shareSheet(); }),
+  'sheet-share-phone': p => p.evaluate(() => { navigator.share = async () => {}; ui.volId = S.volumes[0].id; go('volume'); shareSheet(); }),
+  'sheet-share-code': p => p.evaluate(() => { ui.volId = S.volumes[0].id; go('volume'); shareSheet(); $('#s-codebox').open = true; }),
   'sheet-import': p => p.evaluate(() => { go('hub'); importSheet(); }),
   'state-empty': p => p.evaluate(() => { S.volumes = []; save(); go('hub'); }),
   'state-one-member': p => p.evaluate(() => { const id = 'solo' + 1; S.volumes.unshift({ id: 'solo1', title: 'Solo test', type: 'other', currency: '$', meId: 'me1', created: 1, members: [{ id: 'me1', name: 'Me' }], expenses: [], settlements: [] }); save(); ui.volId = 'solo1'; go('volume'); }),

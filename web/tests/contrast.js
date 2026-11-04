@@ -19,7 +19,6 @@ const URL = process.env.URL || 'http://127.0.0.1:8765/';
       const out = [];
       document.querySelectorAll('#app *, #nav *').forEach(el => {
         if (!el.childNodes.length || ![...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())) return;
-        if (el.closest('.pal')) return; // palette previews show other themes on purpose
         const r = el.getBoundingClientRect(); if (!r.width || !r.height) return;
         const fg = parse(getComputedStyle(el).color), bg = bgOf(el);
         const a = L(fg), c = L(bg), ratio = (Math.max(a, c) + 0.05) / (Math.min(a, c) + 0.05);
