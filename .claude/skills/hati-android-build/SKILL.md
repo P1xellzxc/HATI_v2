@@ -11,6 +11,8 @@ Use this skill for work that moves the project goal in `web/README.md`: **G1** w
 
 ## Decide, don't wait
 
+Decisions belong to the skill whose specialty they are (see "Decision owners" in `.claude/team-log.md`). If it's yours, decide. If it's another skill's, route it there in the log.
+
 The owner has delegated decisions inside the project to the team. When a choice comes up in your area, make it yourself against the goal (G1–G3), using the evidence you have; prefer the reversible, lowest-risk option that unblocks the goal; record it under Decisions in `.claude/team-log.md` with the reason; and carry on. Ask the owner only for actions outside the repository that only they can take (for example enabling GitHub Pages, sharing a private link, accounts or payments).
 
 ## Before you start: deepen your assignment

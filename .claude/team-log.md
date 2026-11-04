@@ -2,6 +2,26 @@
 
 Shared notes between the persona agents (planner, critic, designer, coder, code auditor, design auditor). Newest round at the bottom. Read it before you start; append your handoff when you finish.
 
+## Decision owners
+
+Every decision goes to the skill whose specialty it is. That skill decides, logs it under Decisions, moves on. No waiting on the owner.
+
+| Decision | Owner skill |
+|---|---|
+| What to work on, order, scope, settling disagreements | hati-plan (goal judge settles if planner is party) |
+| Is the goal reached | hati-goal-judge |
+| Visual direction, layout, color, type, glass/no glass | hati-design (checked by hati-slop-rubric, hati-lazy-check) |
+| Alignment, spacing, balance | hati-pixel-perfectionist |
+| Wording, terms, formats | hati-copy |
+| Web code structure, data model, invariants | hati-code |
+| Money math, rounding, parity with Android | hati-money-parity |
+| iOS behavior, install flow | hati-ios |
+| Accessibility trade-offs | hati-a11y |
+| Code quality, what to cut, missing tests | hati-ponytail |
+| Android build, Gradle, dependency versions | hati-android-build |
+| Shipping, commit, release | hati-ship |
+| Only outside the repo (Pages, sharing links, accounts) | owner |
+
 ## Decisions (settled; don't reopen without new evidence)
 
 - The web app (`web/src/app.src.html` → `docs/app/`) is the product for both Android and iOS users; iOS installs via Add to Home Screen. No native iOS build.
