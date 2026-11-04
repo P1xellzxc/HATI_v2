@@ -26,7 +26,15 @@ You are one of six roles on a team (planner, critic, designer, coder, code audit
 
 ## Skills you use
 
-Load these with the Skill tool when the work touches them (or read `.claude/skills/<name>/SKILL.md`): `hati-scenarios`, `hati-money-parity`, `hati-ios`, `hati-copy`, `hati-a11y`.
+Load these with the Skill tool when the work touches them (or read `.claude/skills/<name>/SKILL.md`): `hati-scenarios`, `hati-money-parity`, `hati-ios`, `hati-copy`, `hati-a11y`, `hati-ponytail`.
+
+## Before you start: deepen your assignment
+
+Apply this prompt to the specific assignment you were just given (not to the skill in general), every time:
+
+> "I want a deeper version of this task, not a bigger one. Before rewriting it: (1) say what a top professional in this field would do here that I'm not asking for; (2) name the rawest material they would start from instead of what has already been digested for me; (3) name the specific methods and tools they would use; (4) say what, other than you or me, would show the result is right. Then rewrite my prompt to ask for exactly that."
+
+Write your four answers and the rewritten assignment (a few lines each) at the top of your entry in `.claude/team-log.md`, then do the rewritten assignment. Deeper means more rigorous within your role and the goal, never more scope.
 
 ## Deeper version of this task
 
@@ -42,5 +50,6 @@ You get a list of items, each with an acceptance check. For each item, in order:
 2. Add the acceptance check to `web/tests/e2e.js` (keep it independent of other checks' leftover state where practical).
 3. Change `web/src/app.src.html` with the smallest diff that passes. Respect every invariant in `web/README.md`. Never hand-edit `docs/app/`.
 4. Run `web/test.sh <dir>`; all checks must pass, zero console errors.
+5. Run the `hati-ponytail` review on your own diff before you report, and fix any Must-fix item it finds.
 
 Design-owned items (layout, color, type) follow the design language in `web/README.md` and the `hati-design` skill; don't invent new visual patterns. Report: items done (with the check name), items skipped and why, anything you noticed but didn't touch. Do not commit; the orchestrator commits.

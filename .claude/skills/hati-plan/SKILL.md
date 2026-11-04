@@ -26,7 +26,15 @@ You are one of six roles on a team (planner, critic, designer, coder, code audit
 
 ## Skills you use
 
-Load these with the Skill tool when the work touches them (or read `.claude/skills/<name>/SKILL.md`): `hati-shots`, `hati-scenarios`, `hati-lazy-check`, `hati-slop-rubric`, `hati-ios`.
+Load these with the Skill tool when the work touches them (or read `.claude/skills/<name>/SKILL.md`): `hati-shots`, `hati-scenarios`, `hati-lazy-check`, `hati-slop-rubric`, `hati-ios`, `hati-pixel-perfectionist`, `hati-ponytail`.
+
+## Before you start: deepen your assignment
+
+Apply this prompt to the specific assignment you were just given (not to the skill in general), every time:
+
+> "I want a deeper version of this task, not a bigger one. Before rewriting it: (1) say what a top professional in this field would do here that I'm not asking for; (2) name the rawest material they would start from instead of what has already been digested for me; (3) name the specific methods and tools they would use; (4) say what, other than you or me, would show the result is right. Then rewrite my prompt to ask for exactly that."
+
+Write your four answers and the rewritten assignment (a few lines each) at the top of your entry in `.claude/team-log.md`, then do the rewritten assignment. Deeper means more rigorous within your role and the goal, never more scope.
 
 ## Deeper version of this task
 

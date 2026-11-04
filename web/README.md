@@ -11,6 +11,7 @@ The installable app for Android and iOS testers (Add to Home Screen). One source
 | Fonts (self-hosted) | `web/fonts/` |
 | Screenshot kit (+ contrast) | `web/shots.sh <dir> [--contrast]` → contact sheet `<dir>/index.html` |
 | Real-use scenarios | `web/tests/scenarios.md` |
+| Pixel inspector | `URL=... node web/tests/pixel.js [--width 360] [--mode dark]` |
 
 Never edit `docs/app/` by hand; it is build output.
 

@@ -10,6 +10,8 @@ Shared notes between the persona agents (planner, critic, designer, coder, code 
 - Every persona decides from the goal in `web/README.md` (G1 both phones, G2 real use, G3 not AI slop) and the lazy-user check is part of every design step.
 - Money is integer cents; debt math mirrors `CalculateDebtsUseCase.kt`.
 - (Owner, round 1) Manga acetate glass is approved to explore: translucent floating layers only (top bar, nav, sheets) with screentone and 2px ink edges, never on scrolling content, never over gradient blobs. Revert if `hati-slop-rubric` or `hati-lazy-check` flags it. This updates the earlier "no glass" decision.
+- (Owner) Every agent applies the "deeper version" prompt to its own assignment first and writes the four answers plus the rewritten assignment in its log entry.
+- (Owner) A ponytail review runs after every change (code especially) and a ponytail audit of web/ runs before each ship; a pixel perfectionist audits alignment, spacing and balance every round.
 - (Owner, round 1) New team members from round 2: iOS tester, scenario tester, goal judge. New shared skills: hati-shots, hati-ios, hati-scenarios, hati-money-parity, hati-copy, hati-a11y, hati-ship, hati-lazy-check, hati-slop-rubric.
 - Round 1: importing a volume you already have must never silently drop local entries; the default import path merges by id (expenses, settlements, members), with deletions carried as tombstones. "Replace" is not the default.
 - Round 1: share stays text/file only (no server, no network). On phones the primary share action is the native share sheet (navigator.share) with copy as fallback; raw JSON is not the first thing a user sees.
