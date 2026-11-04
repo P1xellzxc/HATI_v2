@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
@@ -218,8 +219,10 @@ open class MainViewModel @javax.inject.Inject constructor(
             val titleResult = com.hativ2.util.InputValidator.validateDashboardTitle(title)
             if (titleResult !is com.hativ2.util.InputValidator.ValidationResult.Valid) return@launch
 
-            val currentList = dashboards.value
-            val current = currentList.find { it.id == dashboardId } ?: return@launch
+            // Read from the DAO: `dashboards` is lazily shared and stays empty
+            // unless some screen collects it (the list screen does not).
+            val current = dashboardDao.getAllDashboards().first()
+                .find { it.id == dashboardId } ?: return@launch
             dashboardDao.updateDashboard(current.copy(title = titleResult.sanitized, dashboardType = type, themeColor = themeColor))
         }
     }
