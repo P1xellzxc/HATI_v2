@@ -40,12 +40,6 @@ android {
     buildFeatures {
         compose = true
     }
-    lint {
-        // Print every lint issue to the build log (CI shows only the first
-        // otherwise). Checks and abortOnError are unchanged.
-        textReport = true
-        textOutput = file("stdout")
-    }
     composeOptions {
         // kotlinCompilerExtensionVersion = "1.5.1" // Not used with Kotlin 2.0+ Compose Compiler Plugin
     }

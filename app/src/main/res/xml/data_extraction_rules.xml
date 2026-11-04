@@ -10,18 +10,18 @@
     backup/transfer to prevent key material from being restored to a different
     device where the Android Keystore key won't match.
     Device transfer still includes database for legitimate phone migration.
+    Once a section has an <include>, only included paths are copied, so the
+    database (cloud) and external storage (both) are left out by omission;
+    excluding a path that is not included is a lint error.
 -->
 <data-extraction-rules>
     <cloud-backup>
         <include domain="sharedpref" path="."/>
         <exclude domain="sharedpref" path="hati_db_prefs.xml"/>
-        <exclude domain="database" path="."/>
-        <exclude domain="external" path="."/>
     </cloud-backup>
     <device-transfer>
         <include domain="sharedpref" path="."/>
         <exclude domain="sharedpref" path="hati_db_prefs.xml"/>
         <include domain="database" path="."/>
-        <exclude domain="external" path="."/>
     </device-transfer>
 </data-extraction-rules>
