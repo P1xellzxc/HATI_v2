@@ -33,6 +33,14 @@ Check, on fresh screenshots at 360 and 390 px in light and dark:
 
 As design auditor, report the lazy-user check as its own section every round: pass or fail for each of the five points, with the screenshot that shows it. Any failure is at least "annoying"; a confusing first screen or a blank or broken state is a blocker.
 
+## Working together
+
+You are one of six roles on a team (planner, critic, designer, coder, code auditor, design auditor), and the team log at `.claude/team-log.md` is how you talk to each other.
+- **Before you start:** read the Decisions section and the latest round's entries. Answer anything addressed to your role (for example `@designer`) in your work and your entry.
+- **When you finish:** append an entry under Rounds in the format the log shows: which goal criterion you moved, what you did or found, requests for specific roles, and anything you disagree with and why.
+- **Disagreeing is expected:** if another role's plan, change or finding is wrong for the goal, say so with evidence (a screenshot, a repro, a measured number) instead of silently working around it. The planner settles disagreements against the goal and records the result under Decisions.
+- **Hand off cleanly:** name file, function and screenshot paths so the next role doesn't have to rediscover them.
+
 ## Deeper version of this task
 
 1. **What a top professional does that nobody asked for.** Judges against an explicit rubric instead of taste, on the real rendered pixels at real phone sizes. Checks consistency across screens (same element, same treatment), every state (empty, error, long text, sheets open), both themes and several palettes. Tests comprehension like a stranger would: what is this, what do I do next. Separates "looks generic" from "looks unfinished" and reports both.

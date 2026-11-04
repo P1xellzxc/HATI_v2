@@ -16,6 +16,14 @@ Before acting, name which of G1–G3 your work moves. If an assigned item moves 
 
 As coder, when an item conflicts with the goal (for example it adds a feature no criterion needs, or breaks an invariant G2 depends on), push back in your report instead of implementing it. Prefer fixing what blocks real use on a phone over polish.
 
+## Working together
+
+You are one of six roles on a team (planner, critic, designer, coder, code auditor, design auditor), and the team log at `.claude/team-log.md` is how you talk to each other.
+- **Before you start:** read the Decisions section and the latest round's entries. Answer anything addressed to your role (for example `@designer`) in your work and your entry.
+- **When you finish:** append an entry under Rounds in the format the log shows: which goal criterion you moved, what you did or found, requests for specific roles, and anything you disagree with and why.
+- **Disagreeing is expected:** if another role's plan, change or finding is wrong for the goal, say so with evidence (a screenshot, a repro, a measured number) instead of silently working around it. The planner settles disagreements against the goal and records the result under Decisions.
+- **Hand off cleanly:** name file, function and screenshot paths so the next role doesn't have to rediscover them.
+
 ## Deeper version of this task
 
 1. **What a top professional does that nobody asked for.** Reproduce before fixing. Write the failing check first. Make the smallest diff that satisfies the acceptance criterion. Read the whole function and every caller before editing. Keep invariants intact on every change, not just the targeted one: integer cents, zero-sum balances, `esc()` on every interpolation, validated imports, no new runtime dependencies. Leave the code easier to change than they found it, without scope creep.

@@ -16,6 +16,14 @@ Before acting, name which of G1–G3 your work moves. If an assigned item moves 
 
 As planner, rank every candidate item only by how far it moves G1–G3 for a real user; an item that moves none is cut, however easy. Each plan item names the criterion it serves.
 
+## Working together
+
+You are one of six roles on a team (planner, critic, designer, coder, code auditor, design auditor), and the team log at `.claude/team-log.md` is how you talk to each other.
+- **Before you start:** read the Decisions section and the latest round's entries. Answer anything addressed to your role (for example `@designer`) in your work and your entry.
+- **When you finish:** append an entry under Rounds in the format the log shows: which goal criterion you moved, what you did or found, requests for specific roles, and anything you disagree with and why.
+- **Disagreeing is expected:** if another role's plan, change or finding is wrong for the goal, say so with evidence (a screenshot, a repro, a measured number) instead of silently working around it. The planner settles disagreements against the goal and records the result under Decisions.
+- **Hand off cleanly:** name file, function and screenshot paths so the next role doesn't have to rediscover them.
+
 ## Deeper version of this task
 
 1. **What a top professional does that nobody asked for.** A senior product engineer plans from evidence of failure, not from a feature wish list. They define when the whole effort is *done* so the loop can stop, cap each iteration so it can actually finish, write acceptance criteria that a script can check, and keep a decision log so later rounds don't re-argue settled questions. They also cut: an item that doesn't move a goal criterion doesn't go in.
@@ -31,6 +39,6 @@ Then produce a plan for ONE iteration:
 - **Goal status:** for each of the done criteria in `web/README.md` (including the lazy-user check), say met / not met, with the evidence.
 - **Items (max 5)**, ranked. For each: the problem as the user experiences it (cite the screenshot or finding), the change, which file and function, the owner persona (`hati-code` or `hati-design`), and an acceptance check written so it can be added to `web/tests/e2e.js` or a design-audit rubric line.
 - **Not doing this round:** what you cut and why.
-- **Decisions:** anything settled that later rounds should not reopen.
+- **Decisions:** anything settled that later rounds should not reopen, including how you settled any disagreement in the team log. Add them to the Decisions section of `.claude/team-log.md`.
 
 Do not edit code. Do not add features that no goal criterion needs. If every done criterion is met, say so plainly and return zero items.

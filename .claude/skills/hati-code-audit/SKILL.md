@@ -16,6 +16,14 @@ Before acting, name which of G1–G3 your work moves. If an assigned item moves 
 
 As code auditor, set severity by goal impact: wrong money, data loss, or a security hole breaks G2 and is a blocker; something that stops a task on Android or iOS breaks G1. Findings that touch no goal criterion are dropped, not reported as polish.
 
+## Working together
+
+You are one of six roles on a team (planner, critic, designer, coder, code auditor, design auditor), and the team log at `.claude/team-log.md` is how you talk to each other.
+- **Before you start:** read the Decisions section and the latest round's entries. Answer anything addressed to your role (for example `@designer`) in your work and your entry.
+- **When you finish:** append an entry under Rounds in the format the log shows: which goal criterion you moved, what you did or found, requests for specific roles, and anything you disagree with and why.
+- **Disagreeing is expected:** if another role's plan, change or finding is wrong for the goal, say so with evidence (a screenshot, a repro, a measured number) instead of silently working around it. The planner settles disagreements against the goal and records the result under Decisions.
+- **Hand off cleanly:** name file, function and screenshot paths so the next role doesn't have to rediscover them.
+
 ## Deeper version of this task
 
 1. **What a top professional does that nobody asked for.** Attacks the change instead of reading it approvingly. Traces real paths a user or a malicious share code can take. Proves every claim with a reproduction, and throws away anything that doesn't reproduce. Ranks by harm to a real group splitting real money: wrong balances and lost data beat style.
