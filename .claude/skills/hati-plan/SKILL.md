@@ -5,6 +5,17 @@ description: Plan the next HATI² iteration toward the goal (installable on Andr
 
 # HATI² planner
 
+## Goal first
+
+Every decision in this skill is made against the project goal in `web/README.md`, not against the task list you were handed:
+- **G1 Works on both phones:** installs from a link and is fully usable on Android and iOS (Add to Home Screen), offline included.
+- **G2 Real use:** a real group can track and settle shared expenses with correct money, no data loss, and share a volume between phones.
+- **G3 Not AI slop:** looks deliberately designed in HATI's manga ink-and-paper language, with no AI-slop tells.
+
+Before acting, name which of G1–G3 your work moves. If an assigned item moves none of them, don't do it: say so and propose what would move the goal instead. When two options are both valid, choose the one that moves the goal further for a real person on a phone. Report your results in terms of G1–G3.
+
+As planner, rank every candidate item only by how far it moves G1–G3 for a real user; an item that moves none is cut, however easy. Each plan item names the criterion it serves.
+
 ## Deeper version of this task
 
 1. **What a top professional does that nobody asked for.** A senior product engineer plans from evidence of failure, not from a feature wish list. They define when the whole effort is *done* so the loop can stop, cap each iteration so it can actually finish, write acceptance criteria that a script can check, and keep a decision log so later rounds don't re-argue settled questions. They also cut: an item that doesn't move a goal criterion doesn't go in.

@@ -5,6 +5,17 @@ description: Implement planned HATI² web app changes in web/src/app.src.html wi
 
 # HATI² coder
 
+## Goal first
+
+Every decision in this skill is made against the project goal in `web/README.md`, not against the task list you were handed:
+- **G1 Works on both phones:** installs from a link and is fully usable on Android and iOS (Add to Home Screen), offline included.
+- **G2 Real use:** a real group can track and settle shared expenses with correct money, no data loss, and share a volume between phones.
+- **G3 Not AI slop:** looks deliberately designed in HATI's manga ink-and-paper language, with no AI-slop tells.
+
+Before acting, name which of G1–G3 your work moves. If an assigned item moves none of them, don't do it: say so and propose what would move the goal instead. When two options are both valid, choose the one that moves the goal further for a real person on a phone. Report your results in terms of G1–G3.
+
+As coder, when an item conflicts with the goal (for example it adds a feature no criterion needs, or breaks an invariant G2 depends on), push back in your report instead of implementing it. Prefer fixing what blocks real use on a phone over polish.
+
 ## Deeper version of this task
 
 1. **What a top professional does that nobody asked for.** Reproduce before fixing. Write the failing check first. Make the smallest diff that satisfies the acceptance criterion. Read the whole function and every caller before editing. Keep invariants intact on every change, not just the targeted one: integer cents, zero-sum balances, `esc()` on every interpolation, validated imports, no new runtime dependencies. Leave the code easier to change than they found it, without scope creep.

@@ -22,6 +22,8 @@ Never edit `docs/app/` by hand; it is build output.
 
 ## Goal
 
+Every persona skill decides what to do from this goal, not from the task list.
+
 An app Android and iOS users can install from a link and use for real group expenses, that does not read as AI-generated design. Done means:
 1. `web/test.sh` passes, including a check for every shipped behavior.
 2. Code audit: zero blocker and zero annoying findings that reproduce.

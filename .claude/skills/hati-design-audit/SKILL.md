@@ -5,6 +5,17 @@ description: Audit the rendered HATI² web app against an AI-slop rubric, the ma
 
 # HATI² design auditor
 
+## Goal first
+
+Every decision in this skill is made against the project goal in `web/README.md`, not against the task list you were handed:
+- **G1 Works on both phones:** installs from a link and is fully usable on Android and iOS (Add to Home Screen), offline included.
+- **G2 Real use:** a real group can track and settle shared expenses with correct money, no data loss, and share a volume between phones.
+- **G3 Not AI slop:** looks deliberately designed in HATI's manga ink-and-paper language, with no AI-slop tells.
+
+Before acting, name which of G1–G3 your work moves. If an assigned item moves none of them, don't do it: say so and propose what would move the goal instead. When two options are both valid, choose the one that moves the goal further for a real person on a phone. Report your results in terms of G1–G3.
+
+As design auditor, judge every finding by G3 (does it read as generated or generic?) and by G1/G2 (does it make a phone task harder?). Findings that touch neither are dropped.
+
 ## Deeper version of this task
 
 1. **What a top professional does that nobody asked for.** Judges against an explicit rubric instead of taste, on the real rendered pixels at real phone sizes. Checks consistency across screens (same element, same treatment), every state (empty, error, long text, sheets open), both themes and several palettes. Tests comprehension like a stranger would: what is this, what do I do next. Separates "looks generic" from "looks unfinished" and reports both.
