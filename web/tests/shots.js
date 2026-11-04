@@ -19,6 +19,12 @@ const VIEWS = {
   'sheet-share-phone': p => p.evaluate(() => { navigator.share = async () => {}; ui.volId = S.volumes[0].id; go('volume'); shareSheet(); }),
   'sheet-share-code': p => p.evaluate(() => { ui.volId = S.volumes[0].id; go('volume'); shareSheet(); $('#s-codebox').open = true; }),
   'sheet-import': p => p.evaluate(() => { go('hub'); importSheet(); }),
+  'sheet-member-used': p => p.evaluate(() => { ui.volId = S.volumes[0].id; go('volume'); editMemberSheet(S.volumes[0].members[1]); }),
+  'sheet-import-merge': p => p.evaluate(() => {
+    const v = JSON.parse(JSON.stringify(S.volumes[0])); v.expenses.push({ ...v.expenses[0], id: 'fromb1', desc: 'From B', upd: Date.now() }); v.expenses.splice(1, 1);
+    go('hub'); importSheet(); $('#s-paste').value = JSON.stringify({ app: 'hati2-mock', v: 1, volume: v });
+  }).then(() => p.click('#s-go')),
+  'settings-data': p => p.evaluate(() => { go('settings'); window.scrollTo(0, document.body.scrollHeight); }),
   'state-empty': p => p.evaluate(() => { S.volumes = []; save(); go('hub'); }),
   'state-one-member': p => p.evaluate(() => { const id = 'solo' + 1; S.volumes.unshift({ id: 'solo1', title: 'Solo test', type: 'other', currency: '$', meId: 'me1', created: 1, members: [{ id: 'me1', name: 'Me' }], expenses: [], settlements: [] }); save(); ui.volId = 'solo1'; go('volume'); }),
   'state-long-text': p => p.evaluate(() => {
