@@ -1,0 +1,22 @@
+---
+name: hati-a11y
+description: Check and fix HATI² accessibility (keyboard, screen reader semantics, focus, contrast in all 13 palettes and both themes, zoom, reduced motion) with measured results. Use when auditing or changing UI structure, colors or interaction.
+---
+
+# HATI² accessibility
+
+## Goal first
+
+Use this skill only for work that moves the project goal in `web/README.md`: **G1** works on Android and iOS from a link (offline included), **G2** real group use with correct money and no data loss, **G3** not AI slop. Say which criterion your use of this skill serves. G1 and G2 for everyone, including screen reader, keyboard and low-vision users.
+
+## Deeper version of this task
+1. **Top professional:** measures instead of eyeballing, tests with the keyboard alone, and checks every palette and theme because one bad palette is a broken app for whoever picks it.
+2. **Rawest material:** the rendered DOM and computed styles, axe-core results, and `web/tests/contrast.js` output across all palettes.
+3. **Methods/tools:** `web/shots.sh <dir> --contrast` (all 13 palettes × light/dark × 4 views); axe-core (`npm i axe-core` in a scratch folder, inject `axe.min.js` with Playwright, run on every view and an open sheet); keyboard-only walk-through (Tab order, Escape closes sheets, focus returns); 200% zoom at 390 px; `prefers-reduced-motion`.
+4. **What shows it's right:** contrast.js passes (all text ≥ 4.5:1); axe reports no serious or critical violations; keyboard walk-through completes every core task.
+
+## Known traps in this app
+- Palette previews in Settings show other themes on purpose; contrast.js skips them.
+- `#app` must not be a live region; announcements go through `#status`.
+- Sheets are `role=dialog` with `inert` on the page behind; focus moves to the sheet title and returns on close.
+

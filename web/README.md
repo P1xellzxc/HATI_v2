@@ -9,6 +9,8 @@ The installable app for Android and iOS testers (Add to Home Screen). One source
 | Build | `python3 -I web/tools/build.py [--artifact PATH]` → `docs/app/` |
 | Test (build + serve + 36+ e2e checks) | `web/test.sh [screenshot-dir]` |
 | Fonts (self-hosted) | `web/fonts/` |
+| Screenshot kit (+ contrast) | `web/shots.sh <dir> [--contrast]` → contact sheet `<dir>/index.html` |
+| Real-use scenarios | `web/tests/scenarios.md` |
 
 Never edit `docs/app/` by hand; it is build output.
 

@@ -66,7 +66,9 @@ open(f'{R}/docs/app/manifest.webmanifest','w').write(json.dumps({
  "icons":[{"src":"icon-192.png","sizes":"192x192","type":"image/png"},
           {"src":"icon-512.png","sizes":"512x512","type":"image/png"},
           {"src":"icon-maskable-512.png","sizes":"512x512","type":"image/png","purpose":"maskable"}]},indent=2))
-open(f'{R}/docs/app/sw.js','w').write('''const CACHE = "hati2-v2";
+import hashlib
+version=hashlib.sha256((html+fontcss).encode()).hexdigest()[:10]
+open(f'{R}/docs/app/sw.js','w').write('''const CACHE = "hati2-'''+version+'''";
 const ASSETS = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png",
   "fonts/black-han-sans-latin.woff2", "fonts/dm-sans-latin.woff2"];
 self.addEventListener("install", e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())));

@@ -18,18 +18,7 @@ As design auditor, judge every finding by G3 (does it read as generated or gener
 
 ## Lazy-user check (always)
 
-Every design decision and every design audit includes this check, every round, without being asked.
-
-**The persona:** a user who gives the app 10 seconds and zero effort, but notices every flaw once something looks off. They won't read, scroll far, hunt for a button, or forgive a blank or half-loaded screen. They do spot a 2px misalignment, a wrong cursor, an internal name shown as a title, a flash of empty content, a dead control.
-
-**Pass condition:** a person with no context understands what the screen is for within 3 seconds, reaches their goal in one tap, and finds nothing that looks unfinished.
-
-Check, on fresh screenshots at 360 and 390 px in light and dark:
-1. **First screen:** no scroll, no tap. What is it, who is it for, what do I do next? Is the main action visible and obvious? Anything empty, loading, or flashing?
-2. **One-tap paths:** add an expense, see who owes whom, settle up, share a volume, change theme: each one tap from where a user would look for it, with a visible way back.
-3. **Phone fit:** no sideways scroll, tap targets at least 44 px, nothing cut off or overlapping, text readable without zoom, inputs at least 16 px (no iOS zoom).
-4. **States:** empty, one item, very long names and amounts, an open sheet, an error message: each looks designed, not broken.
-5. **Copy:** no placeholder or internal wording, correct singular and plural, dates and money formatted for people.
+Run the `hati-lazy-check` skill every time: understood in 3 seconds, goal in one tap, nothing unfinished, across first screen, one-tap paths, phone fit, states and copy.
 
 As design auditor, report the lazy-user check as its own section every round: pass or fail for each of the five points, with the screenshot that shows it. Any failure is at least "annoying"; a confusing first screen or a blank or broken state is a blocker.
 
@@ -40,6 +29,10 @@ You are one of six roles on a team (planner, critic, designer, coder, code audit
 - **When you finish:** append an entry under Rounds in the format the log shows: which goal criterion you moved, what you did or found, requests for specific roles, and anything you disagree with and why.
 - **Disagreeing is expected:** if another role's plan, change or finding is wrong for the goal, say so with evidence (a screenshot, a repro, a measured number) instead of silently working around it. The planner settles disagreements against the goal and records the result under Decisions.
 - **Hand off cleanly:** name file, function and screenshot paths so the next role doesn't have to rediscover them.
+
+## Skills you use
+
+Load these with the Skill tool when the work touches them (or read `.claude/skills/<name>/SKILL.md`): `hati-shots`, `hati-lazy-check`, `hati-slop-rubric`, `hati-copy`, `hati-a11y`.
 
 ## Deeper version of this task
 
