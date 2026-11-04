@@ -148,6 +148,10 @@ section > .label, section > .row > .label { margin-top: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; border-radius: var(--r); border: 1.5px solid var(--line); background: var(--panel); font-size: .9rem; font-weight: 600; }
 .chip .num { font-weight: 500; }
 .chip.add { padding: 4px 14px; min-height: 44px; border: 2px dashed var(--line); background: transparent; }
+button.chip { min-height: 44px; text-align: left; }
+button.chip:active { background: var(--sunk); }
+.btn:disabled { opacity: .55; box-shadow: none; cursor: not-allowed; }
+.btn:disabled:active { transform: none; }
 .av { width: 30px; height: 30px; border-radius: var(--r); display: grid; place-items: center; font-size: .75rem; font-weight: 700; color: var(--on-accent); border: 1.5px solid var(--rule); flex-shrink: 0; }
 
 /* Ledger: ruled rows inside one panel */
@@ -265,6 +269,7 @@ const TYPES = [["travel", "Travel"], ["household", "Household"], ["event", "Even
 const CURRENCIES = ["₱", "$", "€", "£", "¥", "Rp", "₩", "฿", "₹", "RM"];
 const KEY = "hati2.mock.v1";
 const MAX_CENTS = 100000000000; // 1,000,000,000.00
+const MAX_DELETED = 20000, MAX_BACKUP = 500;
 
 // ── Utilities ─────────────────────────────────────────────
 const $ = (s, r = document) => r.querySelector(s);
@@ -289,6 +294,8 @@ function parseWeight(s) {
   return Number.isFinite(x) && x <= 1e6 ? x : NaN;
 }
 const ID_RE = /^[A-Za-z0-9]{1,40}$/;
+// Edit time (ms). Anything odd, or more than a day in the future, counts as 0 so a crafted code can't win every merge.
+const updOf = n => Number.isInteger(n) && n >= 0 && n <= Date.now() + 864e5 ? n : 0;
 const initials = n => n.trim().split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 const typeOf = id => TYPES.find(t => t[0] === id) || TYPES[3];
 const catOf = id => CATEGORIES.find(c => c[0] === id) || CATEGORIES[5];
@@ -319,8 +326,13 @@ function normalize(d) {
   }
   return { settings: st, volumes };
 }
+let persistAsked = false;
 function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(S)); storageOk = true; return true; }
+  try {
+    localStorage.setItem(KEY, JSON.stringify(S)); storageOk = true;
+    if (!persistAsked) { persistAsked = true; try { const p = navigator.storage && navigator.storage.persist && navigator.storage.persist(); if (p && p.catch) p.catch(() => {}); } catch (_) {} }
+    return true;
+  }
   catch (e) { storageOk = false; toast("Couldn't save on this device. Storage may be full or turned off."); return false; }
 }
 
@@ -474,7 +486,7 @@ function banner() {
 function memberChip(v, m, c) {
   const say = Math.abs(c) <= 1 ? "is settled" : c > 0 ? `is owed ${fmt(c, v.currency)}` : `owes ${fmt(-c, v.currency)}`;
   const show = Math.abs(c) <= 1 ? "settled" : signed(c, v.currency);
-  return `<span class="chip">${avatar(v, m.id)}${esc(meName(v, m.id))}<span class="muted num small" aria-hidden="true">${esc(show)}</span><span class="sr">${esc(say)}</span></span>`;
+  return `<button type="button" class="chip" data-act="editMember" data-id="${esc(m.id)}" aria-label="${esc(`${meName(v, m.id)}, ${say}, edit`)}">${avatar(v, m.id)}${esc(meName(v, m.id))}<span class="muted num small" aria-hidden="true">${esc(show)}</span></button>`;
 }
 function debtRow(v, d, tag = "div", extra = "") {
   return `<${tag} class="debt" ${extra}>${avatar(v, d.from)}<span class="grow small"><b>${esc(meName(v, d.from))}</b> ${pays(v, d.from)} <b>${esc(meObj(v, d.to))}</b></span><b class="num">${esc(fmt(d.amount, v.currency))}</b></${tag}>`;
@@ -591,7 +603,8 @@ const views = {
           ${p.id === st.palette ? `<span class="dot" style="background:${p.acc}" aria-hidden="true">✓</span>` : ""}</button>`).join("")}</div></section>
       <section class="panel pad stack"><div><h2 class="label" style="margin:0">Debt calculation</h2><div class="muted small">Fewest payments merges debts across the group. Pairwise only cancels debts between the same two people.</div></div>
         ${seg("strategy", "Debt calculation", [["simplify", "Fewest payments"], ["pairwise", "Pairwise"]])}</section>
-      <section class="panel pad stack"><div><h2 class="label" style="margin:0">Data</h2><div class="muted small">Everything stays on this device. Use Share on a volume to send it to someone else.</div></div>
+      <section class="panel pad stack"><div><h2 class="label" style="margin:0">Data</h2><div class="muted small">Everything stays on this device. Save a backup file now and then; Restore reads it back.</div></div>
+        <div class="btns pair"><button class="btn" data-act="backup">Save backup</button><button class="btn" data-act="import">Restore</button></div>
         <div class="btns pair"><button class="btn" data-act="seed">Add example</button><button class="btn danger" data-act="reset">Erase all</button></div></section>
       <div class="muted small" style="text-align:center">HATI² · ${plural(S.volumes.length, "volume")} on this device</div>
       </div>`;
@@ -668,7 +681,8 @@ function submitExpense() {
   }
   const r = computeSplits();
   if (r.error) { refreshSplitPreview(); $("#formMsg").scrollIntoView({ block: "center" }); return; }
-  const rec = { id: f.id || uid(), desc: f.desc.trim(), amount: r.amount, paidBy: f.paidBy, category: f.category, date: f.date || today(), splitType: f.splitType, splits: r.splits, inputs: f.splitType === "equal" || f.splitType === "exact" ? {} : { ...f.inputs }, note: f.note.trim() };
+  const inputs = f.splitType === "equal" || f.splitType === "exact" ? {} : Object.fromEntries(Object.entries(f.inputs).filter(([k]) => k in r.splits));
+  const rec = { id: f.id || uid(), desc: f.desc.trim(), amount: r.amount, paidBy: f.paidBy, category: f.category, date: f.date || today(), splitType: f.splitType, splits: r.splits, inputs, note: f.note.trim(), upd: Date.now() };
   const i = v.expenses.findIndex(e => e.id === rec.id);
   if (i >= 0) v.expenses[i] = rec; else v.expenses.push(rec);
   clearDraft(); save(); leave(); toast(i >= 0 ? "Expense updated" : "Expense saved");
@@ -704,7 +718,7 @@ function volumeSheet(v) {
     () => {
       const title = $("#s-title").value.trim();
       if (!title) return sheetMsg("Give the volume a name.");
-      if (v) { Object.assign(v, { title, type: $("#s-type").value, currency: $("#s-cur").value }); save(); closeSheet(); render(); toast("Volume updated"); return; }
+      if (v) { Object.assign(v, { title, type: $("#s-type").value, currency: $("#s-cur").value, upd: Date.now() }); save(); closeSheet(); render(); toast("Volume updated"); return; }
       const meId = uid(), myName = $("#s-me").value.trim() || "Me";
       const nv = { id: uid(), title, type: $("#s-type").value, currency: $("#s-cur").value, meId, created: Date.now(), members: [{ id: meId, name: myName }], expenses: [], settlements: [] };
       S.volumes.unshift(nv); save(); ui.volId = nv.id; go("volume"); toast(`${title} created`);
@@ -718,12 +732,42 @@ function memberSheet() {
     <div class="msg" id="sheetMsg" role="alert"></div>
     ${sheetButtons("Add")}</div>`,
     () => {
-      const n = $("#s-name").value.trim().replace(/\s+/g, " ");
-      if (!n) return sheetMsg("Enter a name.");
-      if (n.toLowerCase() === "you") return sheetMsg("\"You\" is how the app shows you. Use the person's name.");
-      if (v.members.some(m => m.name.toLowerCase() === n.toLowerCase())) return sheetMsg(`${n} is already in this volume.`);
-      v.members.push({ id: uid(), name: n }); save(); closeSheet(); render(); toast(`${n} added`);
+      const n = $("#s-name").value.trim().replace(/\s+/g, " "), bad = nameProblem(v, n, null);
+      if (bad) return sheetMsg(bad);
+      v.members.push({ id: uid(), name: n, upd: Date.now() }); save(); closeSheet(); render(); toast(`${n} added`);
     });
+}
+function nameProblem(v, n, selfId) {
+  if (!n) return "Enter a name.";
+  if (n.toLowerCase() === "you") return "\"You\" is how the app shows you. Use the person's name.";
+  if (v.members.some(m => m.id !== selfId && m.name.toLowerCase() === n.toLowerCase())) return `${n} is already in this volume.`;
+  return "";
+}
+// A member is "used" while any entry still points at them; removing them then would break the volume.
+const memberUsed = (v, id) => v.expenses.some(e => e.paidBy === id || id in e.splits || (e.inputs && id in e.inputs)) || v.settlements.some(s => s.from === id || s.to === id);
+const tombstone = (v, id) => { v.deleted = [...(v.deleted || []).filter(x => x !== id), id].slice(-MAX_DELETED); };
+function editMemberSheet(m) {
+  const v = vol(), me = m.id === v.meId;
+  const why = me ? "You can't remove yourself from a volume." : memberUsed(v, m.id) ? `${m.name} is in an expense or payment, so they can't be removed. Change or delete those entries first.` : "";
+  sheet(`<h2>Edit member</h2><div class="stack">
+    <div class="field"><label for="s-name">Name</label><input id="s-name" class="input" maxlength="40" autocomplete="off" value="${esc(m.name)}"></div>
+    <div class="msg" id="sheetMsg" role="alert"></div>
+    ${sheetButtons("Save")}
+    <button type="button" class="btn danger block" data-act="removeMember" data-id="${esc(m.id)}" ${why ? 'disabled aria-describedby="s-why"' : ""}>Remove from volume</button>
+    ${why ? `<p class="muted small" id="s-why" style="margin:0">${esc(why)}</p>` : ""}</div>`,
+    () => {
+      const n = $("#s-name").value.trim().replace(/\s+/g, " "), bad = nameProblem(v, n, m.id);
+      if (bad) return sheetMsg(bad);
+      if (n !== m.name) { m.name = n; m.upd = Date.now(); save(); }
+      closeSheet(); render(); toast("Name saved");
+    });
+}
+function removeMember(id) {
+  const v = vol();
+  if (!v || id === v.meId || memberUsed(v, id) || !v.members.some(m => m.id === id)) return;
+  const n = nameOf(v, id);
+  v.members = v.members.filter(m => m.id !== id); tombstone(v, id);
+  save(); closeSheet(); render(); toast(`${n} removed`);
 }
 function settleSheet(existing) {
   const v = vol(), ds = debts(v);
@@ -748,8 +792,8 @@ function settleSheet(existing) {
       if (isNaN(amt)) return sheetMsg("Use numbers like 12.50 (up to 2 decimals).");
       if (!(amt > 0)) return sheetMsg("Enter an amount greater than zero.");
       if (amt > MAX_CENTS) return sheetMsg("That amount is too large.");
-      if (existing) Object.assign(existing, { from, to, amount: amt });
-      else v.settlements.push({ id: uid(), from, to, amount: amt, date: today() });
+      if (existing) Object.assign(existing, { from, to, amount: amt, upd: Date.now() });
+      else v.settlements.push({ id: uid(), from, to, amount: amt, date: today(), upd: Date.now() });
       save(); closeSheet(); render(); toast("Payment recorded");
     });
   $("#sheetForm").addEventListener("click", ev => {
@@ -794,6 +838,7 @@ function validVolume(x) {
   if (!x || typeof x !== "object" || !ID_RE.test(x.id) || !str(x.title, 40)) return false;
   if (!Array.isArray(x.members) || !Array.isArray(x.expenses) || !Array.isArray(x.settlements)) return false;
   if (!x.members.length || x.members.length > 200 || x.expenses.length > 20000 || x.settlements.length > 20000) return false;
+  if (x.deleted !== undefined && (!Array.isArray(x.deleted) || x.deleted.length > MAX_DELETED)) return false;
   if (!x.members.every(m => m && ID_RE.test(m.id) && str(m.name, 40))) return false;
   const ids = new Set(x.members.map(m => m.id));
   if (ids.size !== x.members.length) return false;
@@ -808,42 +853,136 @@ function validVolume(x) {
 function cleanVolume(x) {
   return {
     id: x.id, title: x.title.trim(), type: typeOf(x.type)[0], currency: CURRENCIES.includes(x.currency) ? x.currency : "$",
-    meId: ID_RE.test(x.meId) && x.members.some(m => m.id === x.meId) ? x.meId : x.members[0].id, created: Number(x.created) || Date.now(),
-    members: x.members.map(m => ({ id: m.id, name: m.name.trim() })),
+    meId: ID_RE.test(x.meId) && x.members.some(m => m.id === x.meId) ? x.meId : x.members[0].id, created: Number(x.created) || Date.now(), upd: updOf(x.upd),
+    members: x.members.map(m => ({ id: m.id, name: m.name.trim(), upd: updOf(m.upd) })),
     expenses: x.expenses.map(e => ({ id: e.id, desc: e.desc.trim(), amount: e.amount, paidBy: e.paidBy, category: catOf(e.category)[0], date: e.date,
       splitType: ["equal", "exact", "percent", "shares"].includes(e.splitType) ? e.splitType : "exact",
       splits: { ...e.splits }, inputs: Object.fromEntries(Object.entries(e.inputs && typeof e.inputs === "object" ? e.inputs : {}).filter(([k, v]) => x.members.some(m => m.id === k) && typeof v === "string" && v.length <= 12)),
-      note: typeof e.note === "string" ? e.note : "" })),
-    settlements: x.settlements.map(t => ({ id: t.id, from: t.from, to: t.to, amount: t.amount, date: t.date }))
+      note: typeof e.note === "string" ? e.note : "", upd: updOf(e.upd) })),
+    settlements: x.settlements.map(t => ({ id: t.id, from: t.from, to: t.to, amount: t.amount, date: t.date, upd: updOf(t.upd) })),
+    deleted: [...new Set((x.deleted || []).filter(i => typeof i === "string" && ID_RE.test(i)))]
   };
+}
+// Combine two copies of one volume. Union by id; on the same id the newer `upd` wins (incoming wins ties);
+// a tombstone in `deleted` beats any edit. Keeps the local meId. Returns { vol, added, updated, removed } or { error }.
+function mergeVolumes(localRaw, incomingRaw) {
+  const loc = cleanVolume(localRaw), inc = cleanVolume(incomingRaw);
+  const deleted = new Set([...loc.deleted, ...inc.deleted]);
+  let added = 0, updated = 0, removed = 0;
+  const same = (a, b) => JSON.stringify({ ...a, upd: 0 }) === JSON.stringify({ ...b, upd: 0 });
+  const union = (a, b, isGone) => {
+    const out = new Map(a.map(x => [x.id, x]));
+    for (const x of b) {
+      const mine = out.get(x.id);
+      if (!mine) { if (!isGone(x.id)) { out.set(x.id, x); added++; } }
+      else if (x.upd >= mine.upd && !same(x, mine)) { out.set(x.id, x); if (!isGone(x.id)) updated++; }
+    }
+    for (const id of [...out.keys()]) if (isGone(id)) { out.delete(id); if (a.some(x => x.id === id)) removed++; }
+    return [...out.values()];
+  };
+  const expenses = union(loc.expenses, inc.expenses, id => deleted.has(id));
+  const settlements = union(loc.settlements, inc.settlements, id => deleted.has(id));
+  const used = new Set([loc.meId]);
+  expenses.forEach(e => { used.add(e.paidBy); Object.keys(e.splits).forEach(k => used.add(k)); Object.keys(e.inputs).forEach(k => used.add(k)); });
+  settlements.forEach(s => { used.add(s.from); used.add(s.to); });
+  used.forEach(id => deleted.delete(id)); // a member still in use comes back, and their tombstone is dropped
+  const members = union(loc.members, inc.members, id => deleted.has(id));
+  const out = { ...loc, members, expenses, settlements, deleted: [...deleted].slice(-MAX_DELETED) };
+  if (inc.upd >= loc.upd && (inc.title !== loc.title || inc.type !== loc.type || inc.currency !== loc.currency)) {
+    Object.assign(out, { title: inc.title, type: inc.type, currency: inc.currency, upd: inc.upd }); updated++;
+  }
+  if (!validVolume(out)) return { error: "These copies couldn't be combined. Nothing was changed." };
+  return { vol: out, added, updated, removed };
+}
+const mergeSummary = r => {
+  const parts = [r.added && `adds ${r.added}`, r.updated && `updates ${r.updated}`, r.removed && `removes ${r.removed}`].filter(Boolean).join(" · ");
+  return parts ? parts[0].toUpperCase() + parts.slice(1) : "";
+};
+// Accepts a share code or a backup file, even with chat text around it.
+function parseCode(text) {
+  const t = String(text), a = t.indexOf("{"), b = t.lastIndexOf("}");
+  let data;
+  try { data = JSON.parse(t.slice(a, b + 1)); } catch (e) { return { error: "That code isn't valid. Copy the whole code and try again." }; }
+  if (!data || data.app !== "hati2-mock") return { error: "This code doesn't contain a HATI² volume, or its totals don't add up." };
+  if (data.kind === "backup") {
+    if (!Array.isArray(data.volumes) || !data.volumes.length || data.volumes.length > MAX_BACKUP) return { error: "This backup file can't be read." };
+    const vols = data.volumes.filter(validVolume).map(cleanVolume);
+    const seen = new Set(), uniq = vols.filter(x => !seen.has(x.id) && seen.add(x.id));
+    if (!uniq.length) return { error: "This backup file can't be read." };
+    return { backup: uniq, bad: data.volumes.length - vols.length };
+  }
+  if (!validVolume(data.volume)) return { error: "This code doesn't contain a HATI² volume, or its totals don't add up." };
+  return { volume: data.volume };
+}
+function backupPlan(p) {
+  let fresh = 0, merged = 0, skipped = p.bad;
+  const steps = p.backup.map(x => {
+    const local = S.volumes.find(v => v.id === x.id);
+    if (!local) { fresh++; return { x }; }
+    const r = mergeVolumes(local, x);
+    if (r.error) { skipped++; return null; }
+    merged++; return { r };
+  }).filter(Boolean);
+  const parts = [fresh && `restores ${plural(fresh, "volume")}`, merged && `merges ${plural(merged, "volume")} you already have`].filter(Boolean).join(", ");
+  const text = (parts ? parts[0].toUpperCase() + parts.slice(1) + "." : "Nothing to restore.") + (skipped ? ` ${plural(skipped, "volume")} couldn't be read and will be skipped.` : "");
+  return { steps, text, ok: steps.length > 0 };
+}
+function downloadBackup() {
+  const data = JSON.stringify({ app: "hati2-mock", kind: "backup", v: 1, volumes: S.volumes });
+  const a = document.createElement("a"), url = URL.createObjectURL(new Blob([data], { type: "application/json" }));
+  a.href = url; a.download = `hati2-backup-${today()}.json`; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast(`Backup saved: ${plural(S.volumes.length, "volume")}`);
 }
 function importSheet() {
   sheet(`<h2>Import volume</h2><div class="stack">
     <p class="small" style="margin:0">Someone shared a volume with you? Paste the code they sent, then tap <b>Check code</b>.</p>
     <div class="field"><label for="s-paste">Share code</label><textarea id="s-paste" class="input" rows="4" placeholder="Long-press here and tap Paste" autocomplete="off" spellcheck="false"></textarea></div>
-    <div class="row filepick"><span class="muted small grow">Got a file instead?</span><label class="btn quiet" for="s-file">Open file</label><input id="s-file" type="file" accept=".json,application/json,text/plain" class="sr"></div>
+    <div class="row filepick"><span class="muted small grow">Got a file or a backup instead?</span><label class="btn quiet" for="s-file">Open file</label><input id="s-file" type="file" accept=".json,application/json,text/plain" class="sr"></div>
     <div id="s-pick"></div>
     <div class="msg" id="sheetMsg" role="alert"></div>
     <div class="btns"><button type="button" class="btn quiet" data-act="closeSheet">Cancel</button><button class="btn primary" id="s-go">Check code</button></div></div>`,
     () => {
-      let data;
-      try { data = JSON.parse($("#s-paste").value.trim()); } catch (e) { return sheetMsg("That code isn't valid. Copy the whole code and try again."); }
-      const x = data && data.app === "hati2-mock" ? data.volume : null;
-      if (!validVolume(x)) return sheetMsg("This code doesn't contain a HATI² volume, or its totals don't add up.");
+      const p = parseCode($("#s-paste").value);
+      if (p.error) return sheetMsg(p.error);
       const pick = $("#s-pick");
       if (!pick.innerHTML) {
-        const exists = S.volumes.some(v => v.id === x.id);
-        pick.innerHTML = `<div class="field"><label for="s-who">Which member are you?</label><select id="s-who" class="input">${x.members.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("")}</select></div>` +
-          (exists ? `<div class="field"><label for="s-mode">You already have this volume</label><select id="s-mode" class="input"><option value="replace">Replace my copy with this one</option><option value="copy">Keep both</option></select></div>` : "");
+        if (p.backup) {
+          const plan = backupPlan(p);
+          pick.innerHTML = `<p class="share-sum small" id="s-sum" role="status">${esc(plan.text)}</p>`;
+          if (!plan.ok) return;
+        } else {
+          const x = p.volume, local = S.volumes.find(v => v.id === x.id);
+          const who = `<div class="field" id="s-whobox"${local ? " hidden" : ""}><label for="s-who">Which member are you?</label><select id="s-who" class="input">${x.members.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("")}</select></div>`;
+          if (local) {
+            const r = mergeVolumes(local, x), sum = r.error ? "These copies can't be combined. Choose Replace or Keep both." : mergeSummary(r) || "Your copy already has everything in this code.";
+            pick.innerHTML = `<p class="share-sum small" id="s-sum" role="status">You already have ${esc(local.title)}. ${esc(sum)}</p>
+              <div class="field"><label for="s-mode">What to do</label><select id="s-mode" class="input"><option value="merge">Merge with my copy</option><option value="replace">Replace my copy with this one</option><option value="copy">Keep both</option></select></div>` + who;
+            $("#s-mode").addEventListener("change", ev => { $("#s-whobox").hidden = ev.target.value === "merge"; });
+          } else pick.innerHTML = who;
+        }
         const go = $("#s-go"); go.textContent = "Import"; go.disabled = true; setTimeout(() => { go.disabled = false; }, 500);
         sheetMsg(""); return;
       }
-      const nv = cleanVolume(x), who = $("#s-who").value;
+      if (p.backup) {
+        const plan = backupPlan(p); if (!plan.ok) return sheetMsg("Nothing to restore.");
+        for (const s of plan.steps) {
+          if (s.x) S.volumes.push(s.x); else S.volumes = S.volumes.map(v => v.id === s.r.vol.id ? s.r.vol : v);
+        }
+        save(); go("hub", { replace: true }); toast(`Backup restored: ${plural(plan.steps.length, "volume")}`); return;
+      }
+      const mode = $("#s-mode") ? $("#s-mode").value : "new";
+      if (mode === "merge") {
+        const r = mergeVolumes(S.volumes.find(v => v.id === p.volume.id), p.volume);
+        if (r.error) return sheetMsg(r.error);
+        S.volumes = S.volumes.map(v => v.id === r.vol.id ? r.vol : v);
+        save(); closeSheet(); ui.volId = r.vol.id; go("volume"); toast(mergeSummary(r) ? `Merged: ${mergeSummary(r).toLowerCase()}` : "Already up to date"); return;
+      }
+      const nv = cleanVolume(p.volume), who = $("#s-who").value;
       if (!nv.members.some(m => m.id === who)) return sheetMsg("Choose which member you are.");
       nv.meId = who;
-      const mode = $("#s-mode") ? $("#s-mode").value : "new";
       if (mode === "replace") S.volumes = S.volumes.map(v => v.id === nv.id ? nv : v);
-      else { if (mode === "copy") nv.id = uid(); S.volumes.unshift(nv); }
+      else { if (mode === "copy") { nv.id = uid(); nv.deleted = []; } S.volumes.unshift(nv); }
       save(); closeSheet(); ui.volId = nv.id; go("volume"); toast("Volume imported");
     });
   $("#s-paste").addEventListener("input", () => { $("#s-pick").innerHTML = ""; $("#s-go").textContent = "Check code"; sheetMsg(""); });
@@ -1008,10 +1147,13 @@ document.addEventListener("click", async ev => {
     case "addMember": if (sheetOpen()) dropSheet(); memberSheet(); break;
     case "addExpense": openExpense(null); break;
     case "editExpense": openExpense(v.expenses.find(e => e.id === el.dataset.id)); break;
-    case "deleteExpense": confirmSheet("Delete expense?", `${ui.form.desc || "This expense"} will be removed and balances recalculated.`, "Delete", () => { v.expenses = v.expenses.filter(e => e.id !== ui.form.id); save(); leave(); toast("Expense deleted"); }); break;
+    case "deleteExpense": confirmSheet("Delete expense?", `${ui.form.desc || "This expense"} will be removed and balances recalculated.`, "Delete", () => { v.expenses = v.expenses.filter(e => e.id !== ui.form.id); tombstone(v, ui.form.id); save(); leave(); toast("Expense deleted"); }); break;
     case "settle": settleSheet(null); break;
     case "editSettle": settleSheet(v.settlements.find(s => s.id === el.dataset.id)); break;
-    case "deleteSettle": v.settlements = v.settlements.filter(s => s.id !== el.dataset.id); save(); closeSheet(); render(); toast("Payment deleted"); break;
+    case "deleteSettle": { const id = el.dataset.id; confirmSheet("Delete payment?", "This payment will be removed and balances recalculated.", "Delete", () => { v.settlements = v.settlements.filter(s => s.id !== id); tombstone(v, id); save(); closeSheet(); render(); toast("Payment deleted"); }); break; }
+    case "editMember": { const m = v.members.find(x => x.id === el.dataset.id); if (m) editMemberSheet(m); break; }
+    case "removeMember": removeMember(el.dataset.id); break;
+    case "backup": downloadBackup(); break;
     case "history": go("history"); break;
     case "seed": S.volumes.unshift(exampleVolume()); save(); render(); toast("Example volume added"); break;
     case "reset": confirmSheet("Erase all data?", "Every volume on this device will be deleted. Copies shared to other phones are not affected.", "Erase", () => { S.volumes = []; save(); go("hub", { replace: true }); toast("All data erased"); }); break;
