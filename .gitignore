@@ -54,3 +54,6 @@ __pycache__/
 
 # Temporary copy made by web/test.sh while tests run
 docs/app/.e2e.js
+# Throwaway Playwright helpers run from inside docs/app
+docs/app/_*.js
+docs/app/.*.js
