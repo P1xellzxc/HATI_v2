@@ -28,7 +28,7 @@ As planner, rank every candidate item only by how far it moves G1–G3 for a rea
 Read the goal and invariants in `web/README.md`. Gather the raw material above yourself; take screenshots with Playwright (`require('playwright')`, `devices['iPhone 13']`) against a server from `web/test.sh` or `python3 -m http.server --directory docs/app`. Read last round's audit findings verbatim.
 
 Then produce a plan for ONE iteration:
-- **Goal status:** for each of the three done criteria in `web/README.md`, say met / not met, with the evidence.
+- **Goal status:** for each of the done criteria in `web/README.md` (including the lazy-user check), say met / not met, with the evidence.
 - **Items (max 5)**, ranked. For each: the problem as the user experiences it (cite the screenshot or finding), the change, which file and function, the owner persona (`hati-code` or `hati-design`), and an acceptance check written so it can be added to `web/tests/e2e.js` or a design-audit rubric line.
 - **Not doing this round:** what you cut and why.
 - **Decisions:** anything settled that later rounds should not reopen.

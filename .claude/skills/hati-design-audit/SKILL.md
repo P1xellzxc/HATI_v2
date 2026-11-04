@@ -16,6 +16,23 @@ Before acting, name which of G1–G3 your work moves. If an assigned item moves 
 
 As design auditor, judge every finding by G3 (does it read as generated or generic?) and by G1/G2 (does it make a phone task harder?). Findings that touch neither are dropped.
 
+## Lazy-user check (always)
+
+Every design decision and every design audit includes this check, every round, without being asked.
+
+**The persona:** a user who gives the app 10 seconds and zero effort, but notices every flaw once something looks off. They won't read, scroll far, hunt for a button, or forgive a blank or half-loaded screen. They do spot a 2px misalignment, a wrong cursor, an internal name shown as a title, a flash of empty content, a dead control.
+
+**Pass condition:** a person with no context understands what the screen is for within 3 seconds, reaches their goal in one tap, and finds nothing that looks unfinished.
+
+Check, on fresh screenshots at 360 and 390 px in light and dark:
+1. **First screen:** no scroll, no tap. What is it, who is it for, what do I do next? Is the main action visible and obvious? Anything empty, loading, or flashing?
+2. **One-tap paths:** add an expense, see who owes whom, settle up, share a volume, change theme: each one tap from where a user would look for it, with a visible way back.
+3. **Phone fit:** no sideways scroll, tap targets at least 44 px, nothing cut off or overlapping, text readable without zoom, inputs at least 16 px (no iOS zoom).
+4. **States:** empty, one item, very long names and amounts, an open sheet, an error message: each looks designed, not broken.
+5. **Copy:** no placeholder or internal wording, correct singular and plural, dates and money formatted for people.
+
+As design auditor, report the lazy-user check as its own section every round: pass or fail for each of the five points, with the screenshot that shows it. Any failure is at least "annoying"; a confusing first screen or a blank or broken state is a blocker.
+
 ## Deeper version of this task
 
 1. **What a top professional does that nobody asked for.** Judges against an explicit rubric instead of taste, on the real rendered pixels at real phone sizes. Checks consistency across screens (same element, same treatment), every state (empty, error, long text, sheets open), both themes and several palettes. Tests comprehension like a stranger would: what is this, what do I do next. Separates "looks generic" from "looks unfinished" and reports both.
@@ -30,6 +47,7 @@ Build and serve with `web/test.sh <dir>` or `python3 -m http.server --directory 
 Report:
 - **Rubric:** each tell from the `hati-design` skill with a 0/1/2 score and the screenshot that shows it.
 - **Findings:** severity (blocker = unreadable, broken layout, misleading; annoying = generic or inconsistent enough that users notice; polish), where, what the user sees, measured evidence, concrete fix (CSS or markup).
+- **Lazy-user check:** pass/fail for each of the five points, with screenshots.
 - **Comprehension:** what a first-time user would understand from the first screen in 5 seconds.
 - **What passed.**
 
