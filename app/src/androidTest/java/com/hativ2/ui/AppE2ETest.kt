@@ -35,7 +35,7 @@ class AppE2ETest {
     @Test
     fun createExpenseFlow() {
         // 1. Verify we are on the Dashboard Screen
-        composeTestRule.onNodeWithText("Dashboards").assertIsDisplayed()
+        composeTestRule.onNodeWithText("YOUR STORY VOLUMES").assertIsDisplayed()
 
         // 2. Click on the first dashboard (assuming mock data or data seeded by Hilt/DAO)
         // Since we are running against the real app (or Hilt test app), we might need to rely on seeded data
@@ -54,8 +54,8 @@ class AppE2ETest {
         val dashboards = composeTestRule.onAllNodesWithContentDescription("Dashboard Item")
         if (dashboards.fetchSemanticsNodes().isEmpty()) {
             // Create a dashboard
-            composeTestRule.onNodeWithContentDescription("Create Dashboard").performClick()
-            composeTestRule.onNodeWithText("New Dashboard").assertIsDisplayed()
+            composeTestRule.onAllNodesWithText("NEW VOLUME").onFirst().performClick()
+            composeTestRule.onNodeWithText("CREATE NEW VOLUME").assertIsDisplayed()
             // We'd need to fill details... let's assume for this pass we just verify the home screen loads
             // as creating a full dashboard might be complex with the current "InputManager" crash.
         } else {
