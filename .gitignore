@@ -70,3 +70,7 @@ brain/.obsidian/workspace*.json
 # Live-sync worker deps and wrangler state
 sync/node_modules/
 sync/.wrangler/
+
+# Stray screenshot dirs from runs with a missing output path
+/undefined/
+docs/app/undefined/
