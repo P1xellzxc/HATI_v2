@@ -12,7 +12,7 @@ const URL = process.env.URL || 'http://127.0.0.1:8765/';
       S.settings.palette = id; S.settings.mode = mode; applyTheme();
       if (view === 'expense') { ui.volId = S.volumes[0].id; ui.view = 'volume'; openExpense(null); }
       else { if (view !== 'hub' && view !== 'settings') ui.volId = S.volumes[0].id; go(view); }
-      const parse = c => { const m = c.match(/[\d.]+/g); return m ? m.map(Number) : [0, 0, 0, 0]; };
+      const parse = c => { const m = c.match(/[\d.]+/g); if (!m) return [0, 0, 0, 0]; const n = m.map(Number); if (/^color\(srgb/.test(c)) { n[0] *= 255; n[1] *= 255; n[2] *= 255; } return n; }; // color-mix() computes to color(srgb r g b [/ a]) with 0..1 channels
       const lin = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
       const L = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
       const bgOf = el => { for (let e = el; e; e = e.parentElement) { const c = parse(getComputedStyle(e).backgroundColor); if (c.length < 4 || c[3] > 0.95) return c; } return parse(getComputedStyle(document.body).backgroundColor); };

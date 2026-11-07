@@ -51,7 +51,7 @@ html=f'''<!doctype html>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="HATI²">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<style>{fontcss}:root{{padding-top:env(safe-area-inset-top,0px);padding-bottom:0}}[hidden]{{display:none!important}}img{{max-width:100%}}html{{background:#FFFFFF}}@media (prefers-color-scheme:dark){{html{{background:#0B0A18}}}}</style>
+<style>{fontcss}:root{{padding-top:env(safe-area-inset-top,0px);padding-bottom:0}}[hidden]{{display:none!important}}img{{max-width:100%}}html{{background:var(--bg,#FFFFFF)}}@media (prefers-color-scheme:dark){{html{{background:var(--bg,#0B0A18)}}}}</style>
 </head>
 <body>
 {rest.replace('/*PWA*/',pwa)}

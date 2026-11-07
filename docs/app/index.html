@@ -15,7 +15,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="HATI²">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<style>@font-face{font-family:'Black Han Sans';font-style:normal;font-weight:400;font-display:swap;src:url(fonts/black-han-sans-latin.woff2) format('woff2');unicode-range:U+20-21, U+24-29, U+2b-3a, U+3f, U+41-5a, U+61-7a, U+a3, U+a5, U+b2, U+b7, U+d7, U+e3f, U+2026, U+20a9, U+20ac, U+20b1, U+20b9, U+2212}@font-face{font-family:'DM Sans';font-style:normal;font-weight:400 700;font-display:swap;src:url(fonts/dm-sans-latin.woff2) format('woff2')}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:0}[hidden]{display:none!important}img{max-width:100%}html{background:#FFFFFF}@media (prefers-color-scheme:dark){html{background:#0B0A18}}</style>
+<style>@font-face{font-family:'Black Han Sans';font-style:normal;font-weight:400;font-display:swap;src:url(fonts/black-han-sans-latin.woff2) format('woff2');unicode-range:U+20-21, U+24-29, U+2b-3a, U+3f, U+41-5a, U+61-7a, U+a3, U+a5, U+b2, U+b7, U+d7, U+e3f, U+2026, U+20a9, U+20ac, U+20b1, U+20b9, U+2212}@font-face{font-family:'DM Sans';font-style:normal;font-weight:400 700;font-display:swap;src:url(fonts/dm-sans-latin.woff2) format('woff2')}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:0}[hidden]{display:none!important}img{max-width:100%}html{background:var(--bg,#FFFFFF)}@media (prefers-color-scheme:dark){html{background:var(--bg,#0B0A18)}}</style>
 </head>
 <body>
 
@@ -70,7 +70,8 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-html, body { height: 100%; }
+html { height: 100%; background: var(--bg); }
+body { min-height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.45 var(--font-body); -webkit-tap-highlight-color: transparent; }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--nav); }
 button, input, select, textarea { font: inherit; color: inherit; }
@@ -89,7 +90,7 @@ h1, h2 { text-wrap: balance; }
 /* Top bar */
 .topbar {
   position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 10px; min-height: 66px;
   margin: 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px))) 14px;
   padding: 10px max(16px, env(safe-area-inset-left, 0px));
   background: var(--nav); border-bottom: 2px solid var(--rule);
@@ -97,7 +98,7 @@ h1, h2 { text-wrap: balance; }
 .topbar h1 { flex: 1; min-width: 0; margin: 0; font: 400 1.35rem/1.1 var(--font-disp); letter-spacing: .02em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
 .topbar h1:focus, .topbar h1:focus-visible { outline: none; box-shadow: none; }
 .topbar .sub { font-size: .85rem; max-width: 40%; }
-@media (max-width: 360px) { .topbar .sub { display: none; } }
+@media (max-width: 420px) { .topbar .sub { display: none; } }
 .logo { width: 36px; height: 36px; border-radius: var(--r); background: var(--accent); color: var(--on-accent); display: grid; place-items: center; font: 400 .95rem var(--font-disp); flex-shrink: 0; border: 2px solid var(--rule); }
 .logo svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; }
 .ico { width: 44px; height: 44px; border-radius: var(--r); background: transparent; border: 2px solid var(--rule); display: grid; place-items: center; flex-shrink: 0; }
@@ -114,6 +115,7 @@ section > .label, section > .row > .label { margin-top: 6px; }
 .muted { color: var(--sub); }
 .small { font-size: .85rem; }
 .num { font-variant-numeric: tabular-nums; }
+:is(span, b, div).num, .money { white-space: nowrap; }
 .row { display: flex; align-items: center; gap: 10px; }
 .between { justify-content: space-between; }
 .grow { flex: 1; min-width: 0; }
@@ -125,7 +127,7 @@ section > .label, section > .row > .label { margin-top: 6px; }
 .btn {
   min-height: 44px; border: 2px solid var(--rule); border-radius: var(--r);
   background: var(--panel); padding: 10px 14px;
-  font-weight: 700; font-size: .9rem;
+  font-weight: 700; font-size: .9rem; line-height: 20px;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   box-shadow: 3px 3px 0 var(--rule); transition: transform .08s, box-shadow .08s;
 }
@@ -133,6 +135,8 @@ section > .label, section > .row > .label { margin-top: 6px; }
 .btn.primary { background: var(--accent); color: var(--on-accent); }
 .btn.quiet { box-shadow: none; border-width: 2px; }
 .btn.quiet:active { transform: none; background: var(--sunk); }
+.btn.text { border-color: transparent; background: transparent; box-shadow: none; }
+.btn.text:active { transform: none; background: var(--sunk); }
 .btn.danger { color: var(--err); border-color: var(--err); box-shadow: 3px 3px 0 var(--err); }
 .btn.block { width: 100%; }
 .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -156,8 +160,11 @@ section > .label, section > .row > .label { margin-top: 6px; }
 .hero::after { content: ""; position: absolute; right: -10px; top: -10px; width: 46%; height: 140%; background: radial-gradient(circle, var(--tone) 1.3px, transparent 1.6px) 0 0 / 7px 7px; transform: rotate(8deg); pointer-events: none; -webkit-mask-image: linear-gradient(to left, #000 30%, transparent); mask-image: linear-gradient(to left, #000 30%, transparent); }
 .hero > * { position: relative; }
 .hero .k { font-weight: 700; font-size: .95rem; }
-.hero .amt { font: 400 clamp(1.9rem, 10vw, 2.6rem)/1.1 var(--font-disp); letter-spacing: .01em; overflow-wrap: anywhere; margin: 2px 0 6px; }
-.hero .meta { font-size: .85rem; color: var(--sub); }
+.hero .amt { font: 400 clamp(1.9rem, 10vw, 2.6rem)/1.1 var(--font-disp); letter-spacing: .01em; margin: 2px 0 6px; }
+.hero .amt.long { font-size: 1.6rem; }
+.hero .amt.longer { font-size: 1.25rem; }
+.hero .meta { font-size: .85rem; color: color-mix(in srgb, var(--fg) 72%, var(--hero)); }
+@media (max-width: 379px) { .hero .vno { display: none; } }
 .hero .mine { margin: 8px 0 0; padding: 8px 0 0; border-top: 1.5px solid var(--rule); display: flex; flex-direction: column; gap: 4px; font-size: .92rem; list-style: none; }
 .amt.pos, .k.pos { color: var(--pos); } .amt.neg, .k.neg { color: var(--neg); }
 
@@ -179,7 +186,9 @@ button.chip:active { background: var(--sunk); }
 button.tx:active, button.debt:active { background: var(--sunk); }
 .tx-ic { width: 36px; height: 36px; border-radius: var(--r); display: grid; place-items: center; border: 1.5px solid var(--rule); background: var(--sunk); flex-shrink: 0; }
 .tx-a { font-weight: 700; white-space: nowrap; }
-.debt .grow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who { display: flex; gap: .3em; min-width: 0; white-space: nowrap; }
+.who > .nm { overflow: hidden; text-overflow: ellipsis; min-width: 2.5em; }
+.who > :not(.nm) { flex: none; }
 .bars { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
 .bar { height: 10px; border: 1.5px solid var(--rule); border-radius: 1px; background: var(--panel); overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--fg); }
@@ -203,9 +212,10 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 .amount-box .cur { font: 400 1.6rem var(--font-disp); }
 .amount-box input { flex: 1; min-width: 0; font: 400 2.2rem/1.1 var(--font-disp); background: transparent; border: none; outline: none; padding: 0; }
 .seg { display: flex; flex-wrap: wrap; border: 2px solid var(--rule); border-radius: var(--r); overflow: hidden; }
-.seg button { flex: 1 1 auto; min-height: 44px; border: none; background: var(--panel); padding: 8px 10px; font-size: .9rem; font-weight: 700; color: var(--fg); }
+.seg button { flex: 1 1 auto; min-height: 44px; border: none; background: var(--panel); padding: 8px 4px; font-size: .9rem; font-weight: 700; color: var(--fg); }
 .seg button + button { border-left: 2px solid var(--rule); }
 .seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+@media (min-width: 350px) { .seg:has(> :nth-child(3)) { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; } }
 .cats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .cat { border: 2px solid var(--line); border-radius: var(--r); background: var(--panel); padding: 10px 6px; min-height: 60px; font-size: .85rem; font-weight: 600; display: grid; justify-items: center; gap: 4px; }
 .cat[aria-pressed="true"] { background: var(--chip); border-color: var(--rule); box-shadow: 2px 2px 0 var(--rule); }
@@ -218,7 +228,8 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 .split-in { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
 .msg { font-size: .9rem; font-weight: 600; color: var(--err); min-height: 1.2em; }
 .msg.ok { color: var(--pos); }
-.stack > .msg.ok:empty { min-height: 0; margin-top: -12px; }
+.stack > .msg:empty, .stack > [aria-live]:empty, .stack > #s-pick:empty { min-height: 0; margin-top: -12px; }
+.field > .msg:empty { min-height: 0; margin-top: -6px; }
 
 /* Bottom nav */
 .nav {
@@ -243,14 +254,20 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 
 /* Settings palettes: a grid of printed swatch plates */
 .pals { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 10px 8px; }
-.pal { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 6px 6px 7px; min-height: 64px; border-radius: var(--r); border: 2px solid; text-align: left; }
+.pal { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 6px 6px 7px; min-height: 64px; border-radius: var(--r); border: 2px solid var(--pi); background: var(--pp); color: var(--pi); text-align: left; }
+.pal:first-child { grid-column: 1 / -1; }
 .pal[aria-checked="true"] { box-shadow: 3px 3px 0 var(--rule); }
+.pal .n { color: var(--pm); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pal { background: var(--panel); color: var(--fg); border-color: var(--line); } :root:not([data-theme="light"]) .pal .n { color: var(--sub); } :root:not([data-theme="light"]) .pal[aria-checked="true"] { border-color: var(--rule); } }
+:root[data-theme="dark"] .pal { background: var(--panel); color: var(--fg); border-color: var(--line); }
+:root[data-theme="dark"] .pal .n { color: var(--sub); }
+:root[data-theme="dark"] .pal[aria-checked="true"] { border-color: var(--rule); }
 .sw { display: flex; height: 18px; border: 1.5px solid currentColor; }
 .sw i { flex: 1; }
 .pal b { font-size: .85rem; line-height: 1.15; overflow-wrap: anywhere; }
 .pal .n { font-size: .72rem; font-weight: 600; }
-.pal .dot { position: absolute; right: -8px; top: -8px; width: 22px; height: 22px; border-radius: var(--r); border: 2px solid currentColor; display: grid; place-items: center; font-size: .8rem; font-weight: 700; }
-.share-sum { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 2px solid var(--rule); border-left-width: 8px; border-left-color: var(--accent); border-radius: var(--r); background: var(--panel); min-width: 0; }
+.pal .dot { position: absolute; right: 6px; bottom: 6px; width: 22px; height: 22px; color: var(--pi); border-radius: var(--r); border: 2px solid currentColor; display: grid; place-items: center; font-size: .8rem; font-weight: 700; }
+.share-sum { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 2px solid var(--rule); border-radius: var(--r); background: var(--panel); min-width: 0; }
 .share-sum b { font: 400 1.1rem/1.2 var(--font-disp); letter-spacing: .02em; }
 .codebox summary { min-height: 44px; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .9rem; cursor: pointer; list-style: none; }
 .codebox summary::-webkit-details-marker { display: none; }
@@ -296,6 +313,7 @@ const pad2 = n => String(n).padStart(2, "0");
 const isoLocal = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 const today = () => isoLocal(new Date());
 const fmt = (c, cur) => (c < 0 ? "−" : "") + (cur || "") + (Math.abs(c) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const amtSize = s => s.length > 17 ? "longer" : s.length > 12 ? "long" : "";
 const signed = (c, cur) => (c > 0 ? "+" : "") + fmt(c, cur);
 function parseMoney(s) {
   let t = String(s).trim().replace(/\s/g, "");
@@ -506,7 +524,7 @@ function memberChip(v, m, c) {
   return `<button type="button" class="chip" data-act="editMember" data-id="${esc(m.id)}" aria-label="${esc(`${meName(v, m.id)}, ${say}, edit`)}">${avatar(v, m.id)}${esc(meName(v, m.id))}<span class="muted num small" aria-hidden="true">${esc(show)}</span></button>`;
 }
 function debtRow(v, d, tag = "div", extra = "") {
-  return `<${tag} class="debt" ${extra}>${avatar(v, d.from)}<span class="grow small"><b>${esc(meName(v, d.from))}</b> ${pays(v, d.from)} <b>${esc(meObj(v, d.to))}</b></span><b class="num">${esc(fmt(d.amount, v.currency))}</b></${tag}>`;
+  return `<${tag} class="debt" ${extra}>${avatar(v, d.from)}<span class="grow small who"><b class="nm">${esc(meName(v, d.from))}</b> <span>${pays(v, d.from)}</span> <b class="nm">${esc(meObj(v, d.to))}</b></span><b class="num">${esc(fmt(d.amount, v.currency))}</b></${tag}>`;
 }
 function itemRow(v, it) {
   if (it.k === "e") return expenseRow(v, it.x);
@@ -553,10 +571,10 @@ const views = {
     return topbar(v.title, { back: true, right: `${hist}<button class="ico" data-act="volMenu" aria-label="Volume options">${I.dots}</button>` }) +
       `<div class="stack">
       <section class="hero" aria-label="Your balance" style="margin:0">
-        <div class="meta">Vol. ${volNo(v)} · ${t[1]} · ${plural(v.members.length, "member")} · ${esc(fmt(tot, v.currency))} spent</div>
+        <div class="meta"><span class="vno">Vol. ${volNo(v)} · </span>${t[1]} · ${plural(v.members.length, "member")} · <span class="money">${esc(fmt(tot, v.currency))} spent</span></div>
         <div class="k ${cls}">${settled ? "You're all settled" : mine > 0 ? "You are owed" : "You owe"}</div>
-        ${settled ? "" : `<div class="amt num ${cls}">${esc(fmt(Math.abs(mine), v.currency))}</div>`}
-        ${myDebts.length ? `<ul class="mine">${myDebts.map(d => `<li class="row between"><span class="ellip">${d.from === v.meId ? `Pay ${esc(nameOf(v, d.to))}` : `${esc(nameOf(v, d.from))} pays you`}</span><b class="num">${esc(fmt(d.amount, v.currency))}</b></li>`).join("")}</ul>` : ""}
+        ${settled ? "" : `<div class="amt num ${cls} ${amtSize(fmt(Math.abs(mine), v.currency))}">${esc(fmt(Math.abs(mine), v.currency))}</div>`}
+        ${myDebts.length ? `<ul class="mine">${myDebts.map(d => `<li class="row between"><span class="who">${d.from === v.meId ? `<span>Pay</span> <span class="nm">${esc(nameOf(v, d.to))}</span>` : `<span class="nm">${esc(nameOf(v, d.from))}</span> <span>pays you</span>`}</span><b class="num">${esc(fmt(d.amount, v.currency))}</b></li>`).join("")}</ul>` : ""}
       </section>
       <div class="btns">
         <button class="btn primary" data-act="addExpense">${I.plus} Add expense</button>
@@ -614,14 +632,14 @@ const views = {
     return topbar("Settings") + `<div class="stack">
       <section class="panel pad stack"><h2 class="label" style="margin:0">Appearance</h2>${seg("mode", "Appearance", [["system", "System"], ["light", "Light"], ["dark", "Dark"]])}
         <div><h3 class="legend" style="margin:0" id="palLabel">Color theme</h3><div class="muted small">From Sanzo Wada's A Dictionary of Color Combinations (1918).</div></div>
-        <div class="pals" role="radiogroup" aria-labelledby="palLabel">${PALETTES.map(p => `<button type="button" class="pal" role="radio" aria-checked="${p.id === st.palette}" tabindex="${p.id === st.palette ? 0 : -1}" data-pal="${p.id}" style="background:${p.paper};color:${p.ink};border-color:${p.ink}">
+        <div class="pals" role="radiogroup" aria-labelledby="palLabel">${PALETTES.map(p => `<button type="button" class="pal" role="radio" aria-checked="${p.id === st.palette}" tabindex="${p.id === st.palette ? 0 : -1}" data-pal="${p.id}" style="--pp:${p.paper};--pi:${p.ink};--pm:${p.muted}">
           <span class="sw" aria-hidden="true">${p.sw.map(c => `<i style="background:${c}"></i>`).join("")}</span>
-          <b>${p.name}</b><span class="n" style="color:${p.muted}">${p.n ? "No. " + String(p.n).padStart(3, "0") : "HATI original"}</span>
+          <b>${p.name}</b><span class="n">${p.n ? "No. " + String(p.n).padStart(3, "0") : "HATI original"}</span>
           ${p.id === st.palette ? `<span class="dot" style="background:${p.acc}" aria-hidden="true">✓</span>` : ""}</button>`).join("")}</div></section>
       <section class="panel pad stack"><div><h2 class="label" style="margin:0">Debt calculation</h2><div class="muted small">Fewest payments merges debts across the group. Pairwise only cancels debts between the same two people.</div></div>
         ${seg("strategy", "Debt calculation", [["simplify", "Fewest payments"], ["pairwise", "Pairwise"]])}</section>
       <section class="panel pad stack"><div><h2 class="label" style="margin:0">Data</h2><div class="muted small">Everything stays on this device. Save a backup file now and then; Restore reads it back.</div></div>
-        <div class="btns pair"><button class="btn" data-act="backup">Save backup</button><button class="btn" data-act="import">Restore</button></div>
+        <div class="btns pair"><button class="btn" data-act="backup">Save backup</button><button class="btn" data-act="restore">Restore</button></div>
         <div class="btns pair"><button class="btn" data-act="seed">Add example</button><button class="btn danger" data-act="reset">Erase all</button></div></section>
       <div class="muted small" style="text-align:center">HATI² · ${plural(S.volumes.length, "volume")} on this device</div>
       </div>`;
@@ -839,7 +857,7 @@ function shareSheet() {
     <div class="msg ok" id="sheetMsg" role="status"></div>
     <details class="codebox" id="s-codebox"><summary>Show code</summary>
       <label class="sr" for="s-code">Share code</label><textarea id="s-code" class="input num" rows="5" readonly>${esc(code)}</textarea></details>
-    <button type="button" class="btn quiet block" data-act="closeSheet">Done</button></div>`);
+    <button type="button" class="btn text block" data-act="closeSheet">Done</button></div>`);
 }
 
 async function copyShareCode() {
@@ -951,11 +969,12 @@ function downloadBackup() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   toast(`Backup saved: ${plural(S.volumes.length, "volume")}`);
 }
-function importSheet() {
-  sheet(`<h2>Import volume</h2><div class="stack">
-    <p class="small" style="margin:0">Someone shared a volume with you? Paste the code they sent, then tap <b>Check code</b>.</p>
-    <div class="field"><label for="s-paste">Share code</label><textarea id="s-paste" class="input" rows="4" placeholder="Long-press here and tap Paste" autocomplete="off" spellcheck="false"></textarea></div>
-    <div class="row filepick"><span class="muted small grow">Got a file or a backup instead?</span><label class="btn quiet" for="s-file">Open file</label><input id="s-file" type="file" accept=".json,application/json,text/plain" class="sr"></div>
+function importSheet({ restore = false } = {}) {
+  const help = restore ? "Open the backup file you saved, or paste what's in it, then tap <b>Check code</b>." : "Someone shared a volume with you? Paste the code they sent, then tap <b>Check code</b>.";
+  sheet(`<h2>${restore ? "Restore backup" : "Import volume"}</h2><div class="stack">
+    <p class="small" id="s-help" style="margin:0">${help}</p>
+    <div class="field"><label for="s-paste">${restore ? "Backup" : "Share code"}</label><textarea id="s-paste" class="input" rows="4" placeholder="Long-press here and tap Paste" autocomplete="off" spellcheck="false"></textarea></div>
+    <div class="row filepick"><span class="muted small grow">${restore ? "Saved a backup file?" : "Got a file or a backup instead?"}</span><label class="btn ${restore ? "primary" : "quiet"}" for="s-file">Open file</label><input id="s-file" type="file" accept=".json,application/json,text/plain" class="sr"></div>
     <div id="s-pick"></div>
     <div class="msg" id="sheetMsg" role="alert"></div>
     <div class="btns"><button type="button" class="btn quiet" data-act="closeSheet">Cancel</button><button class="btn primary" id="s-go">Check code</button></div></div>`,
@@ -972,13 +991,13 @@ function importSheet() {
           const x = p.volume, local = S.volumes.find(v => v.id === x.id);
           const who = `<div class="field" id="s-whobox"${local ? " hidden" : ""}><label for="s-who">Which member are you?</label><select id="s-who" class="input">${x.members.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("")}</select></div>`;
           if (local) {
-            const r = mergeVolumes(local, x), sum = r.error ? "These copies can't be combined. Choose Replace or Keep both." : mergeSummary(r) || "Your copy already has everything in this code.";
+            const r = mergeVolumes(local, x), sum = r.error ? "These copies can't be combined. Choose Replace or Keep both." : (mergeSummary(r) ? mergeSummary(r) + "." : "Your copy already has everything in this code.");
             pick.innerHTML = `<p class="share-sum small" id="s-sum" role="status">You already have ${esc(local.title)}. ${esc(sum)}</p>
               <div class="field"><label for="s-mode">What to do</label><select id="s-mode" class="input"><option value="merge">Merge with my copy</option><option value="replace">Replace my copy with this one</option><option value="copy">Keep both</option></select></div>` + who;
             $("#s-mode").addEventListener("change", ev => { $("#s-whobox").hidden = ev.target.value === "merge"; });
           } else pick.innerHTML = who;
         }
-        const go = $("#s-go"); go.textContent = "Import"; go.disabled = true; setTimeout(() => { go.disabled = false; }, 500);
+        const go = $("#s-go"); go.textContent = "Import"; $("#s-help").innerHTML = "Check what will change, then tap <b>Import</b>."; go.disabled = true; setTimeout(() => { go.disabled = false; }, 500);
         sheetMsg(""); return;
       }
       if (p.backup) {
@@ -1002,7 +1021,7 @@ function importSheet() {
       else { if (mode === "copy") { nv.id = uid(); nv.deleted = []; } S.volumes.unshift(nv); }
       save(); closeSheet(); ui.volId = nv.id; go("volume"); toast("Volume imported");
     });
-  $("#s-paste").addEventListener("input", () => { $("#s-pick").innerHTML = ""; $("#s-go").textContent = "Check code"; sheetMsg(""); });
+  $("#s-paste").addEventListener("input", () => { $("#s-pick").innerHTML = ""; $("#s-go").textContent = "Check code"; $("#s-help").innerHTML = help; sheetMsg(""); });
   $("#s-file").addEventListener("change", ev => {
     const file = ev.target.files[0]; if (!file) return;
     const rd = new FileReader(); rd.onload = () => { $("#s-paste").value = String(rd.result); $("#s-paste").dispatchEvent(new Event("input")); }; rd.readAsText(file);
@@ -1151,6 +1170,7 @@ document.addEventListener("click", async ev => {
     case "volMenu": volMenuSheet(); break;
     case "share": shareSheet(); break;
     case "import": importSheet(); break;
+    case "restore": importSheet({ restore: true }); break;
     case "dismissRecovered": recovered = false; render(); break;
     case "more": ui.histLimit += 100; render(); break;
     case "sendCode": {
