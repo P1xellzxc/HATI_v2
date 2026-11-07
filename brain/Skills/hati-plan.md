@@ -33,7 +33,7 @@ You are one of six roles on a team (planner, critic, designer, coder, code audit
 
 ## Skills you use
 
-Load these with the Skill tool when the work touches them (or read `.claude/skills/<name>/SKILL.md`): [[hati-shots]], [[hati-scenarios]], [[hati-lazy-check]], [[hati-slop-rubric]], [[hati-ios]], [[hati-pixel-perfectionist]], [[hati-ponytail]].
+Load these with the Skill tool when the work touches them (or read `.claude/skills/<name>/SKILL.md`): [[hati-shots]], [[hati-scenarios]], [[hati-lazy-check]], [[hati-slop-rubric]], [[hati-ios]], [[hati-pixel-perfectionist]], [[hati-ponytail]], [[hati-motion]].
 
 ## Decide, don't wait
 

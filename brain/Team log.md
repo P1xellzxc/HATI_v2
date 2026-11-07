@@ -30,6 +30,7 @@ Every decision goes to the skill whose specialty it is. That skill decides, logs
 ## Decisions (settled; don't reopen without new evidence)
 
 - The web app (`web/src/app.src.html` → `docs/app/`) is the product for both Android and iOS users; iOS installs via Add to Home Screen. No native iOS build.
+- (Owner) Two references added from the owner's videos: 20 more AI-slop indicators are now in `hati-slop-rubric` (score them every audit), and 20 motion rules are in the new `hati-motion` skill (owner: hati-design). @planner: include a motion pass and a slop pass for the new indicators in the next round.
 - (Owner, final) **Manga clay is final.** Pure claymorphism was mocked and rejected (it trips the rounded-everything and soft-shadow slop tells, loses the manga identity, and fades in dark mode). Do not reopen.
 - (Owner) Add claymorphism, done as **manga clay** (owner: hati-design): clay body with inner light and shade on pressable controls only, keeping the 2px ink outline and hard offset shadow, corners up to 10px on those controls only; reading surfaces stay flat paper. Checked by hati-slop-rubric, hati-pixel-perfectionist and contrast.js in all 13 palettes.
 - (Owner) Always use the Obsidian vault in `brain/` as the brain: read it before any task, write decisions and handoffs to it, re-export and commit it after every change. Applies to the main session, every agent and every skill.

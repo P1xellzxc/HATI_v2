@@ -61,3 +61,30 @@ The owner approved exploring **manga acetate glass** within the rule above: tran
 **Final (owner):** manga clay only. Pure claymorphism was rejected; any whole-UI clay is a tell.
 
 The owner asked for claymorphism. It is allowed as **manga clay** (see [[hati-design]]): a clay body with inner light and shade, on pressable controls only, keeping the 2px ink outline and hard offset shadow, corners up to 10px on those controls only. Clay on reading surfaces, clay without the ink outline, pastel blobs, or rounded pills everywhere still score as tells; flag and scale back.
+
+## 20 more indicators (source: "20 AI Design Slop Indicators")
+
+Score these too. The right column is HATI's rule.
+
+| # | Tell | HATI rule |
+|---|---|---|
+| 1 | Tags and pills everywhere | Pills only where the shape carries meaning (balance state); no decorative tag rows |
+| 2 | Excessive italics | No italic for emphasis or style; italics only for real titles (e.g. Wada's book) |
+| 3 | Instrument Serif (trendy editorial serif) | Not used; display is Black Han Sans |
+| 4 | Negative kerning on headlines | Letter-spacing ≥ 0 on display type |
+| 5 | Over-the-top detailed UI | Show what the task needs; no fake dashboards, sparklines or decorative stats |
+| 6 | Overusing dividers | Rules only between ledger rows and under the top bar; no divider between every block |
+| 7 | Many shades and opacities of one colour | Use palette tokens; no stacks of 10%/20%/40% tints of the accent |
+| 8 | Every container with a border | Ink border only on panels and controls that have a role; not on every block |
+| 9 | Overly detailed diagrams | No diagrams for decoration |
+| 10 | Verbose, redundant text | One plain line; see [[hati-copy]] |
+| 11 | Code breadcrumbs (`// section`) | Never |
+| 12 | Section numbering (01 / 02) | Only when order is real; "Vol. 01" is allowed because volumes are numbered |
+| 13 | Eyebrows (small caps label over every heading) | No eyebrows; headings stand alone |
+| 14 | Dithering | Screentone is allowed only on the balance panel; no dithered images |
+| 15 | ASCII images | Never |
+| 16 | Squircles | Corners are 3px (10px on clay controls only); no squircle avatars or tiles |
+| 17 | Excessive mono fonts | No mono UI text; tabular numbers come from DM Sans |
+| 18 | ALL CAPS subtitles | Sentence case; caps only on the tiny "VOL." spine label |
+| 19 | Gradient backgrounds | Flat paper; no gradients |
+| 20 | Periods in titles ("Let's go.") | No full stops in headings, buttons or titles |
