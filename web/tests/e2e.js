@@ -528,5 +528,22 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    const c=await b.newContext({viewport:{width:360,height:780},hasTouch:true}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); await pg.goto(URL);
    await pg.locator('.vol').first().tap(); const v=await pg.evaluate(()=>ui.view);
    ok(v==='volume' && e.length===0,'a touch tap still opens a volume with the touch listener in place, no page errors ('+v+' '+JSON.stringify(e)+')'); await c.close(); }
+ // R1 ship fix: pairwise counts every payment (a refund from someone with no expense debt too) and always agrees with balances()
+ { const c=await b.newContext({viewport:{width:360,height:780}}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); await pg.goto(URL);
+   const r=await pg.evaluate(()=>{ S.settings.strategy='pairwise';
+     const v={id:'volPW',title:'Refund',type:'household',currency:'$',meId:'a',members:[{id:'a',name:'Ana'},{id:'b',name:'Ben'}],
+       expenses:[{id:'e1',desc:'Lunch',amount:3000,paidBy:'b',category:'food',date:'2026-11-01',splitType:'exact',splits:{a:3000},inputs:{}}],
+       settlements:[{id:'s1',from:'a',to:'b',amount:5000,date:'2026-11-02'},{id:'s2',from:'b',to:'a',amount:2000,date:'2026-11-03'}]};
+     S.volumes.push(v); ui.volId='volPW'; go('volume'); const txt=document.querySelector('main, body').innerText; S.volumes.pop(); return {pw:pairwise(v),bal:balances(v),settled:/all settled/i.test(txt),pays:/pays you/i.test(txt)}; });
+   ok(r.pw.length===0 && r.settled && !r.pays,'pairwise: Ben paid $30 for Ana, Ana paid $50, Ben refunded $20 → settled, no leftover suggestion '+JSON.stringify(r));
+   const bad=await pg.evaluate(()=>{ let seed=7; const rnd=n=>{ seed=(seed*1103515245+12345)%2147483648; return (seed>>>16)%n; }; let fails=0;
+     for (let k=0;k<200;k++) { const ids=['a','b','c','d'].slice(0,2+rnd(3)); const v={members:ids.map(id=>({id,name:id})),expenses:[],settlements:[]};
+       for (let i=rnd(5);i>0;i--) { const paidBy=ids[rnd(ids.length)], splits={}; for (const id of ids) if (rnd(2)) splits[id]=1+rnd(5000); v.expenses.push({paidBy,splits,amount:Object.values(splits).reduce((x,y)=>x+y,0)}); }
+       for (let i=rnd(4);i>0;i--) { const f=ids[rnd(ids.length)], t=ids.filter(x=>x!==f)[rnd(ids.length-1)]; v.settlements.push({from:f,to:t,amount:1+rnd(6000)}); }
+       const net=Object.fromEntries(ids.map(id=>[id,0])); for (const d of pairwise(v)) { net[d.from]+=d.amount; net[d.to]-=d.amount; }
+       const bal=balances(v); if (ids.some(id=>Math.abs(net[id]+(bal[id]||0))>2*ids.length)) fails++; }
+     return fails; });
+   ok(bad===0,'pairwise net per member equals balances() in 200 random volumes ('+bad+' mismatches)');
+   ok(e.length===0,'no page errors in pairwise checks '+JSON.stringify(e)); await c.close(); }
  await b.close();
 })();
