@@ -2,7 +2,7 @@
 
 > These are decisions and open questions that require your input before proceeding.
 > Created: April 9, 2026
-> Updated: April 10, 2026
+> Updated: November 7, 2026
 
 ---
 
@@ -48,44 +48,32 @@
 
 ---
 
-## 1. AGP 9.0 Migration (High Impact)
+## ✅ RESOLVED: Android build was never green (AGP / Hilt / bulk upgrade)
 
-**Current:** AGP 8.7.2 + Gradle 8.10.2
-**Latest stable:** AGP 9.0.1 + Gradle 9.1.0
+**Decision (Nov 2026, hati-android-build skill):** restore the last dependency set that provably built, then upgrade one group at a time with CI as the check.
 
-AGP 9.0 is the latest stable Android Gradle Plugin, but migrating from 8.x to 9.x is a **major breaking change** that includes:
-- **Built-in Kotlin support** — the `kotlin-android` plugin must be removed (AGP bundles Kotlin now)
-- **Gradle 9.1.0 minimum** — requires upgrading the Gradle wrapper
-- **Kotlin 2.3.x required** — to match the bundled Kotlin in AGP 9
-- **KSP version must also update** to 2.3.6 to match Kotlin 2.3.20
-- Several deprecated gradle.properties flags are removed
+- Commit `4000388` upgraded 13 libraries at once without building. Hilt 2.59.2 alone requires AGP 9 while the project is on AGP 8.7.2, so CI had failed since it was added.
+- Restored the pre-upgrade versions (the owner's `build_result.txt` showed BUILD SUCCESSFUL): Hilt 2.52, Room 2.6.1, Compose BOM 2025.01.01, core-ktx 1.15.0, lifecycle 2.8.7, activity-compose 1.10.0, navigation-compose 2.8.5, datastore 1.1.1, and the previous test libraries.
+- Then fixed real code issues CI surfaced: SQLCipher API (`SupportOpenHelperFactory` for `net.zetetic:sqlcipher-android`) plus R8 keep rules, an API-27 theme attribute, lint-rejected backup excludes, mockable `MainViewModel` members, test classpath and matchers, `updateDashboard` silently dropping edits, and debt balances that now always sum to zero.
+- Result: Lint + Unit Tests, Instrumented Tests (API 34) and the APK build are all green (PR #22).
 
-**Recommended next step:** Create a separate branch, follow the [official AGP 9 migration guide](https://developer.android.com/build/releases/agp-9-0-0-release-notes), and test thoroughly in Android Studio before merging.
+Working toolchain: AGP 8.7.2, Gradle 8.10.2, Kotlin 2.0.21, KSP 2.0.21-1.0.28, JDK 17, compileSdk 35 / minSdk 26.
 
----
+## Open: AGP 9 and Kotlin 2.3 (planned, not urgent)
 
-## 2. Kotlin Version Upgrade Path
-
-**Current:** Kotlin 2.0.21
-
-The latest stable Kotlin is **2.3.20**. Kept at 2.0.21 because:
-- Upgrading Kotlin requires matching KSP version (2.3.6)
-- The Compose compiler plugin version is tied to Kotlin
-- This is safest to do alongside the AGP 9 migration
-
-**Question:** Would you like to upgrade Kotlin to 2.3.20 in a separate PR, independent of the AGP 9 migration?
+AGP 9 needs Gradle 9.1, Kotlin 2.3.x and KSP 2.3.x together, and removes the `kotlin-android` plugin. It will be done as one coupled step, on its own branch, verified by CI. The `hati-android-build` skill owns this decision.
 
 ---
 
-## 3. ✅ RESOLVED: Cloud Sync — Removed
+## ✅ RESOLVED: Cloud Sync — Removed
 
 **Decision:** Cloud sync has been permanently removed. HATI² is a local-only app. The network security config has been removed as the app requires no internet access.
 
 ---
 
-## ✅ RESOLVED: Compose BOM 2026.03.01 Compatibility
+## ✅ RESOLVED: iOS support
 
-The Compose BOM was upgraded to `2026.03.01` and is confirmed compatible with Kotlin 2.0.21 (KSP 2.0.21-1.0.28). No `Incompatible Kotlin version` errors observed. No downgrade needed.
+**Decision:** No native iOS build. The installable web app (`web/` → `docs/app/`) serves iPhone users via Safari's Add to Home Screen, and Android users via Chrome's Install app. Share codes and backup files move a volume between phones; importing merges changes.
 
 ---
 
@@ -101,10 +89,9 @@ The Compose BOM was upgraded to `2026.03.01` and is confirmed compatible with Ko
 | **Error message hardening** | Removed e.printStackTrace() and e.message leakage |
 | **ProGuard rules** | Added rules for SQLCipher and Biometric |
 | **Backup rules hardened** | Excluded encrypted DB passphrase from all backup |
-| Room 2.6.1 → 2.8.4 | Bug fixes, performance improvements, stable |
-| Hilt 2.52 → 2.59.2 | Bug fixes, AGP compatibility |
-| Compose BOM → 2026.03.01 | Latest stable UI libraries |
-| AndroidX libraries upgraded | Security patches, bug fixes |
+| Dependency versions restored to last known-good set | The April bulk upgrade never built; see "Android build" above |
+| Wada color themes | 13 palettes from Sanzo Wada (1918), contrast-tested |
+| Installable web app | Android + iOS via home screen, offline, share codes with merge |
 | R8 enabled for release | Code obfuscation + APK shrinking |
 | Backup rules hardened | Database excluded from cloud backup |
 | Network security config | Removed — app is local-only, no internet needed |

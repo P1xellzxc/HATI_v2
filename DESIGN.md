@@ -3,6 +3,8 @@
 > The complete UI/UX design reference for **HATI²** (Handy All-round Transaction Interface, version 2).
 > This document covers color theory, typography rules, component architecture, cinematography principles applied to layouts, motion design, dark mode strategy, and the design decision framework.
 
+> **Current state (Nov 2026).** The design language has moved from "Manga × Notion with soft glass" to **manga ink on paper**: flat paper, 2px ink borders, 3px corners, hard offset shadow only on pressable things, ruled ledger lists, numbered volume spines, screentone on the balance panel, drawn line icons. Frosted glass over gradient blobs, emoji icons and tracked uppercase eyebrows were removed as AI-generated-UI tells; a translucent "manga acetate" layer is allowed only for floating bars and sheets. Colors come from 13 **Sanzo Wada** themes (`HatiPalette.kt`), one of which is the original Classic palette. The working rules and checks live in the skills `.claude/skills/hati-slop-rubric`, `hati-lazy-check` and `hati-pixel-perfectionist`. The sections below remain the reference for the native app's foundations (type scale, 60-30-10, motion, dark mode).
+
 ---
 
 ## Table of Contents
