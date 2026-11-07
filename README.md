@@ -85,7 +85,7 @@ web/                      Web app source and tooling
   tests/                  e2e.js, scenarios.md, contrast.js, pixel.js, shots.js
 docs/app/                 Built web app (do not edit by hand)
 .claude/skills/           Persona skills used by the AI team loop
-.claude/team-log.md       Team decisions and per-round handoffs
+brain/Team log.md       Team decisions and per-round handoffs
 ```
 
 ---
@@ -137,7 +137,7 @@ All three passed on PR #22. The web app's end-to-end suite (`web/test.sh`) runs 
 An AI team loop (plan → do → audit → revise) works toward one goal. The loop and its definition of done are in [web/README.md](web/README.md): the app installs on Android and iOS, handles real group use with correct money, and doesn't look AI-generated.
 
 - **Skills:** each role is a skill in `.claude/skills/`: planner, designer, coder, code and design auditors, iOS, scenarios, money parity, copy, accessibility, pixel perfectionist, ponytail review, Android build, ship and goal judge.
-- **Decisions:** each decision goes to the skill that owns it and is recorded in `.claude/team-log.md`.
+- **Decisions:** each decision goes to the skill that owns it and is recorded in `brain/Team log.md`.
 
 ---
 

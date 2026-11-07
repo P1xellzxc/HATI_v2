@@ -1,0 +1,25 @@
+{
+  "colorGroups": [
+    {
+      "query": "tag:#hati/skill",
+      "color": {
+        "a": 1,
+        "rgb": 16707722
+      }
+    },
+    {
+      "query": "tag:#hati/design",
+      "color": {
+        "a": 1,
+        "rgb": 2797485
+      }
+    },
+    {
+      "query": "tag:#hati/decisions",
+      "color": {
+        "a": 1,
+        "rgb": 14566656
+      }
+    }
+  ]
+}
