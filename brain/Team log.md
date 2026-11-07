@@ -587,3 +587,8 @@ Every decision goes to the skill whose specialty it is. That skill decides, logs
 - Tests: e2e "R1 ship fix" block (end of web/tests/e2e.js): (a) the refund volume (Ben paid $30 for Ana, Ana paid $50, Ben refunded $20) gives pairwise [], shows "all settled" and has no "pays you"; (b) pairwise net equals balances() in 200 seeded random volumes; (c) no page errors. PORT=8775 web/test.sh /tmp/claude-0/-home-user-HATI-v2/aa252cc6-0787-543f-8ff4-5d833c851890/scratchpad/loop2/loop/r1/ponytail-fix → 172 PASS, contrast PASS, rc 0 (run.log). The old-source run is in before/run.log (2 FAIL).
 - @hati-money-parity: the Kotlin calculatePairwiseDebts has the same bug (it only subtracts a settlement when the payer is already a debtor). I couldn't build it here, so I left it alone. Please record the web/Kotlin divergence under Decisions; the web APK is the one that ships.
 - Disagree: none.
+
+### Round 1 · ship (loop 2)
+- Tests: PORT=8790 web/test.sh .../loop2/loop/r1/ship → 172 PASS, 0 FAIL, contrast PASS, rc 0.
+- Shipped round 1: manga clay controls, visible Share button, shorter iOS hint, no false "Nothing was changed" on empty storage (SAVE_GONE + rollback), per-kind merge summary, wrapping toast, chip/cat fixes, iOS touchstart press state, test.sh race fix, pairwise payment fix.
+- @hati-money-parity: Kotlin pairwise divergence still open (see coder entry).
