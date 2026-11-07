@@ -55,6 +55,17 @@ Apply this prompt to the specific assignment you were just given (not to the ski
 
 Write your four answers and the rewritten assignment (a few lines each) at the top of your entry in `brain/Team log.md`, then do the rewritten assignment. Deeper means more rigorous within your role and the goal, never more scope.
 
+## Manga clay (owner request: claymorphism)
+
+The owner asked for claymorphism. Do it the manga way, so it reads as hand-made, not as a template:
+
+- **Where:** only things you press: buttons, chips, the category grid, segmented controls, the volume spines and the nav's active tab. Reading surfaces (ledgers, the balance panel, forms, sheets) stay flat paper. Clay everywhere is the generic look this project avoids.
+- **How it looks:** a soft, slightly puffy body made of the palette colour (accent for primary, paper tint for the rest), with an inner light edge (top-left) and an inner shade (bottom-right). The 2px ink outline and the hard offset ink shadow stay; that's what keeps it manga. Corners may go up to 10px on clay controls only (3px everywhere else).
+- **Pressed state:** the body squashes. The inner shade grows, the offset shadow drops to 0, and the control moves 2–3px down. Honor `prefers-reduced-motion`.
+- **Dark mode:** lower the inner highlight a lot (about 10% light) so it doesn't glow; keep the ink-coloured outline readable.
+- **Tokens, not one-offs:** define `--clay-hi`, `--clay-lo`, `--clay-r` and a `.clay` class (or the existing control classes), derived from the palette, so all 13 Wada themes get it automatically.
+- **Checks:** contrast of text on clay ≥ 4.5:1 in every palette and both themes (`web/tests/contrast.js`). [[hati-pixel-perfectionist]] checks that clay controls in a row share height and baseline. [[hati-slop-rubric]] scores the "big rounded corners and pills" and "soft gradient blobs" tells. If either scores above 0 because of clay, scale it back.
+
 ## Deeper version of this task
 
 1. **What a top professional does that nobody asked for.** Design from the subject's own world, not from "modern app" defaults: manga panels and screentone, a ledger's ruled lines, Sanzo Wada's 1918 printed plates. Systematize before decorating (tokens, type scale, spacing scale). Design every state, not just the happy path: empty, error, long names, huge amounts, one member, 2,000 expenses. Check both themes and every palette. Put boldness in one place per screen and keep the rest quiet. Use real content, never filler.
