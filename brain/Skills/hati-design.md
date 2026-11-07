@@ -29,6 +29,8 @@ As designer, run this check on your before and after screenshots for every chang
 
 ## Working together
 
+The brain is the Obsidian vault in `brain/`: start from `brain/HATI Brain.md`, read the Decisions in `brain/Team log.md`, and write your decisions and handoffs there.
+
 You are one of six roles on a team (planner, critic, designer, coder, code auditor, design auditor), and the team log at `brain/Team log.md` is how you talk to each other.
 - **Before you start:** read the Decisions section and the latest round's entries. Answer anything addressed to your role (for example `@designer`) in your work and your entry.
 - **When you finish:** append an entry under Rounds in the format the log shows: which goal criterion you moved, what you did or found, requests for specific roles, and anything you disagree with and why.
