@@ -53,6 +53,7 @@
   --clay-r: 8px;
   --clay-hi: color-mix(in srgb, var(--paper-l) 70%, transparent);
   --clay-lo: color-mix(in srgb, var(--ink-l) 16%, transparent);
+  --clay-sel: var(--clay-lo); /* shade inside the selected (inverted) .seg segment */
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -63,6 +64,7 @@
     --tone: rgba(237, 235, 228, 0.14);
     --pos: #BBF7D0; --neg: #FBCFE8; --err: #F2B8B5; --nav: #131217; --sbar: #131217;
     --clay-hi: color-mix(in srgb, var(--fg) 10%, transparent); --clay-lo: color-mix(in srgb, var(--bg) 60%, transparent);
+    --clay-sel: color-mix(in srgb, var(--bg) 30%, transparent);
     color-scheme: dark;
   }
 }
@@ -74,6 +76,7 @@
   --tone: rgba(237, 235, 228, 0.14);
   --pos: #BBF7D0; --neg: #FBCFE8; --err: #F2B8B5; --nav: #131217; --sbar: #131217;
   --clay-hi: color-mix(in srgb, var(--fg) 10%, transparent); --clay-lo: color-mix(in srgb, var(--bg) 60%, transparent);
+  --clay-sel: color-mix(in srgb, var(--bg) 30%, transparent);
   color-scheme: dark;
 }
 
@@ -148,9 +151,9 @@ section > .label, section > .row > .label { margin-top: 6px; }
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
 }
 .btn.primary { background: var(--accent); color: var(--on-accent); }
-.btn.quiet, .btn.text { --clay: 0 0 #0000; box-shadow: none; border-radius: var(--r); }
+.btn.quiet, .btn.text { --clay: 0 0 #0000; box-shadow: none; }
 .btn.quiet:active { transform: none; background: var(--sunk); }
-.btn.text { border-color: transparent; background: transparent; }
+.btn.text { border-color: transparent; background: transparent; border-radius: var(--r); }
 .btn.text:active { transform: none; background: var(--sunk); }
 .btn.danger { color: var(--err); border-color: var(--err); --c-off: var(--err); --c-lo: color-mix(in srgb, var(--err) 30%, transparent); }
 .btn.block { width: 100%; }
@@ -233,8 +236,9 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 .seg button + button { border-left: 2px solid var(--rule); }
 /* Selected segment is pushed in: inverted fill, inner shade only (no inner light) */
 .seg button[aria-pressed="true"], .seg button:active { box-shadow: inset 3px 3px 5px var(--clay-lo); }
-.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); box-shadow: inset 3px 3px 5px var(--clay-sel); }
 .seg button:focus-visible { outline: 3px solid currentColor; outline-offset: -7px; box-shadow: inset 3px 3px 5px var(--clay-lo); }
+.seg button[aria-pressed="true"]:focus-visible { box-shadow: inset 3px 3px 5px var(--clay-sel); }
 @media (min-width: 350px) { .seg:has(> :nth-child(3)) { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; } }
 .cats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .cat { border: 2px solid var(--rule); background: var(--panel); padding: 10px 6px; min-height: 60px; font-size: .85rem; font-weight: 600; display: grid; justify-items: center; gap: 4px; }
@@ -289,6 +293,7 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 .pal .dot { position: absolute; right: 6px; bottom: 6px; width: 22px; height: 22px; color: var(--pi); border-radius: var(--r); border: 2px solid currentColor; display: grid; place-items: center; font-size: .8rem; font-weight: 700; }
 .share-sum { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 2px solid var(--rule); border-radius: var(--r); background: var(--panel); min-width: 0; }
 .share-sum b { font: 400 1.1rem/1.2 var(--font-disp); letter-spacing: .02em; }
+#s-code { resize: none; }
 .codebox summary { min-height: 44px; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .9rem; cursor: pointer; list-style: none; }
 .codebox summary::-webkit-details-marker { display: none; }
 .codebox summary::before { content: ""; width: 0; height: 0; border-left: 6px solid currentColor; border-block: 5px solid transparent; transition: transform .1s; }
@@ -619,9 +624,9 @@ const views = {
         <span class="muted small ellip">${t[1]} · ${plural(v.members.length, "member")} · ${esc(fmt(total(v), v.currency))} spent</span></span></button>`;
     }).join("");
     return topbar("HATI²", { right: `<button class="btn quiet" data-act="import">${I.import} Import</button>` }) +
-      `<p class="tagline">Split costs with the people you travel or live with. Each volume is one trip or group.</p>${iosHint()}
+      `<p class="tagline">Split trip and home costs with your group.</p>${iosHint()}
       <h2 class="label">Your volumes</h2><div class="stack">${cards}
-      <button class="dashed" data-act="newVolume"><span class="logo" aria-hidden="true">${I.plus}</span><span><b>New volume</b><span class="muted small">Start tracking a group's expenses</span></span></button></div>`;
+      <button class="dashed" data-act="newVolume"><span class="logo" aria-hidden="true">${I.plus}</span><span><b>New volume</b><span class="muted small">One for each trip or group</span></span></button></div>`;
   },
 
   volume() {
