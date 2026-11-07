@@ -6,6 +6,12 @@ The project's brain is the Obsidian vault in `brain/`. Start every session and e
 2. `brain/Goal.md` — what "done" means (G1 both phones, G2 real use, G3 not AI slop).
 3. `brain/Team log.md` — settled decisions, who owns each kind of decision, and per-round handoffs. Record new decisions and handoffs here (not in chat). `.claude/team-log.md` is a link to this file.
 
+Always use the brain (owner's standing rule) — this applies to the main session, every agent and every skill:
+- Before any task: read `brain/HATI Brain.md`, `brain/Goal.md` and the Decisions in `brain/Team log.md`.
+- During work: decisions, findings and handoffs go into `brain/Team log.md`, not only into chat.
+- After work: run `python3 -I tools/brain/export.py`, then commit and push `brain/` with the change.
+- If something you need isn't in the brain, add it there.
+
 Rules that apply to every session:
 - Decisions go to the skill whose specialty they are (`.claude/skills/`); decide, record in the team log, carry on. Ask the owner only for things outside the repo.
 - After changing skills, `web/README.md`, `HatiPalette.kt` or `web/tests/scenarios.md`, run `python3 -I tools/brain/export.py` so the vault stays current.
