@@ -141,6 +141,18 @@ An AI team loop (plan → do → audit → revise) works toward one goal. The lo
 
 ---
 
+## Obsidian (project brain)
+
+The team's knowledge lives in `brain/` as an Obsidian vault: goal, decisions, team log, skills, design, themes and scenarios.
+
+1. Clone the repo, then in the Obsidian app choose **Open folder as vault** and pick the `HATI_v2` folder. Code folders are hidden, and **HATI Brain** is bookmarked as the start page.
+2. In Settings → Community plugins, turn off Restricted mode, browse for **Git** (by Vinzent) and install it. It pulls the team's latest notes on start and every 10 minutes.
+3. Edit notes in `brain/`. To share your edits, use the Git plugin's *Commit-and-sync* command.
+
+Derived notes are rebuilt by `python3 -I tools/brain/export.py`; `brain/Team log.md` is edited directly.
+
+---
+
 ## License
 
 MIT; see [LICENSE](LICENSE).

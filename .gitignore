@@ -57,3 +57,11 @@ docs/app/.e2e.js
 # Throwaway Playwright helpers run from inside docs/app
 docs/app/_*.js
 docs/app/.*.js
+
+# Obsidian: per-device state and installed plugin code
+.obsidian/workspace*.json
+.obsidian/cache
+.obsidian/plugins/*/main.js
+.obsidian/plugins/*/manifest.json
+.obsidian/plugins/*/styles.css
+brain/.obsidian/workspace*.json

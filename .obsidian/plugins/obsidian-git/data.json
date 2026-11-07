@@ -1,0 +1,12 @@
+{
+  "autoPullOnBoot": true,
+  "autoPullInterval": 10,
+  "autoSaveInterval": 0,
+  "autoPushInterval": 0,
+  "pullBeforePush": true,
+  "disablePush": false,
+  "commitMessage": "docs(brain): notes from Obsidian {{date}}",
+  "syncMethod": "rebase",
+  "showStatusBar": true,
+  "refreshSourceControl": true
+}

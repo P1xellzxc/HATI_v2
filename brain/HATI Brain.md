@@ -7,6 +7,10 @@ tags: ["hati/home"]
 
 Everything the HATI² team knows and has decided, as linked notes. This vault is the team's brain: [[Team log]] (decisions and handoffs) is edited here directly; skill notes and the other derived notes are regenerated from the repo by `tools/brain/export.py`.
 
+## Open in the Obsidian app
+- **Live (recommended):** clone the repo, then in Obsidian choose *Open folder as vault* and pick the repo folder. Code folders are hidden; this note is bookmarked. Install the community plugin **Git** (by Vinzent) once: it pulls the team's latest notes on start and every 10 minutes.
+- **Snapshot:** unzip the vault you were sent and open the `HATI Brain` folder as a vault.
+
 ## Start here
 - [[Goal]]: what "done" means (G1 both phones, G2 real use, G3 not AI slop)
 - [[Decisions]]: settled decisions and which skill owns each kind
