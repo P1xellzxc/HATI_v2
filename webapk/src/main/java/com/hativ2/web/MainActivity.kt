@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -70,27 +71,21 @@ class MainActivity : ComponentActivity() {
             fileCallback = null
         }
 
-    @SuppressLint("SetJavaScriptEnabled")
+    private lateinit var root: FrameLayout
+
+    /** How many times the WebView renderer died and the page was rebuilt (read by tests). */
+    @Volatile
+    internal var renderRestarts = 0
+        private set
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
-        webView = WebView(this)
-        webView.settings.apply {
-            javaScriptEnabled = true
-            domStorageEnabled = true
-            allowFileAccess = false
-            allowContentAccess = false
-        }
-        webView.webViewClient = Client()
-        webView.webChromeClient = Chrome()
-        webView.addJavascriptInterface(HatiBridge(this), HatiBridge.NAME)
-
         // The bars are drawn edge-to-edge (required at targetSdk 35); the WebView is
         // padded by the bar, cutout and keyboard insets because not every WebView
         // version reports env(safe-area-inset-*). The strips show the paper colour.
-        val root = FrameLayout(this)
-        root.addView(webView, FrameLayout.LayoutParams(-1, -1))
+        root = FrameLayout(this)
         ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
             val b = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars() or
@@ -103,9 +98,40 @@ class MainActivity : ComponentActivity() {
         setContentView(root)
         onBackPressedDispatcher.addCallback(this, backCallback)
 
+        attachWebView()
         if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
             webView.loadUrl(startUrl(intent?.data))
         }
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun attachWebView() {
+        webView = WebView(this)
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            allowFileAccess = false
+            allowContentAccess = false
+        }
+        webView.webViewClient = Client()
+        webView.webChromeClient = Chrome()
+        webView.addJavascriptInterface(HatiBridge(this), HatiBridge.NAME)
+        root.addView(webView, FrameLayout.LayoutParams(-1, -1))
+    }
+
+    /**
+     * The renderer is a separate process the system may kill (low memory) or that may
+     * crash. Unhandled, Android then kills the whole app. Instead, drop the dead
+     * WebView and load the app again; its data is in localStorage, so nothing is lost.
+     */
+    private fun onRendererGone(dead: WebView) {
+        if (dead !== webView) return
+        renderRestarts++
+        root.removeView(dead)
+        dead.destroy()
+        attachWebView()
+        backCallback.isEnabled = false
+        webView.loadUrl(INDEX)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -171,6 +197,11 @@ class MainActivity : ComponentActivity() {
             }
             // Anything else (help links, mailto:, …) opens outside the app.
             launch(Intent(Intent.ACTION_VIEW, url).addCategory(Intent.CATEGORY_BROWSABLE))
+            return true
+        }
+
+        override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+            onRendererGone(view)
             return true
         }
 

@@ -30,14 +30,17 @@ class WebShellTest {
         return out
     }
 
-    /** Polls until the app has rendered (#app has content) or 30 s pass. */
+    /** Polls (main-thread JS, 10 s per call) until the page is loaded and the app has rendered, or 45 s pass. */
     private fun awaitApp(scenario: ActivityScenario<MainActivity>) {
-        val deadline = System.currentTimeMillis() + 30_000
+        val ready = "document.readyState === 'complete' && !!document.querySelector('#app') && document.querySelector('#app').children.length > 0"
+        val deadline = System.currentTimeMillis() + 45_000
         while (System.currentTimeMillis() < deadline) {
-            if (js(scenario, "!!(document.querySelector('#app') && document.querySelector('#app').children.length)") == "true") return
+            if (js(scenario, ready) == "true") return
             Thread.sleep(250)
         }
-        throw AssertionError("web app did not render; url=" + js(scenario, "location.href"))
+        var restarts = 0
+        scenario.onActivity { restarts = it.renderRestarts }
+        throw AssertionError("web app did not render; url=" + js(scenario, "location.href") + " rendererRestarts=" + restarts)
     }
 
     @Test
