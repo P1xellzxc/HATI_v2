@@ -353,7 +353,9 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      await F.pg.fill('#s-title','Flat'); await F.pg.fill('#s-others','Mira, mira'); await F.pg.locator('#sheetForm button.primary').click();
      ok(/already in this volume/.test(await F.pg.locator('#sheetMsg').innerText()) && await F.pg.evaluate(()=>!S.volumes.some(v=>v.title==='Flat')),'Who else is in: a repeated name is caught before anything is made');
      await F.pg.fill('#s-others',' Mira ,  Rio Tanaka,,'); await F.pg.locator('#sheetForm button.primary').click();
-     ok(await F.pg.evaluate(()=>{ const v=vol(); return v.title==='Flat' && v.members.map(m=>m.name).join('|')==='Me|Mira|Rio Tanaka'; }),'Who else is in: "Mira, Rio Tanaka" makes a 3-member volume in one sheet'); }
+     ok(await F.pg.evaluate(()=>{ const v=vol(); return v.title==='Flat' && v.members.map(m=>m.name).join('|')==='Me|Mira|Rio Tanaka'; }),'Who else is in: "Mira, Rio Tanaka" makes a 3-member volume in one sheet');
+     await F.pg.getByRole('button',{name:/Add expense/}).click(); const ah=await F.pg.evaluate(()=>$('#f-amount').getBoundingClientRect().height);
+     ok(ah>=44,'Amount field is a 44px tap target ('+ah+'px)'); }
    // iOS: install hint only in Safari (not standalone, not Android), stays dismissed; status bar strip dark in every theme; backup via share sheet
    { const G=await fresh(); all.push(G);
      ok(await G.pg.locator('#iosHint').isVisible() && /Add to Home Screen/.test(await G.pg.locator('#iosHint').innerText()) && /keeps its own data/.test(await G.pg.locator('#iosHint').innerText()),'iPhone Safari: hub shows the Add to Home Screen hint with the separate-data warning');
@@ -374,6 +376,25 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      await G.pg.evaluate(()=>{ document.querySelectorAll('.toast').forEach(n=>n.remove()); navigator.share=()=>Promise.reject(new DOMException('x','AbortError')); });
      await G.pg.locator('[data-act=backup]').click(); await G.pg.waitForTimeout(100);
      ok(!/Backup saved/.test(await toastText(G.pg)),'iOS: cancelling the share sheet does not claim the backup was saved'); }
+   // Ponytail R1: Replace counts a newer local edit and a member only on this phone; volume-only edits get their own line
+   { const R=await fresh(); all.push(R);
+     const code=await R.pg.evaluate(()=>JSON.stringify({app:'hati2-mock',v:1,volume:S.volumes[0]}));
+     await R.pg.evaluate(()=>{ const v=S.volumes[0]; v.expenses[0].desc='LOCAL EDIT'; v.expenses[0].upd=Date.now()+5; v.members.push({id:'onlyhere1',name:'OnlyHere',upd:Date.now()}); save(); render(); });
+     await importCode(R.pg,code); await R.pg.selectOption('#s-mode','replace'); const rs=await R.pg.locator('#s-sum').innerText();
+     ok(/1 entry and 1 member only on this phone will be lost\./.test(rs),'Replace: a newer local edit and a member only on this phone are counted as lost ('+rs+')');
+     await R.pg.evaluate(()=>{ dropSheet(); const v=S.volumes[0]; v.members=v.members.filter(m=>m.id!=='onlyhere1'); save(); });
+     const code2=await R.pg.evaluate(()=>{ const v=S.volumes[0]; const c=JSON.parse(JSON.stringify(v)); v.title='Renamed here'; v.upd=Date.now()+10; save(); render(); return JSON.stringify({app:'hati2-mock',v:1,volume:c}); });
+     await importCode(R.pg,code2); await R.pg.selectOption('#s-mode','replace'); const rs2=await R.pg.locator('#s-sum').innerText();
+     ok(/Edits made only on this phone will be lost\./.test(rs2),'Replace: a newer local rename is not reported as nothing lost ('+rs2+')');
+     await R.pg.evaluate(()=>dropSheet()); }
+   // Ponytail R2: a stored volume that fails validation is copied to hati2.corrupt.* before the next save can erase it
+   { const Q=await fresh(); all.push(Q);
+     await Q.pg.evaluate(()=>{ const d=JSON.parse(localStorage.getItem(KEY)); d.volumes[0].expenses[0].amount+=1; localStorage.setItem(KEY,JSON.stringify(d)); });
+     await Q.pg.reload();
+     const r=await Q.pg.evaluate(()=>{ const ks=Object.keys(localStorage).filter(k=>k.startsWith('hati2.corrupt.')); return { vols:S.volumes.length, ks:ks.length, held: ks.some(k=>{ try { return JSON.parse(localStorage.getItem(k)).volumes.length===1; } catch(_) { return false; } }), banner:/set aside/.test(document.body.innerText) }; });
+     ok(r.vols===0 && r.banner && r.ks===1 && r.held,'a stored volume that fails validation is set aside in a hati2.corrupt.* copy that holds it '+JSON.stringify(r));
+     await Q.pg.evaluate(()=>{ load(); load(); });
+     ok(await Q.pg.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith('hati2.corrupt.')).length)===1,'loading the same damaged data again does not write a second copy'); }
    const errs2=all.flatMap(x=>x.e); ok(errs2.length===0,'no console errors in revise (code) checks '+JSON.stringify(errs2));
    for (const x of all) await x.c.close(); }
  await b.close();
