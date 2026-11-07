@@ -39,7 +39,7 @@ const blob = { v: 1, iv: b64url(iv), ct: b64url(new Uint8Array(ct)) };
 
 ## HTTP
 
-Base URL: the Worker's address, printed by the deploy step (`https://hati-sync.<account>.workers.dev`). Keep it in one constant in the client.
+Base URL: `https://hati-sync.gerymefernando.workers.dev` (live since 2026-11-07). Keep it in one constant in the client.
 
 | Request | Answer |
 |---|---|
