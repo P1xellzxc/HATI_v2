@@ -187,8 +187,9 @@ button.tx:active, button.debt:active { background: var(--sunk); }
 .tx-ic { width: 36px; height: 36px; border-radius: var(--r); display: grid; place-items: center; border: 1.5px solid var(--rule); background: var(--sunk); flex-shrink: 0; }
 .tx-a { font-weight: 700; white-space: nowrap; }
 .who { display: flex; gap: .3em; min-width: 0; white-space: nowrap; }
-.who > .nm { overflow: hidden; text-overflow: ellipsis; min-width: 2.5em; }
+.who > .nm { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .who > :not(.nm) { flex: none; }
+.who > .nm ~ .nm { flex-shrink: 0; max-width: 45%; }
 .bars { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
 .bar { height: 10px; border: 1.5px solid var(--rule); border-radius: 1px; background: var(--panel); overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--fg); }
