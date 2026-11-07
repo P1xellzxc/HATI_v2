@@ -294,6 +294,8 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 .share-sum { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 2px solid var(--rule); border-radius: var(--r); background: var(--panel); min-width: 0; }
 .share-sum b { font: 400 1.1rem/1.2 var(--font-disp); letter-spacing: .02em; }
 #s-code { resize: none; }
+/* QR: ink on white in every theme (scanners need it); the quiet zone is its only frame */
+.qr { display: block; width: min(100%, 280px); height: auto; margin: 0 auto; background: #fff; }
 .codebox summary { min-height: 44px; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .9rem; cursor: pointer; list-style: none; }
 .codebox summary::-webkit-details-marker { display: none; }
 .codebox summary::before { content: ""; width: 0; height: 0; border-left: 6px solid currentColor; border-block: 5px solid transparent; transition: transform .1s; }
@@ -814,6 +816,7 @@ function sheet(html, onSubmit) {
   lastFocus = document.activeElement;
   $("#layer").innerHTML = `<div class="scrim"><form class="sheet" id="sheetForm" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" novalidate>${html.replace("<h2>", '<h2 id="sheetTitle" tabindex="-1">')}</form></div>`;
   $("#app").inert = true; $("#nav").inert = true;
+  document.querySelectorAll(".toast").forEach(n => n.classList.add("top")); // a toast from before the sheet moves out of its way
   const form = $("#sheetForm");
   form.addEventListener("submit", ev => { ev.preventDefault(); onSubmit && onSubmit(form); });
   form.addEventListener("input", () => { const m = $("#sheetMsg"); if (m && !m.classList.contains("ok")) m.textContent = ""; });
@@ -938,23 +941,255 @@ function volMenuSheet() {
     <button type="button" class="btn danger block" data-act="deleteVolume">Delete volume</button>
     <button type="button" class="btn quiet block" data-act="closeSheet">Close</button></div>`);
 }
-function shareSheet() {
-  const v = vol(), code = JSON.stringify({ app: "hati2-mock", v: 1, volume: v }), canSend = typeof navigator.share === "function";
+// The share sheet leads with an invite link (and its QR). A creator who left their name blank is "Me" to the
+// others, so they are asked for their name once before the link is made.
+const nameless = v => { const m = v.members.find(x => x.id === v.meId); return !m || /^me$/i.test(m.name); };
+const sendFn = () => typeof navigator.share === "function" ? d => navigator.share(d)
+  : window.HatiAndroid && typeof HatiAndroid.share === "function" ? d => { HatiAndroid.share(d.url || d.text); return Promise.resolve(); } : null;
+const countLine = v => `${plural(v.members.length, "member")} · ${plural(v.expenses.length, "expense")} · ${plural(v.settlements.length, "payment")}`;
+let shareLink = "";
+function nameFirstSheet(v) {
   sheet(`<h2>Share volume</h2><div class="stack">
-    <div class="share-sum"><b class="ellip">${esc(v.title)}</b><span class="muted small">${plural(v.members.length, "member")} · ${plural(v.expenses.length, "expense")} · ${plural(v.settlements.length, "payment")}</span></div>
-    <p class="small" style="margin:0">Send it to the others in any chat. They open HATI², tap <b>Import</b> on Volumes and paste it.</p>
-    <div class="btns">${canSend ? `<button type="button" class="btn primary" data-act="sendCode">${I.share} Send…</button><button type="button" class="btn" data-act="copyCode">Copy code</button>`
-      : `<button type="button" class="btn primary" data-act="copyCode" style="grid-column:1/-1">Copy code</button>`}</div>
+    <p class="small" style="margin:0">First, your name, so the others know which member is you.</p>
+    <div class="field"><label for="s-name">Your name</label><input id="s-name" class="input" maxlength="40" placeholder="Ana" autocomplete="off"></div>
+    <div class="msg" id="sheetMsg" role="alert"></div>
+    ${sheetButtons("Next")}</div>`,
+    () => {
+      const n = $("#s-name").value.trim().replace(/\s+/g, " "), bad = /^me$/i.test(n) ? "Use your own name." : nameProblem(v, n, v.meId);
+      if (bad) return sheetMsg(bad);
+      const m = v.members.find(x => x.id === v.meId); if (!m) return;
+      m.name = n; m.upd = Date.now(); if (!commit()) return;
+      render(); shareSheet();
+    });
+}
+async function shareSheet() {
+  const v = vol(); if (!v) return;
+  if (nameless(v)) return nameFirstSheet(v);
+  let link = "";
+  if (canInvite()) try { link = await inviteLink(v); } catch (e) { link = ""; }
+  if (vol() !== v) return;
+  const send = !!sendFn(), code = shareCodeOf(v), qr = link ? qrSvg(link) : "";
+  shareLink = link;
+  const codeBox = `<details class="codebox" id="s-codebox"><summary>Show code</summary><div class="stack">
+      <p class="muted small" style="margin:0">For someone on an older HATI²: they tap <b>Import</b> on Volumes and paste it.</p>
+      <label class="sr" for="s-code">Share code</label><textarea id="s-code" class="input num" rows="5" readonly>${esc(code)}</textarea>
+      ${link ? `<button type="button" class="btn quiet block" data-act="copyCode">Copy code</button>` : ""}</div></details>`;
+  sheet(`<h2>Share volume</h2><div class="stack">
+    <div class="share-sum"><b class="ellip">${esc(v.title)}</b><span class="muted small">${countLine(v)}</span></div>
+    ${link ? `<p class="small" style="margin:0">Send this link to the others. It opens HATI² and adds the volume on their phone.</p>
+    <div class="btns">${send ? `<button type="button" class="btn primary" data-act="sendLink">${I.share} Send invite</button><button type="button" class="btn" data-act="copyLink">Copy link</button>`
+      : `<button type="button" class="btn primary" data-act="copyLink" style="grid-column:1/-1">Copy link</button>`}</div>
+    <label class="sr" for="s-link">Invite link</label><input id="s-link" class="input" readonly hidden value="${esc(link)}">
     <div class="msg ok" id="sheetMsg" role="status"></div>
-    <details class="codebox" id="s-codebox"><summary>Show code</summary>
-      <label class="sr" for="s-code">Share code</label><textarea id="s-code" class="input num" rows="5" readonly>${esc(code)}</textarea></details>
+    ${qr ? `<div class="legend">Or scan it in the same room</div>${qr}` : `<p class="muted small" id="s-noqr" style="margin:0">This volume is too big for a QR code. Send the link instead.</p>`}`
+    : `<p class="small" style="margin:0">Send it to the others in any chat. They open HATI², tap <b>Import</b> on Volumes and paste it.</p>
+    <div class="btns">${send ? `<button type="button" class="btn primary" data-act="sendCode">${I.share} Send…</button><button type="button" class="btn" data-act="copyCode">Copy code</button>`
+      : `<button type="button" class="btn primary" data-act="copyCode" style="grid-column:1/-1">Copy code</button>`}</div>
+    <div class="msg ok" id="sheetMsg" role="status"></div>`}
+    ${codeBox}
     <button type="button" class="btn text block" data-act="closeSheet">Done</button></div>`);
 }
 
-async function copyShareCode() {
-  const ta = $("#s-code");
-  try { await navigator.clipboard.writeText(ta.value); sheetMsg("Copied. Paste it in a chat."); }
-  catch (e) { const box = $("#s-codebox"); if (box) box.open = true; ta.focus(); ta.select(); sheetMsg("Code selected below. Use your phone's Copy."); }
+// Copy, or when the clipboard is refused, show the text selected so the phone's own Copy works.
+// iOS can ignore select() on a readonly field, so the range is set explicitly.
+async function copyField(el, done, fallback) {
+  if (!el) return;
+  try { await navigator.clipboard.writeText(el.value); sheetMsg(done); }
+  catch (e) { el.hidden = false; const box = el.closest("details"); if (box) box.open = true; el.focus(); el.select(); el.setSelectionRange(0, el.value.length); sheetMsg(fallback); }
+}
+const copyShareCode = () => copyField($("#s-code"), "Copied. Paste it in a chat.", "Code selected below. Use your phone's Copy.");
+const copyShareLink = () => copyField($("#s-link"), "Link copied. Paste it in a chat.", "Link selected below. Use your phone's Copy.");
+
+// ── Invite links ──────────────────────────────────────────
+// A snapshot invite is <base>#join=<base64url(deflate-raw(share code JSON))>. The data stays in the #fragment,
+// which browsers never send to a server. A live-sync invite (#join=<room>.<key>, sync/README.md) always has a
+// dot and a snapshot never does, so the two can't be mistaken for each other.
+const PAGES_URL = "https://p1xellzxc.github.io/HATI_v2/app/";
+const JOIN_MAX = 1000000, JOIN_OUT_MAX = 512 * 1024;
+const JOIN_BROKEN = "This invite link is broken. Ask for a new one.", JOIN_NEWER = "This invite needs a newer version of HATI².";
+const canInvite = () => typeof CompressionStream === "function" && typeof DecompressionStream === "function";
+const shareCodeOf = v => JSON.stringify({ app: "hati2-mock", v: 1, volume: v });
+// Inside the APK the page origin is local to that phone, so links point at the published app instead.
+const appBase = () => location.hostname === "appassets.androidplatform.net" ? PAGES_URL : location.origin + location.pathname;
+const b64url = u8 => { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000)); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); };
+const unb64url = s => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+async function inviteLink(v) {
+  const z = new Response(new Blob([shareCodeOf(v)]).stream().pipeThrough(new CompressionStream("deflate-raw")));
+  return appBase() + "#join=" + b64url(new Uint8Array(await z.arrayBuffer()));
+}
+// Inflates at most `cap` bytes; a bigger output gives null. The input goes in 256-byte slices, each written only
+// after the output so far was read, so a small "zip bomb" link is stopped after about cap + 264 KB, not at its end.
+async function inflateCapped(bytes, cap) {
+  const ds = new DecompressionStream("deflate-raw"), w = ds.writable.getWriter(), r = ds.readable.getReader(), parts = [];
+  let n = 0, over = false;
+  const feed = (async () => { for (let i = 0; i < bytes.length && !over; i += 256) await w.write(bytes.subarray(i, i + 256)); if (!over) await w.close(); })().catch(() => {});
+  for (;;) {
+    const { done, value } = await r.read(); if (done) break;
+    n += value.length; if (n > cap) { over = true; r.cancel().catch(() => {}); return null; }
+    parts.push(value);
+  }
+  await feed;
+  return new TextDecoder().decode(await new Blob(parts).arrayBuffer());
+}
+// The #join= payload in a URL, a hash or pasted chat text (a full stop after the link is not part of it); null if none.
+const joinPayloadIn = t => { const m = /#join=([\w.-]*)/.exec(String(t)); return m ? m[1].replace(/\.+$/, "") : null; };
+// Never throws: { volume } (already through parseCode → validVolume) or { error }.
+async function readInvite(payload) {
+  if (/^[\w-]+\.[\w-]+$/.test(payload)) return { error: JOIN_NEWER };
+  if (!payload || payload.length > JOIN_MAX || !/^[\w-]+$/.test(payload)) return { error: JOIN_BROKEN };
+  if (!canInvite()) return { error: "This browser can't open invite links. Ask for the share code instead." };
+  let text;
+  try { text = await inflateCapped(unb64url(payload), JOIN_OUT_MAX); } catch (e) { return { error: JOIN_BROKEN }; }
+  const p = text === null ? null : parseCode(text);
+  return p && p.volume ? p : { error: JOIN_BROKEN };
+}
+let joinBusy = null;
+async function startJoin(payload) {
+  if (joinBusy === payload) return;
+  joinBusy = payload;
+  setUrl(true); // the invite leaves the address bar and history now, so Back and reload never reopen it
+  const p = await readInvite(payload);
+  joinBusy = null;
+  if (sheetOpen()) dropSheet();
+  if (p.error) {
+    sheet(`<h2>Join volume</h2><div class="stack"><div class="msg" id="sheetMsg" role="alert">${esc(p.error)}</div>
+      <button type="button" class="btn primary block" data-act="closeSheet">OK</button></div>`);
+    return;
+  }
+  joinSheet(p.volume, appBase() + "#join=" + payload);
+}
+function joinFromHash() {
+  if (!location.hash.startsWith("#join=")) return false;
+  startJoin(joinPayloadIn(location.hash)); return true;
+}
+function joinSheet(x, link) {
+  const local = S.volumes.find(v => v.id === x.id), safari = isIOS() && !navigator.standalone;
+  sheet(`<h2>Join volume</h2><div class="stack">
+    <div class="share-sum"><b class="ellip">${esc(x.title)}</b><span class="muted small">${countLine(x)}</span></div>
+    ${local ? "" : `<p class="small" id="s-new" style="margin:0">New volume on this phone. Pick your name, then tap <b>Join</b>.</p>`}
+    <div id="s-pick"></div>
+    <div class="msg" id="sheetMsg" role="alert"></div>
+    ${sheetButtons(local ? "Import" : "Join")}
+    ${safari ? `<p class="small muted" id="s-safari" style="margin:0">Using HATI² from your home screen? Copy this link and paste it in Import.</p>
+    <label class="sr" for="s-link">Invite link</label><input id="s-link" class="input" readonly hidden value="${esc(link)}">
+    <button type="button" class="btn quiet block" data-act="copyLink">Copy link</button>` : ""}</div>`,
+    () => importVolume(x));
+  fillPick($("#s-pick"), x);
+}
+
+// ── QR code: byte mode, error correction L, versions 1–20 (ISO/IEC 18004) ──
+// Version 20 holds 858 bytes, which keeps a module at 2.9 CSS px or more in a 280px code. Checked module for
+// module against segno in web/tests/qr-fixtures.json.
+const QR_ECC = [0, 7, 10, 15, 20, 26, 18, 20, 24, 30, 18, 20, 24, 26, 30, 22, 24, 28, 30, 28, 28]; // EC codewords per block
+const QR_BLOCKS = [0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 4, 4, 4, 4, 4, 6, 6, 6, 6, 7, 8];
+const QR_MAX_VER = 20;
+const qrRaw = ver => { let r = (16 * ver + 128) * ver + 64; if (ver >= 2) { const n = Math.floor(ver / 7) + 2; r -= (25 * n - 10) * n - 55; if (ver >= 7) r -= 36; } return r; };
+const qrDataWords = ver => Math.floor(qrRaw(ver) / 8) - QR_ECC[ver] * QR_BLOCKS[ver];
+const gfMul = (x, y) => { let z = 0; for (let i = 7; i >= 0; i--) { z = (z << 1) ^ ((z >>> 7) * 0x11d); z ^= ((y >>> i) & 1) * x; } return z; };
+function rsDivisor(deg) {
+  const r = new Array(deg).fill(0); r[deg - 1] = 1;
+  for (let i = 0, root = 1; i < deg; i++, root = gfMul(root, 2)) for (let j = 0; j < deg; j++) { r[j] = gfMul(r[j], root); if (j + 1 < deg) r[j] ^= r[j + 1]; }
+  return r;
+}
+function rsRemainder(data, div) {
+  const r = div.map(() => 0);
+  for (const b of data) { const f = b ^ r.shift(); r.push(0); div.forEach((c, i) => { r[i] ^= gfMul(c, f); }); }
+  return r;
+}
+const QR_MASKS = [(x, y) => (x + y) % 2, (x, y) => y % 2, (x, y) => x % 3, (x, y) => (x + y) % 3, (x, y) => (Math.floor(x / 3) + Math.floor(y / 2)) % 2,
+  (x, y) => x * y % 2 + x * y % 3, (x, y) => (x * y % 2 + x * y % 3) % 2, (x, y) => ((x + y) % 2 + x * y % 3) % 2];
+// Rows of booleans (true = dark), no quiet zone; null when the text needs more than version 20.
+// `version` and `mask` force a choice (tests); by default the smallest version and the lowest-penalty mask win.
+function qrMatrix(text, { version = 0, mask = -1 } = {}) {
+  const bytes = new TextEncoder().encode(text), lenBits = v => v < 10 ? 8 : 16;
+  let ver = version;
+  for (let v = 1; !ver && v <= QR_MAX_VER; v++) if (4 + lenBits(v) + bytes.length * 8 <= qrDataWords(v) * 8) ver = v;
+  if (!ver || ver > QR_MAX_VER || 4 + lenBits(ver) + bytes.length * 8 > qrDataWords(ver) * 8) return null;
+  const cap = qrDataWords(ver) * 8, bits = [];
+  const put = (val, len) => { for (let i = len - 1; i >= 0; i--) bits.push((val >>> i) & 1); };
+  put(4, 4); put(bytes.length, lenBits(ver)); bytes.forEach(b => put(b, 8));
+  put(0, Math.min(4, cap - bits.length)); put(0, (8 - bits.length % 8) % 8);
+  for (let pad = 0xec; bits.length < cap; pad ^= 0xec ^ 0x11) put(pad, 8);
+  const data = []; for (let i = 0; i < bits.length; i += 8) data.push(bits.slice(i, i + 8).reduce((a, b) => a * 2 + b, 0));
+  // Blocks, error correction, interleaving
+  const nb = QR_BLOCKS[ver], ecl = QR_ECC[ver], raw = Math.floor(qrRaw(ver) / 8), nShort = nb - raw % nb, shortLen = Math.floor(raw / nb), div = rsDivisor(ecl), blocks = [];
+  for (let i = 0, k = 0; i < nb; i++) {
+    const d = data.slice(k, k + shortLen - ecl + (i < nShort ? 0 : 1)); k += d.length;
+    const ec = rsRemainder(d, div); if (i < nShort) d.push(0); blocks.push(d.concat(ec));
+  }
+  const words = []; for (let i = 0; i < blocks[0].length; i++) blocks.forEach((b, j) => { if (i !== shortLen - ecl || j >= nShort) words.push(b[i]); });
+  // Function patterns: timing, finders, alignment, format and version areas
+  const size = ver * 4 + 17, m = Array.from({ length: size }, () => new Array(size).fill(false)), fn = m.map(r => r.slice());
+  const set = (x, y, d) => { m[y][x] = d; fn[y][x] = true; }, info = [];
+  const setInfo = (x, y, d) => { set(x, y, d); info.push([x, y]); };
+  for (let i = 0; i < size; i++) { set(6, i, i % 2 === 0); set(i, 6, i % 2 === 0); }
+  for (const [cx, cy] of [[3, 3], [size - 4, 3], [3, size - 4]]) for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+    const d = Math.max(Math.abs(dx), Math.abs(dy)), x = cx + dx, y = cy + dy;
+    if (x >= 0 && x < size && y >= 0 && y < size) set(x, y, d !== 2 && d !== 4);
+  }
+  if (ver > 1) {
+    const n = Math.floor(ver / 7) + 2, step = Math.floor((ver * 8 + n * 3 + 5) / (n * 4 - 4)) * 2, pos = [6];
+    for (let p = size - 7; pos.length < n; p -= step) pos.splice(1, 0, p);
+    pos.forEach((a, i) => pos.forEach((b, j) => {
+      if ((i === 0 && j === 0) || (i === 0 && j === n - 1) || (i === n - 1 && j === 0)) return;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) set(a + dx, b + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+    }));
+  }
+  const format = k => {
+    const d = (1 << 3) | k; let r = d; for (let i = 0; i < 10; i++) r = (r << 1) ^ ((r >>> 9) * 0x537);
+    const f = ((d << 10) | r) ^ 0x5412, bit = i => ((f >>> i) & 1) === 1;
+    for (let i = 0; i <= 5; i++) setInfo(8, i, bit(i));
+    setInfo(8, 7, bit(6)); setInfo(8, 8, bit(7)); setInfo(7, 8, bit(8));
+    for (let i = 9; i < 15; i++) setInfo(14 - i, 8, bit(i));
+    for (let i = 0; i < 8; i++) setInfo(size - 1 - i, 8, bit(i));
+    for (let i = 8; i < 15; i++) setInfo(8, size - 15 + i, bit(i));
+    setInfo(8, size - 8, true);
+  };
+  const versionInfo = () => {
+    if (ver < 7) return;
+    let r = ver; for (let i = 0; i < 12; i++) r = (r << 1) ^ ((r >>> 11) * 0x1f25);
+    const f = (ver << 12) | r;
+    for (let i = 0; i < 18; i++) { const d = ((f >>> i) & 1) === 1, a = size - 11 + i % 3, c = Math.floor(i / 3); setInfo(a, c, d); setInfo(c, a, d); }
+  };
+  format(0); versionInfo(); // reserve both areas before the data goes in
+  // Data in the two-column zigzag, then the mask
+  for (let right = size - 1, i = 0; right >= 1; right -= 2) {
+    if (right === 6) right = 5;
+    for (let vert = 0; vert < size; vert++) for (let j = 0; j < 2; j++) {
+      const x = right - j, y = ((right + 1) & 2) === 0 ? size - 1 - vert : vert;
+      if (!fn[y][x] && i < words.length * 8) { m[y][x] = ((words[i >>> 3] >>> (7 - (i & 7))) & 1) === 1; i++; }
+    }
+  }
+  const flip = k => { for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (!fn[y][x] && QR_MASKS[k](x, y) === 0) m[y][x] = !m[y][x]; };
+  let best = mask;
+  info.forEach(([x, y]) => { m[y][x] = false; });
+  if (best < 0) { let low = Infinity; for (let k = 0; k < 8; k++) { flip(k); const p = qrPenalty(m); if (p < low) { low = p; best = k; } flip(k); } }
+  flip(best); format(best); versionInfo();
+  return m;
+}
+// ISO/IEC 18004:2015 7.8.3, Table 11 (N1 3 + run - 5, N2 3 per 2x2, N3 40 per 1:1:3:1:1 with 4 light modules
+// on one side, N4 10 per 5% away from half dark), scored before format and version information are added.
+function qrPenalty(m) {
+  const size = m.length, pat = "1011101", line = r => r.map(c => c ? "1" : "0").join("");
+  const lines = [...m.map(line), ...m.map((_, x) => line(m.map(r => r[x])))];
+  let pen = 0;
+  for (const l of lines) {
+    for (const run of l.match(/0{5,}|1{5,}/g) || []) pen += run.length - 2;
+    for (let i = l.indexOf(pat); i !== -1;) {
+      let next = i + 7;
+      if (i === size - 7 || !l.slice(Math.max(i - 4, 0), i).includes("1") || !l.slice(i + 7, i + 11).includes("1")) pen += 40; else next = i + 4;
+      i = l.indexOf(pat, next);
+    }
+  }
+  for (let y = 0; y < size - 1; y++) for (let x = 0; x < size - 1; x++) { const c = m[y][x]; if (c === m[y][x + 1] && c === m[y + 1][x] && c === m[y + 1][x + 1]) pen += 3; }
+  const dark = m.reduce((a, r) => a + r.filter(Boolean).length, 0);
+  return pen + 10 * Math.floor(Math.abs(dark * 100 / (size * size) - 50) / 5);
+}
+function qrSvg(text) {
+  const m = qrMatrix(text); if (!m) return "";
+  const n = m.length + 8; let d = "";
+  m.forEach((row, y) => { for (let x = 0; x < row.length; x++) if (row[x]) { let w = 1; while (row[x + w]) w++; d += `M${x + 4} ${y + 4}h${w}v1h-${w}z`; x += w - 1; } });
+  return `<svg class="qr" viewBox="0 0 ${n} ${n}" role="img" aria-label="QR code of the invite link" shape-rendering="crispEdges"><rect width="${n}" height="${n}" fill="#fff"/><path fill="#000" d="${d}"/></svg>`;
 }
 
 function validVolume(x) {
@@ -1089,43 +1324,66 @@ async function downloadBackup() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   done();
 }
+// Fills `pick` with "Which member are you?" for a new volume, or the merge choices for one already here.
+function fillPick(pick, x) {
+  const local = S.volumes.find(v => v.id === x.id);
+  // With a copy already here, the picker starts on who you are in that copy; a new one starts on no one.
+  const meNow = local && local.meId;
+  const who = `<div class="field" id="s-whobox"${local ? " hidden" : ""}><label for="s-who">Which member are you?</label><select id="s-who" class="input">${local ? "" : `<option value="" selected disabled>Choose your name</option>`}${x.members.map(m => `<option value="${esc(m.id)}" ${m.id === meNow ? "selected" : ""}>${esc(m.name)}</option>`).join("")}</select></div>`;
+  if (!local) { pick.innerHTML = who; return; }
+  const r = mergeVolumes(local, x), loss = replaceLoss(local, x);
+  const lostParts = [loss.entries && plural(loss.entries, "entry", "entries"), loss.members && plural(loss.members, "member")].filter(Boolean).join(" and ");
+  const sums = {
+    merge: r.error ? "These copies can't be combined. Choose Replace or Keep both." : (mergeSummary(r) || "Your copy already has everything in this code."),
+    replace: "Replaces your copy. " + (lostParts ? `${lostParts} only on this phone will be lost.` : loss.other ? "Edits made only on this phone will be lost." : "Nothing on this phone will be lost."),
+    copy: "Adds a second copy."
+  };
+  const say = mode => `You already have ${local.title}. ${sums[mode]}`;
+  pick.innerHTML = `<p class="share-sum small" id="s-sum" role="status">${esc(say("merge"))}</p>
+    <div class="field"><label for="s-mode">What to do</label><select id="s-mode" class="input"><option value="merge">Merge with my copy</option><option value="replace">Replace my copy with this one</option><option value="copy">Keep both</option></select></div>` + who;
+  $("#s-mode").addEventListener("change", ev => { $("#s-whobox").hidden = ev.target.value === "merge"; $("#s-sum").textContent = say(ev.target.value); });
+}
+// Imports volume x (already through validVolume) the way the picker in the open sheet says, then opens it.
+function importVolume(x) {
+  const mode = $("#s-mode") ? $("#s-mode").value : "new";
+  if (mode === "merge") {
+    const r = mergeVolumes(S.volumes.find(v => v.id === x.id), x);
+    if (r.error) return sheetMsg(r.error);
+    S.volumes = S.volumes.map(v => v.id === r.vol.id ? r.vol : v);
+    if (!save()) return sheetMsg(saveGone ? SAVE_GONE : "Couldn't save on this device. Nothing was changed.");
+    closeSheet(); ui.volId = r.vol.id; go("volume"); const said = mergeSummary(r); toast(said ? `Merged: ${said[0].toLowerCase() + said.slice(1)}` : "Already up to date"); return;
+  }
+  const nv = cleanVolume(x), who = $("#s-who").value;
+  if (!nv.members.some(m => m.id === who)) return sheetMsg("Choose which member you are.");
+  nv.meId = who;
+  if (mode === "replace") S.volumes = S.volumes.map(v => v.id === nv.id ? nv : v);
+  else { if (mode === "copy") { nv.id = uid(); nv.deleted = []; } S.volumes.unshift(nv); }
+  if (!save()) return sheetMsg(saveGone ? SAVE_GONE : "Couldn't save on this device. Nothing was changed.");
+  closeSheet(); ui.volId = nv.id; go("volume"); toast(mode === "new" ? `You joined ${nv.title}` : "Volume imported");
+}
 function importSheet({ restore = false } = {}) {
-  const help = restore ? "Open the backup file you saved, or paste what's in it, then tap <b>Check code</b>." : "Someone shared a volume with you? Paste the code they sent, then tap <b>Check code</b>.";
+  let read = null;
+  const help = restore ? "Open the backup file you saved, or paste what's in it, then tap <b>Check code</b>." : "Someone shared a volume with you? Paste the link or code they sent, then tap <b>Check code</b>.";
   sheet(`<h2>${restore ? "Restore backup" : "Import volume"}</h2><div class="stack">
     <p class="small" id="s-help" style="margin:0">${help}</p>
-    <div class="field"><label for="s-paste">${restore ? "Backup" : "Share code"}</label><textarea id="s-paste" class="input" rows="4" placeholder="Long-press here and tap Paste" autocomplete="off" spellcheck="false"></textarea></div>
+    <div class="field"><label for="s-paste">${restore ? "Backup" : "Invite link or share code"}</label><textarea id="s-paste" class="input" rows="4" placeholder="Long-press here and tap Paste" autocomplete="off" spellcheck="false"></textarea></div>
     <div class="row filepick"><span class="muted small grow">${restore ? "Saved a backup file?" : "Got a file or a backup instead?"}</span><label class="btn ${restore ? "primary" : "quiet"}" for="s-file">Open file</label><input id="s-file" type="file" accept=".json,application/json,text/plain" class="sr"></div>
     <div id="s-pick"></div>
     <div class="msg" id="sheetMsg" role="alert"></div>
     <div class="btns"><button type="button" class="btn quiet" data-act="closeSheet">Cancel</button><button class="btn primary" id="s-go">Check code</button></div></div>`,
-    () => {
-      const p = parseCode($("#s-paste").value);
-      if (p.error) return sheetMsg(p.error);
+    async () => {
+      const text = $("#s-paste").value, jp = /"app"\s*:/.test(text) ? null : joinPayloadIn(text); // a code or backup whose text mentions "#join=" is still a code
+      // A link is read once, at Check code; Import reuses that result, so it acts at once.
+      const p = jp === null ? parseCode(text) : read && read.text === text ? read.p : (read = { text, p: await readInvite(jp) }).p;
       const pick = $("#s-pick");
+      if (!pick || $("#s-paste").value !== text) return; // closed or edited while the link was read
+      if (p.error) return sheetMsg(p.error);
       if (!pick.innerHTML) {
         if (p.backup) {
           const plan = backupPlan(p);
           pick.innerHTML = `<p class="share-sum small" id="s-sum" role="status">${esc(plan.text)}</p>`;
           if (!plan.ok) return;
-        } else {
-          const x = p.volume, local = S.volumes.find(v => v.id === x.id);
-          // With a copy already here, the picker starts on who you are in that copy.
-          const meNow = local && local.meId;
-          const who = `<div class="field" id="s-whobox"${local ? " hidden" : ""}><label for="s-who">Which member are you?</label><select id="s-who" class="input">${x.members.map(m => `<option value="${esc(m.id)}" ${m.id === meNow ? "selected" : ""}>${esc(m.name)}</option>`).join("")}</select></div>`;
-          if (local) {
-            const r = mergeVolumes(local, x), loss = replaceLoss(local, x);
-            const lostParts = [loss.entries && plural(loss.entries, "entry", "entries"), loss.members && plural(loss.members, "member")].filter(Boolean).join(" and ");
-            const sums = {
-              merge: r.error ? "These copies can't be combined. Choose Replace or Keep both." : (mergeSummary(r) || "Your copy already has everything in this code."),
-              replace: "Replaces your copy. " + (lostParts ? `${lostParts} only on this phone will be lost.` : loss.other ? "Edits made only on this phone will be lost." : "Nothing on this phone will be lost."),
-              copy: "Adds a second copy."
-            };
-            const say = mode => `You already have ${local.title}. ${sums[mode]}`;
-            pick.innerHTML = `<p class="share-sum small" id="s-sum" role="status">${esc(say("merge"))}</p>
-              <div class="field"><label for="s-mode">What to do</label><select id="s-mode" class="input"><option value="merge">Merge with my copy</option><option value="replace">Replace my copy with this one</option><option value="copy">Keep both</option></select></div>` + who;
-            $("#s-mode").addEventListener("change", ev => { $("#s-whobox").hidden = ev.target.value === "merge"; $("#s-sum").textContent = say(ev.target.value); });
-          } else pick.innerHTML = who;
-        }
+        } else fillPick(pick, p.volume);
         const go = $("#s-go"); go.textContent = "Import"; $("#s-help").innerHTML = "Check what will change, then tap <b>Import</b>."; go.disabled = true; setTimeout(() => { go.disabled = false; }, 500);
         sheetMsg(""); return;
       }
@@ -1137,21 +1395,7 @@ function importSheet({ restore = false } = {}) {
         if (!save()) return sheetMsg(saveGone ? SAVE_GONE : "Couldn't save on this device. Nothing was changed.");
         go("hub", { replace: true }); toast(`Backup restored: ${plural(plan.steps.length, "volume")}`); return;
       }
-      const mode = $("#s-mode") ? $("#s-mode").value : "new";
-      if (mode === "merge") {
-        const r = mergeVolumes(S.volumes.find(v => v.id === p.volume.id), p.volume);
-        if (r.error) return sheetMsg(r.error);
-        S.volumes = S.volumes.map(v => v.id === r.vol.id ? r.vol : v);
-        if (!save()) return sheetMsg(saveGone ? SAVE_GONE : "Couldn't save on this device. Nothing was changed.");
-        closeSheet(); ui.volId = r.vol.id; go("volume"); const said = mergeSummary(r); toast(said ? `Merged: ${said[0].toLowerCase() + said.slice(1)}` : "Already up to date"); return;
-      }
-      const nv = cleanVolume(p.volume), who = $("#s-who").value;
-      if (!nv.members.some(m => m.id === who)) return sheetMsg("Choose which member you are.");
-      nv.meId = who;
-      if (mode === "replace") S.volumes = S.volumes.map(v => v.id === nv.id ? nv : v);
-      else { if (mode === "copy") { nv.id = uid(); nv.deleted = []; } S.volumes.unshift(nv); }
-      if (!save()) return sheetMsg(saveGone ? SAVE_GONE : "Couldn't save on this device. Nothing was changed.");
-      closeSheet(); ui.volId = nv.id; go("volume"); toast("Volume imported");
+      importVolume(p.volume);
     });
   $("#s-paste").addEventListener("input", () => { $("#s-pick").innerHTML = ""; $("#s-go").textContent = "Check code"; $("#s-help").innerHTML = help; sheetMsg(""); });
   $("#s-file").addEventListener("change", ev => {
@@ -1214,7 +1458,9 @@ function leave() {
   else go(parentOf(), { replace: true });
 }
 function focusTitle() { const h = $("#app h1"); if (h) h.focus({ preventScroll: true }); }
+// An invite opened while the app is running (a tapped link in the APK, a pasted address) arrives as a fragment change.
 addEventListener("popstate", () => {
+  if (joinFromHash()) return;
   if (sheetOpen()) { dropSheet(); setUrl(false); return; }
   applyRoute(); render(); window.scrollTo(0, 0); focusTitle();
 });
@@ -1309,12 +1555,19 @@ document.addEventListener("click", async ev => {
     case "dismissIosHint": try { localStorage.setItem(IOS_HINT, "1"); } catch (e) {} el.closest("#iosHint").remove(); break;
     case "more": ui.histLimit += 100; render(); break;
     case "sendCode": {
-      if (typeof navigator.share !== "function") { await copyShareCode(); break; }
-      try { await navigator.share({ title: `HATI² · ${v.title}`, text: $("#s-code").value }); }
+      const send = sendFn(); if (!send) { await copyShareCode(); break; }
+      try { await send({ title: `HATI² · ${v.title}`, text: $("#s-code").value }); }
       catch (e) { if (!(e && e.name === "AbortError")) await copyShareCode(); }
       break;
     }
     case "copyCode": await copyShareCode(); break;
+    case "sendLink": {
+      const send = sendFn(); if (!send) { await copyShareLink(); break; }
+      try { await send({ title: `HATI² · ${v.title}`, url: shareLink }); }
+      catch (e) { if (!(e && e.name === "AbortError")) await copyShareLink(); }
+      break;
+    }
+    case "copyLink": await copyShareLink(); break;
     case "deleteVolume": confirmSheet("Delete volume?", `${v.title} and all its expenses and payments will be removed from this device.`, "Delete", () => { S.volumes = S.volumes.filter(x => x.id !== v.id); if (!commit()) return; go("hub", { replace: true }); toast("Volume deleted"); }); break;
     case "addMember": if (sheetOpen()) dropSheet(); memberSheet(); break;
     case "addExpense": openExpense(null); break;
@@ -1349,14 +1602,17 @@ addEventListener("storage", ev => {
   if (!vol() && ui.view !== "hub" && ui.view !== "settings") ui.view = "hub";
   render();
 });
+addEventListener("hashchange", joinFromHash);
 if (window.matchMedia) { const mq = matchMedia("(prefers-color-scheme: dark)"); mq.addEventListener && mq.addEventListener("change", () => applyTheme()); }
 if (window.visualViewport) { const vv = () => document.documentElement.style.setProperty("--vvh", visualViewport.height + "px"); visualViewport.addEventListener("resize", vv); vv(); }
 
 applyTheme();
 try { history.replaceState({ depth: depth() }, ""); } catch (e) {}
+const joinAtStart = location.hash.startsWith("#join=");
 applyRoute();
-if (hashFor() !== (location.hash || "")) setUrl(true);
+if (!joinAtStart && hashFor() !== (location.hash || "")) setUrl(true);
 render();
+if (joinAtStart) joinFromHash();
 
 if ("serviceWorker" in navigator && window.isSecureContext) {
   navigator.serviceWorker.register("sw.js").catch(() => {});

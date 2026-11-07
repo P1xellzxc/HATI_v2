@@ -31,3 +31,6 @@ Given the app installed and loaded once. When the phone goes offline and the use
 
 ## 10. Rounding stays honest
 Given You, Ana, Ben. When You add ₱100.00 split equally. Then shares are 33.34 / 33.33 / 33.33 and balances sum to exactly 0.00.
+
+## 11. Join by invite link, two phones
+Given phone A (Android, devices["Pixel 7"]) creates "Flat" with Ben and leaves its own name blank, and adds "Rent" 100.00 split equally. When A taps Share, gives its name (Ana) once, and sends the invite link; phone B (iPhone, devices["iPhone 13"], fresh storage) opens the link, picks "Ben" and taps Join, adds "Groceries" 40.00 split equally and sends its own link back; A opens that link and merges. Then both phones show the same 2 expenses, A (Ana) is owed 30.00 and B (Ben) owes 30.00, balances sum to 0, and B's picker named "Ana", never "Me". A opening its own older link again adds nothing. If B deletes the volume and opens the old link, it is offered as a new volume, not merged silently. Budget: B joins in 3 taps (opening the link 0, picker 2, Join 1). Check: e2e block "R2-3" in web/tests/e2e.js.

@@ -1,4 +1,4 @@
-const CACHE = "hati2-80b87a435b";
+const CACHE = "hati2-a05a2f31f1";
 const ASSETS = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png",
   "fonts/black-han-sans-latin.woff2", "fonts/dm-sans-latin.woff2"];
 self.addEventListener("install", e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())));

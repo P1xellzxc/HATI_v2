@@ -116,17 +116,16 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(/3 members · \d+ expenses/.test(await d.locator('.share-sum').innerText()),'share sheet names what is shared: '+(await d.locator('.share-sum').innerText()).replace(/\n/g,' | '));
    ok(!(await d.locator('#s-code').isVisible()) && !(await d.locator('#sheetForm').innerText()).includes('"app"'),'no raw code is visible before "Show code"');
    await d.getByText('Show code').click(); ok(await d.locator('#s-code').isVisible(),'"Show code" reveals the code');
-   await d.getByText('Show code').click();
    await d.evaluate(()=>{ Object.defineProperty(navigator,'clipboard',{value:{writeText:()=>Promise.reject(new Error('denied'))},configurable:true}); });
    await d.getByRole('button',{name:'Copy code'}).click(); await d.waitForTimeout(100);
    ok(await d.locator('#s-code').isVisible() && await d.evaluate(()=>{const t=$('#s-code'); return document.activeElement===t && t.selectionEnd-t.selectionStart===t.value.length;}),'clipboard denied: Copy opens the code and selects all of it');
    await d.locator('[data-act=closeSheet]').click();
    await d.evaluate(()=>{ window.__shared=null; navigator.share=d=>{window.__shared=d; return Promise.resolve();}; window.__copied=0; Object.defineProperty(navigator,'clipboard',{value:{writeText:()=>{window.__copied++; return Promise.resolve();}},configurable:true}); });
    await d.locator('[data-act=volMenu]').click(); await d.locator('.sheet [data-act=share]').click();
-   await d.getByRole('button',{name:/Send/}).click(); await d.waitForTimeout(100);
-   ok(await d.evaluate(()=>!!window.__shared && window.__shared.text===$('#s-code').value && window.__copied===0),'Send passes the code to the native share sheet');
+   await d.getByRole('button',{name:'Send invite'}).click(); await d.waitForTimeout(100);
+   ok(await d.evaluate(()=>!!window.__shared && window.__shared.url===$('#s-link').value && /#join=[\w-]+$/.test(window.__shared.url) && window.__copied===0),'Send invite passes the invite link to the native share sheet');
    await d.evaluate(()=>{ navigator.share=()=>Promise.reject(new DOMException('cancel','AbortError')); });
-   await d.getByRole('button',{name:/Send/}).click(); await d.waitForTimeout(100);
+   await d.getByRole('button',{name:'Send invite'}).click(); await d.waitForTimeout(100);
    ok(await d.evaluate(()=>window.__copied===0 && !$('#sheetMsg').textContent),'cancelling the share sheet is silent and does not copy');
    await d.locator('[data-act=closeSheet]').click(); await d.locator('#nav [data-act=home]').click(); await d.getByRole('button',{name:'Import'}).click();
    const ph=await d.locator('#s-paste').getAttribute('placeholder'); ok(!/[{}"]/.test(ph),'import placeholder has no JSON: '+ph);
@@ -265,12 +264,12 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await A.pg.keyboard.press('Escape'); await A.pg.reload(); ok(await A.pg.evaluate(id=>S.volumes.some(v=>v.id===id),volId),'volume survives reload');
    // a stored draft that names a removed member is ignored
    ok(await A.pg.evaluate(()=>{ sessionStorage.setItem('hati2.draft',JSON.stringify({volId:ui.volId,form:{amount:'5',desc:'x',paidBy:'gone1',include:{gone1:true},inputs:{},splitType:'equal',category:'food',date:today(),note:''}})); return draftFor(null)===null; }),'draft paying from a removed member is dropped');
-   // R1-3: Send hands the code to the share sheet; it imports on another phone
+   // R1-3 / R2-1: Send invite hands the link to the share sheet; pasted into Import on another phone, it imports
    await openVol(B.pg,'Tokyo'); await B.pg.evaluate(()=>{ window.__shared=null; navigator.share=d=>{window.__shared=d; return Promise.resolve();}; });
-   await B.pg.locator('[data-act=volMenu]').click(); await B.pg.locator('.sheet [data-act=share]').click(); await B.pg.getByRole('button',{name:/Send/}).click(); await B.pg.waitForTimeout(100);
-   const sent=await B.pg.evaluate(()=>window.__shared && window.__shared.text); await B.pg.keyboard.press('Escape');
+   await B.pg.locator('[data-act=volMenu]').click(); await B.pg.locator('.sheet [data-act=share]').click(); await B.pg.getByRole('button',{name:'Send invite'}).click(); await B.pg.waitForTimeout(100);
+   const sent=await B.pg.evaluate(()=>window.__shared && window.__shared.url); await B.pg.keyboard.press('Escape');
    const D=await fresh(); await check(D.pg,sent); await D.pg.selectOption('#s-who',{label:'Alex'}); await doImport(D.pg);
-   ok(await D.pg.evaluate(id=>ui.volId===id,volId) && await zs(D.pg),'text passed to navigator.share imports on another phone');
+   ok(await D.pg.evaluate(id=>ui.volId===id,volId) && await zs(D.pg),'the link passed to navigator.share, pasted into Import on another phone, imports '+JSON.stringify([String(sent).slice(0,60),await D.pg.evaluate(()=>[ui.view,ui.volId,$('#sheetMsg')&&$('#sheetMsg').textContent])]));
    // backup: download, restore on a fresh phone and onto a phone that already has one volume
    await home(A.pg); await A.pg.locator('#nav [data-act=settings]').click();
    const [dl]=await Promise.all([A.pg.waitForEvent('download'),A.pg.locator('[data-act=backup]').click()]);
@@ -459,9 +458,9 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await pg.setViewportSize({width:360,height:780}); await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); });
    const sb=pg.getByRole('button',{name:'Share volume',exact:true});
    ok(await sb.count()===1 && await sb.isVisible(),'Share volume is a visible button on the volume page, without opening a menu');
-   await sb.click(); ok(await pg.locator('.sheet .share-sum').isVisible(),'one tap on Share volume opens the share sheet');
+   await sb.click(); await pg.locator('.sheet .share-sum').waitFor({timeout:3000}).catch(()=>{}); ok(await pg.locator('.sheet .share-sum').isVisible(),'one tap on Share volume opens the share sheet');
    await pg.evaluate(()=>dropSheet()); await pg.locator('[data-act=volMenu]').click(); await pg.locator('.sheet [data-act=share]').click();
-   ok(await pg.locator('.sheet .share-sum').isVisible(),'the ⋮ menu Share entry still opens the share sheet'); await pg.evaluate(()=>dropSheet());
+   await pg.locator('.sheet .share-sum').waitFor({timeout:3000}).catch(()=>{}); ok(await pg.locator('.sheet .share-sum').isVisible(),'the ⋮ menu Share entry still opens the share sheet'); await pg.evaluate(()=>dropSheet());
    for (const w of [320,360]) { await pg.setViewportSize({width:w,height:780});
      await pg.evaluate(()=>{ const v=exampleVolume(); v.title='Bartholomew and friends: summer road trip 2026'.slice(0,40); v.members[1].name='Maximilian Featherstonehaugh-Wolfe'; S.volumes.unshift(v); ui.volId=v.id; go('volume'); });
      const m=await pg.evaluate(()=>{ const h=$('.topbar h1'); return {hw:h.getBoundingClientRect().width,lines:Math.round(h.getBoundingClientRect().height/parseFloat(getComputedStyle(h).lineHeight)),sw:document.scrollingElement.scrollWidth,cw:document.scrollingElement.clientWidth}; });
@@ -484,7 +483,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
        await pg.evaluate(()=>dropSheet()); } }
    ok(bad.length===0,'R2-4: .btn.quiet has the same corner as .btn.primary and stays flat, 13 palettes x light/dark '+JSON.stringify(bad.slice(0,4)));
    ok(segBad.length===0,'R2-4: selected .seg in dark keeps text ≥4.5:1 against its darkest shade pixel and the shade stays light (≤2.5:1 vs the fill), 13 palettes '+JSON.stringify(segBad.slice(0,4)));
-   await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); shareSheet(); });
+   await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); return shareSheet(); });
    ok(await pg.evaluate(()=>getComputedStyle($('#s-code')).resize)==='none','R2-4: the share code box has no resize grip');
    await pg.evaluate(()=>dropSheet());
    for (const w of [360,390]) { await pg.setViewportSize({width:w,height:780}); await pg.evaluate(()=>go('hub'));
@@ -568,5 +567,148 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      return fails; });
    ok(bad===0,'pairwise net per member equals balances() in 200 random volumes ('+bad+' mismatches)');
    ok(e.length===0,'no page errors in pairwise checks '+JSON.stringify(e)); await c.close(); }
+ // R2-1 (code): invite link <base>#join=<base64url(deflate-raw(share code))> opens a join sheet with a who-are-you picker
+ { const fresh=async(dev=devices['Pixel 7'],{init,url=URL}={})=>{ const c=await b.newContext({...dev}); if(init) await c.addInitScript(init); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.goto(url); return {c,pg,e}; };
+   const all=[], msgOf=pg=>pg.locator('#sheetMsg').innerText();
+   const A=await fresh(); all.push(A);
+   const exId=await A.pg.evaluate(()=>S.volumes[0].id), link=await A.pg.evaluate(()=>inviteLink(S.volumes[0])), pay=link.split('#join=')[1];
+   ok(link===URL+'#join='+pay && /^[A-Za-z0-9_-]+$/.test(pay) && link.length<1000,`invite link is <page>#join=<base64url>, ${link.length} chars for the example volume`);
+   // cold start on a phone that doesn't have the volume
+   const B=await fresh(devices['Pixel 7'],{url:link}); all.push(B); await B.pg.waitForSelector('#s-who');
+   const j=await B.pg.evaluate(()=>({h:$('#sheetTitle').textContent,sum:$('#sheetForm .share-sum').innerText,opts:[...$('#s-who').options].map(o=>o.textContent),sel:$('#s-who').value,isNew:!!$('#s-new'),hash:location.hash,n:S.volumes.length}));
+   ok(j.h==='Join volume' && /Tokyo Trip \(example\)/.test(j.sum) && /3 members/.test(j.sum) && ['Alex','Mira','Rio'].every(n=>j.opts.includes(n)) && j.sel==='' && j.isNew,'cold link: "Join volume" shows Tokyo Trip (example), 3 members, "New volume" and a picker that starts on no one '+JSON.stringify(j));
+   ok(!/join/.test(j.hash) && j.n===1,'the invite leaves the address bar as soon as it is read, nothing saved yet '+JSON.stringify([j.hash,j.n]));
+   await B.pg.getByRole('button',{name:'Join'}).click(); ok(/Choose which member/.test(await msgOf(B.pg)),'Join without picking a name asks who you are');
+   await B.pg.selectOption('#s-who',{label:'Mira'}); await B.pg.getByRole('button',{name:'Join'}).click();
+   const r=await B.pg.evaluate(id=>{ const v=vol(); return {view:ui.view,ok:ui.volId===id,me:nameOf(v,v.meId),hash:location.hash,zero:Object.values(balances(v)).reduce((a,b)=>a+b,0),you:/You/.test($('#app').innerText)}; },exId);
+   ok(r.view==='volume' && r.ok && r.me==='Mira' && !/join/.test(r.hash) && r.zero===0,'Join as Mira opens the volume from Mira\'s side; no #join in the URL; zero-sum '+JSON.stringify(r));
+   await B.pg.goBack(); await B.pg.waitForTimeout(200);
+   ok(!(await B.pg.evaluate(()=>sheetOpen())) && await B.pg.evaluate(()=>ui.view)==='hub','Back after Join goes to the volumes, the join sheet does not come back');
+   // the same link on a phone that has the volume (running page: a fragment change): merge, no picker, keeps you
+   await B.pg.goto(link); await B.pg.waitForSelector('#s-mode');
+   ok(await B.pg.locator('#s-mode').inputValue()==='merge' && !(await B.pg.locator('#s-who').isVisible()) && !(await B.pg.locator('#s-new').count()) && /You already have Tokyo/.test(await B.pg.locator('#s-sum').innerText()),'link for a volume already here: merge sheet, no picker, says you already have it');
+   await B.pg.locator('#sheetForm button.primary').click();
+   ok(await B.pg.evaluate(id=>S.volumes.filter(x=>x.id===id).length===1 && nameOf(vol(),vol().meId)==='Mira',exId),'merging the same link adds no copy and keeps Mira as you');
+   // a running page whose hash is set to the link (APK onNewIntent, address bar)
+   const C=await fresh(devices['Pixel 7']); all.push(C);
+   await C.pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); });
+   await C.pg.evaluate(p=>{ location.hash='join='+p; },pay); await C.pg.waitForSelector('#s-who');
+   ok(await C.pg.evaluate(()=>/Tokyo Trip/.test($('#sheetForm').innerText) && !/join/.test(location.hash) && ui.view==='volume'),'setting location.hash to the link in an open page opens the join sheet over the current page');
+   await C.pg.keyboard.press('Escape');
+   // broken and newer links change nothing
+   const S0=await C.pg.evaluate(()=>JSON.stringify(S)), mid=Math.floor(pay.length/2);
+   for (const [bad,want,why] of [[pay.slice(0,mid)+pay.slice(mid+1),'This invite link is broken. Ask for a new one.','one middle character removed'],[pay.slice(0,40),'This invite link is broken. Ask for a new one.','cut short'],['abc$%','This invite link is broken. Ask for a new one.','not base64url'],
+       ['A'.repeat(22)+'.'+'B'.repeat(43),'This invite needs a newer version of HATI².','a live-sync room.key link']]) {
+     await C.pg.evaluate(p=>{ location.hash='join='+p; },bad); await C.pg.waitForFunction(()=>$('#sheetMsg') && $('#sheetMsg').textContent.length>0);
+     ok(await msgOf(C.pg)===want && await C.pg.evaluate(s=>JSON.stringify(S)===s,S0),`${why}: "${want}" and nothing changes`);
+     await C.pg.keyboard.press('Escape'); }
+   const D=await fresh(devices['Pixel 7'],{url:URL+'#join='+pay.slice(0,mid)+pay.slice(mid+1)}); all.push(D); await D.pg.waitForFunction(()=>$('#sheetMsg') && $('#sheetMsg').textContent.length>0);
+   ok(await msgOf(D.pg)==='This invite link is broken. Ask for a new one.' && await D.pg.evaluate(()=>S.volumes.length===1 && S.volumes[0].title==='Tokyo Trip (example)'),'cold start with a broken link: the message, and only the phone\'s own volume');
+   // decompression is capped while streaming: a tiny link that inflates to 8 MB is stopped early
+   const bomb=await C.pg.evaluate(async()=>{ const big='{"app":"hati2-mock","v":1,"volume":'+' '.repeat(8*1024*1024)+'}';
+     const u=new Uint8Array(await new Response(new Blob([big]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());
+     const W=WritableStreamDefaultWriter.prototype, R=ReadableStreamDefaultReader.prototype, w0=W.write, r0=R.read; let fed=0, got=0;
+     W.write=function(c){ fed+=c.length; return w0.call(this,c); }; R.read=async function(){ const x=await r0.call(this); if(x.value) got+=x.value.length; return x; };
+     try { const out=await inflateCapped(u,JOIN_OUT_MAX); return {inLen:u.length,fed,got,out,err:(await readInvite(b64url(u))).error}; } finally { W.write=w0; R.read=r0; } });
+   ok(bomb.out===null && bomb.err==='This invite link is broken. Ask for a new one.' && bomb.fed<bomb.inLen && bomb.got<=512*1024+300*1024,'a link that inflates to 8 MB is cut off mid-stream ('+JSON.stringify({...bomb,out:undefined})+')');
+   // a pasted link in Import gives the same summary as the pasted code (here: a phone that has the volume)
+   const code=await A.pg.evaluate(()=>shareCodeOf(S.volumes[0])), sums=[];
+   for (const t of [code,'Join us: '+link+'.']) { await A.pg.evaluate(()=>{ dropSheet(); go('hub'); }); await A.pg.getByRole('button',{name:'Import'}).click(); await A.pg.fill('#s-paste',t); await A.pg.locator('#s-go').click(); await A.pg.waitForSelector('#s-sum'); sums.push(await A.pg.locator('#s-pick').innerText()); }
+   ok(sums[0]===sums[1] && /already has everything/.test(sums[1]),'Import: a pasted link (with chat text and a full stop) gives the same summary as the code '+JSON.stringify(sums[1]));
+   await A.pg.evaluate(()=>{ dropSheet(); go('hub'); }); await A.pg.getByRole('button',{name:'Import'}).click(); await A.pg.fill('#s-paste',URL+'#join='+pay.slice(0,mid)+pay.slice(mid+1)); await A.pg.locator('#s-go').click();
+   await A.pg.waitForFunction(()=>$('#sheetMsg').textContent.length>0); ok(await msgOf(A.pg)==='This invite link is broken. Ask for a new one.','Import: a broken pasted link says so');
+   await A.pg.keyboard.press('Escape');
+   const noted=await A.pg.evaluate(()=>{ const v=JSON.parse(JSON.stringify(S.volumes[0])); v.expenses[0].note='see #join=abc'; return shareCodeOf(v); });
+   await A.pg.evaluate(()=>{ dropSheet(); go('hub'); }); await A.pg.getByRole('button',{name:'Import'}).click(); await A.pg.fill('#s-paste',noted); await A.pg.locator('#s-go').click();
+   await A.pg.waitForSelector('#s-sum'); ok(/Updates 1 expense/.test(await A.pg.locator('#s-sum').innerText()),'a share code whose note mentions "#join=" is still read as a code');
+   await A.pg.keyboard.press('Escape');
+   // without CompressionStream (old WebView): Copy code, no error; a link says this browser can't open it
+   const O=await fresh(devices['Pixel 7'],{init:()=>{ delete window.CompressionStream; delete window.DecompressionStream; }}); all.push(O);
+   await O.pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); return shareSheet(); });
+   ok(await O.pg.getByRole('button',{name:'Copy code'}).isVisible() && !(await O.pg.locator('[data-act=copyLink],[data-act=sendLink],svg.qr').count()),'no CompressionStream: the share sheet falls back to Copy code');
+   await O.pg.evaluate(p=>{ dropSheet(); location.hash='join='+p; },pay); await O.pg.waitForFunction(()=>$('#sheetMsg') && $('#sheetMsg').textContent.length>0);
+   ok(/can't open invite links/.test(await msgOf(O.pg)),'no DecompressionStream: a link says this browser can\'t open it');
+   // iPhone Safari (not the Home Screen app): one line and Copy link, for the app's own storage
+   const I1=await fresh(devices['iPhone 13'],{url:link}); all.push(I1); await I1.pg.waitForSelector('#s-who');
+   await I1.pg.evaluate(()=>{ window.__c=null; Object.defineProperty(navigator,'clipboard',{value:{writeText:t=>{window.__c=t; return Promise.resolve();}},configurable:true}); });
+   ok(/home screen\? Copy this link and paste it in Import/.test(await I1.pg.locator('#s-safari').innerText()),'iPhone Safari: the join sheet says to copy the link into the Home Screen app');
+   await I1.pg.locator('#sheetForm [data-act=copyLink]').click(); await I1.pg.waitForTimeout(100);
+   ok(await I1.pg.evaluate(l=>window.__c===l,link),'iPhone Safari: Copy link copies the whole invite link');
+   const I2=await fresh(devices['iPhone 13'],{url:link,init:()=>{ Object.defineProperty(navigator,'standalone',{get:()=>true}); }}); all.push(I2); await I2.pg.waitForSelector('#s-who');
+   ok(!(await I2.pg.locator('#s-safari').count()),'Home Screen app: no copy-to-app line');
+   const errs=all.flatMap(x=>x.e); ok(errs.length===0,'no page errors in R2-1 invite checks '+JSON.stringify(errs));
+   for (const x of all) await x.c.close(); }
+ // R2-2 (code): QR of the same link, checked against segno; ink on white in every theme; too big → a line instead
+ { const c=await b.newContext({viewport:{width:360,height:780}}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.goto(URL);
+   const fx=JSON.parse(require('fs').readFileSync(require('path').join(__dirname,'..','..','web','tests','qr-fixtures.json'),'utf8'));
+   const res=await pg.evaluate(cs=>cs.map(c=>{ const m=qrMatrix(c.text,c.forced?{version:c.version,mask:c.mask}:{}); return !!m && m.length===c.matrix.length && m.every((row,y)=>row.map(x=>x?'1':'0').join('')===c.matrix[y]); }),fx.cases);
+   const forced=fx.cases.filter(c=>c.forced).length, auto=fx.cases.length-forced;
+   ok(res.every(Boolean) && forced>=3 && auto>=1,`QR matrix equals segno module for module: ${forced} fixed (version, mask) cases and ${auto} where the app picks version and mask itself ${JSON.stringify(res)}`);
+   ok(await pg.evaluate(()=>qrMatrix('x'.repeat(858)).length===97 && qrMatrix('x'.repeat(859))===null),'QR stops at version 20: 858 bytes fit, 859 do not');
+   for (const w of [320,360,390]) { await pg.setViewportSize({width:w,height:780}); await pg.evaluate(()=>{ dropSheet(); ui.volId=S.volumes[0].id; go('volume'); return shareSheet(); });
+     const q=await pg.evaluate(()=>{ const s=$('svg.qr'); if(!s) return null; s.scrollIntoView(); const r=s.getBoundingClientRect(), n=+s.getAttribute('viewBox').split(' ')[2]; return {w:r.width,n,px:r.width/n,vis:r.width>0&&r.top>=0&&r.bottom<=innerHeight,label:s.getAttribute('aria-label'),sw:document.scrollingElement.scrollWidth,sheetSw:$('#sheetForm').scrollWidth-$('#sheetForm').clientWidth,iw:innerWidth}; });
+     ok(q && q.vis && q.px>=2 && q.w<=280 && q.sw<=q.iw && q.sheetSw<=0 && q.label==='QR code of the invite link',`QR visible at ${w}: ${q&&q.w.toFixed(0)}px, ${q&&q.n} modules with quiet zone, ${q&&q.px.toFixed(2)} CSS px per module, no sideways scroll`); }
+   const ink=await pg.evaluate(()=>{ const bad=[]; for (const mode of ['light','dark']) for (const p of PALETTES) { S.settings.mode=mode; S.settings.palette=p.id; applyTheme();
+       const rect=getComputedStyle($('svg.qr rect')).fill, path=getComputedStyle($('svg.qr path')).fill, bg=getComputedStyle($('svg.qr')).backgroundColor;
+       if (rect!=='rgb(255, 255, 255)' || path!=='rgb(0, 0, 0)' || bg!=='rgb(255, 255, 255)') bad.push([mode,p.id,rect,path,bg]); }
+     S.settings.mode='system'; S.settings.palette='classic'; applyTheme(); return bad; });
+   ok(ink.length===0,'QR is #000 on #fff in all 13 palettes, light and dark '+JSON.stringify(ink.slice(0,3)));
+   await pg.evaluate(()=>{ dropSheet(); const v=JSON.parse(JSON.stringify(S.volumes[0])); v.id='bigQR1'; v.expenses=[];
+     for (let i=0;i<204;i++) v.expenses.push({id:'bq'+i,desc:'Shared thing '+i+' '+Math.random().toString(36).slice(2,8),amount:1000+i*37,paidBy:v.meId,category:'food',date:'2026-10-01',splitType:'exact',splits:{[v.meId]:1000+i*37},inputs:{},note:'',upd:0});
+     S.volumes.push(v); ui.volId='bigQR1'; go('volume'); return shareSheet(); });
+   ok(await pg.locator('#s-noqr').innerText()==='This volume is too big for a QR code. Send the link instead.' && !(await pg.locator('svg.qr').count()) && await pg.locator('[data-act=copyLink]').isVisible(),'204 expenses: the too-big line, no QR, the link still there');
+   ok(e.length===0,'no page errors in R2-2 QR checks '+JSON.stringify(e)); await c.close(); }
+ // R2-3 (code + scenarios): scenario: two phones join by invite link and merge back
+ { const fresh=async dev=>{ const c=await b.newContext({...dev}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.goto(URL);
+     await pg.evaluate(()=>{ window.__shared=null; navigator.share=d=>{ window.__shared=d; return Promise.resolve(); }; }); return {c,pg,e}; };
+   const sendInvite=async pg=>{ await pg.evaluate(()=>{ window.__shared=null; }); await pg.getByRole('button',{name:'Send invite'}).click(); await pg.waitForFunction(()=>window.__shared); return pg.evaluate(()=>window.__shared.url); };
+   const addExp=async (pg,desc,amt)=>{ await pg.getByRole('button',{name:/Add expense/}).click(); await pg.fill('#f-amount',amt); await pg.fill('#f-desc',desc); await pg.locator('#expForm button[type=submit]').click(); };
+   const A=await fresh(devices['Pixel 7']), B=await fresh(devices['iPhone 13']);
+   // A creates "Flat" with Ben and leaves their own name blank
+   await A.pg.locator('[data-act=newVolume]').click(); await A.pg.fill('#s-title','Flat'); await A.pg.fill('#s-others','Ben'); await A.pg.locator('#sheetForm button.primary').click();
+   await addExp(A.pg,'Rent','100');
+   await A.pg.locator('[data-act=share]').first().click(); await A.pg.waitForSelector('#s-name');
+   ok(/your name/i.test(await A.pg.locator('#sheetForm').innerText()),'sharing with the default name "Me" asks for your name first');
+   await A.pg.fill('#s-name','me'); await A.pg.locator('#sheetForm button.primary').click(); ok(/own name/.test(await A.pg.locator('#sheetMsg').innerText()),'"me" is not accepted as a name');
+   await A.pg.fill('#s-name','Ana'); await A.pg.locator('#sheetForm button.primary').click();
+   const linkA=await sendInvite(A.pg); await A.pg.keyboard.press('Escape');
+   // B opens the link: pick (2 taps) + Join (1 tap)
+   let taps=0; await B.pg.goto(linkA); await B.pg.waitForSelector('#s-who');
+   const opts=await B.pg.evaluate(()=>[...$('#s-who').options].map(o=>o.textContent));
+   ok(opts.includes('Ana') && !opts.includes('Me'),'B\'s picker names the sender (Ana), not "Me" '+JSON.stringify(opts));
+   await B.pg.selectOption('#s-who',{label:'Ben'}); taps+=2; await B.pg.getByRole('button',{name:'Join'}).click(); taps+=1;
+   ok(taps<=3 && await B.pg.evaluate(()=>ui.view==='volume' && vol().title==='Flat' && nameOf(vol(),vol().meId)==='Ben'),`B joins Flat as Ben in ${taps} taps (opening the link counts 0)`);
+   await addExp(B.pg,'Groceries','40');
+   await B.pg.locator('[data-act=share]').first().click(); const linkB=await sendInvite(B.pg); await B.pg.keyboard.press('Escape');
+   // A opens B's link: merge
+   await A.pg.goto(linkB); await A.pg.waitForSelector('#s-mode'); await A.pg.locator('#sheetForm button.primary').click();
+   const view=pg=>pg.evaluate(()=>{ const v=vol(), bal=balances(v); return {exp:v.expenses.map(e=>e.desc+':'+e.amount).sort(), me:bal[v.meId], sum:Object.values(bal).reduce((a,b)=>a+b,0), you:nameOf(v,v.meId), id:v.id}; });
+   const a=await view(A.pg), bb=await view(B.pg);
+   ok(a.id===bb.id && JSON.stringify(a.exp)===JSON.stringify(bb.exp) && a.exp.length===2,'both phones show the same 2 expenses '+JSON.stringify([a.exp,bb.exp]));
+   ok(a.me===3000 && bb.me===-3000 && a.me+bb.me===0 && a.sum===0 && bb.sum===0 && a.you==='Ana' && bb.you==='Ben',`balances are opposite to the cent from each phone's own "You" (A ${a.you} ${a.me}, B ${bb.you} ${bb.me}) and sum to 0`);
+   // A opens its own (older) link again: nothing new
+   await A.pg.goto(linkA); await A.pg.waitForSelector('#s-sum');
+   ok(/already has everything/.test(await A.pg.locator('#s-sum').innerText()),'A opening its own link again: "already has everything"');
+   await A.pg.locator('#sheetForm button.primary').click(); ok(JSON.stringify((await view(A.pg)).exp)===JSON.stringify(a.exp),'and merging it adds nothing');
+   // stale link: B deletes the volume, then opens the old link → it is offered as a new volume, not merged silently
+   await B.pg.locator('[data-act=volMenu]').click(); await B.pg.locator('[data-act=deleteVolume]').click(); await B.pg.locator('#sheetForm button.danger').click();
+   await B.pg.goto(linkA); await B.pg.waitForSelector('#s-who');
+   ok(await B.pg.locator('#s-new').isVisible() && !(await B.pg.locator('#s-mode').count()),'after deleting the volume, the old link is offered as a new volume with the picker');
+   const errs=[...A.e,...B.e]; ok(errs.length===0,'no page errors in the two-phone invite scenario '+JSON.stringify(errs));
+   await A.c.close(); await B.c.close(); }
+ // R2-5 (code): copy fallbacks select the whole text; a toast from before a sheet moves out of its way
+ { const c=await b.newContext({...devices['iPhone 13']}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.goto(URL);
+   await pg.evaluate(()=>{ Object.defineProperty(navigator,'clipboard',{value:{writeText:()=>Promise.reject(new Error('denied'))},configurable:true}); ui.volId=S.volumes[0].id; go('volume'); return shareSheet(); });
+   await pg.getByRole('button',{name:'Copy link'}).click(); await pg.waitForTimeout(100);
+   const sel=await pg.evaluate(()=>{ const t=$('#s-link'); return {vis:!t.hidden && t.getBoundingClientRect().height>0, focus:document.activeElement===t, len:t.selectionEnd-t.selectionStart, all:t.value.length, msg:$('#sheetMsg').textContent}; });
+   ok(sel.vis && sel.focus && sel.len===sel.all && sel.all>0 && /Link selected/.test(sel.msg),'clipboard refused: Copy link shows the link with all of it selected '+JSON.stringify(sel));
+   await pg.evaluate(()=>{ $('#s-codebox').open=true; }); await pg.getByRole('button',{name:'Copy code'}).click(); await pg.waitForTimeout(100);
+   ok(await pg.evaluate(()=>{ const t=$('#s-code'); return document.activeElement===t && t.selectionEnd-t.selectionStart===t.value.length; }),'clipboard refused: Copy code selects all of the code');
+   await pg.keyboard.press('Escape');
+   await pg.getByRole('button',{name:/Add expense/}).click(); await pg.fill('#f-amount','12'); await pg.fill('#f-desc','Snacks'); await pg.locator('#expForm button[type=submit]').click();
+   await pg.getByRole('button',{name:/Settle up/}).click();
+   const ov=await pg.evaluate(()=>{ const t=document.querySelector('.toast'); if(!t) return {toast:false}; const tr=t.getBoundingClientRect(); const hit=[...document.querySelectorAll('#sheetForm input,#sheetForm select,#sheetForm button')].filter(x=>{ const r=x.getBoundingClientRect(); return r.width && !(r.right<=tr.left||r.left>=tr.right||r.bottom<=tr.top||r.top>=tr.bottom); }).map(x=>x.id||x.textContent); return {toast:true,text:t.textContent,top:t.classList.contains('top'),hit}; });
+   ok(ov.toast && /Expense saved/.test(ov.text) && ov.top && ov.hit.length===0,'Settle up right after "Expense saved": the toast stays, moved to the top, covering none of the sheet\'s fields '+JSON.stringify(ov));
+   ok(e.length===0,'no page errors in R2-5 checks '+JSON.stringify(e)); await c.close(); }
  await b.close();
 })();
