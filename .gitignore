@@ -66,3 +66,7 @@ docs/app/.*.js
 .obsidian/plugins/*/manifest.json
 .obsidian/plugins/*/styles.css
 brain/.obsidian/workspace*.json
+
+# Live-sync worker deps and wrangler state
+sync/node_modules/
+sync/.wrangler/
