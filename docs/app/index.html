@@ -43,6 +43,8 @@
   --tone: color-mix(in srgb, var(--ink-l) 16%, transparent);
   --pos: #166534; --neg: #9D174D; --err: #B3261E;
   --nav: var(--paper-l);
+  /* Strip under the iOS status bar: black-translucent draws white clock text, so it stays dark in every theme (an ink band). */
+  --sbar: var(--ink-l);
 
   --font-disp: 'Black Han Sans', 'Arial Black', Impact, sans-serif;
   --font-body: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -55,7 +57,7 @@
     --accent: var(--acc-d); --on-accent: #131217; --hero: var(--hero-d);
     --chip: color-mix(in srgb, var(--food-l) 28%, #1B1A21);
     --tone: rgba(237, 235, 228, 0.14);
-    --pos: #BBF7D0; --neg: #FBCFE8; --err: #F2B8B5; --nav: #131217;
+    --pos: #BBF7D0; --neg: #FBCFE8; --err: #F2B8B5; --nav: #131217; --sbar: #131217;
     color-scheme: dark;
   }
 }
@@ -65,7 +67,7 @@
   --accent: var(--acc-d); --on-accent: #131217; --hero: var(--hero-d);
   --chip: color-mix(in srgb, var(--food-l) 28%, #1B1A21);
   --tone: rgba(237, 235, 228, 0.14);
-  --pos: #BBF7D0; --neg: #FBCFE8; --err: #F2B8B5; --nav: #131217;
+  --pos: #BBF7D0; --neg: #FBCFE8; --err: #F2B8B5; --nav: #131217; --sbar: #131217;
   color-scheme: dark;
 }
 
@@ -73,7 +75,7 @@
 html { height: 100%; background: var(--bg); }
 body { min-height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.45 var(--font-body); -webkit-tap-highlight-color: transparent; }
-body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--nav); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--sbar); }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; box-shadow: 0 0 0 6px var(--accent); }
@@ -366,13 +368,25 @@ function normalize(d) {
   return { settings: st, volumes };
 }
 let persistAsked = false;
+// Writes S. If the write fails (storage full), S goes back to what is stored, so the screen never shows
+// a change that a reload would lose. With storage off from the start, changes live in memory (see banner()).
 function save() {
+  if (!storageOk) return true;
   try {
-    localStorage.setItem(KEY, JSON.stringify(S)); storageOk = true;
+    localStorage.setItem(KEY, JSON.stringify(S));
     if (!persistAsked) { persistAsked = true; try { const p = navigator.storage && navigator.storage.persist && navigator.storage.persist(); if (p && p.catch) p.catch(() => {}); } catch (_) {} }
     return true;
+  } catch (e) {
+    try { const raw = localStorage.getItem(KEY); if (raw) S = normalize(JSON.parse(raw)); } catch (_) {}
+    return false;
   }
-  catch (e) { storageOk = false; toast("Couldn't save on this device. Storage may be full or turned off."); return false; }
+}
+const SAVE_FAIL = "Couldn't save on this device. Storage may be full. Nothing was changed.";
+// save() for an action: on failure close any sheet, redraw from the stored data and say so. Callers stop on false.
+function commit() {
+  if (save()) return true;
+  if (sheetOpen()) dropSheet();
+  render(); toast(SAVE_FAIL); return false;
 }
 
 function exampleVolume() {
@@ -450,7 +464,10 @@ const debts = v => S.settings.strategy === "pairwise" ? pairwise(v) : simplify(b
 
 // ── State ─────────────────────────────────────────────────
 let S = load();
-if (!S) { S = { settings: { ...DEFAULT_SETTINGS }, volumes: recovered ? [] : [exampleVolume()] }; if (storageOk) save(); }
+if (!S) {
+  S = { settings: { ...DEFAULT_SETTINGS }, volumes: recovered ? [] : [exampleVolume()] };
+  if (storageOk) try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { storageOk = false; }
+}
 const ui = { view: "hub", volId: null, form: null, from: "volume", histLimit: 100 };
 const vol = () => S.volumes.find(v => v.id === ui.volId);
 const nameOf = (v, id) => (v.members.find(m => m.id === id) || { name: "Unknown" }).name;
@@ -517,6 +534,16 @@ const timeline = v => [...v.expenses.map(e => ({ k: "e", d: e.date, x: e })), ..
 function topbar(title, { back, right = "" } = {}) {
   return `<header class="topbar">${back ? `<button class="ico" data-act="back" aria-label="Back">${I.back}</button>` : `<span class="logo" aria-hidden="true">H²</span>`}<h1 tabindex="-1">${esc(title)}</h1>${right}</header>`;
 }
+// iOS Safari (not the Home Screen app): say how to install, and that the installed app keeps its own data.
+const IOS_HINT = "hati2.iosHint";
+const isIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+function iosHintDue() {
+  const ios = isIOS();
+  const standalone = navigator.standalone === true || !!(window.matchMedia && matchMedia("(display-mode: standalone)").matches);
+  let seen = false; try { seen = localStorage.getItem(IOS_HINT) === "1"; } catch (e) {}
+  return ios && !standalone && !seen;
+}
+const iosHint = () => iosHintDue() ? `<div class="banner panel stack" id="iosHint" role="note" style="margin:0 0 12px"><p style="margin:0">On iPhone, add HATI² to your Home Screen: tap <b>Share</b>, then <b>Add to Home Screen</b>. Do it before adding expenses, because the Home Screen app keeps its own data.</p><div class="row" style="justify-content:flex-end"><button class="btn quiet" data-act="dismissIosHint">OK</button></div></div>` : "";
 function banner() {
   if (!storageOk) return `<div class="banner panel" role="status">This browser has storage turned off. Your changes last until you close the page.</div>`;
   if (recovered && ui.view === "hub") return `<div class="banner panel row between" role="status"><span>Some saved data couldn't be read, so it was set aside. A backup is kept on this device.</span><button class="btn quiet" data-act="dismissRecovered">OK</button></div>`;
@@ -558,7 +585,7 @@ const views = {
         <span class="muted small ellip">${t[1]} · ${plural(v.members.length, "member")} · ${esc(fmt(total(v), v.currency))} spent</span></span></button>`;
     }).join("");
     return topbar("HATI²", { right: `<button class="btn quiet" data-act="import">${I.import} Import</button>` }) +
-      `<p class="tagline">Split costs with the people you travel or live with. Each volume is one trip or group.</p>
+      `<p class="tagline">Split costs with the people you travel or live with. Each volume is one trip or group.</p>${iosHint()}
       <h2 class="label">Your volumes</h2><div class="stack">${cards}
       <button class="dashed" data-act="newVolume"><span class="logo" aria-hidden="true">${I.plus}</span><span><b>New volume</b><span class="muted small">Start tracking a group's expenses</span></span></button></div>`;
   },
@@ -715,6 +742,7 @@ function openExpense(e) {
 }
 function submitExpense() {
   const f = ui.form, v = vol(); f.touched = true;
+  if (goneElsewhere()) return;
   if (!f.desc.trim()) {
     const d = $("#f-desc"); d.setAttribute("aria-invalid", "true"); $("#descMsg").textContent = "Add a short description."; d.focus(); return;
   }
@@ -724,7 +752,19 @@ function submitExpense() {
   const rec = { id: f.id || uid(), desc: f.desc.trim(), amount: r.amount, paidBy: f.paidBy, category: f.category, date: f.date || today(), splitType: f.splitType, splits: r.splits, inputs, note: f.note.trim(), upd: Date.now() };
   const i = v.expenses.findIndex(e => e.id === rec.id);
   if (i >= 0) v.expenses[i] = rec; else v.expenses.push(rec);
-  clearDraft(); save(); leave(); toast(i >= 0 ? "Expense updated" : "Expense saved");
+  if (!commit()) return;
+  clearDraft(); leave(); toast(i >= 0 ? "Expense updated" : "Expense saved");
+}
+
+// The volume or the expense being edited was deleted in another tab (on Android the browser tab and the
+// installed app share storage). Leave the form instead of saving an edit that every merge would drop.
+function goneElsewhere() {
+  const v = vol(), id = ui.form && ui.form.id;
+  if (v && !(id && (!v.expenses.some(e => e.id === id) || (v.deleted || []).includes(id)))) return false;
+  clearDraft(); if (sheetOpen()) dropSheet();
+  if (v) leave(); else go("hub", { replace: true });
+  toast(v ? "This expense was deleted in another tab." : "This volume was deleted in another tab.");
+  return true;
 }
 
 // ── Sheets ────────────────────────────────────────────────
@@ -751,16 +791,23 @@ function volumeSheet(v) {
       <div class="field"><label for="s-type">Type</label><select id="s-type" class="input">${TYPES.map(t => `<option value="${t[0]}" ${v && v.type === t[0] ? "selected" : ""}>${t[1]}</option>`).join("")}</select></div>
       <div class="field"><label for="s-cur">Currency</label><select id="s-cur" class="input">${CURRENCIES.map(c => `<option ${(v ? v.currency : lastCurrency()) === c ? "selected" : ""}>${c}</option>`).join("")}</select></div>
     </div>
-    ${v ? "" : `<div class="field"><label for="s-me">Your name in this volume</label><input id="s-me" class="input" maxlength="40" placeholder="So others know who you are" autocomplete="off"></div>`}
+    ${v ? "" : `<div class="field"><label for="s-me">Your name in this volume</label><input id="s-me" class="input" maxlength="40" placeholder="So others know who you are" autocomplete="off"></div>
+    <div class="field"><label for="s-others">Who else is in? (optional)</label><input id="s-others" class="input" maxlength="2000" placeholder="Mira, Rio" autocomplete="off"></div>`}
     <div class="msg" id="sheetMsg" role="alert"></div>
     ${sheetButtons(v ? "Save" : "Create")}</div>`,
     () => {
       const title = $("#s-title").value.trim();
       if (!title) return sheetMsg("Give the volume a name.");
-      if (v) { Object.assign(v, { title, type: $("#s-type").value, currency: $("#s-cur").value, upd: Date.now() }); save(); closeSheet(); render(); toast("Volume updated"); return; }
-      const meId = uid(), myName = $("#s-me").value.trim() || "Me";
+      if (v) { Object.assign(v, { title, type: $("#s-type").value, currency: $("#s-cur").value, upd: Date.now() }); if (!commit()) return; closeSheet(); render(); toast("Volume updated"); return; }
+      const meId = uid(), myName = $("#s-me").value.trim().replace(/\s+/g, " ") || "Me";
       const nv = { id: uid(), title, type: $("#s-type").value, currency: $("#s-cur").value, meId, created: Date.now(), members: [{ id: meId, name: myName }], expenses: [], settlements: [] };
-      S.volumes.unshift(nv); save(); ui.volId = nv.id; go("volume"); toast(`${title} created`);
+      for (const n of $("#s-others").value.split(",").map(x => x.trim().replace(/\s+/g, " ")).filter(Boolean)) {
+        const bad = n.length > 40 ? `Keep each name to 40 characters (${n.slice(0, 12)}…).` : nameProblem(nv, n, null);
+        if (bad) return sheetMsg(bad);
+        if (nv.members.length >= 200) return sheetMsg("A volume can have up to 200 members.");
+        nv.members.push({ id: uid(), name: n, upd: Date.now() });
+      }
+      S.volumes.unshift(nv); if (!commit()) return; ui.volId = nv.id; go("volume"); toast(`${title} created`);
     });
 }
 const lastCurrency = () => (S.volumes[0] && S.volumes[0].currency) || "$";
@@ -773,7 +820,7 @@ function memberSheet() {
     () => {
       const n = $("#s-name").value.trim().replace(/\s+/g, " "), bad = nameProblem(v, n, null);
       if (bad) return sheetMsg(bad);
-      v.members.push({ id: uid(), name: n, upd: Date.now() }); save(); closeSheet(); render(); toast(`${n} added`);
+      v.members.push({ id: uid(), name: n, upd: Date.now() }); if (!commit()) return; closeSheet(); render(); toast(`${n} added`);
     });
 }
 function nameProblem(v, n, selfId) {
@@ -795,9 +842,9 @@ function editMemberSheet(m) {
     <button type="button" class="btn danger block" data-act="removeMember" data-id="${esc(m.id)}" ${why ? 'disabled aria-describedby="s-why"' : ""}>Remove from volume</button>
     ${why ? `<p class="muted small" id="s-why" style="margin:0">${esc(why)}</p>` : ""}</div>`,
     () => {
-      const n = $("#s-name").value.trim().replace(/\s+/g, " "), bad = nameProblem(v, n, m.id);
+      const n = $("#s-name").value.trim().replace(/\s+/g, " "), bad = n === m.name ? "" : nameProblem(v, n, m.id);
       if (bad) return sheetMsg(bad);
-      if (n !== m.name) { m.name = n; m.upd = Date.now(); save(); }
+      if (n !== m.name) { m.name = n; m.upd = Date.now(); if (!commit()) return; }
       closeSheet(); render(); toast("Name saved");
     });
 }
@@ -806,7 +853,7 @@ function removeMember(id) {
   if (!v || id === v.meId || memberUsed(v, id) || !v.members.some(m => m.id === id)) return;
   const n = nameOf(v, id);
   v.members = v.members.filter(m => m.id !== id); tombstone(v, id);
-  save(); closeSheet(); render(); toast(`${n} removed`);
+  if (!commit()) return; closeSheet(); render(); toast(`${n} removed`);
 }
 function settleSheet(existing) {
   const v = vol(), ds = debts(v);
@@ -833,7 +880,7 @@ function settleSheet(existing) {
       if (amt > MAX_CENTS) return sheetMsg("That amount is too large.");
       if (existing) Object.assign(existing, { from, to, amount: amt, upd: Date.now() });
       else v.settlements.push({ id: uid(), from, to, amount: amt, date: today(), upd: Date.now() });
-      save(); closeSheet(); render(); toast("Payment recorded");
+      if (!commit()) return; closeSheet(); render(); toast("Payment recorded");
     });
   $("#sheetForm").addEventListener("click", ev => {
     const b = ev.target.closest("[data-sugg]"); if (!b) return;
@@ -906,7 +953,8 @@ function cleanVolume(x) {
 // a tombstone in `deleted` beats any edit. Keeps the local meId. Returns { vol, added, updated, removed } or { error }.
 function mergeVolumes(localRaw, incomingRaw) {
   const loc = cleanVolume(localRaw), inc = cleanVolume(incomingRaw);
-  const deleted = new Set([...loc.deleted, ...inc.deleted]);
+  // Local tombstones go last so the cap below never evicts them for a flood of incoming ones.
+  const locGone = new Set(loc.deleted), deleted = new Set([...inc.deleted.filter(id => !locGone.has(id)), ...loc.deleted]);
   let added = 0, updated = 0, removed = 0;
   const same = (a, b) => JSON.stringify({ ...a, upd: 0 }) === JSON.stringify({ ...b, upd: 0 });
   const union = (a, b, isGone) => {
@@ -966,12 +1014,21 @@ function backupPlan(p) {
   const text = (parts ? parts[0].toUpperCase() + parts.slice(1) + "." : "Nothing to restore.") + (skipped ? ` ${plural(skipped, "volume")} couldn't be read and will be skipped.` : "");
   return { steps, text, ok: steps.length > 0 };
 }
-function downloadBackup() {
-  const data = JSON.stringify({ app: "hati2-mock", kind: "backup", v: 1, volumes: S.volumes });
+// On iOS a blob download from the Home Screen app can strand the user in a viewer, so the file goes to the
+// share sheet (Save to Files). Called straight from the tap, with no await before share(), to keep the gesture.
+async function downloadBackup() {
+  const data = JSON.stringify({ app: "hati2-mock", kind: "backup", v: 1, volumes: S.volumes }), name = `hati2-backup-${today()}.json`;
+  const done = () => toast(`Backup saved: ${plural(S.volumes.length, "volume")}`);
+  const ios = isIOS();
+  let file = null; try { file = new File([data], name, { type: "application/json" }); } catch (e) {}
+  if (ios && file && typeof navigator.share === "function" && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file] }); done(); return; }
+    catch (e) { if (e && e.name === "AbortError") return; }
+  }
   const a = document.createElement("a"), url = URL.createObjectURL(new Blob([data], { type: "application/json" }));
-  a.href = url; a.download = `hati2-backup-${today()}.json`; document.body.appendChild(a); a.click(); a.remove();
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  toast(`Backup saved: ${plural(S.volumes.length, "volume")}`);
+  done();
 }
 function importSheet({ restore = false } = {}) {
   const help = restore ? "Open the backup file you saved, or paste what's in it, then tap <b>Check code</b>." : "Someone shared a volume with you? Paste the code they sent, then tap <b>Check code</b>.";
@@ -993,12 +1050,21 @@ function importSheet({ restore = false } = {}) {
           if (!plan.ok) return;
         } else {
           const x = p.volume, local = S.volumes.find(v => v.id === x.id);
-          const who = `<div class="field" id="s-whobox"${local ? " hidden" : ""}><label for="s-who">Which member are you?</label><select id="s-who" class="input">${x.members.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("")}</select></div>`;
+          // With a copy already here, the picker starts on who you are in that copy.
+          const meNow = local && local.meId;
+          const who = `<div class="field" id="s-whobox"${local ? " hidden" : ""}><label for="s-who">Which member are you?</label><select id="s-who" class="input">${x.members.map(m => `<option value="${esc(m.id)}" ${m.id === meNow ? "selected" : ""}>${esc(m.name)}</option>`).join("")}</select></div>`;
           if (local) {
-            const r = mergeVolumes(local, x), sum = r.error ? "These copies can't be combined. Choose Replace or Keep both." : (mergeSummary(r) ? mergeSummary(r) + "." : "Your copy already has everything in this code.");
-            pick.innerHTML = `<p class="share-sum small" id="s-sum" role="status">You already have ${esc(local.title)}. ${esc(sum)}</p>
+            const r = mergeVolumes(local, x), inCode = new Set([...x.expenses, ...x.settlements].map(e => e.id));
+            const lost = [...local.expenses, ...local.settlements].filter(e => !inCode.has(e.id)).length;
+            const sums = {
+              merge: r.error ? "These copies can't be combined. Choose Replace or Keep both." : (mergeSummary(r) ? mergeSummary(r) + "." : "Your copy already has everything in this code."),
+              replace: lost ? `Replaces your copy. ${plural(lost, "entry", "entries")} only on this phone will be lost.` : "Replaces your copy. Nothing on this phone will be lost.",
+              copy: "Adds a second copy."
+            };
+            const say = mode => `You already have ${local.title}. ${sums[mode]}`;
+            pick.innerHTML = `<p class="share-sum small" id="s-sum" role="status">${esc(say("merge"))}</p>
               <div class="field"><label for="s-mode">What to do</label><select id="s-mode" class="input"><option value="merge">Merge with my copy</option><option value="replace">Replace my copy with this one</option><option value="copy">Keep both</option></select></div>` + who;
-            $("#s-mode").addEventListener("change", ev => { $("#s-whobox").hidden = ev.target.value === "merge"; });
+            $("#s-mode").addEventListener("change", ev => { $("#s-whobox").hidden = ev.target.value === "merge"; $("#s-sum").textContent = say(ev.target.value); });
           } else pick.innerHTML = who;
         }
         const go = $("#s-go"); go.textContent = "Import"; $("#s-help").innerHTML = "Check what will change, then tap <b>Import</b>."; go.disabled = true; setTimeout(() => { go.disabled = false; }, 500);
@@ -1009,21 +1075,24 @@ function importSheet({ restore = false } = {}) {
         for (const s of plan.steps) {
           if (s.x) S.volumes.push(s.x); else S.volumes = S.volumes.map(v => v.id === s.r.vol.id ? s.r.vol : v);
         }
-        save(); go("hub", { replace: true }); toast(`Backup restored: ${plural(plan.steps.length, "volume")}`); return;
+        if (!save()) return sheetMsg("Couldn't save on this device. Nothing was changed.");
+        go("hub", { replace: true }); toast(`Backup restored: ${plural(plan.steps.length, "volume")}`); return;
       }
       const mode = $("#s-mode") ? $("#s-mode").value : "new";
       if (mode === "merge") {
         const r = mergeVolumes(S.volumes.find(v => v.id === p.volume.id), p.volume);
         if (r.error) return sheetMsg(r.error);
         S.volumes = S.volumes.map(v => v.id === r.vol.id ? r.vol : v);
-        save(); closeSheet(); ui.volId = r.vol.id; go("volume"); toast(mergeSummary(r) ? `Merged: ${mergeSummary(r).toLowerCase()}` : "Already up to date"); return;
+        if (!save()) return sheetMsg("Couldn't save on this device. Nothing was changed.");
+        closeSheet(); ui.volId = r.vol.id; go("volume"); toast(mergeSummary(r) ? `Merged: ${mergeSummary(r).toLowerCase()}` : "Already up to date"); return;
       }
       const nv = cleanVolume(p.volume), who = $("#s-who").value;
       if (!nv.members.some(m => m.id === who)) return sheetMsg("Choose which member you are.");
       nv.meId = who;
       if (mode === "replace") S.volumes = S.volumes.map(v => v.id === nv.id ? nv : v);
       else { if (mode === "copy") { nv.id = uid(); nv.deleted = []; } S.volumes.unshift(nv); }
-      save(); closeSheet(); ui.volId = nv.id; go("volume"); toast("Volume imported");
+      if (!save()) return sheetMsg("Couldn't save on this device. Nothing was changed.");
+      closeSheet(); ui.volId = nv.id; go("volume"); toast("Volume imported");
     });
   $("#s-paste").addEventListener("input", () => { $("#s-pick").innerHTML = ""; $("#s-go").textContent = "Check code"; $("#s-help").innerHTML = help; sheetMsg(""); });
   $("#s-file").addEventListener("change", ev => {
@@ -1149,7 +1218,7 @@ function bindExpenseForm() {
   refreshSplitPreview();
 }
 function selectPalette(id) {
-  S.settings.palette = id; save(); applyTheme(); render();
+  S.settings.palette = id; commit(); applyTheme(); render();
   const b = $(`[data-pal="${CSS.escape(id)}"]`); if (b) b.focus();
 }
 
@@ -1158,7 +1227,7 @@ document.addEventListener("click", async ev => {
   const el = ev.target.closest("[data-act],[data-pal],[data-set]"); if (!el) return;
   if (el.dataset.pal) return selectPalette(el.dataset.pal);
   if (el.dataset.set) {
-    S.settings[el.dataset.set] = el.dataset.val; save(); applyTheme(); render();
+    S.settings[el.dataset.set] = el.dataset.val; commit(); applyTheme(); render();
     const b = $(`[data-set="${el.dataset.set}"][data-val="${el.dataset.val}"]`); if (b) b.focus();
     return;
   }
@@ -1176,6 +1245,7 @@ document.addEventListener("click", async ev => {
     case "import": importSheet(); break;
     case "restore": importSheet({ restore: true }); break;
     case "dismissRecovered": recovered = false; render(); break;
+    case "dismissIosHint": try { localStorage.setItem(IOS_HINT, "1"); } catch (e) {} el.closest("#iosHint").remove(); break;
     case "more": ui.histLimit += 100; render(); break;
     case "sendCode": {
       if (typeof navigator.share !== "function") { await copyShareCode(); break; }
@@ -1184,20 +1254,20 @@ document.addEventListener("click", async ev => {
       break;
     }
     case "copyCode": await copyShareCode(); break;
-    case "deleteVolume": confirmSheet("Delete volume?", `${v.title} and all its expenses and payments will be removed from this device.`, "Delete", () => { S.volumes = S.volumes.filter(x => x.id !== v.id); save(); go("hub", { replace: true }); toast("Volume deleted"); }); break;
+    case "deleteVolume": confirmSheet("Delete volume?", `${v.title} and all its expenses and payments will be removed from this device.`, "Delete", () => { S.volumes = S.volumes.filter(x => x.id !== v.id); if (!commit()) return; go("hub", { replace: true }); toast("Volume deleted"); }); break;
     case "addMember": if (sheetOpen()) dropSheet(); memberSheet(); break;
     case "addExpense": openExpense(null); break;
     case "editExpense": openExpense(v.expenses.find(e => e.id === el.dataset.id)); break;
-    case "deleteExpense": confirmSheet("Delete expense?", `${ui.form.desc || "This expense"} will be removed and balances recalculated.`, "Delete", () => { v.expenses = v.expenses.filter(e => e.id !== ui.form.id); tombstone(v, ui.form.id); save(); leave(); toast("Expense deleted"); }); break;
+    case "deleteExpense": confirmSheet("Delete expense?", `${ui.form.desc || "This expense"} will be removed and balances recalculated.`, "Delete", () => { v.expenses = v.expenses.filter(e => e.id !== ui.form.id); tombstone(v, ui.form.id); if (!commit()) return; leave(); toast("Expense deleted"); }); break;
     case "settle": settleSheet(null); break;
     case "editSettle": settleSheet(v.settlements.find(s => s.id === el.dataset.id)); break;
-    case "deleteSettle": { const id = el.dataset.id; confirmSheet("Delete payment?", "This payment will be removed and balances recalculated.", "Delete", () => { v.settlements = v.settlements.filter(s => s.id !== id); tombstone(v, id); save(); closeSheet(); render(); toast("Payment deleted"); }); break; }
+    case "deleteSettle": { const id = el.dataset.id; confirmSheet("Delete payment?", "This payment will be removed and balances recalculated.", "Delete", () => { v.settlements = v.settlements.filter(s => s.id !== id); tombstone(v, id); if (!commit()) return; closeSheet(); render(); toast("Payment deleted"); }); break; }
     case "editMember": { const m = v.members.find(x => x.id === el.dataset.id); if (m) editMemberSheet(m); break; }
     case "removeMember": removeMember(el.dataset.id); break;
-    case "backup": downloadBackup(); break;
+    case "backup": await downloadBackup(); break;
     case "history": go("history"); break;
-    case "seed": S.volumes.unshift(exampleVolume()); save(); render(); toast("Example volume added"); break;
-    case "reset": confirmSheet("Erase all data?", "Every volume on this device will be deleted. Copies shared to other phones are not affected.", "Erase", () => { S.volumes = []; save(); go("hub", { replace: true }); toast("All data erased"); }); break;
+    case "seed": S.volumes.unshift(exampleVolume()); if (!commit()) break; render(); toast("Example volume added"); break;
+    case "reset": confirmSheet("Erase all data?", "Every volume on this device will be deleted. Copies shared to other phones are not affected.", "Erase", () => { S.volumes = []; if (!commit()) return; go("hub", { replace: true }); toast("All data erased"); }); break;
   }
 });
 document.addEventListener("keydown", ev => {
@@ -1214,7 +1284,7 @@ addEventListener("storage", ev => {
   const fresh = load(); if (!fresh) return;
   S = fresh; applyTheme();
   if (sheetOpen()) { dropSheet(); toast("Updated from another tab"); }
-  if (ui.view === "expense") return;
+  if (ui.view === "expense") { goneElsewhere(); return; }
   if (!vol() && ui.view !== "hub" && ui.view !== "settings") ui.view = "hub";
   render();
 });
