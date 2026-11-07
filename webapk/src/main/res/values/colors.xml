@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the web app's paper background (html { background }) so the
+         system-bar strips and the first frame blend with the page. -->
+    <color name="paper">#FFFFFF</color>
+    <color name="icon_background">#FEF08A</color>
+</resources>

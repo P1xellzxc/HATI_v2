@@ -77,7 +77,9 @@ jobs:
         if: always()
         with:
           name: instrumented-test-results
-          path: app/build/reports/androidTests/
+          path: |
+            app/build/reports/androidTests/
+            webapk/build/reports/androidTests/
 
   build:
     name: Build Debug + Release APK
@@ -101,6 +103,9 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug
 
+      - name: Build web app APK (debug)
+        run: ./gradlew :webapk:assembleDebug
+
       - name: Build release APK
         run: ./gradlew assembleRelease
 
@@ -115,3 +120,10 @@ jobs:
         with:
           name: release-apk
           path: app/build/outputs/apk/release/
+
+      - name: Upload web app APK (debug)
+        uses: actions/upload-artifact@v4
+        with:
+          name: hati-web-apk
+          path: webapk/build/outputs/apk/debug/
+          if-no-files-found: error
