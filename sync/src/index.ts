@@ -106,7 +106,7 @@ export class Room extends DurableObject<Env> {
   }
 
   async fetch(req: Request): Promise<Response> {
-    if (req.headers.get("upgrade")?.toLowerCase() === "websocket") return this.connect();
+    if (req.headers.get("upgrade")?.toLowerCase() === "websocket") return this.join();
     const s = await this.load();
     if (req.method === "GET") {
       if (s.blob && Date.now() - s.touched > TOUCH_EVERY_MS) await this.touch(s);
@@ -126,14 +126,14 @@ export class Room extends DurableObject<Env> {
     if (!Number.isSafeInteger(baseVersion) || (baseVersion as number) < 0 || !isBlob(blob))
       return json({ error: "bad_body" }, 400);
     if (JSON.stringify(blob).length > MAX_BLOB_BYTES) return json({ error: "too_large" }, 413);
-    if (false) return json({ version: s.version, blob: s.blob }, 409);
+    if (baseVersion !== s.version) return json({ version: s.version, blob: s.blob }, 409);
 
     const next: Stored = { version: s.version + 1, blob, touched: 0 };
     await this.touch(next);
     const msg = JSON.stringify({ version: next.version });
     for (const peer of this.ctx.getWebSockets()) {
       try {
-        void msg;
+        peer.send(msg);
       } catch {
         // closed between getWebSockets() and send(); the client reconnects and GETs.
       }
@@ -141,7 +141,7 @@ export class Room extends DurableObject<Env> {
     return json({ version: next.version });
   }
 
-  private async connect(): Promise<Response> {
+  private async join(): Promise<Response> {
     if (this.ctx.getWebSockets().length >= MAX_SOCKETS) return json({ error: "room_full" }, 429);
     const pair = new WebSocketPair();
     this.ctx.acceptWebSocket(pair[1]);
