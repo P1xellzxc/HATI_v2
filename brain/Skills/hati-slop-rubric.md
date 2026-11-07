@@ -58,4 +58,6 @@ For your assignment, score every tell in the table below 0, 1 or 2 from fresh sc
 The owner approved exploring **manga acetate glass** within the rule above: translucent floating layers with screentone and ink edges only, never on scrolling content, never over gradient blobs. If the rubric or the lazy-user check flags it, revert it.
 
 ## Decision on clay
+**Final (owner):** manga clay only. Pure claymorphism was rejected; any whole-UI clay is a tell.
+
 The owner asked for claymorphism. It is allowed as **manga clay** (see [[hati-design]]): a clay body with inner light and shade, on pressable controls only, keeping the 2px ink outline and hard offset shadow, corners up to 10px on those controls only. Clay on reading surfaces, clay without the ink outline, pastel blobs, or rounded pills everywhere still score as tells; flag and scale back.
