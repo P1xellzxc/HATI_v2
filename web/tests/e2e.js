@@ -507,5 +507,26 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      ok(/Expense saved/.test(await toastText(P.pg)) && await P.pg.evaluate(n=>vol().expenses.filter(e=>e.desc==='Gone?').length===1 && !!localStorage.getItem(KEY),n0),'once storage works, the same Save stores the expense once'); }
    const errs=all.flatMap(x=>x.e); ok(errs.length===0,'no console errors in merge-copy / save-gone checks '+JSON.stringify(errs));
    for (const x of all) await x.c.close(); }
+ // R1-revise (design): long toasts wrap instead of cutting off; member chips 2 per row at 360; selected category stays in line
+ for (const w of [320,360]) { const c=await b.newContext({viewport:{width:w,height:780}}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message));
+   await pg.goto(URL);
+   for (const msg of ['SAVE_GONE','"Merged: adds 1 expense, 1 payment and 1 member. Updates the volume details."']) {
+     const r=await pg.evaluate(m=>{ toast(eval(m)); const t=document.querySelector('.toast'), bx=t.getBoundingClientRect(); return {sw:t.scrollWidth,cw:t.clientWidth,sh:t.scrollHeight,ch:t.clientHeight,l:bx.left,r:bx.right,vw:innerWidth}; },msg);
+     ok(r.sw<=r.cw && r.sh<=r.ch && r.l>=16-0.5 && r.r<=r.vw-16+0.5,`toast fits on screen at ${w}: ${msg.slice(0,30)} (scroll ${r.sw}/${r.cw}, box ${Math.round(r.l)}-${Math.round(r.r)})`); }
+   if (w===360) {
+     await pg.locator('.vol').first().click();
+     const rows=await pg.evaluate(()=>new Set([...document.querySelectorAll('.chips > button.chip:not(.add)')].map(x=>Math.round(x.getBoundingClientRect().top))).size);
+     const n=await pg.locator('.chips > button.chip:not(.add)').count();
+     ok(rows===Math.ceil(n/2),`member chips sit two to a row at 360 (${n} chips, ${rows} rows)`);
+     await pg.getByRole('button',{name:/Add expense/}).click();
+     const cat=await pg.evaluate(()=>{ const sel=document.querySelector('.cat[aria-pressed="true"]'), all=[...document.querySelectorAll('.cat')]; const t=sel.getBoundingClientRect().top; const row=all.filter(x=>x!==sel && Math.abs(x.getBoundingClientRect().top-t)<6); return {tr:getComputedStyle(sel).transform,d:row.map(x=>Math.abs(x.getBoundingClientRect().top-t))}; });
+     ok(cat.tr==='none' && cat.d.length>0 && cat.d.every(d=>d<0.5),`selected category is not shifted against its row (${cat.tr}; ${JSON.stringify(cat.d)})`); }
+   ok(e.length===0,`no page errors in R1-revise checks at ${w} `+JSON.stringify(e)); await c.close(); }
+ // R1-revise (code): iOS Safari shows :active (clay press) on a tap only with a touchstart listener; the shipped page must register one, passive
+ { const html=require('fs').readFileSync(require('path').join(process.cwd(),'index.html'),'utf8');
+   ok(/document\.addEventListener\("touchstart",[^;]*\{ passive: true \}\)/.test(html),'shipped page registers a passive touchstart listener so iOS shows the clay pressed state');
+   const c=await b.newContext({viewport:{width:360,height:780},hasTouch:true}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); await pg.goto(URL);
+   await pg.locator('.vol').first().tap(); const v=await pg.evaluate(()=>ui.view);
+   ok(v==='volume' && e.length===0,'a touch tap still opens a volume with the touch listener in place, no page errors ('+v+' '+JSON.stringify(e)+')'); await c.close(); }
  await b.close();
 })();

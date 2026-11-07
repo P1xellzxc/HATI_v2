@@ -122,7 +122,8 @@ section > .label, section > .row > .label { margin-top: 6px; }
   --clay: inset 2px 2px 3px var(--c-hi), inset -3px -3px 4px var(--c-lo), inset var(--c-in) var(--c-in) calc(2 * var(--c-in)) var(--c-lo), var(--c-x) var(--c-x) 0 var(--c-off);
   border-radius: var(--clay-r); box-shadow: var(--clay); transition: transform .08s, box-shadow .08s;
 }
-.btn:active, .ico:active, .cat:active, .vol:active, button.chip:not(.add):active, .cat[aria-pressed="true"] { --c-x: 0px; --c-in: 3px; transform: translate(3px, 3px); }
+.btn:active, .ico:active, .cat:active, .vol:active, button.chip:not(.add):active { --c-x: 0px; --c-in: 3px; transform: translate(3px, 3px); }
+.cat[aria-pressed="true"] { --c-x: 0px; --c-in: 3px; }
 .btn {
   min-height: 44px; border: 2px solid var(--rule);
   background: var(--panel); padding: 10px 14px;
@@ -166,7 +167,7 @@ section > .label, section > .row > .label { margin-top: 6px; }
 .amt.pos, .k.pos { color: var(--pos); } .amt.neg, .k.neg { color: var(--neg); }
 
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
-.chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; border-radius: var(--r); border: 1.5px solid var(--line); background: var(--panel); font-size: .9rem; font-weight: 600; }
+.chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 8px 4px 4px; border-radius: var(--r); border: 1.5px solid var(--line); background: var(--panel); font-size: .9rem; font-weight: 600; }
 .chip .num { font-weight: 500; }
 .chip.add { padding: 4px 14px; min-height: 44px; border: 2px dashed var(--line); background: transparent; }
 button.chip { min-height: 44px; text-align: left; }
@@ -278,11 +279,11 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 .filepick { flex-wrap: wrap; }
 .filepick:focus-within .btn { outline: 3px solid var(--fg); outline-offset: 2px; }
 .banner { font-size: .9rem; padding: 10px 12px; margin-top: 12px; }
-.toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 30; padding: 10px 14px; border-radius: var(--r); background: var(--fg); color: var(--bg); font-size: .9rem; font-weight: 700; max-width: min(90vw, 480px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 3px 3px 0 var(--accent); }
+.toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 30; padding: 10px 14px; border-radius: var(--r); background: var(--fg); color: var(--bg); font-size: .9rem; font-weight: 700; line-height: 1.35; text-align: left; width: max-content; max-width: min(calc(100vw - 32px), 480px); white-space: normal; overflow-wrap: anywhere; box-shadow: 3px 3px 0 var(--accent); }
 .toast.top { top: calc(12px + env(safe-area-inset-top, 0px)); bottom: auto; }
 /* Focus on clay: the ring joins the clay stack instead of replacing it */
 :is(.btn, .ico, .cat, .vol, button.chip:not(.add), .nav button[aria-current="page"]):focus-visible { box-shadow: var(--clay), 0 0 0 6px var(--accent); }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } .btn:active, .ico:active, .cat:active, .vol:active, button.chip:active, .cat[aria-pressed="true"] { transform: none !important; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } .btn:active, .ico:active, .cat:active, .vol:active, button.chip:active { transform: none !important; } }
 </style>
 
 <main id="app"></main>
@@ -1258,6 +1259,8 @@ function selectPalette(id) {
   const b = $(`[data-pal="${CSS.escape(id)}"]`); if (b) b.focus();
 }
 
+// iOS Safari applies :active to a tap only when a touch listener exists; without it the clay press never shows.
+document.addEventListener("touchstart", () => {}, { passive: true });
 document.addEventListener("click", async ev => {
   if (ev.target.classList && ev.target.classList.contains("scrim")) return closeSheet();
   const el = ev.target.closest("[data-act],[data-pal],[data-set]"); if (!el) return;
