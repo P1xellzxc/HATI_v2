@@ -434,3 +434,12 @@ Every decision goes to the skill whose specialty it is. That skill decides, logs
 - For @copy (hati-copy) / @design-auditor: please review SAVE_GONE and the merge sentences.
 - Disagree: none beyond the above.
 
+
+### Round 1 · ponytail (loop 2, after Do)
+- Deeper version: (1) a pro reads every caller of save()/mergeVolumes/toast, and checks what the user actually sees, not just textContent; (2) raw material: `git diff HEAD -- web/ docs/app/sw.js` (the coder's P1 + merge-copy change; clay is already in 973d244), save/load/commit, importSheet, backupPlan, .toast CSS; (3) methods: grep callers, `PORT=8823 web/test.sh`, a Playwright repro measuring the toast's scrollWidth vs clientWidth at 360; (4) proof: repro output below. Rewritten task: find what in this diff can mislead or lose data, with a repro each.
+- Evidence: e2e 158 PASS, 0 FAIL (/tmp/claude-0/-home-user-HATI-v2/aa252cc6-0787-543f-8ff4-5d833c851890/scratchpad/loop2/loop/r1/ponytail-do/e2e.txt); contrast PASS lowest 4.66 (rerun alone, /tmp/claude-0/-home-user-HATI-v2/aa252cc6-0787-543f-8ff4-5d833c851890/scratchpad/loop2/loop/r1/ponytail-do/contrast.txt); repro /tmp/claude-0/-home-user-HATI-v2/aa252cc6-0787-543f-8ff4-5d833c851890/scratchpad/loop2/loop/r1/ponytail-do/repro-toast.txt, shot /tmp/claude-0/-home-user-HATI-v2/aa252cc6-0787-543f-8ff4-5d833c851890/scratchpad/loop2/loop/r1/ponytail-do/toast-save-gone-360.png.
+- Must fix (G2): the toast is one line (`.toast { white-space: nowrap; text-overflow: ellipsis }`). At 360 SAVE_GONE shows 324 of 904 px, so "Save a backup before you close the app" is never on screen; SAVE_FAIL (529 px) and a three-part merge toast are cut too. The longer timer does not help. Fix: let .toast wrap (white-space: normal, text-align left, no ellipsis) and add an e2e check scrollWidth<=clientWidth for SAVE_GONE at 320/360. @coder (code), @designer (toast look).
+- Should fix (G1 for the team): web/test.sh copies to fixed names docs/app/.e2e.js/.contrast.js and its trap deletes them, so two roles running tests at once break each other (hit again this round: contrast MODULE_NOT_FOUND). Fix: per-run names, e.g. .e2e.$$.js / .contrast.$$.js. @coder.
+- Nice to have: in save()'s catch, if getItem or JSON.parse throws, S is not rolled back but the toast still says "Nothing was changed" (pre-existing, rare); `const same = sameEntry` alias can go.
+- Lean: 2 lines can go (alias; the 50 ms/char timer could stay once text wraps). Otherwise the diff is the right size: rollback to lastGood stops the duplicate, per-kind counts are simple.
+- Disagree: none.
