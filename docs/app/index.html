@@ -213,7 +213,7 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 .amount-box:focus-within { outline: 3px solid var(--fg); outline-offset: 2px; }
 .amount-box .row { gap: 6px; }
 .amount-box .cur { font: 400 1.6rem var(--font-disp); }
-.amount-box input { flex: 1; min-width: 0; font: 400 2.2rem/1.1 var(--font-disp); background: transparent; border: none; outline: none; padding: 0; }
+.amount-box input { flex: 1; min-width: 0; min-height: 44px; font: 400 2.2rem/1.1 var(--font-disp); background: transparent; border: none; outline: none; padding: 0; }
 .seg { display: flex; flex-wrap: wrap; border: 2px solid var(--rule); border-radius: var(--r); overflow: hidden; }
 .seg button { flex: 1 1 auto; min-height: 44px; border: none; background: var(--panel); padding: 8px 4px; font-size: .9rem; font-weight: 700; color: var(--fg); }
 .seg button + button { border-left: 2px solid var(--rule); }
@@ -342,13 +342,20 @@ const typeOf = id => TYPES.find(t => t[0] === id) || TYPES[3];
 const catOf = id => CATEGORIES.find(c => c[0] === id) || CATEGORIES[5];
 
 // ── Storage ───────────────────────────────────────────────
-let storageOk = true, recovered = false;
+let storageOk = true, recovered = false, setAsideRaw = null;
 const DEFAULT_SETTINGS = { palette: "classic", mode: "system", strategy: "simplify" };
 function load() {
   let raw;
   try { raw = localStorage.getItem(KEY); } catch (e) { storageOk = false; return null; }
   if (!raw) return null;
-  try { return normalize(JSON.parse(raw)); }
+  try {
+    const was = recovered; recovered = false;
+    const out = normalize(JSON.parse(raw)), dropped = recovered;
+    recovered = was || dropped;
+    // A volume normalize() dropped is kept as a copy, once per stored value, so the banner's "backup" is real.
+    if (dropped && raw !== setAsideRaw) { setAsideRaw = raw; try { localStorage.setItem("hati2.corrupt." + Date.now(), raw); } catch (_) {} }
+    return out;
+  }
   catch (e) {
     recovered = true;
     try { localStorage.setItem("hati2.corrupt." + Date.now(), raw); } catch (_) {}
@@ -949,6 +956,18 @@ function cleanVolume(x) {
     deleted: [...new Set((x.deleted || []).filter(i => okId(i)))]
   };
 }
+const sameEntry = (a, b) => JSON.stringify({ ...a, upd: 0 }) === JSON.stringify({ ...b, upd: 0 });
+// What Replace throws away: local entries and members the code lacks or has an older/different copy of,
+// and local deletions the code would bring back. `other` is true when only volume details differ.
+function replaceLoss(localRaw, codeRaw) {
+  const loc = cleanVolume(localRaw), inc = cleanVolume(codeRaw);
+  const lostIn = (a, b) => { const m = new Map(b.map(x => [x.id, x])); return a.filter(x => { const t = m.get(x.id); return !t || (x.upd >= t.upd && !sameEntry(x, t)); }).length; };
+  const codeIds = new Set([...inc.expenses, ...inc.settlements].map(x => x.id)), codeGone = new Set(inc.deleted);
+  const entries = lostIn(loc.expenses, inc.expenses) + lostIn(loc.settlements, inc.settlements) + loc.deleted.filter(id => codeIds.has(id) && !codeGone.has(id)).length;
+  const members = lostIn(loc.members, inc.members);
+  const other = loc.upd >= inc.upd && (loc.title !== inc.title || loc.type !== inc.type || loc.currency !== inc.currency);
+  return { entries, members, other };
+}
 // Combine two copies of one volume. Union by id; on the same id the newer `upd` wins (incoming wins ties);
 // a tombstone in `deleted` beats any edit. Keeps the local meId. Returns { vol, added, updated, removed } or { error }.
 function mergeVolumes(localRaw, incomingRaw) {
@@ -956,7 +975,7 @@ function mergeVolumes(localRaw, incomingRaw) {
   // Local tombstones go last so the cap below never evicts them for a flood of incoming ones.
   const locGone = new Set(loc.deleted), deleted = new Set([...inc.deleted.filter(id => !locGone.has(id)), ...loc.deleted]);
   let added = 0, updated = 0, removed = 0;
-  const same = (a, b) => JSON.stringify({ ...a, upd: 0 }) === JSON.stringify({ ...b, upd: 0 });
+  const same = sameEntry;
   const union = (a, b, isGone) => {
     const out = new Map(a.map(x => [x.id, x]));
     for (const x of b) {
@@ -1054,11 +1073,11 @@ function importSheet({ restore = false } = {}) {
           const meNow = local && local.meId;
           const who = `<div class="field" id="s-whobox"${local ? " hidden" : ""}><label for="s-who">Which member are you?</label><select id="s-who" class="input">${x.members.map(m => `<option value="${esc(m.id)}" ${m.id === meNow ? "selected" : ""}>${esc(m.name)}</option>`).join("")}</select></div>`;
           if (local) {
-            const r = mergeVolumes(local, x), inCode = new Set([...x.expenses, ...x.settlements].map(e => e.id));
-            const lost = [...local.expenses, ...local.settlements].filter(e => !inCode.has(e.id)).length;
+            const r = mergeVolumes(local, x), loss = replaceLoss(local, x);
+            const lostParts = [loss.entries && plural(loss.entries, "entry", "entries"), loss.members && plural(loss.members, "member")].filter(Boolean).join(" and ");
             const sums = {
               merge: r.error ? "These copies can't be combined. Choose Replace or Keep both." : (mergeSummary(r) ? mergeSummary(r) + "." : "Your copy already has everything in this code."),
-              replace: lost ? `Replaces your copy. ${plural(lost, "entry", "entries")} only on this phone will be lost.` : "Replaces your copy. Nothing on this phone will be lost.",
+              replace: "Replaces your copy. " + (lostParts ? `${lostParts} only on this phone will be lost.` : loss.other ? "Edits made only on this phone will be lost." : "Nothing on this phone will be lost."),
               copy: "Adds a second copy."
             };
             const say = mode => `You already have ${local.title}. ${sums[mode]}`;
