@@ -60,7 +60,7 @@ The owner approved exploring **manga acetate glass** within the rule above: tran
 ## Decision on clay
 **Final (owner):** manga clay only. Pure claymorphism was rejected; any whole-UI clay is a tell.
 
-The owner asked for claymorphism. It is allowed as **manga clay** (see [[hati-design]]): a clay body with inner light and shade, on pressable controls only, keeping the 2px ink outline and hard offset shadow, corners up to 10px on those controls only. Clay on reading surfaces, clay without the ink outline, pastel blobs, or rounded pills everywhere still score as tells; flag and scale back.
+The owner asked for claymorphism. It is allowed as **manga clay** (see [[hati-design]]): a clay body with inner light and shade, on pressable controls only, keeping the 2px ink outline and hard offset shadow, corners up to 10px on those controls only. The settled build rules (tokens, clay set vs flat set, every state) are in [[hati-design]] → "Manga clay" → "Build rules"; score against them. Clay on reading surfaces, clay without the ink outline, pastel blobs, or rounded pills everywhere still score as tells; flag and scale back.
 
 ## 20 more indicators (source: "20 AI Design Slop Indicators")
 
