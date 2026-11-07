@@ -29,6 +29,8 @@ As designer, run this check on your before and after screenshots for every chang
 
 ## Working together
 
+The brain is the Obsidian vault in `brain/`: start from `brain/HATI Brain.md`, read the Decisions in `brain/Team log.md`, and write your decisions and handoffs there.
+
 You are one of six roles on a team (planner, critic, designer, coder, code auditor, design auditor), and the team log at `brain/Team log.md` is how you talk to each other.
 - **Before you start:** read the Decisions section and the latest round's entries. Answer anything addressed to your role (for example `@designer`) in your work and your entry.
 - **When you finish:** append an entry under Rounds in the format the log shows: which goal criterion you moved, what you did or found, requests for specific roles, and anything you disagree with and why.
@@ -37,7 +39,7 @@ You are one of six roles on a team (planner, critic, designer, coder, code audit
 
 ## Skills you use
 
-Load these with the Skill tool when the work touches them (or read `.claude/skills/<name>/SKILL.md`): [[hati-shots]], [[hati-lazy-check]], [[hati-slop-rubric]], [[hati-copy]], [[hati-a11y]], [[hati-ios]], [[hati-pixel-perfectionist]], [[hati-ponytail]].
+Load these with the Skill tool when the work touches them (or read `.claude/skills/<name>/SKILL.md`): [[hati-shots]], [[hati-lazy-check]], [[hati-slop-rubric]], [[hati-copy]], [[hati-a11y]], [[hati-ios]], [[hati-pixel-perfectionist]], [[hati-ponytail]], [[hati-motion]].
 
 ## Decide, don't wait
 
@@ -52,6 +54,24 @@ Apply this prompt to the specific assignment you were just given (not to the ski
 > "I want a deeper version of this task, not a bigger one. Before rewriting it: (1) say what a top professional in this field would do here that I'm not asking for; (2) name the rawest material they would start from instead of what has already been digested for me; (3) name the specific methods and tools they would use; (4) say what, other than you or me, would show the result is right. Then rewrite my prompt to ask for exactly that."
 
 Write your four answers and the rewritten assignment (a few lines each) at the top of your entry in `brain/Team log.md`, then do the rewritten assignment. Deeper means more rigorous within your role and the goal, never more scope.
+
+## Manga clay (owner request: claymorphism)
+
+The owner asked for claymorphism. Do it the manga way, so it reads as hand-made, not as a template:
+
+- **Where:** only things you press: buttons, chips, the category grid, segmented controls, the volume spines and the nav's active tab. Reading surfaces (ledgers, the balance panel, forms, sheets) stay flat paper. Clay everywhere is the generic look this project avoids.
+- **How it looks:** a soft, slightly puffy body made of the palette colour (accent for primary, paper tint for the rest), with an inner light edge (top-left) and an inner shade (bottom-right). The 2px ink outline and the hard offset ink shadow stay; that's what keeps it manga. Corners may go up to 10px on clay controls only (3px everywhere else).
+- **Pressed state:** the body squashes. The inner shade grows, the offset shadow drops to 0, and the control moves 2–3px down. Honor `prefers-reduced-motion`.
+- **Dark mode:** lower the inner highlight a lot (about 10% light) so it doesn't glow; keep the ink-coloured outline readable.
+- **Tokens, not one-offs:** define `--clay-hi`, `--clay-lo`, `--clay-r` and a `.clay` class (or the existing control classes), derived from the palette, so all 13 Wada themes get it automatically.
+- **Build rules (settled loop 2 round 1, in `web/src/app.src.html`):**
+  - Tokens in `:root` and both dark blocks: `--clay-r: 8px`; light `--clay-hi: color-mix(paper 70%, transparent)`, `--clay-lo: color-mix(ink 16%, transparent)`; dark `--clay-hi: color-mix(--fg 10%, transparent)` (no glow), `--clay-lo: color-mix(--bg 60%, transparent)`. No per-palette values.
+  - One shadow stack per control, built from per-element vars: `--clay: inset 2px 2px 3px hi, inset -3px -3px 4px lo, inset var(--c-in) var(--c-in) 2·c-in lo, var(--c-x) var(--c-x) 0 var(--c-off)`. Never a background gradient, never an outer blur.
+  - Clay set: `.btn` (primary, default, danger), `.ico`, `.cat`, `.vol` (inset on the `.spine`, `overflow: hidden` clips it to the radius), `button.chip:not(.add)` (2px `--rule` border), `.nav [aria-current]` (raised, it is a place, not a toggle), `.seg` (radius + offset on the container, inset on each segment).
+  - Flat set (3px `--r`, no inset): `.btn.quiet`, `.btn.text`, `.chip.add`, span `.chip`, `.logo` (a mark, not pressable), `.pal` (the swatch must show the plate's own paper; the selected tile keeps its raised offset), `.panel`, `.ledger`, `.hero`, `.share-sum`, `.sheet` (6px top), `.input`, `.amount-box`, toast.
+  - States: rest = offset 3px. Pressed (`:active`, and `.cat[aria-pressed=true]`, which is pushed in) = `--c-x: 0`, `--c-in: 3px`, `translate(3px, 3px)`. Selected `.seg` segment = inverted fill, inner shade only (no inner light). Danger = offset in `--err`, shade mixed from `--err`. Disabled = `box-shadow: none`, opacity .55. Focus = `box-shadow: var(--clay), 0 0 0 6px var(--accent)` plus the 3px outline; `.seg` segments use an inset outline (`currentColor`, offset -7px) because the container clips. Reduced motion = no translate, no transition, shading still changes.
+  - Tests: e2e block "R1-clay" in `web/tests/e2e.js` checks all of this in 13 palettes × light/dark; fill colours are unchanged, so `contrast.js` results carry over.
+- **Checks:** contrast of text on clay ≥ 4.5:1 in every palette and both themes (`web/tests/contrast.js`). [[hati-pixel-perfectionist]] checks that clay controls in a row share height and baseline. [[hati-slop-rubric]] scores the "big rounded corners and pills" and "soft gradient blobs" tells. If either scores above 0 because of clay, scale it back.
 
 ## Deeper version of this task
 

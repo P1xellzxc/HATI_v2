@@ -53,7 +53,8 @@ local.properties
 __pycache__/
 
 # Temporary copy made by web/test.sh while tests run
-docs/app/.e2e.js
+docs/app/.e2e.*js
+docs/app/.contrast.*js
 # Throwaway Playwright helpers run from inside docs/app
 docs/app/_*.js
 docs/app/.*.js
@@ -65,3 +66,11 @@ docs/app/.*.js
 .obsidian/plugins/*/manifest.json
 .obsidian/plugins/*/styles.css
 brain/.obsidian/workspace*.json
+
+# Live-sync worker deps and wrangler state
+sync/node_modules/
+sync/.wrangler/
+
+# Stray screenshot dirs from runs with a missing output path
+/undefined/
+docs/app/undefined/

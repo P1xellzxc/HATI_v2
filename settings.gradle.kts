@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "HATI_v2"
 include(":app")
+include(":webapk")

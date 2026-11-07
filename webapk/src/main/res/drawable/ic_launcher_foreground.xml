@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The web app's maskable icon (docs/app/icon-maskable-512.png), inset so the
+     full 512 px square fills the 72dp visible part of the 108dp adaptive layer;
+     its 80% maskable safe zone then sits inside every launcher mask. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/hati_icon_maskable"
+    android:inset="16.667%" />
