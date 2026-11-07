@@ -206,7 +206,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    const meA=await A.pg.evaluate(()=>vol().meId);
    await check(A.pg,codeB);
    ok(await A.pg.locator('#s-mode').inputValue()==='merge' && !(await A.pg.locator('#s-who').isVisible()),'existing volume: Merge is the default and the member picker is hidden');
-   const sum=await A.pg.locator('#s-sum').innerText(); ok(/Adds \d+ · updates \d+ · removes \d+/.test(sum),'merge summary shown before import: '+sum);
+   const sum=await A.pg.locator('#s-sum').innerText(); ok(/ Adds \d+ (expense|payment|member)s?.*\. Updates .*\. Removes .*\.$/.test(sum) && !/·/.test(sum),'merge summary names what it adds, updates and removes: '+sum);
    await doImport(A.pg);
    let d=await descs(A.pg);
    ok(d.includes('FromA')&&d.includes('FromB')&&!d.includes('Ramen at Ichiran'),'merge keeps FromA and FromB and drops the expense B deleted: '+d.join('|'));
@@ -216,7 +216,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(await A.pg.evaluate(()=>vol().members.some(m=>m.name==='Zed') && validVolume(vol())),'Zed comes back because B used Zed; volume is valid');
    ok(await A.pg.evaluate(m=>vol().meId===m,meA),'merge keeps A\'s own member');
    ok(await zs(A.pg),'balances sum to zero after merge');
-   await A.pg.waitForTimeout(100); const st=await A.pg.evaluate(()=>$('#status').textContent); ok(/^Merged: adds \d+ · updates \d+ · removes \d+$/.test(st),'after merge the message says what changed: '+st);
+   await A.pg.waitForTimeout(100); const st=await A.pg.evaluate(()=>$('#status').textContent); ok(/^Merged: adds \d+ (expense|payment|member)s?.*\. Updates .*\. Removes .*\.$/.test(st),'after merge the message says what changed: '+st);
    await A.pg.reload(); d=await descs(A.pg);
    ok(d.includes('FromA')&&d.includes('FromB')&&(await A.pg.evaluate(()=>vol().deleted.length))>=3,'after reload both entries and the tombstones remain');
    await check(A.pg,codeA0); await doImport(A.pg); d=await descs(A.pg);
@@ -474,5 +474,38 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    const m=await pg.evaluate(()=>{ const h=$('#iosHint'), ok=h&&h.querySelector('[data-act=dismissIosHint]'); return h&&{h:h.getBoundingClientRect().height,okH:ok.getBoundingClientRect().height,okW:ok.getBoundingClientRect().width,vol:$('.vol').getBoundingClientRect().top+scrollY}; });
    ok(m && m.h<=120 && m.okH>=44 && m.okW>=44 && m.vol<=290,'iOS hint at 360: ≤120px tall, OK is a 44px target, first volume starts by 290px '+JSON.stringify(m));
    await c.close(); }
+ // R1-merge-copy / R1-p1 (code): merge summary names its nouns; a failed save with nothing stored does not claim "Nothing was changed"
+ { const fresh=async()=>{ const c=await b.newContext({viewport:{width:360,height:780}}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.goto(URL); return {c,pg,e}; };
+   const importCode=async (pg,code)=>{ await pg.evaluate(()=>go('hub')); await pg.getByRole('button',{name:'Import'}).click(); await pg.fill('#s-paste',code); await pg.locator('#s-go').click(); await pg.waitForTimeout(600); };
+   const toastText=pg=>pg.evaluate(()=>{const t=document.querySelector('.toast'); return t?t.textContent:'';});
+   const all=[];
+   { const M=await fresh(); all.push(M);
+     const code=await M.pg.evaluate(()=>{ const v=JSON.parse(JSON.stringify(S.volumes[0])); v.expenses.push({id:'mx1',desc:'MergeOne',amount:300,paidBy:v.meId,splits:{[v.meId]:300},inputs:{},splitType:'exact',category:'food',date:today(),upd:Date.now()}); return JSON.stringify({app:'hati2-mock',v:1,volume:v}); });
+     await importCode(M.pg,code); const sum=await M.pg.locator('#s-sum').innerText();
+     ok(/ Adds 1 expense\.$/.test(sum),'merge summary: one new expense reads "Adds 1 expense." ('+sum+')');
+     await M.pg.locator('#s-go').click(); await M.pg.waitForTimeout(100);
+     const st=await M.pg.evaluate(()=>$('#status').textContent); ok(/^Merged: adds 1 expense\.$/.test(st),'merge toast: "Merged: adds 1 expense." ('+st+')');
+     const r=await M.pg.evaluate(()=>{ const v=S.volumes[0], inc=JSON.parse(JSON.stringify(v)), t=Date.now()+50;
+       const member=JSON.parse(JSON.stringify(v)); member.members.push({id:'mm1',name:'Newbie',upd:t});
+       const two=JSON.parse(JSON.stringify(v)); two.expenses.forEach((e,i)=>{ if(i<2){ e.desc+=' edited'; e.upd=t; } }); two.title='Renamed'; two.upd=t;
+       const mix=JSON.parse(JSON.stringify(member)); mix.expenses.push({id:'mx2',desc:'Mixed',amount:200,paidBy:v.meId,splits:{[v.meId]:200},inputs:{},splitType:'exact',category:'food',date:today(),upd:t}); mix.settlements.push({id:'ms2',from:v.members[1].id,to:v.meId,amount:100,date:today(),upd:t});
+       return [member,two,mix,inc].map(x=>mergeSummary(mergeVolumes(v,x))); });
+     ok(r[0]==='Adds 1 member.','a member-only merge reads "Adds 1 member." ('+r[0]+')');
+     ok(r[1]==='Updates 2 expenses and the volume details.','plural and details: "Updates 2 expenses and the volume details." ('+r[1]+')');
+     ok(r[2]==='Adds 1 expense, 1 payment and 1 member.','three kinds: "Adds 1 expense, 1 payment and 1 member." ('+r[2]+')');
+     ok(r[3]==='','an identical copy has an empty summary ("Already up to date")'); }
+   { const P=await fresh(); all.push(P);
+     // storage emptied elsewhere (another tab, eviction), then every write throws
+     await P.pg.evaluate(()=>{ localStorage.removeItem(KEY); window.__set=Storage.prototype.setItem; Storage.prototype.setItem=function(){ throw new DOMException('full','QuotaExceededError'); }; ui.volId=S.volumes[0].id; go('volume'); });
+     const n0=await P.pg.evaluate(()=>vol().expenses.length);
+     await P.pg.getByRole('button',{name:/Add expense/}).click(); await P.pg.fill('#f-amount','7'); await P.pg.fill('#f-desc','Gone?'); await P.pg.locator('#expForm button[type=submit]').click();
+     const t1=await toastText(P.pg);
+     ok(!/Nothing was changed/.test(t1) && /Couldn't save/.test(t1) && /not made/.test(t1) && /backup/.test(t1),'nothing stored + write fails: the toast says the change was not made and asks for a backup, not "Nothing was changed" ('+t1+')');
+     await P.pg.locator('#expForm button[type=submit]').click(); const t2=await toastText(P.pg);
+     ok(!/Nothing was changed/.test(t2) && /not made/.test(t2) && await P.pg.evaluate(n=>vol().expenses.length===n && !vol().expenses.some(e=>e.desc==='Gone?'),n0),'a second try says the same and never adds the expense twice ('+t2+')');
+     await P.pg.evaluate(()=>{ Storage.prototype.setItem=window.__set; }); await P.pg.locator('#expForm button[type=submit]').click();
+     ok(/Expense saved/.test(await toastText(P.pg)) && await P.pg.evaluate(n=>vol().expenses.filter(e=>e.desc==='Gone?').length===1 && !!localStorage.getItem(KEY),n0),'once storage works, the same Save stores the expense once'); }
+   const errs=all.flatMap(x=>x.e); ok(errs.length===0,'no console errors in merge-copy / save-gone checks '+JSON.stringify(errs));
+   for (const x of all) await x.c.close(); }
  await b.close();
 })();

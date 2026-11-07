@@ -344,6 +344,8 @@ const catOf = id => CATEGORIES.find(c => c[0] === id) || CATEGORIES[5];
 
 // ── Storage ───────────────────────────────────────────────
 let storageOk = true, recovered = false, setAsideRaw = null;
+// lastGood: the last JSON this page read from or wrote to storage. saveGone: the last failed save found nothing stored.
+let lastGood = null, saveGone = false;
 const DEFAULT_SETTINGS = { palette: "classic", mode: "system", strategy: "simplify" };
 function load() {
   let raw;
@@ -352,6 +354,7 @@ function load() {
   try {
     const was = recovered; recovered = false;
     const out = normalize(JSON.parse(raw)), dropped = recovered;
+    lastGood = raw;
     recovered = was || dropped;
     // A volume normalize() dropped is kept as a copy, once per stored value, so the banner's "backup" is real.
     if (dropped && raw !== setAsideRaw) { setAsideRaw = raw; try { localStorage.setItem("hati2.corrupt." + Date.now(), raw); } catch (_) {} }
@@ -377,24 +380,29 @@ function normalize(d) {
 }
 let persistAsked = false;
 // Writes S. If the write fails (storage full), S goes back to what is stored, so the screen never shows
-// a change that a reload would lose. With storage off from the start, changes live in memory (see banner()).
+// a change that a reload would lose. If nothing is stored any more (cleared elsewhere, evicted), S goes back
+// to the last good copy and saveGone tells commit() to say the data is not kept. With storage off from the
+// start, changes live in memory (see banner()).
 function save() {
   if (!storageOk) return true;
   try {
-    localStorage.setItem(KEY, JSON.stringify(S));
+    const json = JSON.stringify(S);
+    localStorage.setItem(KEY, json); lastGood = json;
     if (!persistAsked) { persistAsked = true; try { const p = navigator.storage && navigator.storage.persist && navigator.storage.persist(); if (p && p.catch) p.catch(() => {}); } catch (_) {} }
     return true;
   } catch (e) {
-    try { const raw = localStorage.getItem(KEY); if (raw) S = normalize(JSON.parse(raw)); } catch (_) {}
+    saveGone = false;
+    try { const raw = localStorage.getItem(KEY); saveGone = !raw; if (raw || lastGood) S = normalize(JSON.parse(raw || lastGood)); } catch (_) {}
     return false;
   }
 }
 const SAVE_FAIL = "Couldn't save on this device. Storage may be full. Nothing was changed.";
+const SAVE_GONE = "Couldn't save on this device. This change was not made. Save a backup before you close the app, or your volumes will be lost.";
 // save() for an action: on failure close any sheet, redraw from the stored data and say so. Callers stop on false.
 function commit() {
   if (save()) return true;
   if (sheetOpen()) dropSheet();
-  render(); toast(SAVE_FAIL); return false;
+  render(); toast(saveGone ? SAVE_GONE : SAVE_FAIL); return false;
 }
 
 function exampleVolume() {
@@ -474,7 +482,7 @@ const debts = v => S.settings.strategy === "pairwise" ? pairwise(v) : simplify(b
 let S = load();
 if (!S) {
   S = { settings: { ...DEFAULT_SETTINGS }, volumes: recovered ? [] : [exampleVolume()] };
-  if (storageOk) try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { storageOk = false; }
+  if (storageOk) try { lastGood = JSON.stringify(S); localStorage.setItem(KEY, lastGood); } catch (e) { storageOk = false; }
 }
 const ui = { view: "hub", volId: null, form: null, from: "volume", histLimit: 100 };
 const vol = () => S.volumes.find(v => v.id === ui.volId);
@@ -971,40 +979,47 @@ function replaceLoss(localRaw, codeRaw) {
   return { entries, members, other };
 }
 // Combine two copies of one volume. Union by id; on the same id the newer `upd` wins (incoming wins ties);
-// a tombstone in `deleted` beats any edit. Keeps the local meId. Returns { vol, added, updated, removed } or { error }.
+// a tombstone in `deleted` beats any edit. Keeps the local meId. Returns { vol, added, updated, removed } or { error };
+// each count is per kind, e.g. added = { expense: 1, payment: 0, member: 2 }, and updated.details is 1 when the title, type or currency changed.
 function mergeVolumes(localRaw, incomingRaw) {
   const loc = cleanVolume(localRaw), inc = cleanVolume(incomingRaw);
   // Local tombstones go last so the cap below never evicts them for a flood of incoming ones.
   const locGone = new Set(loc.deleted), deleted = new Set([...inc.deleted.filter(id => !locGone.has(id)), ...loc.deleted]);
-  let added = 0, updated = 0, removed = 0;
+  const added = { expense: 0, payment: 0, member: 0 }, updated = { ...added, details: 0 }, removed = { ...added };
   const same = sameEntry;
-  const union = (a, b, isGone) => {
+  const union = (a, b, isGone, kind) => {
     const out = new Map(a.map(x => [x.id, x]));
     for (const x of b) {
       const mine = out.get(x.id);
-      if (!mine) { if (!isGone(x.id)) { out.set(x.id, x); added++; } }
-      else if (x.upd >= mine.upd && !same(x, mine)) { out.set(x.id, x); if (!isGone(x.id)) updated++; }
+      if (!mine) { if (!isGone(x.id)) { out.set(x.id, x); added[kind]++; } }
+      else if (x.upd >= mine.upd && !same(x, mine)) { out.set(x.id, x); if (!isGone(x.id)) updated[kind]++; }
     }
-    for (const id of [...out.keys()]) if (isGone(id)) { out.delete(id); if (a.some(x => x.id === id)) removed++; }
+    for (const id of [...out.keys()]) if (isGone(id)) { out.delete(id); if (a.some(x => x.id === id)) removed[kind]++; }
     return [...out.values()];
   };
-  const expenses = union(loc.expenses, inc.expenses, id => deleted.has(id));
-  const settlements = union(loc.settlements, inc.settlements, id => deleted.has(id));
+  const expenses = union(loc.expenses, inc.expenses, id => deleted.has(id), "expense");
+  const settlements = union(loc.settlements, inc.settlements, id => deleted.has(id), "payment");
   const used = new Set([loc.meId]);
   expenses.forEach(e => { used.add(e.paidBy); Object.keys(e.splits).forEach(k => used.add(k)); Object.keys(e.inputs).forEach(k => used.add(k)); });
   settlements.forEach(s => { used.add(s.from); used.add(s.to); });
   used.forEach(id => deleted.delete(id)); // a member still in use comes back, and their tombstone is dropped
-  const members = union(loc.members, inc.members, id => deleted.has(id));
+  const members = union(loc.members, inc.members, id => deleted.has(id), "member");
   const out = { ...loc, members, expenses, settlements, deleted: [...deleted].slice(-MAX_DELETED) };
   if (inc.upd >= loc.upd && (inc.title !== loc.title || inc.type !== loc.type || inc.currency !== loc.currency)) {
-    Object.assign(out, { title: inc.title, type: inc.type, currency: inc.currency, upd: inc.upd }); updated++;
+    Object.assign(out, { title: inc.title, type: inc.type, currency: inc.currency, upd: inc.upd }); updated.details = 1;
   }
   if (!validVolume(out)) return { error: "These copies couldn't be combined. Nothing was changed." };
   return { vol: out, added, updated, removed };
 }
+// "Adds 1 expense and 2 members. Updates the volume details." One sentence per verb; "" when nothing changes.
 const mergeSummary = r => {
-  const parts = [r.added && `adds ${r.added}`, r.updated && `updates ${r.updated}`, r.removed && `removes ${r.removed}`].filter(Boolean).join(" · ");
-  return parts ? parts[0].toUpperCase() + parts.slice(1) : "";
+  const list = xs => xs.length > 1 ? xs.slice(0, -1).join(", ") + " and " + xs[xs.length - 1] : xs[0];
+  const say = (verb, c) => {
+    const xs = ["expense", "payment", "member"].filter(k => c[k]).map(k => plural(c[k], k));
+    if (c.details) xs.push("the volume details");
+    return xs.length ? `${verb} ${list(xs)}.` : "";
+  };
+  return [say("Adds", r.added), say("Updates", r.updated), say("Removes", r.removed)].filter(Boolean).join(" ");
 };
 // Accepts a share code or a backup file, even with chat text around it.
 function parseCode(text) {
@@ -1078,7 +1093,7 @@ function importSheet({ restore = false } = {}) {
             const r = mergeVolumes(local, x), loss = replaceLoss(local, x);
             const lostParts = [loss.entries && plural(loss.entries, "entry", "entries"), loss.members && plural(loss.members, "member")].filter(Boolean).join(" and ");
             const sums = {
-              merge: r.error ? "These copies can't be combined. Choose Replace or Keep both." : (mergeSummary(r) ? mergeSummary(r) + "." : "Your copy already has everything in this code."),
+              merge: r.error ? "These copies can't be combined. Choose Replace or Keep both." : (mergeSummary(r) || "Your copy already has everything in this code."),
               replace: "Replaces your copy. " + (lostParts ? `${lostParts} only on this phone will be lost.` : loss.other ? "Edits made only on this phone will be lost." : "Nothing on this phone will be lost."),
               copy: "Adds a second copy."
             };
@@ -1096,7 +1111,7 @@ function importSheet({ restore = false } = {}) {
         for (const s of plan.steps) {
           if (s.x) S.volumes.push(s.x); else S.volumes = S.volumes.map(v => v.id === s.r.vol.id ? s.r.vol : v);
         }
-        if (!save()) return sheetMsg("Couldn't save on this device. Nothing was changed.");
+        if (!save()) return sheetMsg(saveGone ? SAVE_GONE : "Couldn't save on this device. Nothing was changed.");
         go("hub", { replace: true }); toast(`Backup restored: ${plural(plan.steps.length, "volume")}`); return;
       }
       const mode = $("#s-mode") ? $("#s-mode").value : "new";
@@ -1104,15 +1119,15 @@ function importSheet({ restore = false } = {}) {
         const r = mergeVolumes(S.volumes.find(v => v.id === p.volume.id), p.volume);
         if (r.error) return sheetMsg(r.error);
         S.volumes = S.volumes.map(v => v.id === r.vol.id ? r.vol : v);
-        if (!save()) return sheetMsg("Couldn't save on this device. Nothing was changed.");
-        closeSheet(); ui.volId = r.vol.id; go("volume"); toast(mergeSummary(r) ? `Merged: ${mergeSummary(r).toLowerCase()}` : "Already up to date"); return;
+        if (!save()) return sheetMsg(saveGone ? SAVE_GONE : "Couldn't save on this device. Nothing was changed.");
+        closeSheet(); ui.volId = r.vol.id; go("volume"); const said = mergeSummary(r); toast(said ? `Merged: ${said[0].toLowerCase() + said.slice(1)}` : "Already up to date"); return;
       }
       const nv = cleanVolume(p.volume), who = $("#s-who").value;
       if (!nv.members.some(m => m.id === who)) return sheetMsg("Choose which member you are.");
       nv.meId = who;
       if (mode === "replace") S.volumes = S.volumes.map(v => v.id === nv.id ? nv : v);
       else { if (mode === "copy") { nv.id = uid(); nv.deleted = []; } S.volumes.unshift(nv); }
-      if (!save()) return sheetMsg("Couldn't save on this device. Nothing was changed.");
+      if (!save()) return sheetMsg(saveGone ? SAVE_GONE : "Couldn't save on this device. Nothing was changed.");
       closeSheet(); ui.volId = nv.id; go("volume"); toast("Volume imported");
     });
   $("#s-paste").addEventListener("input", () => { $("#s-pick").innerHTML = ""; $("#s-go").textContent = "Check code"; $("#s-help").innerHTML = help; sheetMsg(""); });
@@ -1195,7 +1210,7 @@ let toastTimer;
 function toast(t) {
   document.querySelectorAll(".toast").forEach(n => n.remove());
   const n = document.createElement("div"); n.className = "toast" + (sheetOpen() ? " top" : ""); n.setAttribute("aria-hidden", "true"); n.textContent = t;
-  document.body.appendChild(n); clearTimeout(toastTimer); toastTimer = setTimeout(() => n.remove(), 2400);
+  document.body.appendChild(n); clearTimeout(toastTimer); toastTimer = setTimeout(() => n.remove(), Math.max(2400, t.length * 50)); // long warnings stay long enough to read
   const live = $("#status"); live.textContent = ""; setTimeout(() => { live.textContent = t; }, 30);
 }
 function bindExpenseForm() {
