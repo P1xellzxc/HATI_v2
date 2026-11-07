@@ -1,0 +1,21 @@
+{
+  "userIgnoreFilters": [
+    "app/",
+    "docs/app/",
+    "web/",
+    "tools/",
+    "gradle/",
+    ".github/",
+    ".claude/",
+    "build/",
+    "gradlew",
+    "gradlew.bat"
+  ],
+  "newFileLocation": "folder",
+  "newFileFolderPath": "brain",
+  "attachmentFolderPath": "brain/attachments",
+  "newLinkFormat": "shortest",
+  "useMarkdownLinks": false,
+  "showFrontmatter": false,
+  "alwaysUpdateLinks": true
+}
