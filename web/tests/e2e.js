@@ -469,6 +469,29 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      await pg.evaluate(()=>{ S.volumes.shift(); }); }
    ok(e.length===0,'no console errors in clay checks '+JSON.stringify(e));
    await c.close(); }
+ // R2-4 (design): quiet buttons share the clay corner, no resize grip on the share code, one-line hub tagline, selected .seg shade readable in dark
+ { const c=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780},deviceScaleFactor:1}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); await pg.goto(URL);
+   const ids=await pg.evaluate(()=>PALETTES.map(x=>x.id)); const bad=[], segBad=[];
+   const lum=([r,g,b])=>{const f=c=>{c/=255;return c<=.03928?c/12.92:((c+.055)/1.055)**2.4};return .2126*f(r)+.7152*f(g)+.0722*f(b)}; const cr=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05)};
+   for (const id of ids) for (const mode of ['light','dark']) {
+     const r=await pg.evaluate(([id,mode])=>{ S.settings.palette=id; S.settings.mode=mode; applyTheme(); dropSheet(); go('hub'); const q=getComputedStyle($('.btn.quiet')), qr=q.borderTopLeftRadius, qs=q.boxShadow; ui.volId=S.volumes[0].id; go('volume'); return [qr,getComputedStyle($('.btn.primary')).borderTopLeftRadius,qs]; },[id,mode]);
+     if (r[0]!==r[1] || r[2]!=='none') bad.push(`${id}/${mode} quiet r${r[0]} vs primary r${r[1]} ${r[2]}`);
+     if (mode==='dark') {
+       await pg.evaluate(()=>{ ui.view='volume'; openExpense(null); }); const el=pg.locator('.seg button[aria-pressed="true"]').first(); await el.scrollIntoViewIfNeeded(); await pg.waitForTimeout(120);
+       const box=await el.boundingBox(); const buf=await pg.screenshot({clip:box}); const fg=(await el.evaluate(x=>getComputedStyle(x).color)).match(/\d+/g).slice(0,3).map(Number);
+       const px=await pg.evaluate(async b64=>{ const im=new Image(); im.src='data:image/png;base64,'+b64; await im.decode(); const cv=document.createElement('canvas'); cv.width=im.width; cv.height=im.height; const x=cv.getContext('2d'); x.drawImage(im,0,0); const d=x.getImageData(0,0,cv.width,cv.height).data; const at=(i,j)=>{const k=(j*cv.width+i)*4; return [d[k],d[k+1],d[k+2]];}; let min=at(cv.width-6,cv.height-6); const fill=min; for(let j=0;j<cv.height;j++) for(let i=0;i<cv.width;i++){ if(i>=12&&j>=12) continue; const v=at(i,j); if(v[0]+v[1]+v[2]<min[0]+min[1]+min[2]) min=v; } return {fill,min}; },buf.toString('base64'));
+       if (cr(fg,px.min)<4.5 || cr(px.fill,px.min)>2.5) segBad.push(`${id} text/shade ${cr(fg,px.min).toFixed(2)} fill/shade ${cr(px.fill,px.min).toFixed(2)}`);
+       await pg.evaluate(()=>dropSheet()); } }
+   ok(bad.length===0,'R2-4: .btn.quiet has the same corner as .btn.primary and stays flat, 13 palettes x light/dark '+JSON.stringify(bad.slice(0,4)));
+   ok(segBad.length===0,'R2-4: selected .seg in dark keeps text ≥4.5:1 against its darkest shade pixel and the shade stays light (≤2.5:1 vs the fill), 13 palettes '+JSON.stringify(segBad.slice(0,4)));
+   await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); shareSheet(); });
+   ok(await pg.evaluate(()=>getComputedStyle($('#s-code')).resize)==='none','R2-4: the share code box has no resize grip');
+   await pg.evaluate(()=>dropSheet());
+   for (const w of [360,390]) { await pg.setViewportSize({width:w,height:780}); await pg.evaluate(()=>go('hub'));
+     const t=await pg.evaluate(()=>{ const el=$('.tagline'); return {lines:Math.round(el.getBoundingClientRect().height/parseFloat(getComputedStyle(el).lineHeight)),text:el.textContent,gloss:/trip or group/.test($('[data-act=newVolume]').textContent)}; });
+     ok(t.lines===1 && t.gloss,`R2-4: hub tagline is one line at ${w} and "New volume" still says what a volume is ${JSON.stringify(t)}`); }
+   ok(e.length===0,'no page errors in R2-4 checks '+JSON.stringify(e));
+   await c.close(); }
  // R1-ioshint: short hint with OK inline (iPhone Safari at 360)
  { const c=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780}}); const pg=await c.newPage(); await pg.goto(URL);
    const m=await pg.evaluate(()=>{ const h=$('#iosHint'), ok=h&&h.querySelector('[data-act=dismissIosHint]'); return h&&{h:h.getBoundingClientRect().height,okH:ok.getBoundingClientRect().height,okW:ok.getBoundingClientRect().width,vol:$('.vol').getBoundingClientRect().top+scrollY}; });
