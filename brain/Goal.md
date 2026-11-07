@@ -12,6 +12,7 @@ An app Android and iOS users can install from a link and use for real group expe
 2. Code audit: zero blocker and zero annoying findings that reproduce.
 3. Design audit: every AI-slop tell in the rubric scores 0, both themes, at 360 and 390 px.
 4. Lazy-user check passes on every screen (see the [[hati-design-audit]] skill): understood in 3 seconds, goal in one tap, nothing unfinished.
+5. Invites: a volume is shared by a link or the same link as a QR code; the other person (Android or iPhone, no login) opens it and joins the volume, picking who they are. Verified by a two-phone e2e scenario.
 
 
 ## Invariants
