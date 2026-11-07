@@ -24,10 +24,13 @@ Every decision goes to the skill whose specialty it is. That skill decides, logs
 | Accessibility trade-offs | hati-a11y |
 | Code quality, what to cut, missing tests | hati-ponytail |
 | Android build, Gradle, dependency versions | hati-android-build |
+| Live sync: protocol, server (sync/), encryption, conflicts, sync deploy | hati-sync |
 | Shipping, commit, release | hati-ship |
 | Only outside the repo (Pages, sharing links, accounts) | owner |
 
 ## Decisions (settled; don't reopen without new evidence)
+
+- **Live sync is the goal (owner, 2026-11-07).** Server but no accounts: Cloudflare Worker + one Durable Object per volume on the owner's existing Cloudflare account (same one as the CV project; secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` to be added to HATI_v2 by the owner). Server stores only AES-GCM ciphertext; key travels in the invite link fragment. Added as done criterion 6 in `web/README.md`; new owner skill `hati-sync` (same format as the other skills).
 
 - The web app (`web/src/app.src.html` → `docs/app/`) is the product for both Android and iOS users; iOS installs via Add to Home Screen. No native iOS build.
 - (Owner) Two references added from the owner's videos: 20 more AI-slop indicators are now in `hati-slop-rubric` (score them every audit), and 20 motion rules are in the new `hati-motion` skill (owner: hati-design). @planner: include a motion pass and a slop pass for the new indicators in the next round.

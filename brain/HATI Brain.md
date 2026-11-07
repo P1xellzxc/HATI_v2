@@ -18,7 +18,7 @@ Everything the HATI² team knows and has decided, as linked notes. This vault is
 - [[Team log]]: per-round handoffs between roles
 
 ## Team
-- [[Skills index]] (19 skills)
+- [[Skills index]] (20 skills)
 - Roles: [[hati-plan]] · [[hati-design]] · [[hati-code]] · [[hati-code-audit]] · [[hati-design-audit]] · [[hati-goal-judge]]
 - Specialists: [[hati-ios]] · [[hati-scenarios]] · [[hati-money-parity]] · [[hati-copy]] · [[hati-a11y]] · [[hati-pixel-perfectionist]] · [[hati-ponytail]] · [[hati-android-build]] · [[hati-ship]]
 - Shared checks: [[hati-lazy-check]] · [[hati-slop-rubric]] · [[hati-shots]]

@@ -24,5 +24,6 @@ Every role and shared tool the team loop uses. Each skill starts with the goal, 
 - [[hati-ship]]: Ship a HATI² round safely: run the tests, rebuild deterministically, make sure installed copies update, commit with the house format, push with retries, and republish the preview. Use for the ship step of each round.
 - [[hati-shots]]: Take the standard HATI² screenshot set (every view, sheet and key state at 360/390 px, light/dark, three palettes) with one command, so every role judges the same evidence. Use before any design decision, design audit, plan, or before/after comparison.
 - [[hati-slop-rubric]]: Score the rendered HATI² web app against the AI-slop rubric (0 absent, 1 partly, 2 present per tell) with screenshot evidence, and know the manga-native alternatives. Use in every design step and design audit.
+- [[hati-sync]]: Own HATI² live sync without accounts (Cloudflare Worker + one Durable Object per volume, end-to-end encrypted blob, key in the invite link fragment): protocol, server in sync/, client sync in the web app, offline queue, conflict merge and the deploy. Use when building, changing, auditing or deploying anything that moves a volume between phones.
 
 Back to [[HATI Brain]]
