@@ -485,7 +485,7 @@ function pairwise(v) {
   const m = Object.create(null);
   const add = (f, t, a) => { (m[f] = m[f] || Object.create(null))[t] = (m[f][t] || 0) + a; };
   for (const e of v.expenses) for (const [pid, a] of Object.entries(e.splits)) if (pid !== e.paidBy && a > 0) add(pid, e.paidBy, a);
-  for (const s of v.settlements) if (m[s.from]) m[s.from][s.to] = (m[s.from][s.to] || 0) - s.amount;
+  for (const s of v.settlements) add(s.to, s.from, s.amount); // A paying B counts as B owing A; net below cancels either way
   const out = [], seen = new Set();
   for (const [d, targets] of Object.entries(m)) for (const [c, a] of Object.entries(targets)) {
     const key = [d, c].sort().join(":"); if (seen.has(key)) continue; seen.add(key);
