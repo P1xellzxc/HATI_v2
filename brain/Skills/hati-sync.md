@@ -49,3 +49,4 @@ For your assignment, start from the protocol in `sync/README.md` and the merge c
 - Offline first: the app works fully without the server; pending changes are queued and sent on reconnect.
 - Allowed origins: `https://p1xellzxc.github.io` and `https://appassets.androidplatform.net` only. Blob at most 512 KB.
 - No accounts, no tracking, no third-party scripts.
+- Owner rule: in Cloudflare touch ONLY the [[hati-sync]] Worker and its own resources. Never change, deploy, delete or rebind anything else in the account (`geryme-fernando-cv`, `geryme-root-redirect`, their D1, R2, secrets, routes or domains). Read-only listing is fine.

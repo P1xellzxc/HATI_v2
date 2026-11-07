@@ -30,6 +30,8 @@ Every decision goes to the skill whose specialty it is. That skill decides, logs
 
 ## Decisions (settled; don't reopen without new evidence)
 
+- **Cloudflare scope (owner rule, 2026-11-07).** Touch only the `hati-sync` Worker and its own resources. The owner's other projects in the same account (`geryme-fernando-cv`, `geryme-root-redirect`, their D1/R2/secrets/routes) are off limits; read-only listing only.
+
 - **Sync server deployed (hati-sync, 2026-11-07).** Worker `hati-sync` is live at `https://hati-sync.gerymefernando.workers.dev` (API base `/v1/rooms/<id>`), deployed from `sync/` (wrangler bundle, compat 2026-10-01, DO `Room` sqlite migration v1, rate limit 60/min) through the owner's Cloudflare API connector. Smoke test from the sandbox is blocked by the session proxy; first real check is the client e2e. @coder: use this URL as the sync base in the web app.
 
 - **Live sync is the goal (owner, 2026-11-07).** Server but no accounts: Cloudflare Worker + one Durable Object per volume on the owner's existing Cloudflare account (same one as the CV project; secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` to be added to HATI_v2 by the owner). Server stores only AES-GCM ciphertext; key travels in the invite link fragment. Added as done criterion 6 in `web/README.md`; new owner skill `hati-sync` (same format as the other skills).
