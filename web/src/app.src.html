@@ -1093,7 +1093,7 @@ async function readInvite(payload) {
 }
 // A live invite: fetch the room's blob and decrypt it here. A wrong key reads as a broken link and changes nothing.
 async function readLiveInvite(room, key) {
-  if (!syncOn()) return { error: location.hostname === "appassets.androidplatform.net" ? JOIN_APK : "This browser can't open live invites. Ask for the share code instead." };
+  if (!syncOn()) return { error: "This browser can't open live invites. Ask for the share code instead." };
   let g; try { g = await api("GET", room); } catch (e) { return { error: JOIN_OFFLINE }; }
   if (g.status === 429) return { error: "Too many tries. Wait a minute, then open the link again." };
   if (g.status !== 200 || !g.j || !Number.isInteger(g.j.version)) return { error: g.status === 400 || g.status === 404 ? JOIN_BROKEN : JOIN_OFFLINE };
@@ -1153,9 +1153,8 @@ const SYNC_MAX = 512 * 1024, SYNC_PLAIN_MAX = 380 * 1024; // the server's blob l
 const ROOM_RE = /^[\w-]{22,64}$/, KEY_RE = /^[\w-]{43}$/, LIVE_RE = /^([\w-]{22,64})\.([\w-]{43})$/;
 const JOIN_OFFLINE = "Can't reach the sync server. Check your connection, then open the link again.";
 const JOIN_EMPTY = "This volume isn't online yet. Ask whoever sent the link to open HATI² while online, then try again.";
-const JOIN_APK = "The Android app can't open live invites yet. Open the link in your browser.";
 // The APK has no internet permission, so there the app stays local-only and shares snapshot links.
-const syncOn = () => location.hostname !== "appassets.androidplatform.net" && typeof fetch === "function" && !!(window.crypto && crypto.subtle);
+const syncOn = () => typeof fetch === "function" && !!(window.crypto && crypto.subtle);
 function loadSync() {
   const out = {};
   try {

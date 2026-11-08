@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- No INTERNET permission: the whole app is served from the APK's assets. -->
+    <!-- The app is served from the APK's assets; INTERNET is only for live sync
+         (https://hati-sync.gerymefernando.workers.dev, end-to-end encrypted). -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:allowBackup="true"
