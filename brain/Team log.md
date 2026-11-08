@@ -30,6 +30,8 @@ Every decision goes to the skill whose specialty it is. That skill decides, logs
 
 ## Decisions (settled; don't reopen without new evidence)
 
+- **Owner: go all out with animation, still fast and optimized (2026-11-08).** Owner hati-motion, with hati-design. Every screen change, sheet, list, press, balance update, settle-up, share/invite and sync arrival gets purposeful manga-style motion (ink/panel reveals, stagger, squash on clay presses, number roll on balances, speed-line or panel-wipe transitions), all under the 20 motion rules: transform/opacity only, durations within the hati-motion tokens (no animation over ~300ms on interaction), no layout thrash, 60fps on a mid phone (measure with Playwright CPU throttle 4x: no long tasks over 50ms, no dropped frames in traces), everything off under prefers-reduced-motion. Applies in the current loop: planners/designers/coders read this before their next step.
+
 - **Owner: dark mode looks bad, revise (2026-11-08).** Top priority for hati-design next round: redesign dark mode as manga ink on night paper across all 13 palettes, judged by hati-slop-rubric, hati-pixel-perfectionist and hati-lazy-check from fresh dark screenshots.
 
 - **Cloudflare scope (owner rule, 2026-11-07).** Touch only the `hati-sync` Worker and its own resources. The owner's other projects in the same account (`geryme-fernando-cv`, `geryme-root-redirect`, their D1/R2/secrets/routes) are off limits; read-only listing only.
