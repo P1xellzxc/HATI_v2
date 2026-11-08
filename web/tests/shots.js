@@ -74,7 +74,7 @@ async function mockSync(ctx) {
       await p.evaluate(([pal, mode]) => { S.settings.palette = pal; S.settings.mode = mode; save(); applyTheme(); }, [pal, mode]);
       await open(p); await p.waitForTimeout(120);
       const file = `${pal}-${mode}-${w}-${name}.png`;
-      await p.screenshot({ path: path.join(OUT, file) });
+      await p.screenshot({ path: path.join(OUT, file), animations: 'disabled' }); // settled frames: wipes, sheets and ink-ins jump to their end
       shots.push({ file, pal, mode, w, name });
     }
     if (errors.length) console.log(`PAGE ERRORS ${pal}/${mode}/${w}: ${errors.join(' | ')}`);

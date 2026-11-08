@@ -59,6 +59,11 @@
   --sel-bg: var(--fg); --sel-fg: var(--bg); /* selected (inverted) segment */
   --sel-edge: var(--fg); /* inner ink edge on the selected .cat: in light the pastel alone is hue-only (1.29:1 in Fern) */
   --scrim: rgba(10, 10, 14, 0.5); --sheet: var(--bg); --field: var(--panel);
+  /* Motion (hati-motion): one set of timings for everything. JS reads these too (motionTimes), so they live here only.
+     Presses 90 ms, entrances 200, exits 160 (20% shorter), the screen wipe 260; list rows ink in 30 ms apart, capped at
+     the 7th row so a long list never waits: 6 x 30 + 200 = 380 ms at most. */
+  --dur-press: 90ms; --dur-in: 200ms; --dur-out: 160ms; --dur-wipe: 260ms; --stagger: 30ms;
+  --ease-out: cubic-bezier(.2, .8, .2, 1); --ease-in: cubic-bezier(.55, 0, .75, .2); --ease-in-out: cubic-bezier(.65, 0, .35, 1);
   color-scheme: light; /* native controls (checkbox, pickers, keyboard) follow the app's Light, not a dark OS */
 }
 /* Dark: ink on night paper. Written once: build.py copies everything between the DARK markers into
@@ -232,6 +237,7 @@ section > .label, section > .row > .label { margin-top: 6px; }
 .hero .amt { font: 400 clamp(1.9rem, 10vw, 2.6rem)/1.1 var(--font-disp); letter-spacing: .01em; margin: 2px 0 6px; }
 .hero .amt.long { font-size: 1.6rem; }
 .hero .amt.longer { font-size: 1.25rem; }
+.amt .fig { display: inline-block; } /* the figure moves on its own when the balance rolls; the line keeps its box */
 .hero .meta { font-size: .85rem; color: color-mix(in srgb, var(--fg) 72%, var(--hero)); }
 @media (max-width: 379px) { .hero .vno { display: none; } }
 .hero .mine { margin: 8px 0 0; padding: 8px 0 0; border-top: 1.5px solid var(--rule); display: flex; flex-direction: column; gap: 4px; font-size: .92rem; list-style: none; }
@@ -241,9 +247,6 @@ section > .label, section > .row > .label { margin-top: 6px; }
 .sync i { width: 9px; height: 9px; flex: none; border: 2px solid var(--fg); background: transparent; }
 .sync[data-s="ok"] i { background: var(--fg); }
 .sync[data-s="bad"] i, .sync[data-s="big"] i { border-color: var(--neg); background: var(--neg); }
-.sync.in span, .sync.in i { animation: sync-in 180ms cubic-bezier(.2,.8,.2,1); }
-@keyframes sync-in { from { opacity: 0; transform: translateY(3px); } }
-@media (prefers-reduced-motion: reduce) { .sync.in span, .sync.in i { animation: none; } }
 
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 8px 4px 4px; border-radius: var(--r); border: 1.5px solid var(--line); background: var(--panel); font-size: .9rem; font-weight: 600; }
@@ -372,7 +375,100 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 /* Focus on clay: the ring joins the clay stack instead of replacing it */
 :is(.btn, .ico, .cat, .vol, button.chip:not(.add), .nav button[aria-current="page"]):focus-visible { box-shadow: var(--clay), 0 0 0 6px var(--accent); }
 :root .cat[aria-pressed="true"]:focus-visible { box-shadow: inset 0 0 0 2px var(--sel-edge), var(--clay), 0 0 0 6px var(--accent); }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } .btn:active, .ico:active, .cat:active, .vol:active, button.chip:active { transform: none !important; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } .btn:active, .ico:active, .cat:active, .vol:active, button.chip:active { transform: none !important; } }
+
+/* Motion (hati-motion with hati-design): manga ink, not app-store bounce. Only transform and opacity move, plus
+   clip-path on two small things (the toast and the sync words). Every animation is inside no-preference, and JS makes
+   no ghosts or rolls under reduced motion (motionOn), so reduced motion gets none. Nothing waits for an animation:
+   state, focus and taps belong to the new screen from its first frame.
+   - Screen change: the old page is cut out as a slanted panel and slides off, speed lines behind it; forward it leaves
+     to the left, Back to the right. It is a ghost (see turn()) that ignores taps; the new page is live under it.
+   - Lists ink in: a paper cover with an ink edge sweeps off each row, 30 ms apart, the 7th row on all together.
+   - Clay squashes on the way down. Sheets come up from the thumb edge and go back down. Balances roll. */
+.ghost { position: fixed; inset: 0; pointer-events: none; contain: size layout style; } /* no paint containment: it would clip the panel to the moving host */
+.ghost.screen { z-index: 5; }
+.ghost.layer { z-index: 19; }
+.gdim { position: fixed; inset: 0; background: var(--scrim); }
+.gw { position: absolute; top: 0; left: 0; height: 100%; overflow: hidden; background: var(--bg); transform-origin: 0 0; transform: skewX(-8deg); }
+.gw::after { content: ""; position: absolute; top: 0; bottom: 0; right: 0; width: 3px; background: var(--fg); }
+.back .gw::after { right: auto; left: 0; }
+.gin { height: 100%; overflow: hidden; transform-origin: 0 0; transform: skewX(8deg); }
+.gin > #app { transform: translateY(calc(-1px * var(--gy, 0))); }
+.gin .topbar { position: relative; top: calc(1px * var(--gy, 0)); }
+.gl { position: absolute; top: 0; height: 100%; width: 72px; transform-origin: 0 0; transform: skewX(-8deg);
+  background: repeating-linear-gradient(180deg, var(--fg) 0 2px, transparent 2px 13px), repeating-linear-gradient(180deg, transparent 0 6px, var(--fg) 6px 7px, transparent 7px 19px) 0 0 / 55% 100% no-repeat;
+  -webkit-mask-image: linear-gradient(to right, #000, transparent); mask-image: linear-gradient(to right, #000, transparent); }
+.back .gl { background-position: 0 0, 100% 0; -webkit-mask-image: linear-gradient(to left, #000, transparent); mask-image: linear-gradient(to left, #000, transparent); }
+@media (prefers-reduced-motion: no-preference) {
+  /* Clay squash: down in 90 ms, flattening on the way (1.03 x .94, about the same area), landing pushed in.
+     No transform transition on the way down (it would hide the squash); the release eases back over 160 ms. */
+  .btn, .ico, .cat, .vol, button.chip:not(.add), .nav button[aria-current="page"] { transition: transform var(--dur-out) var(--ease-out); }
+  :is(.btn:not(.quiet):not(.text):not(:disabled), .ico, .cat, .vol, button.chip:not(.add)):active { transition: none; animation: squash var(--dur-press) var(--ease-out); }
+  @keyframes squash { 0% { transform: none; } 55% { transform: translate(2px, 2px) scale(1.03, .94); } 100% { transform: translate(3px, 3px); } }
+
+  /* Lists ink in on a screen change (#app[data-turn]): the frame is drawn first, then a paper cover with an ink edge is
+     wiped off the row (scaleX on a pseudo-element: compositor only, the row's box and taps never change) */
+  /* Rows past the 12th are below the fold: they are simply there (no pseudo-element to style, nothing to wait for) */
+  #app[data-turn] :is(.ledger > *, .stack > .vol, .stack > .dashed, .chips > *, .bars > *):nth-child(-n+12), .sheet .share-sum, .tx.ink-new { position: relative; }
+  #app[data-turn] :is(.ledger > *, .stack > .vol, .stack > .dashed, .chips > *, .bars > *):nth-child(-n+12)::after, .sheet .share-sum::after, .tx.ink-new::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+    background: linear-gradient(to right, var(--fg) 0 3px, var(--cover, var(--panel)) 3px); transform-origin: right;
+    animation: ink-off var(--dur-in) var(--ease-out) both;
+  }
+  /* 30 ms apart, set on the pseudo-element only: a custom property on each row would be inherited by its whole subtree
+     and cost every row its shared style */
+  #app[data-turn] :is(.ledger > *, .stack > .vol, .stack > .dashed, .chips > *, .bars > *):nth-child(2)::after { animation-delay: calc(1 * var(--stagger)); }
+  #app[data-turn] :is(.ledger > *, .stack > .vol, .stack > .dashed, .chips > *, .bars > *):nth-child(3)::after { animation-delay: calc(2 * var(--stagger)); }
+  #app[data-turn] :is(.ledger > *, .stack > .vol, .stack > .dashed, .chips > *, .bars > *):nth-child(4)::after { animation-delay: calc(3 * var(--stagger)); }
+  #app[data-turn] :is(.ledger > *, .stack > .vol, .stack > .dashed, .chips > *, .bars > *):nth-child(5)::after { animation-delay: calc(4 * var(--stagger)); }
+  #app[data-turn] :is(.ledger > *, .stack > .vol, .stack > .dashed, .chips > *, .bars > *):nth-child(6)::after { animation-delay: calc(5 * var(--stagger)); }
+  #app[data-turn] :is(.ledger > *, .stack > .vol, .stack > .dashed, .chips > *, .bars > *):nth-child(n+7)::after { animation-delay: calc(6 * var(--stagger)); }
+  #app[data-turn] :is(.stack > .dashed, .chips > .add)::after { --cover: var(--bg); }
+  #app[data-turn="back"] :is(.ledger > *, .stack > .vol, .stack > .dashed, .chips > *, .bars > *):nth-child(-n+12)::after { background: linear-gradient(to left, var(--fg) 0 3px, var(--cover, var(--panel)) 3px); transform-origin: left; }
+  @keyframes ink-off { to { transform: scaleX(0); } }
+  /* Empty states: the kaomoji lands like a stamp */
+  #app[data-turn] .empty .kao { animation: stamp var(--dur-in) var(--ease-out) 60ms both; }
+  @keyframes stamp { from { opacity: 0; transform: scale(1.5) rotate(-8deg); } 40% { opacity: 1; } }
+  /* A live sync arrival: the new row is washed in the accent, then the wash is wiped off */
+  .tx.ink-new::after { --cover: var(--accent); animation-delay: 60ms; animation-duration: 260ms; animation-timing-function: var(--ease-in-out); }
+
+  /* Number roll: the new figure rolls in, the old one (data-was) rolls out; up when the amount grows, down when it shrinks.
+     The old figure is drawn only: its alt text is empty, so a screen reader reads the new amount alone. */
+  .amt.roll > .fig { animation: roll-in var(--dur-in) var(--ease-out) both; }
+  .amt.roll::before { content: attr(data-was); content: attr(data-was) / ""; position: absolute; left: 0; top: 0; white-space: nowrap; pointer-events: none; animation: roll-out var(--dur-out) var(--ease-in) both; }
+  .amt.roll.down > .fig { animation-name: roll-in-down; }
+  .amt.roll.down::before { animation-name: roll-out-down; }
+  .vol-bal.roll { animation: roll-in var(--dur-in) var(--ease-out) 120ms both; }
+  @keyframes roll-in { from { opacity: 0; transform: translateY(45%); } }
+  @keyframes roll-out { to { opacity: 0; transform: translateY(-45%); } }
+  @keyframes roll-in-down { from { opacity: 0; transform: translateY(-45%); } }
+  @keyframes roll-out-down { to { opacity: 0; transform: translateY(45%); } }
+  /* Settle-up done: one ink pulse round the balance (rule 8); settled in full, the words land like a stamp, the one
+     place a small overshoot is allowed (rule 13) */
+  .hero.done::before { content: ""; position: absolute; inset: 5px; border: 3px solid var(--fg); border-radius: var(--r); pointer-events: none; animation: pulse 280ms var(--ease-out) both; }
+  @keyframes pulse { from { opacity: 1; transform: scale(.97); } to { opacity: 0; transform: scale(1.01); } }
+  .hero.done .k.stamped { transform-origin: 0 50%; animation: stamp var(--dur-in) cubic-bezier(.3, 1.45, .5, 1) both; }
+
+  /* Sheets come up from the thumb edge; the page dims at once, like a panel cut (fading the scrim would fade the sheet
+     inside it too). layerOut() takes them back down while the dim fades. The summary inks in and the QR prints top to
+     bottom in 11 line feeds (steps: few repaints). */
+  .sheet { animation: sheet-up var(--dur-in) var(--ease-out); }
+  @keyframes sheet-up { from { transform: translateY(100%); } }
+  .sheet .share-sum::after { animation-delay: 90ms; }
+  .sheet .qr { animation: qr-print 220ms steps(11, end) 60ms both; }
+  @keyframes qr-print { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0); } }
+
+  /* Toasts: a brush stroke in from the left, wiped off to the right */
+  .toast { animation: toast-in var(--dur-in) var(--ease-out); }
+  .toast.out { animation: toast-out var(--dur-out) var(--ease-in) forwards; }
+  @keyframes toast-in { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(-6px); } }
+  @keyframes toast-out { from { clip-path: inset(-6px); } to { clip-path: inset(-6px -6px -6px 100%); } }
+
+  /* Live sync status: the square stamps, the words ink in (only when they change) */
+  .sync.in i { animation: stamp 180ms var(--ease-out); }
+  .sync.in span { animation: ink-write 180ms var(--ease-out); }
+  @keyframes ink-write { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
+}
 </style>
 
 <main id="app"></main>
@@ -688,10 +784,11 @@ const views = {
       const b = balances(v)[v.meId] || 0, t = typeOf(v.type), n = volNo(v);
       const settled = Math.abs(b) <= 1;
       const bal = settled ? "All settled" : b > 0 ? `You're owed ${fmt(b, v.currency)}` : `You owe ${fmt(-b, v.currency)}`;
+      const roll = FX.bal[v.id] !== undefined && FX.bal[v.id] !== bal && motionOn() ? " roll" : ""; FX.bal[v.id] = bal;
       return `<button class="vol" data-act="open" data-id="${esc(v.id)}" aria-label="${esc(`Volume ${n}, ${v.title}, ${bal}, ${plural(v.expenses.length, "expense")}`)}">
         <span class="spine" aria-hidden="true"><span>VOL.</span><b>${n}</b></span>
         <span class="vol-info" aria-hidden="true"><span class="vol-name">${esc(v.title)}</span>
-        <span class="vol-bal num ${settled ? "even" : b > 0 ? "pos" : "neg"}">${esc(bal)}</span>
+        <span class="vol-bal num ${settled ? "even" : b > 0 ? "pos" : "neg"}${roll}">${esc(bal)}</span>
         <span class="muted small vol-meta"><span>${t[1]}</span><span>${plural(v.members.length, "member")}</span><span>${esc(fmt(total(v), v.currency))} spent</span></span></span></button>`;
     }).join("");
     return topbar("HATI²", { right: `<button class="btn quiet" data-act="import">${I.import} Import</button>` }) +
@@ -704,6 +801,10 @@ const views = {
     const v = vol(); if (!v) { ui.view = "hub"; return views.hub(); }
     const b = balances(v), mine = b[v.meId] || 0, ds = debts(v), t = typeOf(v.type), settled = Math.abs(mine) <= 1;
     const cls = settled ? "" : mine > 0 ? "pos" : "neg";
+    // Number roll when the balance changed since this volume was last shown; the hero pulses after a payment
+    const fig = fmt(Math.abs(mine), v.currency), was = FX.amt[v.id], done = FX.settled === v.id && motionOn();
+    FX.amt[v.id] = settled ? null : { t: fig, c: Math.abs(mine) }; FX.settled = null;
+    const roll = !settled && was && was.t !== fig && motionOn() ? (Math.abs(mine) < was.c ? " roll down" : " roll") : "";
     const items = timeline(v), tot = total(v);
     const byCat = {}; v.expenses.forEach(e => byCat[e.category] = (byCat[e.category] || 0) + e.amount);
     const catRows = Object.entries(byCat).sort((a, c) => c[1] - a[1]);
@@ -711,10 +812,10 @@ const views = {
     const hist = items.length ? `<button class="ico" data-act="history" aria-label="History">${I.clock}</button>` : "";
     return topbar(v.title, { back: true, right: `${hist}<button class="ico" data-act="volMenu" aria-label="Volume options">${I.dots}</button>` }) +
       `<div class="stack">
-      <section class="hero" aria-label="Your balance" style="margin:0">
+      <section class="hero${done ? " done" : ""}" aria-label="Your balance" style="margin:0">
         <div class="meta"><span class="vno">Vol. ${volNo(v)} · </span>${t[1]} · ${plural(v.members.length, "member")} · <span class="money">${esc(fmt(tot, v.currency))} spent</span></div>
-        <div class="k ${cls}">${settled ? "You're all settled" : mine > 0 ? "You are owed" : "You owe"}</div>
-        ${settled ? "" : `<div class="amt num ${cls} ${amtSize(fmt(Math.abs(mine), v.currency))}">${esc(fmt(Math.abs(mine), v.currency))}</div>`}
+        <div class="k ${cls}${done && settled ? " stamped" : ""}">${settled ? "You're all settled" : mine > 0 ? "You are owed" : "You owe"}</div>
+        ${settled ? "" : `<div class="amt num ${cls} ${amtSize(fig)}${roll}"${roll ? ` data-was="${esc(was.t)}"` : ""}><span class="fig">${esc(fig)}</span></div>`}
         ${myDebts.length ? `<ul class="mine">${myDebts.map(d => `<li class="row between"><span class="who">${d.from === v.meId ? `<span>Pay</span> <span class="nm">${esc(nameOf(v, d.to))}</span>` : `<span class="nm">${esc(nameOf(v, d.from))}</span> <span>pays you</span>`}</span><b class="num">${esc(fmt(d.amount, v.currency))}</b></li>`).join("")}</ul>` : ""}
         ${syncTag(v)}
       </section>
@@ -884,6 +985,7 @@ let lastFocus = null;
 const sheetOpen = () => !!$("#layer").firstChild;
 function sheet(html, onSubmit) {
   lastFocus = document.activeElement;
+  if (sheetOpen()) layerOut(true);
   $("#layer").innerHTML = `<div class="scrim"><form class="sheet" id="sheetForm" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" novalidate>${html.replace("<h2>", '<h2 id="sheetTitle" tabindex="-1">')}</form></div>`;
   $("#app").inert = true; $("#nav").inert = true;
   document.querySelectorAll(".toast").forEach(n => n.classList.add("top")); // a toast from before the sheet moves out of its way
@@ -892,9 +994,10 @@ function sheet(html, onSubmit) {
   form.addEventListener("input", () => { const m = $("#sheetMsg"); if (m && !m.classList.contains("ok")) m.textContent = ""; });
   $("#sheetTitle").focus();
 }
-function dropSheet() { $("#layer").innerHTML = ""; $("#app").inert = false; $("#nav").inert = false; syncHeld(); }
+function dropSheet() { layerOut(false); $("#layer").innerHTML = ""; $("#app").inert = false; $("#nav").inert = false; syncHeld(); }
 function closeSheet() { dropSheet(); if (lastFocus && document.contains(lastFocus)) lastFocus.focus(); }
-const sheetMsg = t => { const m = $("#sheetMsg"); if (m) m.textContent = t; };
+// A new message is written in, left to right (a success says so once; rule 8)
+const sheetMsg = t => { const m = $("#sheetMsg"); if (!m) return; m.textContent = t; if (t && motionOn()) m.animate([{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0)" }], { duration: motionTimes().in, easing: motionTimes().easeOut }); };
 const sheetButtons = (label, cls = "primary") => `<div class="btns"><button type="button" class="btn quiet" data-act="closeSheet">Cancel</button><button class="btn ${cls}">${label}</button></div>`;
 
 function volumeSheet(v) {
@@ -993,7 +1096,7 @@ function settleSheet(existing) {
       if (amt > MAX_CENTS) return sheetMsg("That amount is too large.");
       if (existing) Object.assign(existing, { from, to, amount: amt, upd: Date.now() });
       else v.settlements.push({ id: uid(), from, to, amount: amt, date: today(), upd: Date.now() });
-      if (!commit()) return; closeSheet(); render(); toast("Payment recorded");
+      if (!commit()) return; FX.settled = v.id; closeSheet(); render(); toast("Payment recorded");
     });
   if (!sugg) return;
   // The chosen suggestion is the row the form still matches; editing From/To/Amount away from every row clears it.
@@ -1341,9 +1444,12 @@ async function take(id, j) {
   if (canon(merged) !== canon(local)) {
     // A sheet open on this volume holds its objects (the payment or member being edited); merge once it closes.
     if (sheetOpen() && ui.volId === id) { r.hold = true; return false; }
+    const had = new Set([...local.expenses, ...local.settlements].map(x => x.id));
     S.volumes = S.volumes.map(x => x.id === id ? merged : x);
     if (!save()) { render(); toast(saveGone ? SAVE_GONE : SAVE_FAIL); setSync(id, "bad"); return false; } // save() put S back
-    liveRedraw(id);
+    // the rows this change brought in ink in when the page redraws
+    FX.fresh = new Set([...merged.expenses, ...merged.settlements].map(x => x.id).filter(x => !had.has(x)));
+    liveRedraw(id); FX.fresh = null;
     const said = mergeSummary(m);
     if (said) toast(`${merged.title}: ${said[0].toLowerCase() + said.slice(1)}`);
   }
@@ -1759,6 +1865,86 @@ function importSheet({ restore = false } = {}) {
 }
 
 
+// ── Motion (hati-motion; the look is in the CSS block at the end of the styles) ──
+// CSS moves what is in the page. JS adds what CSS can't: the old screen and a closing sheet leave as ghosts, the real
+// nodes moved into a closed shadow root that ignores taps and that no selector or screen reader sees. So the new
+// screen's state, focus and taps are live from its first frame, a tap during any animation lands on what is really
+// there, and a new transition just drops the old ghost. Under reduced motion none of this runs.
+const RM = window.matchMedia ? matchMedia("(prefers-reduced-motion: reduce)") : null;
+const motionOn = () => !(RM && RM.matches) && typeof Element.prototype.animate === "function";
+let MT = null; // timings from the CSS tokens, read once
+function motionTimes() {
+  if (MT) return MT;
+  const cs = getComputedStyle(document.documentElement), ms = n => parseFloat(cs.getPropertyValue(n)) || 0, ez = n => cs.getPropertyValue(n).trim() || "ease";
+  return (MT = { press: ms("--dur-press"), in: ms("--dur-in"), out: ms("--dur-out"), wipe: ms("--dur-wipe"), stagger: ms("--stagger"), easeOut: ez("--ease-out"), easeIn: ez("--ease-in") });
+}
+// Balances last shown per volume (number roll), the volume whose payment was just recorded, rows a live change added.
+const FX = { amt: {}, bal: {}, settled: null, fresh: null };
+let ghostCss; // the page's own styles plus one rule: a ghost's CSS animations sit at their end (a moved node restarts them)
+function ghostSheets() {
+  if (ghostCss === undefined) try {
+    const a = new CSSStyleSheet(), b = new CSSStyleSheet();
+    a.replaceSync([...document.querySelectorAll("style")].map(s => s.textContent).join("\n"));
+    b.replaceSync("*, *::before, *::after { animation-delay: -9s !important; }");
+    ghostCss = [a, b];
+  } catch (e) { ghostCss = null; }
+  return ghostCss;
+}
+const ghosts = {}, ghostRoots = new WeakMap(); // ghostRoots: a ghost's closed root, so tests can read its animations
+function dropGhost(kind) { const g = ghosts[kind]; if (g) { g.remove(); delete ghosts[kind]; } }
+function ghost(kind, cls) {
+  dropGhost(kind);
+  const css = motionOn() && typeof document.body.attachShadow === "function" && ghostSheets(); if (!css) return null;
+  const host = document.createElement("div"); host.className = `ghost ${kind} ${cls}`; host.setAttribute("aria-hidden", "true"); host.inert = true;
+  const root = host.attachShadow({ mode: "closed" }); root.adoptedStyleSheets = css;
+  ghosts[kind] = host; ghostRoots.set(host, root); return { host, root };
+}
+const ghostDone = (kind, host, a) => a.finished.then(() => { if (ghosts[kind] === host) dropGhost(kind); }, () => {});
+// Where the user is before a screen change; read before anything is written, so it never forces a layout.
+const viewBox = () => ({ y: scrollY, w: document.documentElement.clientWidth, h: innerHeight });
+const RANK = { hub: 0, settings: 1, volume: 1, history: 2, expense: 3 };
+let enterDir = ""; // "fwd" / "back" for the next render(): its lists ink in
+// Panel wipe: the page being left is cut out as a slanted panel (skewed 8°, its content skewed back) with an ink edge
+// and speed lines trailing, and slides off: forward to the left, Back (to a shallower screen) to the right.
+function turn(from, to, box) {
+  enterDir = "";
+  if (from === to) return;
+  const back = (RANK[to] || 0) < (RANK[from] || 0), app = $("#app");
+  const g = app.firstChild && ghost("screen", back ? "back" : ""); if (!g) return dropGhost("screen");
+  enterDir = back ? "back" : "fwd";
+  const T = motionTimes(), s = Math.ceil(box.h * 0.1405), el = c => { const n = document.createElement("div"); n.className = c; return n; };
+  const gw = el("gw"), gin = el("gin"), gl = el("gl"), main = document.createElement("main");
+  main.id = "app"; gw.style.width = box.w + s + "px"; gin.style.width = box.w + "px"; gl.style.left = back ? "-72px" : box.w + s + "px";
+  g.host.style.setProperty("--gy", box.y);
+  // Only what was on screen goes along (a 100-row history would cost a long style and layout pass); the page was laid
+  // out when the user tapped, so these reads are free.
+  const below = [...app.querySelectorAll(":scope > *, .stack > *, .ledger > *")].filter(n => n.getBoundingClientRect().top > box.h);
+  main.append(...app.childNodes); below.forEach(n => n.remove());
+  // Put on screen in the next frame, before it is drawn (the same frame as the new page, so nothing flashes): the
+  // tap's own task stays as short as without motion (focusTitle() forces a layout, and it must not lay out the ghost).
+  requestAnimationFrame(() => {
+    if (ghosts.screen !== g.host) return;
+    gin.append(main); gw.append(gin); g.root.append(gw, gl);
+    document.body.insertBefore(g.host, $("#nav"));
+    const a = g.host.animate([{ transform: "none" }, { transform: `translateX(${(box.w + s + 80) * (back ? 1 : -1)}px)` }], { duration: T.wipe, easing: T.easeOut, fill: "forwards" });
+    gl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: T.wipe, easing: "ease-in", fill: "forwards" });
+    ghostDone("screen", g.host, a);
+  });
+}
+// A closing sheet goes back down (swap: another sheet replaces it, so only the panel leaves, under the new one).
+function layerOut(swap) {
+  const sc = $("#layer").firstElementChild; if (!sc) return;
+  const sh = sc.querySelector(".sheet"), g = sh && ghost("layer", ""); if (!g) return;
+  const top = sh.scrollTop; if (top && sh.firstElementChild) sh.firstElementChild.style.marginTop = -top + "px";
+  // the dim leaves as its own layer, so fading it never fades the sheet
+  const dim = document.createElement("div"); dim.className = "gdim"; sc.style.background = "transparent";
+  g.root.append(...(swap ? [] : [dim]), sc); $("#layer").after(g.host);
+  const T = motionTimes(), o = { duration: T.out, easing: T.easeIn, fill: "forwards" };
+  const a = sh.animate([{ transform: "none" }, { transform: "translateY(100%)" }], o);
+  if (!swap) dim.animate([{ opacity: 1 }, { opacity: 0 }], o);
+  ghostDone("layer", g.host, a);
+}
+
 // ── Navigation ────────────────────────────────────────────
 function hashFor() {
   switch (ui.view) {
@@ -1799,12 +1985,12 @@ function parentOf() {
   return "hub";
 }
 function go(view, { replace = false } = {}) {
-  const had = sheetOpen();
+  const box = viewBox(), from = ui.view, had = sheetOpen();
   if (had) dropSheet();
   if (view !== "expense" && ui.view === "expense") clearDraft();
   ui.view = view; ui.histLimit = 100;
   setUrl(replace || had);
-  render(); window.scrollTo(0, 0); focusTitle();
+  turn(from, view, box); render(); window.scrollTo(0, 0); focusTitle();
 }
 function leave() {
   if (ui.view === "expense") clearDraft();
@@ -1817,11 +2003,18 @@ addEventListener("popstate", () => {
   if (skipPop && !location.hash.startsWith("#join=")) { skipPop = false; return; } // startJoin's own step back
   if (joinFromHash()) return;
   if (sheetOpen()) { dropSheet(); setUrl(false); return; }
-  applyRoute(); render(); window.scrollTo(0, 0); focusTitle();
+  const box = viewBox(), from = ui.view;
+  applyRoute(); turn(from, ui.view, box); render(); window.scrollTo(0, 0); focusTitle();
 });
 
+let renders = 0;
 function render() {
-  try { $("#app").innerHTML = views[ui.view]() + banner(); }
+  const app = $("#app"), dir = enterDir, n = ++renders;
+  delete app.dataset.turn; enterDir = "";
+  // A screen change inks its lists in from the next frame (before it is drawn): set here, focusTitle()'s forced layout
+  // would also have to style every row cover inside the tap's own task.
+  if (dir) requestAnimationFrame(() => { if (n === renders) app.dataset.turn = dir; });
+  try { app.innerHTML = views[ui.view]() + banner(); }
   catch (e) {
     $("#app").innerHTML = topbar("HATI²") + `<div class="panel pad stack"><b>This screen couldn't be shown.</b><p class="muted small" style="margin:0">Your data is still on this device. Go back to your volumes; if this keeps happening, erase the damaged volume in Settings.</p><button class="btn primary" data-act="home">Back to volumes</button></div>`;
     ui.view = "hub";
@@ -1829,12 +2022,16 @@ function render() {
   const top = ui.view === "settings" ? "settings" : "hub";
   $("#nav").innerHTML = `<button data-act="home" ${top === "hub" ? 'aria-current="page"' : ""}>${I.hub}Volumes</button><button data-act="settings" ${top === "settings" ? 'aria-current="page"' : ""}>${I.gear}Settings</button>`;
   if (ui.view === "expense" && $("#expForm")) bindExpenseForm();
+  // Rows a live change just brought in ink in on their own (see take()).
+  if (FX.fresh && FX.fresh.size && motionOn()) app.querySelectorAll(".tx[data-id]").forEach(r => { if (FX.fresh.has(r.dataset.id)) r.classList.add("ink-new"); });
 }
 let toastTimer;
 function toast(t) {
   document.querySelectorAll(".toast").forEach(n => n.remove());
   const n = document.createElement("div"); n.className = "toast" + (sheetOpen() ? " top" : ""); n.setAttribute("aria-hidden", "true"); n.textContent = t;
-  document.body.appendChild(n); clearTimeout(toastTimer); toastTimer = setTimeout(() => n.remove(), Math.max(2400, t.length * 50)); // long warnings stay long enough to read
+  // long warnings stay long enough to read; then it is wiped off (gone at once under reduced motion)
+  const off = () => { if (!motionOn()) return n.remove(); n.classList.add("out"); setTimeout(() => n.remove(), motionTimes().out + 40); };
+  document.body.appendChild(n); clearTimeout(toastTimer); toastTimer = setTimeout(off, Math.max(2400, t.length * 50));
   const live = $("#status"); live.textContent = ""; setTimeout(() => { live.textContent = t; }, 30);
 }
 function bindExpenseForm() {
@@ -1975,6 +2172,14 @@ addEventListener("online", syncAll);
 addEventListener("offline", () => Object.keys(SY).forEach(id => { wsClose(id); setSync(id, "off"); }));
 document.addEventListener("visibilitychange", () => { if (document.hidden) Object.keys(SY).forEach(wsClose); else syncAll(); });
 syncAll();
+// Motion: read the timing tokens and build the ghost styles once the app is idle, not in the first tap. One throwaway
+// ghost is styled off screen, so the browser has already compiled the ghost's rules when the first wipe needs them.
+setTimeout(() => {
+  if (!motionOn()) return;
+  motionTimes(); const g = ghost("warm", ""); if (!g) return;
+  g.host.style.left = "-200vw"; g.root.innerHTML = '<main id="app"><header class="topbar"><h1>x</h1></header><div class="hero"><div class="amt">0</div></div></main>';
+  document.body.append(g.host); getComputedStyle(g.root.querySelector(".amt")).color; dropGhost("warm");
+}, 400);
 
 if ("serviceWorker" in navigator && window.isSecureContext) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
