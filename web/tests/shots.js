@@ -25,6 +25,8 @@ const VIEWS = {
     const v = JSON.parse(JSON.stringify(S.volumes[0])); v.expenses.push({ ...v.expenses[0], id: 'fromb1', desc: 'From B', upd: Date.now() }); v.expenses.splice(1, 1);
     go('hub'); importSheet(); $('#s-paste').value = JSON.stringify({ app: 'hati2-mock', v: 1, volume: v });
   }).then(() => p.click('#s-go')).then(() => p.waitForTimeout(600)), // Import is disabled for 500 ms after Check code
+  'volume-synced': p => p.evaluate(async () => { ui.volId = S.volumes[0].id; go('volume'); await shareSheet(); dropSheet(); go('volume'); }),
+  'volume-offline': p => p.evaluate(async () => { ui.volId = S.volumes[0].id; go('volume'); await shareSheet(); dropSheet(); setSync(ui.volId, 'off'); SY[ui.volId].dirty = true; go('volume'); }),
   'settings-data': p => p.evaluate(() => { go('settings'); window.scrollTo(0, document.body.scrollHeight); }),
   'state-empty': p => p.evaluate(() => { S.volumes = []; save(); go('hub'); }),
   'state-one-member': p => p.evaluate(() => { const id = 'solo' + 1; S.volumes.unshift({ id: 'solo1', title: 'Solo test', type: 'other', currency: '$', meId: 'me1', created: 1, members: [{ id: 'me1', name: 'Me' }], expenses: [], settlements: [] }); save(); ui.volId = 'solo1'; go('volume'); }),
@@ -35,17 +37,33 @@ const VIEWS = {
     S.volumes.unshift(v); save(); ui.volId = v.id; go('volume');
   }),
 };
-const FULL = ['classic'], PARTIAL_VIEWS = ['hub', 'volume', 'expense', 'sheet-settle', 'sheet-share'];
+const FULL = ['classic'], PARTIAL_VIEWS = ['hub', 'volume', 'volume-synced', 'expense', 'sheet-settle', 'sheet-share'];
 // ALL_DARK=1: every palette in dark at 360 only (dark contact sheet for before/after); default: three palettes plus spring (brightest accent).
 const ALL_DARK = !!process.env.ALL_DARK;
 const PARTIAL = ALL_DARK ? ['persimmon', 'lantern', 'vermilion', 'moss', 'fern', 'spring', 'lagoon', 'patina', 'harbor', 'wisteria', 'peony', 'coral'] : ['persimmon', 'lagoon', 'spring'];
 const MODES = ALL_DARK ? ['dark'] : ['light', 'dark'], WIDTHS = ALL_DARK ? [360] : [360, 390];
 
+// The live sync server, mocked in memory (sync/README.md), so screenshots never reach the real Worker.
+async function mockSync(ctx) {
+  const rooms = new Map(), H = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'GET, PUT, OPTIONS', 'content-type': 'application/json' };
+  await ctx.route(u => u.href.startsWith('https://hati-sync.gerymefernando.workers.dev/'), rt => {
+    const rq = rt.request(), id = rq.url().split('/rooms/')[1], r = rooms.get(id) || { version: 0, blob: null };
+    if (rq.method() === 'OPTIONS') return rt.fulfill({ status: 204, headers: H });
+    if (rq.method() === 'GET') return rt.fulfill({ status: 200, headers: H, body: JSON.stringify(r) });
+    const j = JSON.parse(rq.postData() || '{}');
+    if (j.baseVersion !== r.version) return rt.fulfill({ status: 409, headers: H, body: JSON.stringify(r) });
+    rooms.set(id, { version: r.version + 1, blob: j.blob });
+    return rt.fulfill({ status: 200, headers: H, body: JSON.stringify({ version: r.version + 1 }) });
+  });
+  await ctx.routeWebSocket(u => u.href.startsWith('wss://hati-sync.gerymefernando.workers.dev/'), ws => { ws.onMessage(() => {}); });
+}
+
 (async () => {
   const b = await chromium.launch();
   const shots = [];
   for (const pal of [...FULL, ...PARTIAL]) for (const mode of MODES) for (const w of WIDTHS) {
-    const ctx = await b.newContext({ ...devices['iPhone 13'], viewport: { width: w, height: 780 }, deviceScaleFactor: 1 });
+    const ctx = await b.newContext({ ...devices['iPhone 13'], viewport: { width: w, height: 780 }, deviceScaleFactor: 1, serviceWorkers: 'block' });
+    await mockSync(ctx);
     const p = await ctx.newPage();
     const errors = []; p.on('pageerror', e => errors.push(e.message));
     await p.goto(URL);

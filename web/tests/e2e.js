@@ -2,6 +2,43 @@ const {chromium, devices}=require('playwright');
 const URL=process.env.URL||'http://127.0.0.1:8765/';
 (async()=>{
  const b=await chromium.launch();
+ // Live sync server mock (protocol in sync/README.md). Every context gets it, so no test ever reaches the real Worker;
+ // all contexts share one in-memory server, like phones sharing the real one. mock.down holds contexts cut off from it.
+ const SYNC='https://hati-sync.gerymefernando.workers.dev';
+ const mock={rooms:new Map(),puts:[],urls:[],socks:new Map(),down:new Set(),status:null,n409:0};
+ const mroom=id=>mock.rooms.get(id)||{version:0,blob:null};
+ const mjson={'access-control-allow-origin':'*','access-control-allow-methods':'GET, PUT, OPTIONS','access-control-allow-headers':'content-type','cache-control':'no-store','content-type':'application/json'};
+ const mbroadcast=(id,v)=>{ for (const ws of mock.socks.get(id)||[]) try { ws.send(JSON.stringify({version:v})); } catch(e){} };
+ const wire=async c=>{
+   await c.route(u=>u.href.startsWith(SYNC+'/'),async rt=>{ const rq=rt.request(), u=new globalThis.URL(rq.url()); mock.urls.push(rq.url());
+     if (mock.down.has(c)) return rt.abort('internetdisconnected');
+     const say=(status,body)=>rt.fulfill({status,headers:mjson,body:JSON.stringify(body)});
+     if (rq.method()==='OPTIONS') return rt.fulfill({status:204,headers:mjson});
+     const m=/^\/v1\/rooms\/([A-Za-z0-9_-]{22,64})$/.exec(u.pathname); if (!m) return say(400,{error:'bad_room'});
+     const r=mroom(m[1]);
+     if (rq.method()==='GET') return say(200,r);
+     if (rq.method()!=='PUT') return say(405,{error:'method'});
+     const body=rq.postData()||''; mock.puts.push({room:m[1],body});
+     if (mock.status) return say(mock.status,{error:mock.status===413?'too_large':'rate_limited'});
+     let j; try { j=JSON.parse(body); } catch(e) { return say(400,{error:'bad_json'}); }
+     if (j.baseVersion!==r.version) { mock.n409++; return say(409,r); }
+     const n={version:r.version+1,blob:j.blob}; mock.rooms.set(m[1],n); mbroadcast(m[1],n.version);
+     return say(200,{version:n.version}); });
+   await c.routeWebSocket(u=>u.href.startsWith(SYNC.replace('https','wss')+'/'),ws=>{ mock.urls.push(ws.url());
+     const id=(/\/v1\/rooms\/([\w-]+)\/ws$/.exec(new globalThis.URL(ws.url()).pathname)||[])[1];
+     if (!id || mock.down.has(c)) { ws.close({code:1011}); return; }
+     const set=mock.socks.get(id)||new Set(); mock.socks.set(id,set); set.add(ws); ws.__c=c;
+     ws.onMessage(m=>{ if (m==='ping') ws.send('pong'); }); ws.onClose(()=>set.delete(ws));
+     ws.send(JSON.stringify({version:mroom(id).version})); });
+ };
+ // Service workers are blocked: Playwright can't route a request that a service worker lets through to the network,
+ // and that request would reach the real Worker. Only the offline check below, which never syncs, allows one.
+ const newContext0=b.newContext.bind(b); b.newContext=async o=>{ const c=await newContext0({serviceWorkers:'block',...o}); await wire(c); return c; };
+ // An init script for a phone that can't reach the sync server, quietly (no failed requests in the console): for the
+ // checks of manual share codes, merges and snapshot links, which live sync would otherwise do for them.
+ const noSync=()=>{ const f=window.fetch; window.fetch=function(u){ return String(u&&u.url||u).startsWith('https://hati-sync.')?Promise.reject(new TypeError('Failed to fetch')):f.apply(this,arguments); }; window.WebSocket=undefined; };
+ // Cut a context off the network (and the mock server), or bring it back.
+ const setNet=async(c,on)=>{ if (on) mock.down.delete(c); else { mock.down.add(c); for (const s of mock.socks.values()) for (const ws of s) if (ws.__c===c) ws.close({code:1011}); } await c.setOffline(!on); };
  const ok=(c,msg)=>{console.log((c?'PASS ':'FAIL ')+msg); if(!c) process.exitCode=1;};
  const ctx=await b.newContext({...devices['iPhone 13']});
  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
@@ -92,7 +129,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
  ok(await p.evaluate(()=>[...document.querySelectorAll('.input')].every(i=>parseFloat(getComputedStyle(i).fontSize)>=16)),'all inputs are at least 16px');
  ok(errs.length===0,'no console errors '+JSON.stringify(errs));
  // corrupted data does not blank the app
- const c2=await b.newContext({...devices['iPhone 13']}); const q=await c2.newPage();
+ const c2=await b.newContext({...devices['iPhone 13'],serviceWorkers:'allow'}); const q=await c2.newPage();
  await q.goto(URL); await q.evaluate(()=>localStorage.setItem('hati2.mock.v1',JSON.stringify({volumes:[null,{id:'abc',title:'Old',members:[{id:'m1',name:'A'}],expenses:[]}]})));
  await q.reload(); ok(await q.locator('.vol').count()===1 && await q.locator('.banner:not(#iosHint)').count()===1,'old/damaged saved data loads with a notice instead of a blank screen');
  await q.evaluate(()=>localStorage.setItem('hati2.mock.v1','{not json')); await q.reload();
@@ -123,7 +160,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await d.evaluate(()=>{ window.__shared=null; navigator.share=d=>{window.__shared=d; return Promise.resolve();}; window.__copied=0; Object.defineProperty(navigator,'clipboard',{value:{writeText:()=>{window.__copied++; return Promise.resolve();}},configurable:true}); });
    await d.locator('[data-act=volMenu]').click(); await d.locator('.sheet [data-act=share]').click();
    await d.getByRole('button',{name:'Send invite'}).click(); await d.waitForTimeout(100);
-   ok(await d.evaluate(()=>!!window.__shared && window.__shared.url===$('#s-link').value && /#join=[\w-]+$/.test(window.__shared.url) && window.__copied===0),'Send invite passes the invite link to the native share sheet');
+   ok(await d.evaluate(()=>!!window.__shared && window.__shared.url===$('#s-link').value && /#join=[\w.-]+$/.test(window.__shared.url) && window.__copied===0),'Send invite passes the invite link to the native share sheet');
    await d.evaluate(()=>{ navigator.share=()=>Promise.reject(new DOMException('cancel','AbortError')); });
    await d.getByRole('button',{name:'Send invite'}).click(); await d.waitForTimeout(100);
    ok(await d.evaluate(()=>window.__copied===0 && !$('#sheetMsg').textContent),'cancelling the share sheet is silent and does not copy');
@@ -171,7 +208,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await c.close(); }
 
  // R1-1/R1-2/R1-3 (code): merge on import, member edit, native share, backup
- { const fresh=async()=>{ const c=await b.newContext({...devices['iPhone 13'],acceptDownloads:true}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.goto(URL); return {c,pg,e}; };
+ { const fresh=async()=>{ const c=await b.newContext({...devices['iPhone 13'],acceptDownloads:true}); await c.addInitScript(noSync); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.goto(URL); return {c,pg,e}; };
    const home=async pg=>{ if(await pg.evaluate(()=>sheetOpen())) await pg.keyboard.press('Escape'); await pg.locator('#nav [data-act=home]').click(); };
    const openVol=async (pg,title)=>{ await home(pg); await pg.locator('.vol',{hasText:title}).first().click(); };
    const shareCode=async (pg,title)=>{ await openVol(pg,title); await pg.locator('[data-act=volMenu]').click(); await pg.locator('.sheet [data-act=share]').click(); const c=await pg.locator('#s-code').inputValue(); await pg.keyboard.press('Escape'); return c; };
@@ -706,7 +743,8 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    // broken and newer links change nothing
    const S0=await C.pg.evaluate(()=>JSON.stringify(S)), mid=Math.floor(pay.length/2);
    for (const [bad,want,why] of [[pay.slice(0,mid)+pay.slice(mid+1),'This invite link is broken. Ask for a new one.','one middle character removed'],[pay.slice(0,40),'This invite link is broken. Ask for a new one.','cut short'],['abc$%','This invite link is broken. Ask for a new one.','not base64url'],
-       ['A'.repeat(22)+'.'+'B'.repeat(43),'This invite needs a newer version of HATI².','a live-sync room.key link']]) {
+       ['A'.repeat(22)+'.'+'B'.repeat(43),"This volume isn't online yet. Ask whoever sent the link to open HATI² while online, then try again.",'a live link to a room nobody wrote to'],
+       ['A'.repeat(22)+'.'+'B'.repeat(44),'This invite needs a newer version of HATI².','a room.key link with a key of the wrong length']]) {
      await C.pg.evaluate(p=>{ location.hash='join='+p; },bad); await C.pg.waitForFunction(()=>$('#sheetMsg') && $('#sheetMsg').textContent.length>0);
      ok(await msgOf(C.pg)===want && await C.pg.evaluate(s=>JSON.stringify(S)===s,S0),`${why}: "${want}" and nothing changes`);
      await C.pg.keyboard.press('Escape'); }
@@ -731,11 +769,12 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await A.pg.waitForSelector('#s-sum'); ok(/Updates 1 expense/.test(await A.pg.locator('#s-sum').innerText()),'a share code whose note mentions "#join=" is still read as a code');
    await A.pg.keyboard.press('Escape');
    // without CompressionStream (old WebView): Copy code, no error; a link says this browser can't open it
-   const O=await fresh(devices['Pixel 7'],{init:()=>{ delete window.CompressionStream; delete window.DecompressionStream; }}); all.push(O);
+   const O=await fresh(devices['Pixel 7'],{init:()=>{ delete window.CompressionStream; delete window.DecompressionStream; }}); all.push(O); await setNet(O.c,false);
    await O.pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); return shareSheet(); });
    ok(await O.pg.getByRole('button',{name:'Copy code'}).isVisible() && !(await O.pg.locator('[data-act=copyLink],[data-act=sendLink],svg.qr').count()),'no CompressionStream: the share sheet falls back to Copy code');
    await O.pg.evaluate(p=>{ dropSheet(); location.hash='join='+p; },pay); await O.pg.waitForFunction(()=>$('#sheetMsg') && $('#sheetMsg').textContent.length>0);
    ok(/can't open invite links/.test(await msgOf(O.pg)),'no DecompressionStream: a link says this browser can\'t open it');
+   await setNet(O.c,true);
    // iPhone Safari (not the Home Screen app): one line and Copy link, for the app's own storage
    const I1=await fresh(devices['iPhone 13'],{url:link}); all.push(I1); await I1.pg.waitForSelector('#s-who');
    await I1.pg.evaluate(()=>{ window.__c=null; Object.defineProperty(navigator,'clipboard',{value:{writeText:t=>{window.__c=t; return Promise.resolve();}},configurable:true}); });
@@ -763,8 +802,10 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(ink.length===0,'QR is #000 on #fff in all 13 palettes, light and dark '+JSON.stringify(ink.slice(0,3)));
    await pg.evaluate(()=>{ dropSheet(); const v=JSON.parse(JSON.stringify(S.volumes[0])); v.id='bigQR1'; v.expenses=[];
      for (let i=0;i<204;i++) v.expenses.push({id:'bq'+i,desc:'Shared thing '+i+' '+Math.random().toString(36).slice(2,8),amount:1000+i*37,paidBy:v.meId,category:'food',date:'2026-10-01',splitType:'exact',splits:{[v.meId]:1000+i*37},inputs:{},note:'',upd:0});
-     S.volumes.push(v); ui.volId='bigQR1'; go('volume'); return shareSheet(); });
-   ok(await pg.locator('#s-noqr').innerText()==='This volume is too big for a QR code. Send the link instead.' && !(await pg.locator('svg.qr').count()) && await pg.locator('[data-act=copyLink]').isVisible(),'204 expenses: the too-big line, no QR, the link still there');
+     S.volumes.push(v); ui.volId='bigQR1'; go('volume'); window.__f=window.fetch; window.fetch=()=>Promise.reject(new TypeError('Failed to fetch')); return shareSheet(); });
+   ok(await pg.locator('#s-noqr').innerText()==='This volume is too big for a QR code. Send the link instead.' && !(await pg.locator('svg.qr').count()) && await pg.locator('[data-act=copyLink]').isVisible(),'204 expenses, sync server out of reach: the too-big line, no QR, the snapshot link still there');
+   await pg.evaluate(()=>{ dropSheet(); window.fetch=window.__f; return shareSheet(); });
+   ok(await pg.locator('svg.qr').count()===1 && /#join=[\w-]{22}\.[\w-]{43}$/.test(await pg.locator('#s-link').inputValue()),'204 expenses with the server reachable: the live link is short, so the QR is back');
    ok(e.length===0,'no page errors in R2-2 QR checks '+JSON.stringify(e)); await c.close(); }
  // R2-3 (code + scenarios): scenario: two phones join by invite link and merge back
  { const fresh=async dev=>{ const c=await b.newContext({...dev}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.goto(URL);
@@ -880,5 +921,113 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await pg.fill('#s-amt',ds[1].amt);
    ok((await st()).p[1]==='true','R2-4: typing a suggestion back in marks that row again');
    ok(e.length===0,'no page errors in R2-4 checks '+JSON.stringify(e)); await c.close(); }
+ // Criterion 6 (hati-sync): live sync between an Android and an iPhone through the (mocked) server, one going offline
+ { const fresh=async(dev,url=URL)=>{ const c=await b.newContext({...dev}); const pg=await c.newPage(); const e=[];
+     pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{ if (m.type()==='error' && !/Failed to load resource|ERR_INTERNET_DISCONNECTED|WebSocket/.test(m.text())) e.push(m.text()); });
+     await pg.goto(url); return {c,pg,e}; };
+   const addExp=async (pg,desc,amt)=>{ await pg.getByRole('button',{name:/Add expense/}).click(); await pg.fill('#f-amount',amt); await pg.fill('#f-desc',desc); await pg.locator('#expForm button[type=submit]').click(); await pg.waitForFunction(()=>ui.view==='volume' && !!$('.hero')); };
+   const tag=pg=>pg.evaluate(()=>{ const t=$('#syncTag'); return t ? t.textContent : null; });
+   const descs=pg=>pg.evaluate(()=>vol().expenses.map(e=>e.desc).sort());
+   const has=(pg,d,ms=5000)=>pg.waitForFunction(d=>{ const v=vol(); return !!v && v.expenses.some(e=>e.desc===d); },d,{timeout:ms}).then(()=>true,()=>false);
+   const A=await fresh(devices['Pixel 7']), B=await fresh(devices['iPhone 13']);
+   // A creates "Beach" as Ana with Ben, adds Rent, and shares it
+   await A.pg.locator('[data-act=newVolume]').click(); await A.pg.fill('#s-title','Beach'); await A.pg.fill('#s-me','Ana'); await A.pg.fill('#s-others','Ben'); await A.pg.locator('#sheetForm button.primary').click();
+   await addExp(A.pg,'Rent','100');
+   ok(await tag(A.pg)===null,'S6-1: a volume nobody shared has no sync line');
+   await A.pg.locator('.acts [data-act=share]').click(); await A.pg.waitForSelector('#s-link',{state:'attached'});
+   const link=await A.pg.locator('#s-link').inputValue(), [room,key]=link.split('#join=')[1].split('.');
+   ok(link===URL+'#join='+room+'.'+key && /^[\w-]{22}$/.test(room) && /^[\w-]{43}$/.test(key) && /keeps this volume in sync/.test(await A.pg.locator('#s-how').innerText()),'S6-1: sharing makes a live invite <page>#join=<room 22>.<key 43> '+link.slice(-70));
+   ok(mroom(room).version===1 && !!mroom(room).blob && await A.pg.locator('svg.qr').count()===1,'S6-1: the volume is on the server (version 1) the moment the invite exists, and the QR holds the short link');
+   const keyLen=await A.pg.evaluate(k=>unb64url(k).length,key); ok(keyLen===32,'S6-1: the key is 32 random bytes (AES-GCM-256), the room 16 bytes');
+   await A.pg.keyboard.press('Escape'); await A.pg.waitForFunction(()=>$('#syncTag') && $('#syncTag').textContent==='Synced');
+   ok(await tag(A.pg)==='Synced' && await A.pg.evaluate(()=>$('#syncTag').dataset.s)==='ok','S6-1: the hero says "Synced"');
+   // B (iPhone) opens the link cold, picks Ben, joins
+   await B.pg.goto(link); await B.pg.waitForSelector('#s-who');
+   await B.pg.selectOption('#s-who',{label:'Ben'}); await B.pg.getByRole('button',{name:'Join'}).click();
+   ok(await B.pg.evaluate(()=>ui.view==='volume' && vol().title==='Beach' && nameOf(vol(),vol().meId)==='Ben' && !/join/.test(location.hash)) && JSON.stringify(await descs(B.pg))==='["Rent"]','S6-2: B joins Beach as Ben from the live link; Rent is there');
+   ok(await B.pg.evaluate(r=>JSON.parse(localStorage.getItem('hati2.sync.v1'))[ui.volId].room===r,room),'S6-2: B keeps the room with the volume');
+   await B.pg.waitForFunction(()=>$('#syncTag') && $('#syncTag').textContent==='Synced');
+   // A adds an expense; B sees it live (socket says version n, B pulls and merges), no reload
+   const t0=Date.now(); await addExp(A.pg,'Taxi','23.45');
+   ok(await has(B.pg,'Taxi',5000),`S6-3: A adds Taxi, B's screen shows it live in ${Date.now()-t0} ms`);
+   await B.pg.waitForFunction(()=>/Taxi/.test($('#app').innerText),null,{timeout:2000}).catch(()=>{});
+   ok(/Taxi/.test(await B.pg.locator('#app').innerText()) && /Beach: adds 1 expense/.test(await B.pg.evaluate(()=>($('.toast')||{}).textContent||'')),'S6-3: B\'s volume page redraws with Taxi and says "Beach: adds 1 expense."');
+   // Both go offline and each adds an expense; local saves are instant and queued
+   await setNet(A.c,false); await setNet(B.c,false);
+   await addExp(A.pg,'Lunch','30'); await addExp(B.pg,'Snacks','12.10');
+   ok(await tag(A.pg)==='Offline — will sync' && await tag(B.pg)==='Offline — will sync','S6-4: offline, both phones save at once and say "Offline — will sync" ['+await tag(A.pg)+']');
+   ok(await A.pg.evaluate(()=>JSON.parse(localStorage.getItem('hati2.sync.v1'))[ui.volId].dirty===true) && await B.pg.evaluate(()=>JSON.parse(localStorage.getItem('hati2.sync.v1'))[ui.volId].dirty===true),'S6-4: the outbox flag is stored on both phones');
+   // B reconnects first (pushes), then A (409: someone wrote first → merge → push); both end with all four
+   const c409=mock.n409; await setNet(B.c,true); await B.pg.waitForFunction(()=>$('#syncTag').textContent==='Synced',null,{timeout:5000}).catch(()=>{});
+   await setNet(A.c,true);
+   const both=await has(A.pg,'Snacks',6000) && await has(B.pg,'Lunch',6000);
+   await A.pg.waitForFunction(()=>$('#syncTag') && $('#syncTag').textContent==='Synced',null,{timeout:5000}).catch(()=>{}); await B.pg.waitForFunction(()=>$('#syncTag') && $('#syncTag').textContent==='Synced',null,{timeout:5000}).catch(()=>{});
+   const dA=await descs(A.pg), dB=await descs(B.pg);
+   ok(both && JSON.stringify(dA)==='["Lunch","Rent","Snacks","Taxi"]' && JSON.stringify(dA)===JSON.stringify(dB) && mock.n409>c409,`S6-5: after both reconnect, both phones have all 4 expenses; the second writer got a 409 and merged (${mock.n409-c409} conflicts) `+JSON.stringify([dA,dB]));
+   const cv=pg=>pg.evaluate(()=>{ const v=vol(), bl=balances(v); return {canon:canon(v), order:v.expenses.map(e=>e.id).join(), me:bl[v.meId], sum:Object.values(bl).reduce((a,b)=>a+b,0), you:nameOf(v,v.meId)}; });
+   const xa=await cv(A.pg), xb=await cv(B.pg);
+   ok(xa.canon===xb.canon && xa.order===xb.order && xa.sum===0 && xb.sum===0 && xa.me+xb.me===0 && xa.you==='Ana' && xb.you==='Ben',`S6-5: both phones hold the same volume in the same order, balances opposite to the cent (Ana ${xa.me}, Ben ${xb.me}) and sum to 0`);
+   ok(await tag(A.pg)==='Synced' && await tag(B.pg)==='Synced' && await A.pg.evaluate(()=>JSON.parse(localStorage.getItem('hati2.sync.v1'))[ui.volId].dirty===false),'S6-5: both say "Synced" again and the outbox is empty');
+   const quiet=mock.puts.length; await A.pg.waitForTimeout(600);
+   ok(mock.puts.length===quiet,'S6-5: converged phones stop writing (no ping-pong of PUTs)');
+   // reload: the room survives and the app catches up at start
+   await B.pg.reload(); await B.pg.waitForFunction(()=>$('#syncTag') && $('#syncTag').textContent==='Synced',null,{timeout:5000}).catch(()=>{});
+   ok(await tag(B.pg)==='Synced' && JSON.stringify(await descs(B.pg))===JSON.stringify(dA),'S6-5: after a reload B is still synced with the same 4 expenses '+JSON.stringify(await B.pg.evaluate(()=>({tag:$('#syncTag')&&$('#syncTag').textContent,view:ui.view,sy:SY,rt:Object.fromEntries(Object.entries(RT).map(([k,v])=>[k,{state:v.state,seen:typeof v.seen,want:v.want,ws:!!v.ws}])),on:navigator.onLine}))));
+   // The server only ever sees ciphertext: no names, titles or amounts in any request; the key never leaves the phone
+   const plain=['Beach','Rent','Taxi','Lunch','Snacks','"amount"','"name"','"desc"','23.45','2345','1210'];
+   const leaks=mock.puts.filter(x=>x.room===room).filter(x=>plain.some(w=>x.body.includes(w)));
+   const shapes=mock.puts.filter(x=>x.room===room).every(x=>{ const j=JSON.parse(x.body); return Object.keys(j).sort().join()==='baseVersion,blob' && Object.keys(j.blob).sort().join()==='ct,iv,v' && j.blob.v===1 && /^[\w-]{16}$/.test(j.blob.iv); });
+   const ivs=mock.puts.filter(x=>x.room===room).map(x=>JSON.parse(x.body).blob.iv);
+   ok(mock.puts.filter(x=>x.room===room).length>=4 && leaks.length===0 && shapes && new Set(ivs).size===ivs.length,`S6-6: ${ivs.length} PUT bodies are {baseVersion, blob:{v:1, iv, ct}} with a fresh IV each and no plaintext name, title or amount`);
+   ok(!mock.urls.some(u=>u.includes(key)) && mock.urls.some(u=>u.startsWith('wss://')),'S6-6: the key is in no request URL (HTTP or WebSocket)');
+   const opened=await A.pg.evaluate(async([r,k,b])=>{ const x=await unseal(r,k,b); return x && x.title+':'+x.expenses.length+':'+(x.meId===undefined); },[room,key,mroom(room).blob]);
+   ok(opened==='Beach:4:true','S6-6: the server blob decrypts with the link\'s key to the whole volume (without who "you" are)');
+   const wrongRoom=await A.pg.evaluate(async([k,b])=>await unseal('Z'.repeat(22),k,b),[key,mroom(room).blob]);
+   ok(wrongRoom===null,'S6-6: the room id is bound in as additional data, so the blob fails in another room');
+   // A wrong key or a damaged blob never touches local data
+   const C=await fresh(devices['Pixel 7']); const wrongKey=key.slice(0,10)+(key[10]==='A'?'B':'A')+key.slice(11);
+   const c0=await C.pg.evaluate(()=>JSON.stringify(S));
+   await C.pg.evaluate(p=>{ location.hash='join='+p; },room+'.'+wrongKey); await C.pg.waitForFunction(()=>$('#sheetMsg') && $('#sheetMsg').textContent.length>0);
+   ok(await C.pg.locator('#sheetMsg').innerText()==='This invite link is broken. Ask for a new one.' && await C.pg.evaluate(s=>JSON.stringify(S)===s && !localStorage.getItem('hati2.sync.v1'),c0),'S6-7: a link with the wrong key says it is broken and changes nothing');
+   const a0=await A.pg.evaluate(()=>JSON.stringify(vol())), bad=mroom(room).version+1;
+   mock.rooms.set(room,{version:bad,blob:{v:1,iv:'A'.repeat(16),ct:'garbage'+'x'.repeat(40)}}); mbroadcast(room,bad);
+   await A.pg.waitForFunction(()=>$('#syncTag').dataset.s==='bad',null,{timeout:5000}).catch(()=>{});
+   ok(await A.pg.evaluate(s=>JSON.stringify(vol())===s,a0) && /Can't read the shared copy/.test(await tag(A.pg)),'S6-7: a blob A can\'t decrypt leaves A\'s volume exactly as it was and says so ['+await tag(A.pg)+']');
+   const other=await A.pg.evaluate(async([r])=>{ const n=await newRoom(); const v=JSON.parse(JSON.stringify(vol())); v.expenses=[]; return seal(r,n.key,payload(v)); },[room]);
+   mock.rooms.set(room,{version:bad+1,blob:other}); mbroadcast(room,bad+1); await A.pg.waitForTimeout(500);
+   ok(await A.pg.evaluate(s=>JSON.stringify(vol())===s,a0) && mroom(room).version===bad+1,'S6-7: a valid blob under someone else\'s key (an empty copy) is not read and not overwritten; nothing is lost');
+   // 429 and 413: quiet, honest, local data kept
+   mock.rooms.set(room,{version:bad+2,blob:(await (async()=>{ const s0=mock.puts.filter(x=>x.room===room).pop(); return JSON.parse(s0.body).blob; })())});
+   await A.pg.evaluate(()=>{ rt(ui.volId).seen=undefined; }); mbroadcast(room,bad+2); await A.pg.waitForFunction(()=>$('#syncTag').dataset.s==='ok',null,{timeout:5000}).catch(()=>{});
+   ok(await tag(A.pg)==='Synced','S6-8: once the room holds a readable copy again, A is back to "Synced"');
+   mock.status=429; await addExp(A.pg,'Ice cream','4'); await A.pg.waitForFunction(()=>$('#syncTag').dataset.s==='busy',null,{timeout:5000}).catch(()=>{});
+   ok(await tag(A.pg)==='Server busy — will sync soon' && await A.pg.evaluate(()=>vol().expenses.some(e=>e.desc==='Ice cream') && rt(ui.volId).until>Date.now()+50000),'S6-8: 429: the expense is saved here, the line says the server is busy, and the next try waits for Retry-After');
+   mock.status=413; await A.pg.evaluate(()=>{ rt(ui.volId).until=0; return syncRun(ui.volId); });
+   ok(await tag(A.pg)==='Too big to sync. It stays on this phone.' && await A.pg.evaluate(()=>vol().expenses.some(e=>e.desc==='Ice cream')),'S6-8: 413: the line says it is too big and the expense stays');
+   mock.status=null; await A.pg.evaluate(()=>syncRun(ui.volId));
+   ok(await has(B.pg,'Ice cream',5000) && await tag(A.pg)==='Synced','S6-8: when the server takes writes again, the queued expense reaches B');
+   // Hidden page closes its socket; shown again it reopens and catches up
+   const socks=()=>[...(mock.socks.get(room)||[])].filter(ws=>ws.__c===B.c).length;
+   await B.pg.evaluate(()=>{ Object.defineProperty(document,'hidden',{value:true,configurable:true}); document.dispatchEvent(new Event('visibilitychange')); });
+   await B.pg.waitForTimeout(200); const hiddenSocks=socks();
+   await addExp(A.pg,'Parking','5');
+   await B.pg.waitForTimeout(400); const missed=!(await B.pg.evaluate(()=>vol().expenses.some(e=>e.desc==='Parking')));
+   await B.pg.evaluate(()=>{ Object.defineProperty(document,'hidden',{value:false,configurable:true}); document.dispatchEvent(new Event('visibilitychange')); });
+   ok(hiddenSocks===0 && missed && await has(B.pg,'Parking',5000) && socks()===1,`S6-9: a hidden page closes its socket (${hiddenSocks} open) and gets nothing; shown again it reopens one and pulls Parking`);
+   // a sheet open on the volume holds a live change until it closes, so an edit in progress is not lost
+   await B.pg.getByRole('button',{name:/Settle up/}).click(); await B.pg.waitForSelector('#s-amt');
+   await addExp(A.pg,'Fuel','8'); await B.pg.waitForTimeout(700);
+   const held=!(await B.pg.evaluate(()=>vol().expenses.some(e=>e.desc==='Fuel')));
+   await B.pg.fill('#s-amt','1.00'); await B.pg.getByRole('button',{name:'Record payment'}).click();
+   ok(held && await has(B.pg,'Fuel',5000) && await B.pg.evaluate(()=>vol().settlements.some(s=>s.amount===100)) && await has(A.pg,'Fuel') && await A.pg.waitForFunction(()=>vol().settlements.some(s=>s.amount===100),null,{timeout:5000}).then(()=>true,()=>false),'S6-10: a change that arrives while Settle up is open waits; after Record payment both the payment and Fuel are on both phones');
+   // Reduced motion: the status line does not animate
+   const rm=await b.newContext({...devices['iPhone 13'],reducedMotion:'reduce'}); const R=await rm.newPage(); await R.goto(link); await R.waitForSelector('#s-who'); await R.selectOption('#s-who',{label:'Ana'}); await R.getByRole('button',{name:'Join'}).click();
+   await R.waitForFunction(()=>$('#syncTag') && $('#syncTag').textContent==='Synced',null,{timeout:5000}).catch(()=>{});
+   const mo=await R.evaluate(()=>{ const t=$('#syncTag'); t.dataset.s=''; paintSync(ui.volId); const n=document.getAnimations().filter(a=>t.contains(a.effect.target)).length; return n; });
+   const mn=await A.pg.evaluate(()=>{ const t=$('#syncTag'); t.dataset.s=''; paintSync(ui.volId); const as=document.getAnimations().filter(a=>t.contains(a.effect.target)); return as.map(a=>a.effect.getTiming().duration); });
+   ok(mo===0 && mn.length>0 && mn.every(d=>d<=200),'S6-11: the status line fades in over '+JSON.stringify(mn)+' ms (transform/opacity), and not at all under reduced motion');
+   await rm.close();
+   const errs=[...A.e,...B.e,...C.e]; ok(errs.length===0,'no page errors in the live sync scenario '+JSON.stringify(errs));
+   for (const x of [A,B,C]) await x.c.close(); }
  await b.close();
 })();
