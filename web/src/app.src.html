@@ -7,7 +7,7 @@
 :root {
   /* Palette inputs from the chosen Sanzo Wada plate */
   --ink-l: #000000; --paper-l: #FFFFFF; --acc-l: #FEF08A; --acc-d: #FFF3B0;
-  --hero-l: #FFF5D6; --hero-d: #3A3422; --food-l: #FFC9A8; --muted-l: #6B7280;
+  --hero-l: #FFF5D6; --food-l: #FFC9A8; --muted-l: #6B7280;
   --b1: #FEF08A; --b2: #BFDBFE; --b3: #BBF7D0; --b4: #E9D5FF;
 
   /* Light: ink on paper */
@@ -40,17 +40,20 @@
   /* Roles that dark mode sets apart; in light they equal what was there before */
   --off: var(--rule);            /* hard offset shadow */
   --sel-bg: var(--fg); --sel-fg: var(--bg); /* selected (inverted) segment */
+  --sel-edge: var(--fg); /* inner ink edge on the selected .cat: in light the pastel alone is hue-only (1.29:1 in Fern) */
   --scrim: rgba(10, 10, 14, 0.5); --sheet: var(--bg); --field: var(--panel);
 }
 /* Dark: ink on night paper. Written once: build.py copies everything between the DARK markers into
    @media (prefers-color-scheme: dark) with :root:not([data-theme="light"]), so the two can't drift.
-   Night paper is the plate's own ink, nearly black; layers step up bg < sunk < panel < hero < selected, all mixed from
+   Night paper is one near-neutral night with a 5% whisper of the plate's ink (max-min RGB spread <= 14 in every plate:
+   at 20% Lagoon was violet, Peony indigo, Harbor maroon, so those plates read as another app). The plate shows in dark
+   through the accent (primary, nav tab, spines, focus) and the category pastel, not the page. Layers step up bg < sunk < panel < hero < selected, all mixed from
    chalk (--fg) into the night, never from the accent: a dark yellow/orange is olive or brown mud. The accent appears only
    at full strength (primary, nav tab, spines, focus). Frames are chalk at 62%, quieter than text; the offset slab is
    chalk at 20%, quieter again. Web dark no longer reads HatiPalette.kt heroD (see Team log). */
 /*DARK{*/
 :root[data-theme="dark"] {
-  --bg: color-mix(in srgb, var(--ink-l) 20%, #0E0D12);
+  --bg: color-mix(in srgb, var(--ink-l) 5%, #0E0D12);
   --fg: #EDEBE4; --sub: #A8A6B0; --label: #A8A6B0;
   --sunk: color-mix(in srgb, var(--fg) 3.5%, var(--bg));
   --panel: color-mix(in srgb, var(--fg) 11%, var(--bg));
@@ -60,6 +63,7 @@
   --accent: var(--acc-d); --on-accent: #131217;
   --hero: color-mix(in srgb, var(--fg) 19%, var(--bg));
   --sel-bg: var(--fg); --sel-fg: var(--bg); /* chalk on night: the same inversion as light, no accent so no mud */
+  --sel-edge: transparent; /* dark: the full pastel on night already stands 5.8:1 apart */
   --chip: var(--food-l); /* the plate's pastel at full strength (never diluted into the night, which turns it brown) */
   --tone: color-mix(in srgb, var(--fg) 16%, transparent);
   --pos: #BBF7D0; --neg: #FBCFE8; --err: #F2B8B5; --nav: var(--bg); --sbar: var(--bg);
@@ -109,7 +113,7 @@ h1, h2 { text-wrap: balance; }
 .logo { width: 36px; height: 36px; border-radius: var(--r); background: var(--accent); color: var(--on-accent); display: grid; place-items: center; font: 400 .95rem var(--font-disp); flex-shrink: 0; border: 2px solid var(--rule); }
 .logo svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; }
 .ico { width: 44px; height: 44px; background: var(--panel); border: 2px solid var(--rule); display: grid; place-items: center; flex-shrink: 0; }
-.ico svg, .btn svg, .tx-ic svg, .cat svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ico svg, .btn svg, .tx-ic svg, .cat svg, .ck svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .tagline { margin: 0 0 4px; font-size: .95rem; color: var(--sub); }
 
 /* Generic structure */
@@ -139,7 +143,7 @@ section > .label, section > .row > .label { margin-top: 6px; }
   border-radius: var(--clay-r); box-shadow: var(--clay); transition: transform .08s, box-shadow .08s;
 }
 .btn:active, .ico:active, .cat:active, .vol:active, button.chip:not(.add):active { --c-x: 0px; --c-in: 3px; transform: translate(3px, 3px); }
-.cat[aria-pressed="true"] { --c-x: 0px; --c-in: 3px; }
+.cat[aria-pressed="true"] { --c-x: 0px; --c-in: 3px; box-shadow: inset 0 0 0 2px var(--sel-edge), var(--clay); }
 .btn {
   min-height: 44px; border: 2px solid var(--rule);
   background: var(--panel); padding: 10px 14px;
@@ -204,10 +208,18 @@ button.chip:active { background: var(--sunk); }
 .ledger { background: var(--panel); border: 2px solid var(--rule); border-radius: var(--r); display: flex; flex-direction: column; }
 .ledger > * + * { border-top: 1px solid var(--line); }
 .tx, .debt { display: flex; align-items: center; gap: 12px; padding: 12px; width: 100%; min-height: 56px; text-align: left; background: transparent; border: 0; }
+.ck { display: inline-flex; flex: none; color: var(--fg); }
+[data-sugg][aria-pressed="false"] .ck { visibility: hidden; }
 .ledger > .tx + .tx, .ledger > .debt + .debt, .ledger > * + .tx, .ledger > * + .debt { border-top: 1px solid var(--line); }
 button.tx:active, button.debt:active { background: var(--sunk); }
 .tx-ic { width: 36px; height: 36px; border-radius: var(--r); display: grid; place-items: center; border: 1.5px solid var(--rule); background: var(--sunk); flex-shrink: 0; }
 .tx-a { font-weight: 700; white-space: nowrap; }
+/* History/recent rows, read like a ledger line: what + who paid on the left (wrapping, title up to 2 lines, full text on
+   the edit screen), amount over date in the right column. Icon, title and amount share line 1. */
+.tx { align-items: flex-start; }
+.tx-t { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.tx-m { display: block; overflow-wrap: anywhere; }
+.tx-r { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
 .who { display: flex; gap: .3em; min-width: 0; white-space: nowrap; }
 .who > .nm { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .who > :not(.nm) { flex: none; }
@@ -224,7 +236,7 @@ button.tx:active, button.debt:active { background: var(--sunk); }
 .field > label, .legend { font-size: .85rem; font-weight: 700; color: var(--fg); }
 fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 legend { padding: 0; margin-bottom: 6px; }
-.input, select.input, textarea.input { width: 100%; height: 48px; padding: 10px 12px; border-radius: var(--r); font-size: 16px; border: 2px solid var(--line); background: var(--field); outline: none; -webkit-appearance: none; appearance: none; }
+.input, select.input, textarea.input { width: 100%; height: calc(1.5em + 24px); padding: 10px 12px; border-radius: var(--r); font-size: 16px; border: 2px solid var(--line); background: var(--field); outline: none; -webkit-appearance: none; appearance: none; }
 textarea.input { height: auto; }
 .input:focus { border-color: var(--rule); }
 .input[aria-invalid="true"] { border-color: var(--err); }
@@ -307,6 +319,7 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 .toast.top { top: calc(12px + env(safe-area-inset-top, 0px)); bottom: auto; }
 /* Focus on clay: the ring joins the clay stack instead of replacing it */
 :is(.btn, .ico, .cat, .vol, button.chip:not(.add), .nav button[aria-current="page"]):focus-visible { box-shadow: var(--clay), 0 0 0 6px var(--accent); }
+.cat[aria-pressed="true"]:focus-visible { box-shadow: inset 0 0 0 2px var(--sel-edge), var(--clay), 0 0 0 6px var(--accent); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } .btn:active, .ico:active, .cat:active, .vol:active, button.chip:active { transform: none !important; } }
 </style>
 
@@ -533,7 +546,7 @@ function applyTheme() {
   const r = document.documentElement.style;
   r.setProperty("--ink-l", p.ink); r.setProperty("--paper-l", p.paper);
   r.setProperty("--acc-l", p.acc); r.setProperty("--acc-d", p.accD);
-  r.setProperty("--hero-l", p.hero); r.setProperty("--hero-d", p.heroD);
+  r.setProperty("--hero-l", p.hero);
   r.setProperty("--food-l", p.food); r.setProperty("--muted-l", p.muted);
   const sw = p.sw.length >= 4 ? p.sw : [...p.sw, p.tert];
   ["--b1", "--b2", "--b3", "--b4"].forEach((k, i) => r.setProperty(k, sw[i % sw.length]));
@@ -597,20 +610,21 @@ function memberChip(v, m, c) {
   const show = Math.abs(c) <= 1 ? "settled" : signed(c, v.currency);
   return `<button type="button" class="chip" data-act="editMember" data-id="${esc(m.id)}" aria-label="${esc(`${meName(v, m.id)}, ${say}, edit`)}">${avatar(v, m.id)}${esc(meName(v, m.id))}<span class="muted num small" aria-hidden="true">${esc(show)}</span></button>`;
 }
-function debtRow(v, d, tag = "div", extra = "") {
-  return `<${tag} class="debt" ${extra}>${avatar(v, d.from)}<span class="grow small who"><b class="nm">${esc(meName(v, d.from))}</b> <span>${pays(v, d.from)}</span> <b class="nm">${esc(meObj(v, d.to))}</b></span><b class="num">${esc(fmt(d.amount, v.currency))}</b></${tag}>`;
+const CHECK = `<span class="ck" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>`;
+function debtRow(v, d, tag = "div", extra = "", tail = "") {
+  return `<${tag} class="debt" ${extra}>${avatar(v, d.from)}<span class="grow small who"><b class="nm">${esc(meName(v, d.from))}</b> <span>${pays(v, d.from)}</span> <b class="nm">${esc(meObj(v, d.to))}</b></span><b class="num">${esc(fmt(d.amount, v.currency))}</b>${tail}</${tag}>`;
 }
 function itemRow(v, it) {
   if (it.k === "e") return expenseRow(v, it.x);
   const s = it.x;
-  return `<button class="tx" data-act="editSettle" data-id="${esc(s.id)}"><span class="tx-ic" aria-hidden="true">${CAT_ICON.settle}</span><span class="grow"><b class="ellip" style="display:block">${esc(meName(v, s.from))} paid ${esc(meObj(v, s.to))}</b><span class="muted small ellip" style="display:block">Payment · <span class="date">${esc(niceDate(s.date))}</span></span></span><span class="tx-a num">${esc(fmt(s.amount, v.currency))}</span></button>`;
+  return `<button class="tx" data-act="editSettle" data-id="${esc(s.id)}"><span class="tx-ic" aria-hidden="true">${CAT_ICON.settle}</span><span class="grow"><b class="tx-t">${esc(meName(v, s.from))} paid ${esc(meObj(v, s.to))}</b><span class="muted small tx-m">Payment</span></span><span class="tx-r"><span class="tx-a num">${esc(fmt(s.amount, v.currency))}</span><span class="muted small date">${esc(niceDate(s.date))}</span></span></button>`;
 }
 function expenseRow(v, e) {
   const c = catOf(e.category), mineShare = e.splits[v.meId] || 0;
   const effect = (e.paidBy === v.meId ? e.amount : 0) - mineShare;
   return `<button class="tx" data-act="editExpense" data-id="${esc(e.id)}"><span class="tx-ic" aria-hidden="true">${CAT_ICON[c[0]]}</span>
-    <span class="grow"><b class="ellip" style="display:block">${esc(e.desc)}</b><span class="muted small ellip" style="display:block">${esc(meName(v, e.paidBy))} paid ${esc(fmt(e.amount, v.currency))} · <span class="date">${esc(niceDate(e.date))}</span></span></span>
-    <span class="tx-a num" style="color:${effect > 0 ? "var(--pos)" : effect < 0 ? "var(--neg)" : "var(--sub)"}">${effect === 0 ? "—" : esc(signed(effect, v.currency))}</span></button>`;
+    <span class="grow"><b class="tx-t">${esc(e.desc)}</b><span class="muted small tx-m">${esc(meName(v, e.paidBy))} paid ${esc(fmt(e.amount, v.currency))}</span></span>
+    <span class="tx-r"><span class="tx-a num" style="color:${effect > 0 ? "var(--pos)" : effect < 0 ? "var(--neg)" : "var(--sub)"}">${effect === 0 ? "—" : esc(signed(effect, v.currency))}</span><span class="muted small date">${esc(niceDate(e.date))}</span></span></button>`;
 }
 const emptyCard = (kao, text) => `<div class="panel empty"><div class="kao" aria-hidden="true">${kao}</div><div class="muted small">${text}</div></div>`;
 
@@ -909,7 +923,7 @@ function settleSheet(existing) {
   }
   const s = existing || ds[0] || { from: v.meId, to: (v.members.find(m => m.id !== v.meId) || {}).id };
   const opt = sel => v.members.map(m => `<option value="${esc(m.id)}" ${m.id === sel ? "selected" : ""}>${esc(meName(v, m.id))}</option>`).join("");
-  const sugg = !existing && ds.length > 1 ? `<div class="legend">Suggested payments</div><div class="ledger">${ds.map((d, i) => debtRow(v, d, "button", `type="button" data-sugg="${i}"`)).join("")}</div>` : "";
+  const sugg = !existing && ds.length > 1 ? `<div class="legend">Suggested payments</div><div class="ledger">${ds.map((d, i) => debtRow(v, d, "button", `type="button" data-sugg="${i}" aria-pressed="${i === 0}"`, CHECK)).join("")}</div>` : "";
   sheet(`<h2>${existing ? "Edit payment" : "Settle up"}</h2><div class="stack">${sugg}
     <div class="btns"><div class="field"><label for="s-from">From</label><select id="s-from" class="input">${opt(s.from)}</select></div>
     <div class="field"><label for="s-to">To</label><select id="s-to" class="input">${opt(s.to)}</select></div></div>
@@ -927,10 +941,19 @@ function settleSheet(existing) {
       else v.settlements.push({ id: uid(), from, to, amount: amt, date: today(), upd: Date.now() });
       if (!commit()) return; closeSheet(); render(); toast("Payment recorded");
     });
+  if (!sugg) return;
+  // The chosen suggestion is the row the form still matches; editing From/To/Amount away from every row clears it.
+  const rows = [...document.querySelectorAll("#sheetForm [data-sugg]")];
+  const mark = () => {
+    const from = $("#s-from").value, to = $("#s-to").value, amt = parseMoney($("#s-amt").value);
+    const hit = ds.findIndex(d => d.from === from && d.to === to && d.amount === amt);
+    rows.forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.sugg === hit)));
+  };
   $("#sheetForm").addEventListener("click", ev => {
     const b = ev.target.closest("[data-sugg]"); if (!b) return;
-    const d = ds[+b.dataset.sugg]; $("#s-from").value = d.from; $("#s-to").value = d.to; $("#s-amt").value = (d.amount / 100).toFixed(2);
+    const d = ds[+b.dataset.sugg]; $("#s-from").value = d.from; $("#s-to").value = d.to; $("#s-amt").value = (d.amount / 100).toFixed(2); mark();
   });
+  $("#sheetForm").addEventListener("input", mark); $("#sheetForm").addEventListener("change", mark);
 }
 function confirmSheet(title, body, label, onYes) {
   sheet(`<h2>${esc(title)}</h2><p class="muted">${esc(body)}</p>${sheetButtons(esc(label), "danger")}`, () => { dropSheet(); onYes(); });

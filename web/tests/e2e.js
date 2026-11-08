@@ -549,6 +549,42 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      if(r.length) vb.push(`${mode}/${w}: ${r}`); }
    await pg.evaluate(()=>{ S.volumes=S.volumes.filter(v=>v.id!=='l34'); S.settings.mode='light'; applyTheme(); go('hub'); });
    ok(vb.length===0,'L3-4: hub card title, balance and meta are never cut off at 320/360/390 in both themes '+JSON.stringify(vb.slice(0,3)));
+   // R2-2 (design): one near-neutral night in every plate; the plate shows in dark through accent and pastel only
+   const sp=[];
+   const chroma=([r,g,b])=>{ const f=c=>{c/=255;return c<=.04045?c/12.92:((c+.055)/1.055)**2.4}; const [R,G,B]=[f(r),f(g),f(b)];
+     const l=Math.cbrt(.4122214708*R+.5363325363*G+.0514459929*B), m=Math.cbrt(.2119034982*R+.6806995451*G+.1073969566*B), q=Math.cbrt(.0883024619*R+.2817188376*G+.6299787005*B);
+     const a=1.9779984951*l-2.4285922050*m+.4505937099*q, bb=.0259040371*l+.7827717662*m-.8086757660*q; return Math.hypot(a,bb); };
+   for (const id of ids) { const [bg,lb]=await pg.evaluate(id=>{ S.settings.palette=id; S.settings.mode='dark'; applyTheme(); const d=getComputedStyle(document.body).backgroundColor; S.settings.mode='light'; applyTheme();
+       const pr=document.createElement('i'); document.body.appendChild(pr); const g=k=>{ pr.style.background='var('+k+')'; return getComputedStyle(pr).backgroundColor; };
+       const mix=document.createElement('i'); document.body.appendChild(mix); mix.style.background='color-mix(in srgb, var(--ink-l) 22%, var(--paper-l))';
+       const o=[g('--bg')===g('--paper-l'), g('--panel')===g('--paper-l'), g('--hero')===g('--hero-l'), g('--chip')===g('--food-l'), g('--line')===getComputedStyle(mix).backgroundColor]; pr.remove(); mix.remove(); return [d,o]; },id);
+     const c=C(bg).map(Math.round), s2=Math.max(...c)-Math.min(...c), ch=chroma(c); sp.push(`${id} ${s2}/${ch.toFixed(3)}`);
+     if(s2>14||ch>0.03) bad.push(`${id}: night ${c} spread ${s2} chroma ${ch.toFixed(3)}`); if(lb.includes(false)) bad.push(`${id}: light tokens changed ${lb}`); }
+   ok(bad.length===0,'R2-2: dark --bg RGB spread ≤14 and OKLCH chroma ≤0.03 in 13 palettes, light --bg/--panel/--line/--hero/--chip still the plate inputs ['+sp.join(', ')+'] '+JSON.stringify(bad.slice(-3)));
+   // R2-5 (design): in light the selected category carries an inner ink edge the others lack (not hue alone); dark keeps the pastel inversion
+   const ce=[];
+   for (const id of ids) for (const mode of ['light','dark']) {
+     const r=await pg.evaluate(([id,mode])=>{ S.settings.palette=id; S.settings.mode=mode; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); openExpense(null);
+       const fg=getComputedStyle(document.body).color, s=getComputedStyle($('.cat[aria-pressed="true"]')).boxShadow, u=getComputedStyle($('.cat[aria-pressed="false"]')).boxShadow; dropSheet(); return {fg,s,u}; },[id,mode]);
+     const ring=r.s.startsWith(r.fg+' 0px 0px 0px 2px inset'), uHas=/0px 0px 0px 2px inset/.test(r.u);
+     if(mode==='light' ? (!ring||uHas) : ring) ce.push(`${id}/${mode}: ${JSON.stringify(r)}`); }
+   ok(ce.length===0,'R2-5: light selected .cat has a 2px inner --fg edge and unselected has none (13 palettes); dark selected has no chalk edge '+JSON.stringify(ce.slice(0,2)));
+   // R2-3 (design): history rows wrap instead of cutting off; title ≤2 lines, icon/title/amount share line 1, no dangling "·"
+   const hb=[];
+   for (const mode of ['light','dark']) for (const w of [360,390]) for (const long of [false,true]) { await pg.setViewportSize({width:w,height:780});
+     const r=await pg.evaluate(([mode,long])=>{ S.settings.palette='classic'; S.settings.mode=mode; applyTheme(); S.volumes=S.volumes.filter(v=>v.id!=='r23'); const v=exampleVolume(); v.id='r23';
+       if(long){ v.members[1].name='Maximilian Featherstonehaugh-Wolfe'; v.expenses.forEach(e=>e.paidBy=v.members[1].id); v.expenses[0].desc='Very long description of a dinner at a place with an extremely long name that keeps going'; }
+       S.volumes.push(v); ui.volId='r23'; go('history'); const out=[];
+       for (const t of document.querySelectorAll('.tx')) { const ti=t.querySelector('.tx-t'), a=t.querySelector('.tx-a'), ic=t.querySelector('.tx-ic'), m=t.querySelector('.tx-m'); const lh=parseFloat(getComputedStyle(ti).lineHeight);
+         for (const x of t.querySelectorAll('*')) if (x.scrollWidth>x.clientWidth+1 && getComputedStyle(x).overflow!=='visible') out.push('overflow '+x.className);
+         if (ti.clientHeight>2*lh+1) out.push('title >2 lines '+ti.clientHeight);
+         if (Math.abs(ti.getBoundingClientRect().top-a.getBoundingClientRect().top)>1 || Math.abs(ic.getBoundingClientRect().top-ti.getBoundingClientRect().top)>1) out.push('line 1 misaligned '+ti.textContent.slice(0,20));
+         if (/^\s*·|·\s*$/.test(m.innerText)) out.push('dangling dot '+m.innerText);
+         if (t.getBoundingClientRect().right>innerWidth) out.push('row wider than screen'); }
+       S.volumes=S.volumes.filter(v=>v.id!=='r23'); return out; },[mode,long]);
+     if(r.length) hb.push(`${mode}/${w}/${long?'long':'example'}: ${r.slice(0,3)}`); }
+   await pg.evaluate(()=>{ S.settings.mode='light'; applyTheme(); go('hub'); });
+   ok(hb.length===0,'R2-3: history rows wrap (title ≤2 lines, nothing clipped sideways, icon/title/amount on line 1, no dangling ·) at 360/390, both themes, long names '+JSON.stringify(hb.slice(0,3)));
    ok(e.length===0,'no page errors in L3-dark checks '+JSON.stringify(e));
    await c.close(); }
  // R1-ioshint: short hint with OK inline (iPhone Safari at 360)
@@ -794,5 +830,43 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      ok(at.sheet && at.view==='volume' && !/join/.test(at.hash) && r.view==='hub' && !/join/.test(r.hash),`${why} opened in a running page: after closing its sheet, Back goes from the volume to the hub `+JSON.stringify([at,r]));
      await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); }); }
    ok(e.length===0,'no page errors in L3-3 checks '+JSON.stringify(e)); await c.close(); }
+ // R2-1 (code): form fields grow with text size. Playwright cannot emulate Android textZoom/min font size, so the 32px case injects the size on .input.
+ { const e=[]; const bad=[];
+   for (const w of [360,390]) { const c=await b.newContext({viewport:{width:w,height:780},deviceScaleFactor:2,isMobile:true,hasTouch:true}); const pg=await c.newPage(); pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.goto(URL);
+     await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); }); await pg.getByRole('button',{name:/Add expense/}).click();
+     const at16=await pg.evaluate(()=>{ const r=id=>document.getElementById(id).getBoundingClientRect(); const p=r('f-paid'), d=r('f-date'); return {ph:p.height,dh:d.height,pt:p.top,dt:d.top,pb:p.bottom,db:d.bottom,pl:p.left,dl:d.left}; });
+     // side by side: equal bottoms; stacked (the .btns row wraps at 360): equal left edges
+     const row=Math.abs(at16.pt-at16.dt)<0.5;
+     if (!(at16.ph===48 && at16.dh===48 && (row ? Math.abs(at16.pb-at16.db)<0.5 : Math.abs(at16.pl-at16.dl)<0.5))) bad.push({w,at16});
+     const fit=async ids=>pg.evaluate(ids=>{ const probe=document.createElement('span'); probe.textContent='Ágy'; return ids.map(id=>{ const el=document.getElementById(id), cs=getComputedStyle(el);
+       let lh=parseFloat(cs.lineHeight); if (isNaN(lh)) { probe.style.font=cs.font; probe.style.lineHeight='normal'; probe.style.display='inline-block'; document.body.appendChild(probe); lh=probe.getBoundingClientRect().height; probe.remove(); }
+       return {id,fs:cs.fontSize,room:el.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom),lh}; }); },ids);
+     await pg.addStyleTag({content:'.input{font-size:32px!important}'});
+     for (const f of await fit(['f-desc','f-paid','f-date'])) if (!(f.fs==='32px' && f.room>=f.lh-0.5)) bad.push({w,...f});
+     await pg.keyboard.press('Escape'); await pg.waitForTimeout(50); await pg.evaluate(()=>{ dropSheet(); settleSheet(); });
+     for (const f of await fit(['s-from','s-to','s-amt'])) if (!(f.fs==='32px' && f.room>=f.lh-0.5)) bad.push({w,...f});
+     await c.close(); }
+   ok(bad.length===0,'R2-1: with injected 32px text, #f-desc/#f-paid/#f-date/#s-from/#s-to/#s-amt keep a full line of room; at 16px Paid by and Date are 48px and line up (equal bottoms side by side, equal left edges when stacked; 360, 390) '+JSON.stringify(bad.slice(0,3)));
+   ok(e.length===0,'no page errors in R2-1 checks '+JSON.stringify(e)); }
+ // R2-4 (code wiring, design look): the settle sheet marks the suggestion the form holds; editing away from every row clears it
+ { const c=await b.newContext({...devices['Pixel 7']}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.goto(URL);
+   const n=await pg.evaluate(()=>{ const v=S.volumes[0]; if (debts(v).length<2) { const [a,b2,c2]=v.members.map(m=>m.id); v.expenses.push({id:'r24x',desc:'Two debts',amount:9000,paidBy:a,category:'food',date:'2026-10-01',splitType:'equal',splits:{[a]:3000,[b2]:3000,[c2]:3000},inputs:{},note:'',upd:Date.now()}); save(); }
+     ui.volId=v.id; go('volume'); settleSheet(); return debts(v).length; });
+   const st=()=>pg.evaluate(()=>({p:[...document.querySelectorAll('#sheetForm [data-sugg]')].map(x=>x.getAttribute('aria-pressed')), vis:[...document.querySelectorAll('#sheetForm [data-sugg] .ck')].map(x=>getComputedStyle(x).visibility), from:$('#s-from').value, to:$('#s-to').value, amt:$('#s-amt').value}));
+   const ds=await pg.evaluate(()=>debts(vol()).map(d=>({from:d.from,to:d.to,amt:(d.amount/100).toFixed(2)})));
+   const s0=await st();
+   ok(n>=2 && s0.p[0]==='true' && s0.p.slice(1).every(x=>x==='false') && s0.vis[0]==='visible' && s0.vis[1]==='hidden' && s0.from===ds[0].from && s0.amt===ds[0].amt,'R2-4: Settle up opens with row 1 pressed and its check visible, others not pressed and check hidden '+JSON.stringify(s0));
+   const geo=await pg.evaluate(()=>[...document.querySelectorAll('#sheetForm [data-sugg] .num')].map(x=>Math.round(x.getBoundingClientRect().right)));
+   const col=await pg.evaluate(()=>{ const ck=document.querySelector('#sheetForm [data-sugg] .ck'); return [getComputedStyle(ck).color, getComputedStyle(document.body).color]; });
+   ok(new Set(geo).size===1 && col[0]===col[1],'R2-4: amounts line up whether or not the row is chosen, and the check is drawn in --fg '+JSON.stringify([geo,col]));
+   await pg.locator('#sheetForm [data-sugg="1"]').click();
+   const s1=await st();
+   ok(s1.p[0]==='false' && s1.p[1]==='true' && s1.vis[0]==='hidden' && s1.vis[1]==='visible' && s1.from===ds[1].from && s1.to===ds[1].to && s1.amt===ds[1].amt,'R2-4: tapping row 2 flips the marks and fills From/To/Amount from row 2 '+JSON.stringify(s1));
+   await pg.fill('#s-amt','1.23');
+   const s2=await st();
+   ok(s2.p.every(x=>x==='false') && s2.vis.every(x=>x==='hidden'),'R2-4: editing Amount away from every suggestion leaves no row pressed '+JSON.stringify(s2));
+   await pg.fill('#s-amt',ds[1].amt);
+   ok((await st()).p[1]==='true','R2-4: typing a suggestion back in marks that row again');
+   ok(e.length===0,'no page errors in R2-4 checks '+JSON.stringify(e)); await c.close(); }
  await b.close();
 })();
