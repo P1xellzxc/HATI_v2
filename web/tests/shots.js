@@ -1,4 +1,4 @@
-// Standard screenshot set for every role: views, sheets and states at 360/390 px, light/dark, three palettes.
+// Standard screenshot set for every role: views, sheets and states at 360/390 px, light/dark, four palettes (ALL_DARK=1: all 13 in dark).
 // Usage: URL=http://127.0.0.1:PORT/ node web/tests/shots.js <out-dir>   → <out-dir>/*.png + index.html contact sheet
 const { chromium, devices } = require('playwright');
 const fs = require('fs'), path = require('path');
@@ -15,9 +15,10 @@ const VIEWS = {
   settings: p => p.evaluate(() => go('settings')),
   'sheet-settle': p => p.evaluate(() => { ui.volId = S.volumes[0].id; go('volume'); settleSheet(null); }),
   'sheet-new-volume': p => p.evaluate(() => { go('hub'); volumeSheet(null); }),
-  'sheet-share': p => p.evaluate(() => { ui.volId = S.volumes[0].id; go('volume'); shareSheet(); }),
-  'sheet-share-phone': p => p.evaluate(() => { navigator.share = async () => {}; ui.volId = S.volumes[0].id; go('volume'); shareSheet(); }),
-  'sheet-share-code': p => p.evaluate(() => { ui.volId = S.volumes[0].id; go('volume'); shareSheet(); $('#s-codebox').open = true; }),
+  'sheet-share': p => p.evaluate(async () => { ui.volId = S.volumes[0].id; go('volume'); await shareSheet(); }),
+  'sheet-share-phone': p => p.evaluate(async () => { navigator.share = async () => {}; ui.volId = S.volumes[0].id; go('volume'); await shareSheet(); }),
+  'sheet-share-code': p => p.evaluate(async () => { ui.volId = S.volumes[0].id; go('volume'); await shareSheet(); const d = $('#s-codebox'); if (d) { d.open = true; d.scrollIntoView({ block: 'center' }); } }),
+  'sheet-join': p => p.evaluate(async () => { const l = await inviteLink(S.volumes[0]); S.volumes = []; save(); go('hub'); location.hash = l.slice(l.indexOf('#')); }).then(() => p.waitForTimeout(500)),
   'sheet-import': p => p.evaluate(() => { go('hub'); importSheet(); }),
   'sheet-member-used': p => p.evaluate(() => { ui.volId = S.volumes[0].id; go('volume'); editMemberSheet(S.volumes[0].members[1]); }),
   'sheet-import-merge': p => p.evaluate(() => {
@@ -34,18 +35,22 @@ const VIEWS = {
     S.volumes.unshift(v); save(); ui.volId = v.id; go('volume');
   }),
 };
-const FULL = ['classic'], PARTIAL = ['persimmon', 'lagoon'], PARTIAL_VIEWS = ['hub', 'volume', 'expense', 'sheet-settle'];
+const FULL = ['classic'], PARTIAL_VIEWS = ['hub', 'volume', 'expense', 'sheet-settle', 'sheet-share'];
+// ALL_DARK=1: every palette in dark at 360 only (dark contact sheet for before/after); default: three palettes plus spring (brightest accent).
+const ALL_DARK = !!process.env.ALL_DARK;
+const PARTIAL = ALL_DARK ? ['persimmon', 'lantern', 'vermilion', 'moss', 'fern', 'spring', 'lagoon', 'patina', 'harbor', 'wisteria', 'peony', 'coral'] : ['persimmon', 'lagoon', 'spring'];
+const MODES = ALL_DARK ? ['dark'] : ['light', 'dark'], WIDTHS = ALL_DARK ? [360] : [360, 390];
 
 (async () => {
   const b = await chromium.launch();
   const shots = [];
-  for (const pal of [...FULL, ...PARTIAL]) for (const mode of ['light', 'dark']) for (const w of [360, 390]) {
+  for (const pal of [...FULL, ...PARTIAL]) for (const mode of MODES) for (const w of WIDTHS) {
     const ctx = await b.newContext({ ...devices['iPhone 13'], viewport: { width: w, height: 780 }, deviceScaleFactor: 1 });
     const p = await ctx.newPage();
     const errors = []; p.on('pageerror', e => errors.push(e.message));
     await p.goto(URL);
     for (const [name, open] of Object.entries(VIEWS)) {
-      if (!FULL.includes(pal) && !PARTIAL_VIEWS.includes(name)) continue;
+      if ((ALL_DARK || !FULL.includes(pal)) && !PARTIAL_VIEWS.includes(name)) continue;
       await p.evaluate(([pal, mode]) => { localStorage.clear(); location.hash = ''; }, [pal, mode]);
       await p.reload();
       await p.evaluate(([pal, mode]) => { S.settings.palette = pal; S.settings.mode = mode; save(); applyTheme(); }, [pal, mode]);

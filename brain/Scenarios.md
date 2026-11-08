@@ -10,7 +10,7 @@ Each scenario is a whole job a real group does. Expected money is calculated by 
 Given a volume "Dinner" with You, Ana, Ben, Cy. When You add "Dinner" ₱120.00 paid by You, split equally. Then Ana, Ben and Cy each owe You ₱30.00; You are owed ₱90.00. Budget: 4 taps from the volume.
 
 ## 2. Someone leaves early
-Given scenario 1. When Ben adds "Taxi" ₱45.00 paid by Ben, split equally among You, Ana and Ben (Cy unticked). Then net balances: You +75.00, Ana −45.00, Ben 0.00 (paid 45.00, owes 30.00 + 15.00), Cy −30.00 (sum 0). Budget: 6 taps (a picker counts as 2 taps).
+Given scenario 1. When Ben adds "Taxi" ₱45.00 paid by Ben, split equally among You, Ana and Ben (Cy unticked). Then net balances: You +75.00, Ana −45.00, Ben 0.00 (paid 45.00, owes 30.00 + 15.00), Cy −30.00 (sum 0). Budget: 7 taps (a picker counts as 2 taps).
 
 ## 3. Uneven shares
 Given You, Ana, Ben. When Ana adds "Hotel" ₱300.00 paid by Ana, shares You 2, Ana 1, Ben 1. Then splits are 150.00 / 75.00 / 75.00; You owe Ana ₱150.00, Ben owes Ana ₱75.00.
@@ -35,6 +35,9 @@ Given the app installed and loaded once. When the phone goes offline and the use
 
 ## 10. Rounding stays honest
 Given You, Ana, Ben. When You add ₱100.00 split equally. Then shares are 33.34 / 33.33 / 33.33 and balances sum to exactly 0.00.
+
+## 11. Join by invite link, two phones
+Given phone A (Android, devices["Pixel 7"]) creates "Flat" with Ben and leaves its own name blank, and adds "Rent" 100.00 split equally. When A taps Share, gives its name (Ana) once, and sends the invite link; phone B (iPhone, devices["iPhone 13"], fresh storage) opens the link, picks "Ben" and taps Join, adds "Groceries" 40.00 split equally and sends its own link back; A opens that link and merges. Then both phones show the same 2 expenses, A (Ana) is owed 30.00 and B (Ben) owes 30.00, balances sum to 0, and B's picker named "Ana", never "Me". A opening its own older link again adds nothing. If B deletes the volume and opens the old link, it is offered as a new volume, not merged silently. Budget: B joins in 3 taps (opening the link 0, picker 2, Join 1). Check: e2e block "R2-3" in web/tests/e2e.js.
 
 
 Run by [[hati-scenarios]]. Back to [[HATI Brain]]

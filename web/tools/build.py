@@ -18,6 +18,13 @@ artifact = args[args.index("--artifact") + 1] if "--artifact" in args else None
 src = (WEB / "src/app.src.html").read_text()
 pal = json.dumps(palettes(), separators=(",", ":"))
 body = src.replace('/*PALETTES*/', pal)
+# Dark theme is written once in the source (between /*DARK{*/ and /*}DARK*/ as :root[data-theme="dark"] rules);
+# the OS-dark copy is generated here so the explicit and the system dark theme cannot drift.
+dark = re.search(r'/\*DARK\{\*/(.*?)/\*\}DARK\*/', body, re.S)
+assert dark and body.count('/*DARK{*/') == 1, 'one DARK block expected in app.src.html'
+media = dark.group(1).replace(':root[data-theme="dark"]', ':root:not([data-theme="light"])')
+assert ':root[data-theme' not in media
+body = body.replace(dark.group(0), dark.group(1).strip() + '\n@media (prefers-color-scheme: dark) {\n' + media.strip() + '\n}')
 if artifact:
     Path(artifact).write_text(body.replace('/*PWA*/', ''))
 # Installable web app
@@ -51,7 +58,7 @@ html=f'''<!doctype html>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="HATI²">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<style>{fontcss}:root{{padding-top:env(safe-area-inset-top,0px);padding-bottom:0}}[hidden]{{display:none!important}}img{{max-width:100%}}html{{background:var(--bg,#FFFFFF)}}@media (prefers-color-scheme:dark){{html{{background:var(--bg,#0B0A18)}}}}</style>
+<style>{fontcss}:root{{padding-top:env(safe-area-inset-top,0px);padding-bottom:0}}[hidden]{{display:none!important}}img{{max-width:100%}}html{{background:var(--bg,#FFFFFF)}}@media (prefers-color-scheme:dark){{html{{background:var(--bg,#0E0D12)}}}}</style>
 </head>
 <body>
 {rest.replace('/*PWA*/',pwa)}

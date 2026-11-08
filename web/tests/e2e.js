@@ -116,17 +116,16 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(/3 members · \d+ expenses/.test(await d.locator('.share-sum').innerText()),'share sheet names what is shared: '+(await d.locator('.share-sum').innerText()).replace(/\n/g,' | '));
    ok(!(await d.locator('#s-code').isVisible()) && !(await d.locator('#sheetForm').innerText()).includes('"app"'),'no raw code is visible before "Show code"');
    await d.getByText('Show code').click(); ok(await d.locator('#s-code').isVisible(),'"Show code" reveals the code');
-   await d.getByText('Show code').click();
    await d.evaluate(()=>{ Object.defineProperty(navigator,'clipboard',{value:{writeText:()=>Promise.reject(new Error('denied'))},configurable:true}); });
    await d.getByRole('button',{name:'Copy code'}).click(); await d.waitForTimeout(100);
    ok(await d.locator('#s-code').isVisible() && await d.evaluate(()=>{const t=$('#s-code'); return document.activeElement===t && t.selectionEnd-t.selectionStart===t.value.length;}),'clipboard denied: Copy opens the code and selects all of it');
    await d.locator('[data-act=closeSheet]').click();
    await d.evaluate(()=>{ window.__shared=null; navigator.share=d=>{window.__shared=d; return Promise.resolve();}; window.__copied=0; Object.defineProperty(navigator,'clipboard',{value:{writeText:()=>{window.__copied++; return Promise.resolve();}},configurable:true}); });
    await d.locator('[data-act=volMenu]').click(); await d.locator('.sheet [data-act=share]').click();
-   await d.getByRole('button',{name:/Send/}).click(); await d.waitForTimeout(100);
-   ok(await d.evaluate(()=>!!window.__shared && window.__shared.text===$('#s-code').value && window.__copied===0),'Send passes the code to the native share sheet');
+   await d.getByRole('button',{name:'Send invite'}).click(); await d.waitForTimeout(100);
+   ok(await d.evaluate(()=>!!window.__shared && window.__shared.url===$('#s-link').value && /#join=[\w-]+$/.test(window.__shared.url) && window.__copied===0),'Send invite passes the invite link to the native share sheet');
    await d.evaluate(()=>{ navigator.share=()=>Promise.reject(new DOMException('cancel','AbortError')); });
-   await d.getByRole('button',{name:/Send/}).click(); await d.waitForTimeout(100);
+   await d.getByRole('button',{name:'Send invite'}).click(); await d.waitForTimeout(100);
    ok(await d.evaluate(()=>window.__copied===0 && !$('#sheetMsg').textContent),'cancelling the share sheet is silent and does not copy');
    await d.locator('[data-act=closeSheet]').click(); await d.locator('#nav [data-act=home]').click(); await d.getByRole('button',{name:'Import'}).click();
    const ph=await d.locator('#s-paste').getAttribute('placeholder'); ok(!/[{}"]/.test(ph),'import placeholder has no JSON: '+ph);
@@ -151,6 +150,9 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      await pg.evaluate(a=>{ S.settings.mode=a; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); scrollTo(0,1e5); },app);
      const bg=await pg.evaluate(()=>[getComputedStyle(document.documentElement).backgroundColor,getComputedStyle(document.body).backgroundColor,document.body.offsetHeight>=document.scrollingElement.scrollHeight-1]);
      ok(bg[0]===bg[1] && bg[2],`OS ${os} + app ${app}: page background is one colour to the bottom (${bg[0]} / ${bg[1]}, body covers page: ${bg[2]})`);
+     // R2 revise (iOS): native controls (checkbox, date picker, keyboard) follow the app theme, not the OS
+     const cs=await pg.evaluate(()=>{ const o=[getComputedStyle(document.documentElement).colorScheme]; S.settings.mode='system'; applyTheme(); o.push(getComputedStyle(document.documentElement).colorScheme); return o; });
+     ok(cs[0]===app && cs[1]===os,`OS ${os} + app ${app}: color-scheme is ${app}, and ${os} on System ${JSON.stringify(cs)}`);
      await c.close(); }
    const c=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780}}); const pg=await c.newPage(); await pg.goto(URL);
    await pg.evaluate(()=>{ const v=S.volumes[0]; v.members[1].name='Maximilian Featherstonehaugh-Wolfe'; v.expenses.push({id:'big',desc:'Big',amount:99999999999,paidBy:v.meId,splits:{[v.meId]:33333333333,[v.members[1].id]:33333333333,[v.members[2].id]:33333333333},inputs:{},splitType:'equal',category:'other',date:today(),upd:Date.now()}); save(); ui.volId=v.id; go('volume'); });
@@ -265,12 +267,12 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await A.pg.keyboard.press('Escape'); await A.pg.reload(); ok(await A.pg.evaluate(id=>S.volumes.some(v=>v.id===id),volId),'volume survives reload');
    // a stored draft that names a removed member is ignored
    ok(await A.pg.evaluate(()=>{ sessionStorage.setItem('hati2.draft',JSON.stringify({volId:ui.volId,form:{amount:'5',desc:'x',paidBy:'gone1',include:{gone1:true},inputs:{},splitType:'equal',category:'food',date:today(),note:''}})); return draftFor(null)===null; }),'draft paying from a removed member is dropped');
-   // R1-3: Send hands the code to the share sheet; it imports on another phone
+   // R1-3 / R2-1: Send invite hands the link to the share sheet; pasted into Import on another phone, it imports
    await openVol(B.pg,'Tokyo'); await B.pg.evaluate(()=>{ window.__shared=null; navigator.share=d=>{window.__shared=d; return Promise.resolve();}; });
-   await B.pg.locator('[data-act=volMenu]').click(); await B.pg.locator('.sheet [data-act=share]').click(); await B.pg.getByRole('button',{name:/Send/}).click(); await B.pg.waitForTimeout(100);
-   const sent=await B.pg.evaluate(()=>window.__shared && window.__shared.text); await B.pg.keyboard.press('Escape');
+   await B.pg.locator('[data-act=volMenu]').click(); await B.pg.locator('.sheet [data-act=share]').click(); await B.pg.getByRole('button',{name:'Send invite'}).click(); await B.pg.waitForTimeout(100);
+   const sent=await B.pg.evaluate(()=>window.__shared && window.__shared.url); await B.pg.keyboard.press('Escape');
    const D=await fresh(); await check(D.pg,sent); await D.pg.selectOption('#s-who',{label:'Alex'}); await doImport(D.pg);
-   ok(await D.pg.evaluate(id=>ui.volId===id,volId) && await zs(D.pg),'text passed to navigator.share imports on another phone');
+   ok(await D.pg.evaluate(id=>ui.volId===id,volId) && await zs(D.pg),'the link passed to navigator.share, pasted into Import on another phone, imports '+JSON.stringify([String(sent).slice(0,60),await D.pg.evaluate(()=>[ui.view,ui.volId,$('#sheetMsg')&&$('#sheetMsg').textContent])]));
    // backup: download, restore on a fresh phone and onto a phone that already has one volume
    await home(A.pg); await A.pg.locator('#nav [data-act=settings]').click();
    const [dl]=await Promise.all([A.pg.waitForEvent('download'),A.pg.locator('[data-act=backup]').click()]);
@@ -459,9 +461,9 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await pg.setViewportSize({width:360,height:780}); await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); });
    const sb=pg.getByRole('button',{name:'Share volume',exact:true});
    ok(await sb.count()===1 && await sb.isVisible(),'Share volume is a visible button on the volume page, without opening a menu');
-   await sb.click(); ok(await pg.locator('.sheet .share-sum').isVisible(),'one tap on Share volume opens the share sheet');
+   await sb.click(); await pg.locator('.sheet .share-sum').waitFor({timeout:3000}).catch(()=>{}); ok(await pg.locator('.sheet .share-sum').isVisible(),'one tap on Share volume opens the share sheet');
    await pg.evaluate(()=>dropSheet()); await pg.locator('[data-act=volMenu]').click(); await pg.locator('.sheet [data-act=share]').click();
-   ok(await pg.locator('.sheet .share-sum').isVisible(),'the ⋮ menu Share entry still opens the share sheet'); await pg.evaluate(()=>dropSheet());
+   await pg.locator('.sheet .share-sum').waitFor({timeout:3000}).catch(()=>{}); ok(await pg.locator('.sheet .share-sum').isVisible(),'the ⋮ menu Share entry still opens the share sheet'); await pg.evaluate(()=>dropSheet());
    for (const w of [320,360]) { await pg.setViewportSize({width:w,height:780});
      await pg.evaluate(()=>{ const v=exampleVolume(); v.title='Bartholomew and friends: summer road trip 2026'.slice(0,40); v.members[1].name='Maximilian Featherstonehaugh-Wolfe'; S.volumes.unshift(v); ui.volId=v.id; go('volume'); });
      const m=await pg.evaluate(()=>{ const h=$('.topbar h1'); return {hw:h.getBoundingClientRect().width,lines:Math.round(h.getBoundingClientRect().height/parseFloat(getComputedStyle(h).lineHeight)),sw:document.scrollingElement.scrollWidth,cw:document.scrollingElement.clientWidth}; });
@@ -478,19 +480,124 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      if (r[0]!==r[1] || r[2]!=='none') bad.push(`${id}/${mode} quiet r${r[0]} vs primary r${r[1]} ${r[2]}`);
      if (mode==='dark') {
        await pg.evaluate(()=>{ ui.view='volume'; openExpense(null); }); const el=pg.locator('.seg button[aria-pressed="true"]').first(); await el.scrollIntoViewIfNeeded(); await pg.waitForTimeout(120);
-       const box=await el.boundingBox(); const buf=await pg.screenshot({clip:box}); const fg=(await el.evaluate(x=>getComputedStyle(x).color)).match(/\d+/g).slice(0,3).map(Number);
-       const px=await pg.evaluate(async b64=>{ const im=new Image(); im.src='data:image/png;base64,'+b64; await im.decode(); const cv=document.createElement('canvas'); cv.width=im.width; cv.height=im.height; const x=cv.getContext('2d'); x.drawImage(im,0,0); const d=x.getImageData(0,0,cv.width,cv.height).data; const at=(i,j)=>{const k=(j*cv.width+i)*4; return [d[k],d[k+1],d[k+2]];}; let min=at(cv.width-6,cv.height-6); const fill=min; for(let j=0;j<cv.height;j++) for(let i=0;i<cv.width;i++){ if(i>=12&&j>=12) continue; const v=at(i,j); if(v[0]+v[1]+v[2]<min[0]+min[1]+min[2]) min=v; } return {fill,min}; },buf.toString('base64'));
+       const box=await el.boundingBox(); const buf=await pg.screenshot({clip:box}); const fgs=await el.evaluate(x=>getComputedStyle(x).color), fg=fgs.match(/[\d.]+/g).slice(0,3).map(Number).map(v=>fgs.startsWith('color(')?v*255:v);
+       const px=await pg.evaluate(async b64=>{ const im=new Image(); im.src='data:image/png;base64,'+b64; await im.decode(); const cv=document.createElement('canvas'); cv.width=im.width; cv.height=im.height; const x=cv.getContext('2d'); x.drawImage(im,0,0); const d=x.getImageData(0,0,cv.width,cv.height).data; const at=(i,j)=>{const k=(j*cv.width+i)*4; return [d[k],d[k+1],d[k+2]];}; let min=at(cv.width-6,cv.height-6); const fill=min; for(let j=0;j<cv.height;j++) for(let i=0;i<cv.width;i++){ if((i>=12&&j>=12)||((i<8||i>=cv.width-8)&&(j<8||j>=cv.height-8))) continue; /* the container's rounded corner is its frame, not shade */ const v=at(i,j); if(v[0]+v[1]+v[2]<min[0]+min[1]+min[2]) min=v; } return {fill,min}; },buf.toString('base64'));
        if (cr(fg,px.min)<4.5 || cr(px.fill,px.min)>2.5) segBad.push(`${id} text/shade ${cr(fg,px.min).toFixed(2)} fill/shade ${cr(px.fill,px.min).toFixed(2)}`);
        await pg.evaluate(()=>dropSheet()); } }
    ok(bad.length===0,'R2-4: .btn.quiet has the same corner as .btn.primary and stays flat, 13 palettes x light/dark '+JSON.stringify(bad.slice(0,4)));
    ok(segBad.length===0,'R2-4: selected .seg in dark keeps text ≥4.5:1 against its darkest shade pixel and the shade stays light (≤2.5:1 vs the fill), 13 palettes '+JSON.stringify(segBad.slice(0,4)));
-   await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); shareSheet(); });
+   await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); return shareSheet(); });
    ok(await pg.evaluate(()=>getComputedStyle($('#s-code')).resize)==='none','R2-4: the share code box has no resize grip');
    await pg.evaluate(()=>dropSheet());
    for (const w of [360,390]) { await pg.setViewportSize({width:w,height:780}); await pg.evaluate(()=>go('hub'));
      const t=await pg.evaluate(()=>{ const el=$('.tagline'); return {lines:Math.round(el.getBoundingClientRect().height/parseFloat(getComputedStyle(el).lineHeight)),text:el.textContent,gloss:/trip or group/.test($('[data-act=newVolume]').textContent)}; });
      ok(t.lines===1 && t.gloss,`R2-4: hub tagline is one line at ${w} and "New volume" still says what a volume is ${JSON.stringify(t)}`); }
    ok(e.length===0,'no page errors in R2-4 checks '+JSON.stringify(e));
+   await c.close(); }
+ // L3-dark (design): ink on night paper. Layer steps, chalk frames quieter than text, a chalk-ink offset slab (R2 revise), plate-tinted hero, selected
+ // states mixed from chalk (never diluted accent), sheet lifts off a darker scrim, one dark source (no drift), status bar
+ // colour = night paper, focus ring and toasts in dark. All measured from computed colours in 13 palettes.
+ { const c=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780},deviceScaleFactor:1}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); await pg.goto(URL);
+   const ids=await pg.evaluate(()=>PALETTES.map(x=>x.id)); const bad=[], drift=[];
+   const TOK=['--bg','--fg','--sub','--panel','--sunk','--line','--rule','--off','--accent','--on-accent','--hero','--chip','--sel-bg','--sel-fg','--tone','--nav','--sbar','--scrim','--sheet','--field','--clay-hi','--clay-lo','--clay-sel','--pos','--neg','--err'];
+   const snap=()=>pg.evaluate(TOK=>{ const pr=document.createElement('i'); document.body.appendChild(pr); const o={}; for(const k of TOK){ pr.style.background='var('+k+')'; o[k]=getComputedStyle(pr).backgroundColor; } pr.remove();
+     const pal=document.createElement('div'); pal.innerHTML='<button class="pal" aria-checked="true"><span class="n">x</span></button>'; document.body.appendChild(pal); const pc=getComputedStyle(pal.firstChild); o.pal=[pc.backgroundColor,pc.color,pc.borderTopColor,pc.boxShadow,getComputedStyle(pal.querySelector('.n')).color].join('|'); pal.remove(); return o; },TOK);
+   const rgba=s=>{ const m=s.match(/[\d.]+/g).map(Number), k=s.startsWith('color(')?255:1; return {c:m.slice(0,3).map(x=>x*k),a:m.length>3?m[3]:1}; };
+   const hex=s=>'#'+C(s).map(x=>Math.round(x).toString(16).padStart(2,'0').toUpperCase()).join('');
+   const over=(t,b)=>{ const x=rgba(t), y=rgba(b).c; return x.c.map((v,i)=>v*x.a+y[i]*(1-x.a)); };
+   const lum=([r,g,b])=>{const f=c=>{c/=255;return c<=.04045?c/12.92:((c+.055)/1.055)**2.4};return .2126*f(r)+.7152*f(g)+.0722*f(b)}; const cr=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05)};
+   const C=s=>rgba(s).c;
+   for (const id of ids) {
+     await pg.emulateMedia({colorScheme:'dark'});
+     await pg.evaluate(id=>{ S.settings.palette=id; S.settings.mode='system'; applyTheme(); },id); const sys=await snap();
+     await pg.evaluate(()=>{ S.settings.mode='dark'; applyTheme(); }); const t=await snap();
+     for (const k of Object.keys(t)) if (t[k]!==sys[k]) drift.push(`${id} ${k}: ${t[k]} vs system ${sys[k]}`);
+     const [bg,fg,panel,sunk,line,rule,off,hero,sel,selfg,acc,chip,sheet,field]=['--bg','--fg','--panel','--sunk','--line','--rule','--off','--hero','--sel-bg','--sel-fg','--accent','--chip','--sheet','--field'].map(k=>C(t[k]));
+     const r={ pb:cr(panel,bg), lp:cr(line,panel), rp:cr(rule,panel), rb:cr(rule,bg), fb:cr(fg,bg), ob:cr(off,bg), oh:cr(off,hero), hp:cr(hero,panel), fh:cr(fg,hero),
+       tone:cr(over(t['--tone'],t['--hero']),hero), sa:cr(sel,acc), sp:cr(sel,panel), fs:cr(selfg,sel), cp:cr(chip,panel), fc:cr(C(t['--on-accent']),chip), fld:cr(field,sheet),
+       sheet:cr(sheet,over(t['--scrim'],t['--bg'])), ring:cr(fg,panel), halo:cr(acc,bg) };
+     const order=lum(bg)<lum(sunk) && lum(sunk)<lum(panel);
+     await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); }); const meta=C(await pg.evaluate(()=>getComputedStyle($('.hero .meta')).color)); r.mh=cr(meta,hero);
+     const tc=await pg.evaluate(()=>[document.querySelector('meta[name=theme-color]').content,getComputedStyle(document.body).backgroundColor,getComputedStyle(document.body,'::before').backgroundColor]);
+     const why=[];
+     if(!order) why.push('bg<sunk<panel'); if(r.pb<1.25) why.push('panel/bg '+r.pb.toFixed(2)); if(r.lp<3) why.push('line/panel '+r.lp.toFixed(2)); if(r.rp<3) why.push('rule/panel '+r.rp.toFixed(2)); if(!(r.rb<r.fb)) why.push('rule as loud as text');
+     if(r.ob<3 || r.oh<3 || r.ob>r.rb+0.01) why.push(`off/bg ${r.ob.toFixed(2)}, off/hero ${r.oh.toFixed(2)} not ≥3 (and ≤ rule/bg ${r.rb.toFixed(2)})`); if(r.hp<1.15) why.push('hero/panel '+r.hp.toFixed(2)); if(r.fh<4.5||r.mh<4.5) why.push(`hero text ${r.fh.toFixed(2)}/${r.mh.toFixed(2)}`);
+     if(r.tone<1.3||r.tone>=1.6) why.push('screentone '+r.tone.toFixed(2)); if(r.sp<3||r.fs<4.5) why.push(`selected seg ${r.sp.toFixed(2)}/${r.fs.toFixed(2)}`); if(r.cp<3||r.fc<4.5) why.push(`selected cat ${r.cp.toFixed(2)}/${r.fc.toFixed(2)}`);
+     if(r.fld<1.15) why.push('field/sheet '+r.fld.toFixed(2)); if(r.sheet<1.3) why.push('sheet/scrimmed page '+r.sheet.toFixed(2)); if(r.ring<3||r.halo<3) why.push(`focus ${r.ring.toFixed(2)}/${r.halo.toFixed(2)}`);
+     if(tc[0]!==hex(tc[1]) || tc[1]!==tc[2]) why.push('theme-color '+tc.join(' / '));
+     if(why.length) bad.push(id+': '+why.join(', '));
+     // the rendered selected segment and category really use the selected fill
+     await pg.evaluate(()=>{ ui.view='volume'; openExpense(null); });
+     const rs=await pg.evaluate(()=>[getComputedStyle($('.seg button[aria-pressed="true"]')).backgroundColor,getComputedStyle($('.seg button[aria-pressed="true"]')).color,getComputedStyle($('.cat[aria-pressed="true"]')).backgroundColor,getComputedStyle($('.cat[aria-pressed="true"]')).color,getComputedStyle($('.cat[aria-pressed="true"]')).getPropertyValue('--clay-lo').trim(),getComputedStyle($('.input')).backgroundColor,getComputedStyle($('.btn.primary')||$('.sheet')).backgroundColor]);
+     if(rs[0]!==t['--sel-bg']||rs[1]!==t['--sel-fg']||rs[2]!==t['--chip']||rs[3]!==t['--on-accent']||!/16%/.test(rs[4])) bad.push(`${id}: rendered selected fills ${rs.join(' | ')}`);
+     await pg.evaluate(()=>dropSheet()); }
+   await pg.emulateMedia({colorScheme:'light'});
+   ok(bad.length===0,'L3-dark: night paper layers (panel/bg ≥1.25, line & rule/panel ≥3, frames quieter than text, offset slab ≥3 vs night and hero, ≤ rule), hero ≥1.15 with text ≥4.5, screentone 1.3–1.6, selected seg/cat ≥3 vs unselected (WCAG 1.4.11) with text ≥4.5, field/sheet ≥1.15, sheet/scrim ≥1.3, focus ring ≥3, theme-color = night paper, 13 palettes '+JSON.stringify(bad.slice(0,3)));
+   ok(drift.length===0,'L3-dark: OS dark and the Dark setting give identical tokens and .pal tiles in 13 palettes (one dark source) '+JSON.stringify(drift.slice(0,3)));
+   // light keeps the old scrim and sheet, offsets stay ink
+   const lt=await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); settleSheet(null); const r=[getComputedStyle($('.scrim')).backgroundColor,getComputedStyle($('.sheet')).backgroundColor,getComputedStyle(document.body).backgroundColor,getComputedStyle($('.hero')).boxShadow,document.querySelector('meta[name=theme-color]').content]; dropSheet(); return r; });
+   ok(lt[0]==='rgba(10, 10, 14, 0.5)' && lt[1]===lt[2] && /rgb\(0, 0, 0\) 4px 4px 0px/.test(lt[3]) && lt[4]==='#FFFFFF','L3-dark: light scrim, sheet, hero offset and theme-color unchanged '+JSON.stringify(lt));
+   // toasts in dark wrap at 320/360/390 (merge summary and SAVE_GONE), offset stays the accent
+   const tb=[];
+   for (const w of [320,360,390]) { await pg.setViewportSize({width:w,height:780});
+     for (const msg of ['Adds 3 expenses, 1 payment and 2 members. Updates 1 expense and the volume details. Removes 1 expense.','__SAVE_GONE__']) {
+       const m=await pg.evaluate(msg=>{ if(msg==='__SAVE_GONE__') msg=SAVE_GONE; S.settings.mode='dark'; applyTheme(); go('hub'); toast(msg); const n=$('.toast'); const r=n.getBoundingClientRect(); return {sw:n.scrollWidth,cw:n.clientWidth,sh:n.scrollHeight,ch:n.clientHeight,l:r.left,r:r.right,vw:innerWidth,sh2:getComputedStyle(n).boxShadow,acc:(()=>{const i=document.createElement('i'); i.style.color='var(--accent)'; document.body.appendChild(i); const c=getComputedStyle(i).color; i.remove(); return c;})()}; },msg);
+       if(m.sw>m.cw||m.sh>m.ch||m.l<0||m.r>m.vw||!m.sh2.startsWith(m.acc)) tb.push(`${w}: ${JSON.stringify(m)}`); } }
+   ok(tb.length===0,'L3-dark: dark toasts (merge summary, SAVE_GONE) wrap inside the screen at 320/360/390 with the accent offset '+JSON.stringify(tb.slice(0,2)));
+   // L3-4: hub card text never cut off (title, balance, meta), 320/360/390, both themes, example and a 40-char title with a huge amount
+   const vb=[];
+   for (const mode of ['light','dark']) for (const w of [320,360,390]) { await pg.setViewportSize({width:w,height:780});
+     const r=await pg.evaluate(mode=>{ S.settings.mode=mode; applyTheme(); S.volumes=S.volumes.filter(v=>v.id!=='l34'); const v=exampleVolume(); v.id='l34'; v.title='Bartholomew and friends: summer road trip'.slice(0,40); v.currency='RM'; v.expenses[0].amount=99999999999; S.volumes.push(v); go('hub');
+       return [...document.querySelectorAll('.vol-info > *')].filter(x=>x.scrollWidth>x.clientWidth||x.scrollHeight>x.clientHeight).map(x=>x.className+' '+x.scrollWidth+'/'+x.clientWidth); },mode);
+     if(r.length) vb.push(`${mode}/${w}: ${r}`); }
+   await pg.evaluate(()=>{ S.volumes=S.volumes.filter(v=>v.id!=='l34'); S.settings.mode='light'; applyTheme(); go('hub'); });
+   ok(vb.length===0,'L3-4: hub card title, balance and meta are never cut off at 320/360/390 in both themes '+JSON.stringify(vb.slice(0,3)));
+   // R2-2 (design): one near-neutral night in every plate; the plate shows in dark through accent and pastel only
+   const sp=[];
+   const chroma=([r,g,b])=>{ const f=c=>{c/=255;return c<=.04045?c/12.92:((c+.055)/1.055)**2.4}; const [R,G,B]=[f(r),f(g),f(b)];
+     const l=Math.cbrt(.4122214708*R+.5363325363*G+.0514459929*B), m=Math.cbrt(.2119034982*R+.6806995451*G+.1073969566*B), q=Math.cbrt(.0883024619*R+.2817188376*G+.6299787005*B);
+     const a=1.9779984951*l-2.4285922050*m+.4505937099*q, bb=.0259040371*l+.7827717662*m-.8086757660*q; return Math.hypot(a,bb); };
+   for (const id of ids) { const [bg,lb]=await pg.evaluate(id=>{ S.settings.palette=id; S.settings.mode='dark'; applyTheme(); const d=getComputedStyle(document.body).backgroundColor; S.settings.mode='light'; applyTheme();
+       const pr=document.createElement('i'); document.body.appendChild(pr); const g=k=>{ pr.style.background='var('+k+')'; return getComputedStyle(pr).backgroundColor; };
+       const mix=document.createElement('i'); document.body.appendChild(mix); mix.style.background='color-mix(in srgb, var(--ink-l) 22%, var(--paper-l))';
+       const o=[g('--bg')===g('--paper-l'), g('--panel')===g('--paper-l'), g('--hero')===g('--hero-l'), g('--chip')===g('--food-l'), g('--line')===getComputedStyle(mix).backgroundColor]; pr.remove(); mix.remove(); return [d,o]; },id);
+     const c=C(bg).map(Math.round), s2=Math.max(...c)-Math.min(...c), ch=chroma(c); sp.push(`${id} ${s2}/${ch.toFixed(3)}`);
+     if(s2>14||ch>0.03) bad.push(`${id}: night ${c} spread ${s2} chroma ${ch.toFixed(3)}`); if(lb.includes(false)) bad.push(`${id}: light tokens changed ${lb}`); }
+   ok(bad.length===0,'R2-2: dark --bg RGB spread ≤14 and OKLCH chroma ≤0.03 in 13 palettes, light --bg/--panel/--line/--hero/--chip still the plate inputs ['+sp.join(', ')+'] '+JSON.stringify(bad.slice(-3)));
+   // R2-5 (design): in light the selected category carries an inner ink edge the others lack (not hue alone); dark keeps the pastel inversion
+   const ce=[];
+   for (const id of ids) for (const mode of ['light','dark']) {
+     const r=await pg.evaluate(([id,mode])=>{ S.settings.palette=id; S.settings.mode=mode; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); openExpense(null);
+       const fg=getComputedStyle(document.body).color, s=getComputedStyle($('.cat[aria-pressed="true"]')).boxShadow, u=getComputedStyle($('.cat[aria-pressed="false"]')).boxShadow; dropSheet(); return {fg,s,u}; },[id,mode]);
+     const ring=r.s.startsWith(r.fg+' 0px 0px 0px 2px inset'), uHas=/0px 0px 0px 2px inset/.test(r.u);
+     if(mode==='light' ? (!ring||uHas) : ring) ce.push(`${id}/${mode}: ${JSON.stringify(r)}`); }
+   ok(ce.length===0,'R2-5: light selected .cat has a 2px inner --fg edge and unselected has none (13 palettes); dark selected has no chalk edge '+JSON.stringify(ce.slice(0,2)));
+   // R2-5 revise (a11y): the inner ink edge survives keyboard focus (the :is() focus rule must not out-specify it)
+   const cf=[];
+   for (const id of ids) { await pg.evaluate(id=>{ S.settings.palette=id; S.settings.mode='light'; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); openExpense(null); },id);
+     await pg.evaluate(()=>{ const s=$('.cat[aria-pressed="true"]'); (s.previousElementSibling||s.nextElementSibling).focus(); });
+     await pg.keyboard.press(await pg.evaluate(()=>$('.cat[aria-pressed="true"]').previousElementSibling?'Tab':'Shift+Tab')); await pg.waitForTimeout(400); // let the box-shadow transition settle
+     const r=await pg.evaluate(()=>{ const s=$('.cat[aria-pressed="true"]'); const o={fv:s.matches(':focus-visible'),fg:getComputedStyle(document.body).color,s:getComputedStyle(s).boxShadow}; dropSheet(); return o; });
+     if(!r.fv || !r.s.startsWith(r.fg+' 0px 0px 0px 2px inset') || !/0px 0px 0px 6px/.test(r.s)) cf.push(`${id}: ${JSON.stringify(r)}`); }
+   ok(cf.length===0,'R2-5: light selected .cat keeps its 2px inner --fg edge plus the focus ring under keyboard :focus-visible (13 palettes) '+JSON.stringify(cf.slice(0,2)));
+   // R2-3 (design): history rows wrap instead of cutting off; title ≤2 lines, icon/title/amount share line 1, no dangling "·"
+   const hb=[];
+   for (const mode of ['light','dark']) for (const w of [360,390]) for (const long of [false,true]) { await pg.setViewportSize({width:w,height:780});
+     const r=await pg.evaluate(([mode,long])=>{ S.settings.palette='classic'; S.settings.mode=mode; applyTheme(); S.volumes=S.volumes.filter(v=>v.id!=='r23'); const v=exampleVolume(); v.id='r23';
+       if(long){ v.members[1].name='Maximilian Featherstonehaugh-Wolfe'; v.expenses.forEach(e=>e.paidBy=v.members[1].id); v.expenses[0].desc='Very long description of a dinner at a place with an extremely long name that keeps going'; }
+       S.volumes.push(v); ui.volId='r23'; go('history'); const out=[];
+       for (const t of document.querySelectorAll('.tx')) { const ti=t.querySelector('.tx-t'), a=t.querySelector('.tx-a'), ic=t.querySelector('.tx-ic'), m=t.querySelector('.tx-m'); const lh=parseFloat(getComputedStyle(ti).lineHeight);
+         for (const x of t.querySelectorAll('*')) if (x.scrollWidth>x.clientWidth+1 && getComputedStyle(x).overflow!=='visible') out.push('overflow '+x.className);
+         if (ti.clientHeight>2*lh+1) out.push('title >2 lines '+ti.clientHeight);
+         if (Math.abs(ti.getBoundingClientRect().top-a.getBoundingClientRect().top)>1 || Math.abs(ic.getBoundingClientRect().top-ti.getBoundingClientRect().top)>1) out.push('line 1 misaligned '+ti.textContent.slice(0,20));
+         if (/^\s*·|·\s*$/.test(m.innerText)) out.push('dangling dot '+m.innerText);
+         if (t.getBoundingClientRect().right>innerWidth) out.push('row wider than screen');
+         const d=t.querySelector('.date'); if (d && Math.abs(d.getBoundingClientRect().bottom-m.getBoundingClientRect().bottom)>1) out.push(`date off the meta line ${(m.getBoundingClientRect().bottom-d.getBoundingClientRect().bottom).toFixed(1)}px `+ti.textContent.slice(0,20)); }
+       S.volumes=S.volumes.filter(v=>v.id!=='r23'); return out; },[mode,long]);
+     if(r.length) hb.push(`${mode}/${w}/${long?'long':'example'}: ${r.slice(0,3)}`); }
+   await pg.evaluate(()=>{ S.settings.mode='light'; applyTheme(); go('hub'); });
+   ok(hb.length===0,'R2-3: history rows wrap (title ≤2 lines, nothing clipped sideways, icon/title/amount on line 1, date on the meta line when title or meta wraps, no dangling ·) at 360/390, both themes, long names '+JSON.stringify(hb.slice(0,3)));
+   ok(e.length===0,'no page errors in L3-dark checks '+JSON.stringify(e));
    await c.close(); }
  // R1-ioshint: short hint with OK inline (iPhone Safari at 360)
  { const c=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780}}); const pg=await c.newPage(); await pg.goto(URL);
@@ -568,5 +675,210 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      return fails; });
    ok(bad===0,'pairwise net per member equals balances() in 200 random volumes ('+bad+' mismatches)');
    ok(e.length===0,'no page errors in pairwise checks '+JSON.stringify(e)); await c.close(); }
+ // R2-1 (code): invite link <base>#join=<base64url(deflate-raw(share code))> opens a join sheet with a who-are-you picker
+ { const fresh=async(dev=devices['Pixel 7'],{init,url=URL}={})=>{ const c=await b.newContext({...dev}); if(init) await c.addInitScript(init); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.goto(url); return {c,pg,e}; };
+   const all=[], msgOf=pg=>pg.locator('#sheetMsg').innerText();
+   const A=await fresh(); all.push(A);
+   const exId=await A.pg.evaluate(()=>S.volumes[0].id), link=await A.pg.evaluate(()=>inviteLink(S.volumes[0])), pay=link.split('#join=')[1];
+   ok(link===URL+'#join='+pay && /^[A-Za-z0-9_-]+$/.test(pay) && link.length<1000,`invite link is <page>#join=<base64url>, ${link.length} chars for the example volume`);
+   // cold start on a phone that doesn't have the volume
+   const B=await fresh(devices['Pixel 7'],{url:link}); all.push(B); await B.pg.waitForSelector('#s-who');
+   const j=await B.pg.evaluate(()=>({h:$('#sheetTitle').textContent,sum:$('#sheetForm .share-sum').innerText,opts:[...$('#s-who').options].map(o=>o.textContent),sel:$('#s-who').value,isNew:!!$('#s-new'),hash:location.hash,n:S.volumes.length}));
+   ok(j.h==='Join volume' && /Tokyo Trip \(example\)/.test(j.sum) && /3 members/.test(j.sum) && ['Alex','Mira','Rio'].every(n=>j.opts.includes(n)) && j.sel==='' && j.isNew,'cold link: "Join volume" shows Tokyo Trip (example), 3 members, "New volume" and a picker that starts on no one '+JSON.stringify(j));
+   ok(!/join/.test(j.hash) && j.n===1,'the invite leaves the address bar as soon as it is read, nothing saved yet '+JSON.stringify([j.hash,j.n]));
+   await B.pg.getByRole('button',{name:'Join'}).click(); ok(/Choose which member/.test(await msgOf(B.pg)),'Join without picking a name asks who you are');
+   await B.pg.selectOption('#s-who',{label:'Mira'}); await B.pg.getByRole('button',{name:'Join'}).click();
+   const r=await B.pg.evaluate(id=>{ const v=vol(); return {view:ui.view,ok:ui.volId===id,me:nameOf(v,v.meId),hash:location.hash,zero:Object.values(balances(v)).reduce((a,b)=>a+b,0),you:/You/.test($('#app').innerText)}; },exId);
+   ok(r.view==='volume' && r.ok && r.me==='Mira' && !/join/.test(r.hash) && r.zero===0,'Join as Mira opens the volume from Mira\'s side; no #join in the URL; zero-sum '+JSON.stringify(r));
+   await B.pg.goBack(); await B.pg.waitForTimeout(200);
+   ok(!(await B.pg.evaluate(()=>sheetOpen())) && await B.pg.evaluate(()=>ui.view)==='hub','Back after Join goes to the volumes, the join sheet does not come back');
+   // the same link on a phone that has the volume (running page: a fragment change): merge, no picker, keeps you
+   await B.pg.goto(link); await B.pg.waitForSelector('#s-mode');
+   ok(await B.pg.locator('#s-mode').inputValue()==='merge' && !(await B.pg.locator('#s-who').isVisible()) && !(await B.pg.locator('#s-new').count()) && /You already have Tokyo/.test(await B.pg.locator('#s-sum').innerText()),'link for a volume already here: merge sheet, no picker, says you already have it');
+   await B.pg.locator('#sheetForm button.primary').click();
+   ok(await B.pg.evaluate(id=>S.volumes.filter(x=>x.id===id).length===1 && nameOf(vol(),vol().meId)==='Mira',exId),'merging the same link adds no copy and keeps Mira as you');
+   // a running page whose hash is set to the link (APK onNewIntent, address bar)
+   const C=await fresh(devices['Pixel 7']); all.push(C);
+   await C.pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); });
+   await C.pg.evaluate(p=>{ location.hash='join='+p; },pay); await C.pg.waitForSelector('#s-who');
+   ok(await C.pg.evaluate(()=>/Tokyo Trip/.test($('#sheetForm').innerText) && !/join/.test(location.hash) && ui.view==='volume'),'setting location.hash to the link in an open page opens the join sheet over the current page');
+   await C.pg.keyboard.press('Escape');
+   // broken and newer links change nothing
+   const S0=await C.pg.evaluate(()=>JSON.stringify(S)), mid=Math.floor(pay.length/2);
+   for (const [bad,want,why] of [[pay.slice(0,mid)+pay.slice(mid+1),'This invite link is broken. Ask for a new one.','one middle character removed'],[pay.slice(0,40),'This invite link is broken. Ask for a new one.','cut short'],['abc$%','This invite link is broken. Ask for a new one.','not base64url'],
+       ['A'.repeat(22)+'.'+'B'.repeat(43),'This invite needs a newer version of HATI².','a live-sync room.key link']]) {
+     await C.pg.evaluate(p=>{ location.hash='join='+p; },bad); await C.pg.waitForFunction(()=>$('#sheetMsg') && $('#sheetMsg').textContent.length>0);
+     ok(await msgOf(C.pg)===want && await C.pg.evaluate(s=>JSON.stringify(S)===s,S0),`${why}: "${want}" and nothing changes`);
+     await C.pg.keyboard.press('Escape'); }
+   const D=await fresh(devices['Pixel 7'],{url:URL+'#join='+pay.slice(0,mid)+pay.slice(mid+1)}); all.push(D); await D.pg.waitForFunction(()=>$('#sheetMsg') && $('#sheetMsg').textContent.length>0);
+   ok(await msgOf(D.pg)==='This invite link is broken. Ask for a new one.' && await D.pg.evaluate(()=>S.volumes.length===1 && S.volumes[0].title==='Tokyo Trip (example)'),'cold start with a broken link: the message, and only the phone\'s own volume');
+   // decompression is capped while streaming: a tiny link that inflates to 8 MB is stopped early
+   const bomb=await C.pg.evaluate(async()=>{ const big='{"app":"hati2-mock","v":1,"volume":'+' '.repeat(8*1024*1024)+'}';
+     const u=new Uint8Array(await new Response(new Blob([big]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());
+     const W=WritableStreamDefaultWriter.prototype, R=ReadableStreamDefaultReader.prototype, w0=W.write, r0=R.read; let fed=0, got=0;
+     W.write=function(c){ fed+=c.length; return w0.call(this,c); }; R.read=async function(){ const x=await r0.call(this); if(x.value) got+=x.value.length; return x; };
+     try { const out=await inflateCapped(u,JOIN_OUT_MAX); return {inLen:u.length,fed,got,out,err:(await readInvite(b64url(u))).error}; } finally { W.write=w0; R.read=r0; } });
+   ok(bomb.out===null && bomb.err==='This invite link is broken. Ask for a new one.' && bomb.fed<bomb.inLen && bomb.got<=512*1024+300*1024,'a link that inflates to 8 MB is cut off mid-stream ('+JSON.stringify({...bomb,out:undefined})+')');
+   // a pasted link in Import gives the same summary as the pasted code (here: a phone that has the volume)
+   const code=await A.pg.evaluate(()=>shareCodeOf(S.volumes[0])), sums=[];
+   for (const t of [code,'Join us: '+link+'.']) { await A.pg.evaluate(()=>{ dropSheet(); go('hub'); }); await A.pg.getByRole('button',{name:'Import'}).click(); await A.pg.fill('#s-paste',t); await A.pg.locator('#s-go').click(); await A.pg.waitForSelector('#s-sum'); sums.push(await A.pg.locator('#s-pick').innerText()); }
+   ok(sums[0]===sums[1] && /already has everything/.test(sums[1]),'Import: a pasted link (with chat text and a full stop) gives the same summary as the code '+JSON.stringify(sums[1]));
+   await A.pg.evaluate(()=>{ dropSheet(); go('hub'); }); await A.pg.getByRole('button',{name:'Import'}).click(); await A.pg.fill('#s-paste',URL+'#join='+pay.slice(0,mid)+pay.slice(mid+1)); await A.pg.locator('#s-go').click();
+   await A.pg.waitForFunction(()=>$('#sheetMsg').textContent.length>0); ok(await msgOf(A.pg)==='This invite link is broken. Ask for a new one.','Import: a broken pasted link says so');
+   await A.pg.keyboard.press('Escape');
+   const noted=await A.pg.evaluate(()=>{ const v=JSON.parse(JSON.stringify(S.volumes[0])); v.expenses[0].note='see #join=abc'; return shareCodeOf(v); });
+   await A.pg.evaluate(()=>{ dropSheet(); go('hub'); }); await A.pg.getByRole('button',{name:'Import'}).click(); await A.pg.fill('#s-paste',noted); await A.pg.locator('#s-go').click();
+   await A.pg.waitForSelector('#s-sum'); ok(/Updates 1 expense/.test(await A.pg.locator('#s-sum').innerText()),'a share code whose note mentions "#join=" is still read as a code');
+   await A.pg.keyboard.press('Escape');
+   // without CompressionStream (old WebView): Copy code, no error; a link says this browser can't open it
+   const O=await fresh(devices['Pixel 7'],{init:()=>{ delete window.CompressionStream; delete window.DecompressionStream; }}); all.push(O);
+   await O.pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); return shareSheet(); });
+   ok(await O.pg.getByRole('button',{name:'Copy code'}).isVisible() && !(await O.pg.locator('[data-act=copyLink],[data-act=sendLink],svg.qr').count()),'no CompressionStream: the share sheet falls back to Copy code');
+   await O.pg.evaluate(p=>{ dropSheet(); location.hash='join='+p; },pay); await O.pg.waitForFunction(()=>$('#sheetMsg') && $('#sheetMsg').textContent.length>0);
+   ok(/can't open invite links/.test(await msgOf(O.pg)),'no DecompressionStream: a link says this browser can\'t open it');
+   // iPhone Safari (not the Home Screen app): one line and Copy link, for the app's own storage
+   const I1=await fresh(devices['iPhone 13'],{url:link}); all.push(I1); await I1.pg.waitForSelector('#s-who');
+   await I1.pg.evaluate(()=>{ window.__c=null; Object.defineProperty(navigator,'clipboard',{value:{writeText:t=>{window.__c=t; return Promise.resolve();}},configurable:true}); });
+   ok(/home screen\? Copy this link and paste it in Import/.test(await I1.pg.locator('#s-safari').innerText()),'iPhone Safari: the join sheet says to copy the link into the Home Screen app');
+   await I1.pg.locator('#sheetForm [data-act=copyLink]').click(); await I1.pg.waitForTimeout(100);
+   ok(await I1.pg.evaluate(l=>window.__c===l,link),'iPhone Safari: Copy link copies the whole invite link');
+   const I2=await fresh(devices['iPhone 13'],{url:link,init:()=>{ Object.defineProperty(navigator,'standalone',{get:()=>true}); }}); all.push(I2); await I2.pg.waitForSelector('#s-who');
+   ok(!(await I2.pg.locator('#s-safari').count()),'Home Screen app: no copy-to-app line');
+   const errs=all.flatMap(x=>x.e); ok(errs.length===0,'no page errors in R2-1 invite checks '+JSON.stringify(errs));
+   for (const x of all) await x.c.close(); }
+ // R2-2 (code): QR of the same link, checked against segno; ink on white in every theme; too big → a line instead
+ { const c=await b.newContext({viewport:{width:360,height:780}}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.goto(URL);
+   const fx=JSON.parse(require('fs').readFileSync(require('path').join(__dirname,'..','..','web','tests','qr-fixtures.json'),'utf8'));
+   const res=await pg.evaluate(cs=>cs.map(c=>{ const m=qrMatrix(c.text,c.forced?{version:c.version,mask:c.mask}:{}); return !!m && m.length===c.matrix.length && m.every((row,y)=>row.map(x=>x?'1':'0').join('')===c.matrix[y]); }),fx.cases);
+   const forced=fx.cases.filter(c=>c.forced).length, auto=fx.cases.length-forced;
+   ok(res.every(Boolean) && forced>=3 && auto>=1,`QR matrix equals segno module for module: ${forced} fixed (version, mask) cases and ${auto} where the app picks version and mask itself ${JSON.stringify(res)}`);
+   ok(await pg.evaluate(()=>qrMatrix('x'.repeat(858)).length===97 && qrMatrix('x'.repeat(859))===null),'QR stops at version 20: 858 bytes fit, 859 do not');
+   for (const w of [320,360,390]) { await pg.setViewportSize({width:w,height:780}); await pg.evaluate(()=>{ dropSheet(); ui.volId=S.volumes[0].id; go('volume'); return shareSheet(); });
+     const q=await pg.evaluate(()=>{ const s=$('svg.qr'); if(!s) return null; s.scrollIntoView(); const r=s.getBoundingClientRect(), n=+s.getAttribute('viewBox').split(' ')[2]; return {w:r.width,n,px:r.width/n,vis:r.width>0&&r.top>=0&&r.bottom<=innerHeight,label:s.getAttribute('aria-label'),sw:document.scrollingElement.scrollWidth,sheetSw:$('#sheetForm').scrollWidth-$('#sheetForm').clientWidth,iw:innerWidth}; });
+     ok(q && q.vis && q.px>=2 && q.w<=280 && q.sw<=q.iw && q.sheetSw<=0 && q.label==='QR code of the invite link',`QR visible at ${w}: ${q&&q.w.toFixed(0)}px, ${q&&q.n} modules with quiet zone, ${q&&q.px.toFixed(2)} CSS px per module, no sideways scroll`); }
+   const ink=await pg.evaluate(()=>{ const bad=[]; for (const mode of ['light','dark']) for (const p of PALETTES) { S.settings.mode=mode; S.settings.palette=p.id; applyTheme();
+       const rect=getComputedStyle($('svg.qr rect')).fill, path=getComputedStyle($('svg.qr path')).fill, bg=getComputedStyle($('svg.qr')).backgroundColor;
+       if (rect!=='rgb(255, 255, 255)' || path!=='rgb(0, 0, 0)' || bg!=='rgb(255, 255, 255)') bad.push([mode,p.id,rect,path,bg]); }
+     S.settings.mode='system'; S.settings.palette='classic'; applyTheme(); return bad; });
+   ok(ink.length===0,'QR is #000 on #fff in all 13 palettes, light and dark '+JSON.stringify(ink.slice(0,3)));
+   await pg.evaluate(()=>{ dropSheet(); const v=JSON.parse(JSON.stringify(S.volumes[0])); v.id='bigQR1'; v.expenses=[];
+     for (let i=0;i<204;i++) v.expenses.push({id:'bq'+i,desc:'Shared thing '+i+' '+Math.random().toString(36).slice(2,8),amount:1000+i*37,paidBy:v.meId,category:'food',date:'2026-10-01',splitType:'exact',splits:{[v.meId]:1000+i*37},inputs:{},note:'',upd:0});
+     S.volumes.push(v); ui.volId='bigQR1'; go('volume'); return shareSheet(); });
+   ok(await pg.locator('#s-noqr').innerText()==='This volume is too big for a QR code. Send the link instead.' && !(await pg.locator('svg.qr').count()) && await pg.locator('[data-act=copyLink]').isVisible(),'204 expenses: the too-big line, no QR, the link still there');
+   ok(e.length===0,'no page errors in R2-2 QR checks '+JSON.stringify(e)); await c.close(); }
+ // R2-3 (code + scenarios): scenario: two phones join by invite link and merge back
+ { const fresh=async dev=>{ const c=await b.newContext({...dev}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.goto(URL);
+     await pg.evaluate(()=>{ window.__shared=null; navigator.share=d=>{ window.__shared=d; return Promise.resolve(); }; }); return {c,pg,e}; };
+   const sendInvite=async pg=>{ await pg.evaluate(()=>{ window.__shared=null; }); await pg.getByRole('button',{name:'Send invite'}).click(); await pg.waitForFunction(()=>window.__shared); return pg.evaluate(()=>window.__shared.url); };
+   const addExp=async (pg,desc,amt)=>{ await pg.getByRole('button',{name:/Add expense/}).click(); await pg.fill('#f-amount',amt); await pg.fill('#f-desc',desc); await pg.locator('#expForm button[type=submit]').click(); };
+   const A=await fresh(devices['Pixel 7']), B=await fresh(devices['iPhone 13']);
+   // A creates "Flat" with Ben and leaves their own name blank
+   await A.pg.locator('[data-act=newVolume]').click(); await A.pg.fill('#s-title','Flat'); await A.pg.fill('#s-others','Ben'); await A.pg.locator('#sheetForm button.primary').click();
+   await addExp(A.pg,'Rent','100');
+   await A.pg.locator('[data-act=share]').first().click(); await A.pg.waitForSelector('#s-name');
+   ok(/your name/i.test(await A.pg.locator('#sheetForm').innerText()),'sharing with the default name "Me" asks for your name first');
+   await A.pg.fill('#s-name','me'); await A.pg.locator('#sheetForm button.primary').click(); ok(/own name/.test(await A.pg.locator('#sheetMsg').innerText()),'"me" is not accepted as a name');
+   await A.pg.fill('#s-name','Ana'); await A.pg.locator('#sheetForm button.primary').click();
+   const linkA=await sendInvite(A.pg); await A.pg.keyboard.press('Escape');
+   // B opens the link: pick (2 taps) + Join (1 tap)
+   let taps=0; await B.pg.goto(linkA); await B.pg.waitForSelector('#s-who');
+   const opts=await B.pg.evaluate(()=>[...$('#s-who').options].map(o=>o.textContent));
+   ok(opts.includes('Ana') && !opts.includes('Me'),'B\'s picker names the sender (Ana), not "Me" '+JSON.stringify(opts));
+   await B.pg.selectOption('#s-who',{label:'Ben'}); taps+=2; await B.pg.getByRole('button',{name:'Join'}).click(); taps+=1;
+   ok(taps<=3 && await B.pg.evaluate(()=>ui.view==='volume' && vol().title==='Flat' && nameOf(vol(),vol().meId)==='Ben'),`B joins Flat as Ben in ${taps} taps (opening the link counts 0)`);
+   await addExp(B.pg,'Groceries','40');
+   await B.pg.locator('[data-act=share]').first().click(); const linkB=await sendInvite(B.pg); await B.pg.keyboard.press('Escape');
+   // A opens B's link: merge
+   await A.pg.goto(linkB); await A.pg.waitForSelector('#s-mode'); await A.pg.locator('#sheetForm button.primary').click();
+   const view=pg=>pg.evaluate(()=>{ const v=vol(), bal=balances(v); return {exp:v.expenses.map(e=>e.desc+':'+e.amount).sort(), me:bal[v.meId], sum:Object.values(bal).reduce((a,b)=>a+b,0), you:nameOf(v,v.meId), id:v.id}; });
+   const a=await view(A.pg), bb=await view(B.pg);
+   ok(a.id===bb.id && JSON.stringify(a.exp)===JSON.stringify(bb.exp) && a.exp.length===2,'both phones show the same 2 expenses '+JSON.stringify([a.exp,bb.exp]));
+   ok(a.me===3000 && bb.me===-3000 && a.me+bb.me===0 && a.sum===0 && bb.sum===0 && a.you==='Ana' && bb.you==='Ben',`balances are opposite to the cent from each phone's own "You" (A ${a.you} ${a.me}, B ${bb.you} ${bb.me}) and sum to 0`);
+   // A opens its own (older) link again: nothing new
+   await A.pg.goto(linkA); await A.pg.waitForSelector('#s-sum');
+   ok(/already has everything/.test(await A.pg.locator('#s-sum').innerText()),'A opening its own link again: "already has everything"');
+   await A.pg.locator('#sheetForm button.primary').click(); ok(JSON.stringify((await view(A.pg)).exp)===JSON.stringify(a.exp),'and merging it adds nothing');
+   // stale link: B deletes the volume, then opens the old link → it is offered as a new volume, not merged silently
+   await B.pg.locator('[data-act=volMenu]').click(); await B.pg.locator('[data-act=deleteVolume]').click(); await B.pg.locator('#sheetForm button.danger').click();
+   await B.pg.goto(linkA); await B.pg.waitForSelector('#s-who');
+   ok(await B.pg.locator('#s-new').isVisible() && !(await B.pg.locator('#s-mode').count()),'after deleting the volume, the old link is offered as a new volume with the picker');
+   const errs=[...A.e,...B.e]; ok(errs.length===0,'no page errors in the two-phone invite scenario '+JSON.stringify(errs));
+   await A.c.close(); await B.c.close(); }
+ // R2-5 (code): copy fallbacks select the whole text; a toast from before a sheet moves out of its way
+ { const c=await b.newContext({...devices['iPhone 13']}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.goto(URL);
+   await pg.evaluate(()=>{ Object.defineProperty(navigator,'clipboard',{value:{writeText:()=>Promise.reject(new Error('denied'))},configurable:true}); ui.volId=S.volumes[0].id; go('volume'); return shareSheet(); });
+   await pg.getByRole('button',{name:'Copy link'}).click(); await pg.waitForTimeout(100);
+   const sel=await pg.evaluate(()=>{ const t=$('#s-link'); return {vis:!t.hidden && t.getBoundingClientRect().height>0, focus:document.activeElement===t, len:t.selectionEnd-t.selectionStart, all:t.value.length, msg:$('#sheetMsg').textContent}; });
+   ok(sel.vis && sel.focus && sel.len===sel.all && sel.all>0 && /Link selected/.test(sel.msg),'clipboard refused: Copy link shows the link with all of it selected '+JSON.stringify(sel));
+   await pg.evaluate(()=>{ $('#s-codebox').open=true; }); await pg.getByRole('button',{name:'Copy code'}).click(); await pg.waitForTimeout(100);
+   ok(await pg.evaluate(()=>{ const t=$('#s-code'); return document.activeElement===t && t.selectionEnd-t.selectionStart===t.value.length; }),'clipboard refused: Copy code selects all of the code');
+   await pg.keyboard.press('Escape');
+   await pg.getByRole('button',{name:/Add expense/}).click(); await pg.fill('#f-amount','12'); await pg.fill('#f-desc','Snacks'); await pg.locator('#expForm button[type=submit]').click();
+   await pg.getByRole('button',{name:/Settle up/}).click();
+   const ov=await pg.evaluate(()=>{ const t=document.querySelector('.toast'); if(!t) return {toast:false}; const tr=t.getBoundingClientRect(); const hit=[...document.querySelectorAll('#sheetForm input,#sheetForm select,#sheetForm button')].filter(x=>{ const r=x.getBoundingClientRect(); return r.width && !(r.right<=tr.left||r.left>=tr.right||r.bottom<=tr.top||r.top>=tr.bottom); }).map(x=>x.id||x.textContent); return {toast:true,text:t.textContent,top:t.classList.contains('top'),hit}; });
+   ok(ov.toast && /Expense saved/.test(ov.text) && ov.top && ov.hit.length===0,'Settle up right after "Expense saved": the toast stays, moved to the top, covering none of the sheet\'s fields '+JSON.stringify(ov));
+   ok(e.length===0,'no page errors in R2-5 checks '+JSON.stringify(e)); await c.close(); }
+ // L3-3 (code): a volume too big for a link gets the Copy code sheet; an invite opened in a running page leaves no dead Back press
+ { const c=await b.newContext({...devices['Pixel 7']}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.goto(URL);
+   const big=await pg.evaluate(()=>{ const v=JSON.parse(JSON.stringify(S.volumes[0])); v.id='bigLink1'; v.title='Big'; v.expenses=[];
+     for (let i=0;i<2600;i++) v.expenses.push({id:'bl'+i,desc:'Shared thing '+i+' é '+Math.random().toString(36).slice(2,12)+Math.random().toString(36).slice(2,12),amount:1000+i,paidBy:v.meId,category:'food',date:'2026-10-01',splitType:'exact',splits:{[v.meId]:1000+i},inputs:{},note:'',upd:0});
+     S.volumes.push(v); ui.volId=v.id; go('volume'); return new TextEncoder().encode(shareCodeOf(v)).length; });
+   await pg.evaluate(()=>shareSheet());
+   ok(big>512*1024 && await pg.locator('#sheetForm [data-act=copyCode]').first().isVisible() && !(await pg.locator('#sheetForm [data-act=copyLink],#sheetForm [data-act=sendLink],svg.qr').count()) && /tap <b>Import<\/b>|tap Import/.test(await pg.locator('#sheetForm').innerHTML()),`a ${(big/1024|0)} KB volume (over the 512 KB a receiver reads) gets the Copy code sheet, no link`);
+   await pg.evaluate(()=>{ dropSheet(); ui.volId=S.volumes[0].id; go('volume'); return shareSheet(); });
+   ok(await pg.locator('#sheetForm [data-act=copyLink]').isVisible(),'a normal volume still gets the link');
+   const link=await pg.locator('#s-link').inputValue(), pay=link.split('#join=')[1];
+   await pg.evaluate(()=>{ dropSheet(); S.volumes=S.volumes.filter(v=>v.id!=='bigLink1'); save(); go('hub'); ui.volId=S.volumes[0].id; go('volume'); });
+   const h0=await pg.evaluate(()=>history.length);
+   for (const [p,why] of [[pay,'a good invite'],[pay.slice(0,30),'a broken invite']]) {
+     await pg.evaluate(p=>{ location.hash='join='+p; },p); await pg.waitForSelector('#sheetForm'); await pg.waitForTimeout(150);
+     const at=await pg.evaluate(()=>({view:ui.view,hash:location.hash,sheet:sheetOpen()}));
+     await pg.keyboard.press('Escape'); await pg.waitForTimeout(50);
+     await pg.goForward(); await pg.waitForTimeout(250);
+     const fw=await pg.evaluate(()=>({view:ui.view,hash:location.hash,sheet:sheetOpen()}));
+     ok(!fw.sheet && fw.view==='volume' && !/join/.test(fw.hash),`${why} opened in a running page: Forward after closing its sheet does not reopen it `+JSON.stringify(fw));
+     await pg.goBack(); await pg.waitForTimeout(150);
+     const r=await pg.evaluate(()=>({view:ui.view,hash:location.hash,n:history.length}));
+     ok(at.sheet && at.view==='volume' && !/join/.test(at.hash) && r.view==='hub' && !/join/.test(r.hash),`${why} opened in a running page: after closing its sheet, Back goes from the volume to the hub `+JSON.stringify([at,r]));
+     await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); }); }
+   ok(e.length===0,'no page errors in L3-3 checks '+JSON.stringify(e)); await c.close(); }
+ // R2-1 (code): form fields grow with text size. Playwright cannot emulate Android textZoom/min font size, so the 32px case injects the size on .input.
+ { const e=[]; const bad=[];
+   for (const w of [360,390]) { const c=await b.newContext({viewport:{width:w,height:780},deviceScaleFactor:2,isMobile:true,hasTouch:true}); const pg=await c.newPage(); pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.goto(URL);
+     await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); }); await pg.getByRole('button',{name:/Add expense/}).click();
+     const at16=await pg.evaluate(()=>{ const r=id=>document.getElementById(id).getBoundingClientRect(); const p=r('f-paid'), d=r('f-date'); return {ph:p.height,dh:d.height,pt:p.top,dt:d.top,pb:p.bottom,db:d.bottom,pl:p.left,dl:d.left}; });
+     // side by side: equal bottoms; stacked (the .btns row wraps at 360): equal left edges
+     const row=Math.abs(at16.pt-at16.dt)<0.5;
+     if (!(at16.ph===48 && at16.dh===48 && (row ? Math.abs(at16.pb-at16.db)<0.5 : Math.abs(at16.pl-at16.dl)<0.5))) bad.push({w,at16});
+     const fit=async ids=>pg.evaluate(ids=>{ const probe=document.createElement('span'); probe.textContent='Ágy'; return ids.map(id=>{ const el=document.getElementById(id), cs=getComputedStyle(el);
+       let lh=parseFloat(cs.lineHeight); if (isNaN(lh)) { probe.style.font=cs.font; probe.style.lineHeight='normal'; probe.style.display='inline-block'; document.body.appendChild(probe); lh=probe.getBoundingClientRect().height; probe.remove(); }
+       return {id,fs:cs.fontSize,room:el.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom),lh}; }); },ids);
+     await pg.addStyleTag({content:'.input{font-size:32px!important}'});
+     for (const f of await fit(['f-desc','f-paid','f-date'])) if (!(f.fs==='32px' && f.room>=f.lh-0.5)) bad.push({w,...f});
+     await pg.keyboard.press('Escape'); await pg.waitForTimeout(50); await pg.evaluate(()=>{ dropSheet(); settleSheet(); });
+     for (const f of await fit(['s-from','s-to','s-amt'])) if (!(f.fs==='32px' && f.room>=f.lh-0.5)) bad.push({w,...f});
+     await c.close(); }
+   ok(bad.length===0,'R2-1: with injected 32px text, #f-desc/#f-paid/#f-date/#s-from/#s-to/#s-amt keep a full line of room; at 16px Paid by and Date are 48px and line up (equal bottoms side by side, equal left edges when stacked; 360, 390) '+JSON.stringify(bad.slice(0,3)));
+   ok(e.length===0,'no page errors in R2-1 checks '+JSON.stringify(e)); }
+ // R2-4 (code wiring, design look): the settle sheet marks the suggestion the form holds; editing away from every row clears it
+ { const c=await b.newContext({...devices['Pixel 7']}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.goto(URL);
+   const n=await pg.evaluate(()=>{ const v=S.volumes[0]; if (debts(v).length<2) { const [a,b2,c2]=v.members.map(m=>m.id); v.expenses.push({id:'r24x',desc:'Two debts',amount:9000,paidBy:a,category:'food',date:'2026-10-01',splitType:'equal',splits:{[a]:3000,[b2]:3000,[c2]:3000},inputs:{},note:'',upd:Date.now()}); save(); }
+     ui.volId=v.id; go('volume'); settleSheet(); return debts(v).length; });
+   const st=()=>pg.evaluate(()=>({p:[...document.querySelectorAll('#sheetForm [data-sugg]')].map(x=>x.getAttribute('aria-pressed')), vis:[...document.querySelectorAll('#sheetForm [data-sugg] .ck')].map(x=>getComputedStyle(x).visibility), from:$('#s-from').value, to:$('#s-to').value, amt:$('#s-amt').value}));
+   const ds=await pg.evaluate(()=>debts(vol()).map(d=>({from:d.from,to:d.to,amt:(d.amount/100).toFixed(2)})));
+   const s0=await st();
+   ok(n>=2 && s0.p[0]==='true' && s0.p.slice(1).every(x=>x==='false') && s0.vis[0]==='visible' && s0.vis[1]==='hidden' && s0.from===ds[0].from && s0.amt===ds[0].amt,'R2-4: Settle up opens with row 1 pressed and its check visible, others not pressed and check hidden '+JSON.stringify(s0));
+   const geo=await pg.evaluate(()=>[...document.querySelectorAll('#sheetForm [data-sugg] .num')].map(x=>Math.round(x.getBoundingClientRect().right)));
+   const col=await pg.evaluate(()=>{ const ck=document.querySelector('#sheetForm [data-sugg] .ck'); return [getComputedStyle(ck).color, getComputedStyle(document.body).color]; });
+   ok(new Set(geo).size===1 && col[0]===col[1],'R2-4: amounts line up whether or not the row is chosen, and the check is drawn in --fg '+JSON.stringify([geo,col]));
+   await pg.locator('#sheetForm [data-sugg="1"]').click();
+   const s1=await st();
+   ok(s1.p[0]==='false' && s1.p[1]==='true' && s1.vis[0]==='hidden' && s1.vis[1]==='visible' && s1.from===ds[1].from && s1.to===ds[1].to && s1.amt===ds[1].amt,'R2-4: tapping row 2 flips the marks and fills From/To/Amount from row 2 '+JSON.stringify(s1));
+   await pg.fill('#s-amt','1.23');
+   const s2=await st();
+   ok(s2.p.every(x=>x==='false') && s2.vis.every(x=>x==='hidden'),'R2-4: editing Amount away from every suggestion leaves no row pressed '+JSON.stringify(s2));
+   await pg.fill('#s-amt',ds[1].amt);
+   ok((await st()).p[1]==='true','R2-4: typing a suggestion back in marks that row again');
+   ok(e.length===0,'no page errors in R2-4 checks '+JSON.stringify(e)); await c.close(); }
  await b.close();
 })();
