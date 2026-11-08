@@ -59,15 +59,16 @@
   --sel-bg: var(--fg); --sel-fg: var(--bg); /* selected (inverted) segment */
   --sel-edge: var(--fg); /* inner ink edge on the selected .cat: in light the pastel alone is hue-only (1.29:1 in Fern) */
   --scrim: rgba(10, 10, 14, 0.5); --sheet: var(--bg); --field: var(--panel);
+  color-scheme: light; /* native controls (checkbox, pickers, keyboard) follow the app's Light, not a dark OS */
 }
 /* Dark: ink on night paper. Written once: build.py copies everything between the DARK markers into
    @media (prefers-color-scheme: dark) with :root:not([data-theme="light"]), so the two can't drift.
    Night paper is one near-neutral night with a 5% whisper of the plate's ink (max-min RGB spread <= 14 in every plate:
    at 20% Lagoon was violet, Peony indigo, Harbor maroon, so those plates read as another app). The plate shows in dark
-   through the accent (primary, nav tab, spines, focus) and the category pastel, not the page. Layers step up bg < sunk < panel < hero < selected, all mixed from
-   chalk (--fg) into the night, never from the accent: a dark yellow/orange is olive or brown mud. The accent appears only
-   at full strength (primary, nav tab, spines, focus). Frames are chalk at 62%, quieter than text; the offset slab is
-   chalk at 20%, quieter again. Web dark no longer reads HatiPalette.kt heroD (see Team log). */
+   through the accent (primary, nav tab, spines, focus), the category pastel and the hero, not the page. Layers step up bg < sunk < panel < hero < selected,
+   mixed from chalk (--fg) into the night. The hero alone takes an 11% whisper of the accent over the panel (16% turned
+   yellow/orange plates olive/brown mud). Frames and the offset slab are chalk at 62%, quieter than text: the slab is
+   chalk ink, a manga negative panel (at 20% it vanished, 1.03:1 on the hero). Web dark no longer reads HatiPalette.kt heroD (see Team log). */
 :root[data-theme="dark"] {
   --bg: color-mix(in srgb, var(--ink-l) 5%, #0E0D12);
   --fg: #EDEBE4; --sub: #A8A6B0; --label: #A8A6B0;
@@ -75,9 +76,9 @@
   --panel: color-mix(in srgb, var(--fg) 11%, var(--bg));
   --line: color-mix(in srgb, var(--fg) 38%, var(--panel));
   --rule: color-mix(in srgb, var(--fg) 62%, var(--bg));
-  --off: color-mix(in srgb, var(--fg) 20%, var(--bg));
+  --off: var(--rule); /* the slab is chalk ink, like light: a manga negative panel */
   --accent: var(--acc-d); --on-accent: #131217;
-  --hero: color-mix(in srgb, var(--fg) 19%, var(--bg));
+  --hero: color-mix(in srgb, var(--accent) 11%, var(--panel));
   --sel-bg: var(--fg); --sel-fg: var(--bg); /* chalk on night: the same inversion as light, no accent so no mud */
   --sel-edge: transparent; /* dark: the full pastel on night already stands 5.8:1 apart */
   --chip: var(--food-l); /* the plate's pastel at full strength (never diluted into the night, which turns it brown) */
@@ -102,9 +103,9 @@
   --panel: color-mix(in srgb, var(--fg) 11%, var(--bg));
   --line: color-mix(in srgb, var(--fg) 38%, var(--panel));
   --rule: color-mix(in srgb, var(--fg) 62%, var(--bg));
-  --off: color-mix(in srgb, var(--fg) 20%, var(--bg));
+  --off: var(--rule); /* the slab is chalk ink, like light: a manga negative panel */
   --accent: var(--acc-d); --on-accent: #131217;
-  --hero: color-mix(in srgb, var(--fg) 19%, var(--bg));
+  --hero: color-mix(in srgb, var(--accent) 11%, var(--panel));
   --sel-bg: var(--fg); --sel-fg: var(--bg); /* chalk on night: the same inversion as light, no accent so no mud */
   --sel-edge: transparent; /* dark: the full pastel on night already stands 5.8:1 apart */
   --chip: var(--food-l); /* the plate's pastel at full strength (never diluted into the night, which turns it brown) */
@@ -262,7 +263,7 @@ button.tx:active, button.debt:active { background: var(--sunk); }
 .tx { align-items: flex-start; }
 .tx-t { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 .tx-m { display: block; overflow-wrap: anywhere; }
-.tx-r { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
+.tx-r { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; align-self: stretch; justify-content: space-between; }
 .who { display: flex; gap: .3em; min-width: 0; white-space: nowrap; }
 .who > .nm { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .who > :not(.nm) { flex: none; }
@@ -362,7 +363,7 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 .toast.top { top: calc(12px + env(safe-area-inset-top, 0px)); bottom: auto; }
 /* Focus on clay: the ring joins the clay stack instead of replacing it */
 :is(.btn, .ico, .cat, .vol, button.chip:not(.add), .nav button[aria-current="page"]):focus-visible { box-shadow: var(--clay), 0 0 0 6px var(--accent); }
-.cat[aria-pressed="true"]:focus-visible { box-shadow: inset 0 0 0 2px var(--sel-edge), var(--clay), 0 0 0 6px var(--accent); }
+:root .cat[aria-pressed="true"]:focus-visible { box-shadow: inset 0 0 0 2px var(--sel-edge), var(--clay), 0 0 0 6px var(--accent); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } .btn:active, .ico:active, .cat:active, .vol:active, button.chip:active { transform: none !important; } }
 </style>
 

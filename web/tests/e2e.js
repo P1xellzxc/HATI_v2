@@ -150,6 +150,9 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      await pg.evaluate(a=>{ S.settings.mode=a; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); scrollTo(0,1e5); },app);
      const bg=await pg.evaluate(()=>[getComputedStyle(document.documentElement).backgroundColor,getComputedStyle(document.body).backgroundColor,document.body.offsetHeight>=document.scrollingElement.scrollHeight-1]);
      ok(bg[0]===bg[1] && bg[2],`OS ${os} + app ${app}: page background is one colour to the bottom (${bg[0]} / ${bg[1]}, body covers page: ${bg[2]})`);
+     // R2 revise (iOS): native controls (checkbox, date picker, keyboard) follow the app theme, not the OS
+     const cs=await pg.evaluate(()=>{ const o=[getComputedStyle(document.documentElement).colorScheme]; S.settings.mode='system'; applyTheme(); o.push(getComputedStyle(document.documentElement).colorScheme); return o; });
+     ok(cs[0]===app && cs[1]===os,`OS ${os} + app ${app}: color-scheme is ${app}, and ${os} on System ${JSON.stringify(cs)}`);
      await c.close(); }
    const c=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780}}); const pg=await c.newPage(); await pg.goto(URL);
    await pg.evaluate(()=>{ const v=S.volumes[0]; v.members[1].name='Maximilian Featherstonehaugh-Wolfe'; v.expenses.push({id:'big',desc:'Big',amount:99999999999,paidBy:v.meId,splits:{[v.meId]:33333333333,[v.members[1].id]:33333333333,[v.members[2].id]:33333333333},inputs:{},splitType:'equal',category:'other',date:today(),upd:Date.now()}); save(); ui.volId=v.id; go('volume'); });
@@ -491,7 +494,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      ok(t.lines===1 && t.gloss,`R2-4: hub tagline is one line at ${w} and "New volume" still says what a volume is ${JSON.stringify(t)}`); }
    ok(e.length===0,'no page errors in R2-4 checks '+JSON.stringify(e));
    await c.close(); }
- // L3-dark (design): ink on night paper. Layer steps, chalk frames quieter than text, a quiet offset slab, hero/selected
+ // L3-dark (design): ink on night paper. Layer steps, chalk frames quieter than text, a chalk-ink offset slab (R2 revise), plate-tinted hero, selected
  // states mixed from chalk (never diluted accent), sheet lifts off a darker scrim, one dark source (no drift), status bar
  // colour = night paper, focus ring and toasts in dark. All measured from computed colours in 13 palettes.
  { const c=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780},deviceScaleFactor:1}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); await pg.goto(URL);
@@ -510,7 +513,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      await pg.evaluate(()=>{ S.settings.mode='dark'; applyTheme(); }); const t=await snap();
      for (const k of Object.keys(t)) if (t[k]!==sys[k]) drift.push(`${id} ${k}: ${t[k]} vs system ${sys[k]}`);
      const [bg,fg,panel,sunk,line,rule,off,hero,sel,selfg,acc,chip,sheet,field]=['--bg','--fg','--panel','--sunk','--line','--rule','--off','--hero','--sel-bg','--sel-fg','--accent','--chip','--sheet','--field'].map(k=>C(t[k]));
-     const r={ pb:cr(panel,bg), lp:cr(line,panel), rp:cr(rule,panel), rb:cr(rule,bg), fb:cr(fg,bg), ob:cr(off,bg), hp:cr(hero,panel), fh:cr(fg,hero),
+     const r={ pb:cr(panel,bg), lp:cr(line,panel), rp:cr(rule,panel), rb:cr(rule,bg), fb:cr(fg,bg), ob:cr(off,bg), oh:cr(off,hero), hp:cr(hero,panel), fh:cr(fg,hero),
        tone:cr(over(t['--tone'],t['--hero']),hero), sa:cr(sel,acc), sp:cr(sel,panel), fs:cr(selfg,sel), cp:cr(chip,panel), fc:cr(C(t['--on-accent']),chip), fld:cr(field,sheet),
        sheet:cr(sheet,over(t['--scrim'],t['--bg'])), ring:cr(fg,panel), halo:cr(acc,bg) };
      const order=lum(bg)<lum(sunk) && lum(sunk)<lum(panel);
@@ -518,7 +521,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      const tc=await pg.evaluate(()=>[document.querySelector('meta[name=theme-color]').content,getComputedStyle(document.body).backgroundColor,getComputedStyle(document.body,'::before').backgroundColor]);
      const why=[];
      if(!order) why.push('bg<sunk<panel'); if(r.pb<1.25) why.push('panel/bg '+r.pb.toFixed(2)); if(r.lp<3) why.push('line/panel '+r.lp.toFixed(2)); if(r.rp<3) why.push('rule/panel '+r.rp.toFixed(2)); if(!(r.rb<r.fb)) why.push('rule as loud as text');
-     if(r.ob<1.3 || r.ob>0.6*r.rb) why.push(`off/bg ${r.ob.toFixed(2)} not in [1.3, ${(0.6*r.rb).toFixed(2)}]`); if(r.hp<1.15) why.push('hero/panel '+r.hp.toFixed(2)); if(r.fh<4.5||r.mh<4.5) why.push(`hero text ${r.fh.toFixed(2)}/${r.mh.toFixed(2)}`);
+     if(r.ob<3 || r.oh<3 || r.ob>r.rb+0.01) why.push(`off/bg ${r.ob.toFixed(2)}, off/hero ${r.oh.toFixed(2)} not ≥3 (and ≤ rule/bg ${r.rb.toFixed(2)})`); if(r.hp<1.15) why.push('hero/panel '+r.hp.toFixed(2)); if(r.fh<4.5||r.mh<4.5) why.push(`hero text ${r.fh.toFixed(2)}/${r.mh.toFixed(2)}`);
      if(r.tone<1.3||r.tone>=1.6) why.push('screentone '+r.tone.toFixed(2)); if(r.sp<3||r.fs<4.5) why.push(`selected seg ${r.sp.toFixed(2)}/${r.fs.toFixed(2)}`); if(r.cp<3||r.fc<4.5) why.push(`selected cat ${r.cp.toFixed(2)}/${r.fc.toFixed(2)}`);
      if(r.fld<1.15) why.push('field/sheet '+r.fld.toFixed(2)); if(r.sheet<1.3) why.push('sheet/scrimmed page '+r.sheet.toFixed(2)); if(r.ring<3||r.halo<3) why.push(`focus ${r.ring.toFixed(2)}/${r.halo.toFixed(2)}`);
      if(tc[0]!==hex(tc[1]) || tc[1]!==tc[2]) why.push('theme-color '+tc.join(' / '));
@@ -529,7 +532,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      if(rs[0]!==t['--sel-bg']||rs[1]!==t['--sel-fg']||rs[2]!==t['--chip']||rs[3]!==t['--on-accent']||!/16%/.test(rs[4])) bad.push(`${id}: rendered selected fills ${rs.join(' | ')}`);
      await pg.evaluate(()=>dropSheet()); }
    await pg.emulateMedia({colorScheme:'light'});
-   ok(bad.length===0,'L3-dark: night paper layers (panel/bg ≥1.25, line & rule/panel ≥3, frames quieter than text, 1.3 ≤ offset/bg ≤ 0.6×rule/bg), hero ≥1.15 with text ≥4.5, screentone 1.3–1.6, selected seg/cat ≥3 vs unselected (WCAG 1.4.11) with text ≥4.5, field/sheet ≥1.15, sheet/scrim ≥1.3, focus ring ≥3, theme-color = night paper, 13 palettes '+JSON.stringify(bad.slice(0,3)));
+   ok(bad.length===0,'L3-dark: night paper layers (panel/bg ≥1.25, line & rule/panel ≥3, frames quieter than text, offset slab ≥3 vs night and hero, ≤ rule), hero ≥1.15 with text ≥4.5, screentone 1.3–1.6, selected seg/cat ≥3 vs unselected (WCAG 1.4.11) with text ≥4.5, field/sheet ≥1.15, sheet/scrim ≥1.3, focus ring ≥3, theme-color = night paper, 13 palettes '+JSON.stringify(bad.slice(0,3)));
    ok(drift.length===0,'L3-dark: OS dark and the Dark setting give identical tokens and .pal tiles in 13 palettes (one dark source) '+JSON.stringify(drift.slice(0,3)));
    // light keeps the old scrim and sheet, offsets stay ink
    const lt=await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); settleSheet(null); const r=[getComputedStyle($('.scrim')).backgroundColor,getComputedStyle($('.sheet')).backgroundColor,getComputedStyle(document.body).backgroundColor,getComputedStyle($('.hero')).boxShadow,document.querySelector('meta[name=theme-color]').content]; dropSheet(); return r; });
@@ -569,6 +572,14 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      const ring=r.s.startsWith(r.fg+' 0px 0px 0px 2px inset'), uHas=/0px 0px 0px 2px inset/.test(r.u);
      if(mode==='light' ? (!ring||uHas) : ring) ce.push(`${id}/${mode}: ${JSON.stringify(r)}`); }
    ok(ce.length===0,'R2-5: light selected .cat has a 2px inner --fg edge and unselected has none (13 palettes); dark selected has no chalk edge '+JSON.stringify(ce.slice(0,2)));
+   // R2-5 revise (a11y): the inner ink edge survives keyboard focus (the :is() focus rule must not out-specify it)
+   const cf=[];
+   for (const id of ids) { await pg.evaluate(id=>{ S.settings.palette=id; S.settings.mode='light'; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); openExpense(null); },id);
+     await pg.evaluate(()=>{ const s=$('.cat[aria-pressed="true"]'); (s.previousElementSibling||s.nextElementSibling).focus(); });
+     await pg.keyboard.press(await pg.evaluate(()=>$('.cat[aria-pressed="true"]').previousElementSibling?'Tab':'Shift+Tab')); await pg.waitForTimeout(400); // let the box-shadow transition settle
+     const r=await pg.evaluate(()=>{ const s=$('.cat[aria-pressed="true"]'); const o={fv:s.matches(':focus-visible'),fg:getComputedStyle(document.body).color,s:getComputedStyle(s).boxShadow}; dropSheet(); return o; });
+     if(!r.fv || !r.s.startsWith(r.fg+' 0px 0px 0px 2px inset') || !/0px 0px 0px 6px/.test(r.s)) cf.push(`${id}: ${JSON.stringify(r)}`); }
+   ok(cf.length===0,'R2-5: light selected .cat keeps its 2px inner --fg edge plus the focus ring under keyboard :focus-visible (13 palettes) '+JSON.stringify(cf.slice(0,2)));
    // R2-3 (design): history rows wrap instead of cutting off; title ≤2 lines, icon/title/amount share line 1, no dangling "·"
    const hb=[];
    for (const mode of ['light','dark']) for (const w of [360,390]) for (const long of [false,true]) { await pg.setViewportSize({width:w,height:780});
@@ -580,11 +591,12 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
          if (ti.clientHeight>2*lh+1) out.push('title >2 lines '+ti.clientHeight);
          if (Math.abs(ti.getBoundingClientRect().top-a.getBoundingClientRect().top)>1 || Math.abs(ic.getBoundingClientRect().top-ti.getBoundingClientRect().top)>1) out.push('line 1 misaligned '+ti.textContent.slice(0,20));
          if (/^\s*·|·\s*$/.test(m.innerText)) out.push('dangling dot '+m.innerText);
-         if (t.getBoundingClientRect().right>innerWidth) out.push('row wider than screen'); }
+         if (t.getBoundingClientRect().right>innerWidth) out.push('row wider than screen');
+         const d=t.querySelector('.date'); if (d && Math.abs(d.getBoundingClientRect().bottom-m.getBoundingClientRect().bottom)>1) out.push(`date off the meta line ${(m.getBoundingClientRect().bottom-d.getBoundingClientRect().bottom).toFixed(1)}px `+ti.textContent.slice(0,20)); }
        S.volumes=S.volumes.filter(v=>v.id!=='r23'); return out; },[mode,long]);
      if(r.length) hb.push(`${mode}/${w}/${long?'long':'example'}: ${r.slice(0,3)}`); }
    await pg.evaluate(()=>{ S.settings.mode='light'; applyTheme(); go('hub'); });
-   ok(hb.length===0,'R2-3: history rows wrap (title ≤2 lines, nothing clipped sideways, icon/title/amount on line 1, no dangling ·) at 360/390, both themes, long names '+JSON.stringify(hb.slice(0,3)));
+   ok(hb.length===0,'R2-3: history rows wrap (title ≤2 lines, nothing clipped sideways, icon/title/amount on line 1, date on the meta line when title or meta wraps, no dangling ·) at 360/390, both themes, long names '+JSON.stringify(hb.slice(0,3)));
    ok(e.length===0,'no page errors in L3-dark checks '+JSON.stringify(e));
    await c.close(); }
  // R1-ioshint: short hint with OK inline (iPhone Safari at 360)
