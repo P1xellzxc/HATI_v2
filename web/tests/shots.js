@@ -15,9 +15,10 @@ const VIEWS = {
   settings: p => p.evaluate(() => go('settings')),
   'sheet-settle': p => p.evaluate(() => { ui.volId = S.volumes[0].id; go('volume'); settleSheet(null); }),
   'sheet-new-volume': p => p.evaluate(() => { go('hub'); volumeSheet(null); }),
-  'sheet-share': p => p.evaluate(() => { ui.volId = S.volumes[0].id; go('volume'); shareSheet(); }),
-  'sheet-share-phone': p => p.evaluate(() => { navigator.share = async () => {}; ui.volId = S.volumes[0].id; go('volume'); shareSheet(); }),
-  'sheet-share-code': p => p.evaluate(() => { ui.volId = S.volumes[0].id; go('volume'); shareSheet(); $('#s-codebox').open = true; }),
+  'sheet-share': p => p.evaluate(async () => { ui.volId = S.volumes[0].id; go('volume'); await shareSheet(); }),
+  'sheet-share-phone': p => p.evaluate(async () => { navigator.share = async () => {}; ui.volId = S.volumes[0].id; go('volume'); await shareSheet(); }),
+  'sheet-share-code': p => p.evaluate(async () => { ui.volId = S.volumes[0].id; go('volume'); await shareSheet(); const d = $('#s-codebox'); if (d) { d.open = true; d.scrollIntoView({ block: 'center' }); } }),
+  'sheet-join': p => p.evaluate(async () => { const l = await inviteLink(S.volumes[0]); S.volumes = []; save(); go('hub'); location.hash = l.slice(l.indexOf('#')); }).then(() => p.waitForTimeout(500)),
   'sheet-import': p => p.evaluate(() => { go('hub'); importSheet(); }),
   'sheet-member-used': p => p.evaluate(() => { ui.volId = S.volumes[0].id; go('volume'); editMemberSheet(S.volumes[0].members[1]); }),
   'sheet-import-merge': p => p.evaluate(() => {
