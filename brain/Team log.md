@@ -880,3 +880,7 @@ Every decision goes to the skill whose specialty it is. That skill decides, logs
 - Lean: net good — the duplicated dark block and duplicated .pal dark rules became 7 lines in build.py; one dead variable left (--hero-d, 2 lines).
 - Verdict: ship after Should fix 1 or ship now and fix next round (no data or money risk). Not checked: WebKit/Safari (cssHex on Safari's color-mix serialization, iOS form controls at 48px), Firefox, APK WebView.
 - Disagree: none.
+
+### Round 1 · ship (loop 3)
+- `PORT=8790 web/test.sh` green: 237 PASS, 0 FAIL, contrast pass. Round work was already in WIP commit 3a32382; this commit records the round summary (dark theme "ink on night paper", hub card wrap, invite fixes, revise fixes F1-F5) and pushes.
+- No open requests addressed to ship.
