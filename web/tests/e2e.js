@@ -793,6 +793,8 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(res.every(Boolean) && forced>=3 && auto>=1,`QR matrix equals segno module for module: ${forced} fixed (version, mask) cases and ${auto} where the app picks version and mask itself ${JSON.stringify(res)}`);
    ok(await pg.evaluate(()=>qrMatrix('x'.repeat(858)).length===97 && qrMatrix('x'.repeat(859))===null),'QR stops at version 20: 858 bytes fit, 859 do not');
    for (const w of [320,360,390]) { await pg.setViewportSize({width:w,height:780}); await pg.evaluate(()=>{ dropSheet(); ui.volId=S.volumes[0].id; go('volume'); return shareSheet(); });
+     // measured at rest: the sheet slides up for 200 ms (motion pass), and mid-slide the QR is still below the fold
+     await pg.evaluate(()=>Promise.all($('#sheetForm').getAnimations({subtree:true}).map(a=>a.finished)));
      const q=await pg.evaluate(()=>{ const s=$('svg.qr'); if(!s) return null; s.scrollIntoView(); const r=s.getBoundingClientRect(), n=+s.getAttribute('viewBox').split(' ')[2]; return {w:r.width,n,px:r.width/n,vis:r.width>0&&r.top>=0&&r.bottom<=innerHeight,label:s.getAttribute('aria-label'),sw:document.scrollingElement.scrollWidth,sheetSw:$('#sheetForm').scrollWidth-$('#sheetForm').clientWidth,iw:innerWidth}; });
      ok(q && q.vis && q.px>=2 && q.w<=280 && q.sw<=q.iw && q.sheetSw<=0 && q.label==='QR code of the invite link',`QR visible at ${w}: ${q&&q.w.toFixed(0)}px, ${q&&q.n} modules with quiet zone, ${q&&q.px.toFixed(2)} CSS px per module, no sideways scroll`); }
    const ink=await pg.evaluate(()=>{ const bad=[]; for (const mode of ['light','dark']) for (const p of PALETTES) { S.settings.mode=mode; S.settings.palette=p.id; applyTheme();
@@ -952,6 +954,9 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(await has(B.pg,'Taxi',5000),`S6-3: A adds Taxi, B's screen shows it live in ${Date.now()-t0} ms`);
    await B.pg.waitForFunction(()=>/Taxi/.test($('#app').innerText),null,{timeout:2000}).catch(()=>{});
    ok(/Taxi/.test(await B.pg.locator('#app').innerText()) && /Beach: adds 1 expense/.test(await B.pg.evaluate(()=>($('.toast')||{}).textContent||'')),'S6-3: B\'s volume page redraws with Taxi and says "Beach: adds 1 expense."');
+   // motion: the row that arrived inks in on its own (accent wash wiped off), within 300 ms
+   const ink=await B.pg.evaluate(()=>{ const r=[...document.querySelectorAll('#app .tx.ink-new')]; return {n:r.length,txt:r.map(x=>x.querySelector('.tx-t').textContent).join(','),a:document.getAnimations().filter(a=>a.effect.target&&r.includes(a.effect.target)).map(a=>({n:a.animationName,d:a.effect.getTiming().duration,delay:a.effect.getTiming().delay}))}; });
+   ok(ink.n===1 && ink.txt==='Taxi' && ink.a.length>0 && ink.a.every(a=>a.d+a.delay<=320),'S6-3: the live row (Taxi) inks in by itself '+JSON.stringify(ink));
    // Both go offline and each adds an expense; local saves are instant and queued
    await setNet(A.c,false); await setNet(B.c,false);
    await addExp(A.pg,'Lunch','30'); await addExp(B.pg,'Snacks','12.10');
@@ -1025,9 +1030,145 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await R.waitForFunction(()=>$('#syncTag') && $('#syncTag').textContent==='Synced',null,{timeout:5000}).catch(()=>{});
    const mo=await R.evaluate(()=>{ const t=$('#syncTag'); t.dataset.s=''; paintSync(ui.volId); const n=document.getAnimations().filter(a=>t.contains(a.effect.target)).length; return n; });
    const mn=await A.pg.evaluate(()=>{ const t=$('#syncTag'); t.dataset.s=''; paintSync(ui.volId); const as=document.getAnimations().filter(a=>t.contains(a.effect.target)); return as.map(a=>a.effect.getTiming().duration); });
-   ok(mo===0 && mn.length>0 && mn.every(d=>d<=200),'S6-11: the status line fades in over '+JSON.stringify(mn)+' ms (transform/opacity), and not at all under reduced motion');
+   ok(mo===0 && mn.length>0 && mn.every(d=>d<=200),'S6-11: the status line stamps and inks in over '+JSON.stringify(mn)+' ms, and not at all under reduced motion');
    await rm.close();
    const errs=[...A.e,...B.e,...C.e]; ok(errs.length===0,'no page errors in the live sync scenario '+JSON.stringify(errs));
    for (const x of [A,B,C]) await x.c.close(); }
+ // M (hati-motion, owner: "go all out with the animation, but make it still fast and optimized"): manga motion on every
+ // change, all inside the timing tokens, transform/opacity/clip-path only, nothing at all under reduced motion, taps never
+ // wait, rapid navigation ends in the right state, and a 4x-throttled CPU keeps long tasks out of the animation.
+ { const mk=async o=>{ const c=await b.newContext({...devices['iPhone 13'],...o}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.addInitScript(noSync); await pg.goto(URL); return {c,pg,e}; };
+   // every animation on the page and inside the ghosts: what it moves, how long, how late
+   const anims=pg=>pg.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>r([...document.getAnimations(),...Object.values(ghosts).flatMap(h=>ghostRoots.get(h)?ghostRoots.get(h).getAnimations():[])].map(a=>{ const t=a.effect.getTiming(), tg=a.effect.target;
+     return {name:a.animationName||(a.transitionProperty?'transition '+a.transitionProperty:'js'),on:tg?((tg.getAttribute&&tg.getAttribute('class'))||tg.tagName.toLowerCase())+(a.effect.pseudoElement||''):'',d:+t.duration,delay:+t.delay,state:a.playState,props:[...new Set(a.effect.getKeyframes().flatMap(k=>Object.keys(k)))].filter(k=>!['offset','computedOffset','easing','composite'].includes(k))}; })))));
+   const seen=[], step=async(pg,tag,want)=>{ const a=await anims(pg); a.forEach(x=>seen.push({...x,tag})); const hit=a.filter(x=>x.state==='running'&&want(x)); ok(hit.length>0,`M: ${tag}: ${[...new Set(hit.map(x=>x.name+' '+x.d+'ms'))].join(', ')||'no animation'}`); return a; };
+   const seed=pg=>pg.evaluate(()=>{ const v=S.volumes[0], ids=v.members.map(m=>m.id); v.members.find(m=>m.id===v.meId).name='Ana'; for (let i=0;i<40;i++){ const amt=1000+i*7; v.expenses.push({id:'m'+i,desc:'Dinner '+i,amount:amt,paidBy:ids[i%ids.length],category:'food',date:'2026-02-'+String(1+i%28).padStart(2,'0'),splitType:'equal',splits:splitEqual(amt,ids),inputs:{},note:'',upd:1}); }
+     const e={...exampleVolume(),id:'mEmpty',title:'Empty one',expenses:[],settlements:[],created:Date.now()}; e.members=e.members.map(m=>m.id===e.meId?{...m,name:'Ana'}:m); S.volumes.push(e); commit(); render(); });
+   const A=await mk({viewport:{width:390,height:844}}); const pg=A.pg; await seed(pg);
+   // screen change forward: the old page leaves as a slanted panel (a ghost that ignores taps); the new page's lists ink in
+   await pg.locator('.vol').first().click();
+   await step(pg,'hub to volume wipes the old page off to the left',x=>x.on.startsWith('ghost screen')&&x.name==='js');
+   await step(pg,'hub to volume inks its rows in, 30 ms apart',x=>x.name==='ink-off');
+   // a tap during the wipe lands on the real button under the ghost
+   await pg.locator('[data-act=back]').click(); await pg.waitForTimeout(400);
+   const tap=await pg.evaluate(()=>{ $('.vol').click(); const r=$('[data-act=addExpense]').getBoundingClientRect(), x=r.left+r.width/2, y=r.top+r.height/2; return {x,y,ghost:!!ghosts.screen,hit:!!(document.elementFromPoint(x,y)||{closest:()=>null}).closest('[data-act=addExpense]')}; });
+   await pg.mouse.click(tap.x,tap.y);
+   ok(tap.ghost && tap.hit && await pg.evaluate(()=>ui.view)==='expense','M: a tap during the screen wipe lands on the real button under it (Add expense opens) '+JSON.stringify(tap));
+   await pg.locator('[data-act=back]').click(); await pg.waitForTimeout(400);
+   // a long list: the entrance stagger is capped (row 7 on start together, rows past 12 are simply there)
+   await pg.locator('[data-act=history]').first().click();
+   const hs=await step(pg,'volume to history inks its rows in',x=>x.name==='ink-off');
+   const hd=hs.filter(x=>x.name==='ink-off'); const rows=await pg.locator('#app .ledger > *').count();
+   ok(rows>12 && hd.length<=12 && Math.max(...hd.map(x=>x.delay))===180 && Math.max(...hd.map(x=>x.delay+x.d))<=400,`M: stagger is capped: ${rows} rows, ${hd.length} animate, last starts at ${Math.max(...hd.map(x=>x.delay))} ms, all in by ${Math.max(...hd.map(x=>x.delay+x.d))} ms`);
+   // Back plays the other way: the ghost leaves to the right and rows ink in from the right
+   await pg.locator('[data-act=back]').click();
+   const bk=await pg.evaluate(async()=>{ await new Promise(r=>requestAnimationFrame(r)); const h=ghosts.screen; const a=h&&h.getAnimations()[0]; const k=a?a.effect.getKeyframes():[]; return {back:!!h&&h.classList.contains('back'),to:k.length?k[k.length-1].transform:'',turn:$('#app').dataset.turn}; });
+   ok(bk.back && /translateX\(\d/.test(bk.to) && bk.turn==='back','M: Back reverses the wipe (old page leaves to the right) '+JSON.stringify(bk));
+   await pg.waitForTimeout(400);
+   // clay press: the body squashes on the way down
+   { const r=await pg.locator('.btn.primary').boundingBox(); await pg.mouse.move(r.x+r.width/2,r.y+r.height/2); await pg.mouse.down();
+     await step(pg,'pressing clay squashes it',x=>x.name==='squash'); await pg.mouse.move(1,1); await pg.mouse.up(); }
+   // sheets: up from the thumb edge; closing goes back down while the dim fades; the summary inks in
+   await pg.getByRole('button',{name:/Settle up/}).click();
+   await step(pg,'Settle up sheet slides up',x=>x.name==='sheet-up');
+   await pg.waitForTimeout(250); await pg.keyboard.press('Escape');
+   await step(pg,'closing the sheet takes it back down',x=>x.on==='sheet'&&x.name==='js');
+   ok(!(await pg.evaluate(()=>sheetOpen())) && await pg.evaluate(()=>!document.querySelector('#sheetForm')),'M: a closing sheet is already gone from the page (only its ghost is moving)');
+   // number roll: a saved expense rolls the balance (the text is the new amount at once)
+   const before=await pg.locator('.hero .amt').innerText();
+   await pg.getByRole('button',{name:/Add expense/}).click(); await pg.fill('#f-amount','90'); await pg.fill('#f-desc','Roll'); await pg.locator('#expForm button[type=submit]').click();
+   await pg.waitForFunction(()=>ui.view==='volume'&&!!$('.hero .amt'));
+   await step(pg,'the balance rolls to its new amount',x=>/^roll-(in|out)/.test(x.name));
+   const roll=await pg.evaluate(()=>({txt:$('.hero .amt').innerText,was:$('.hero .amt').dataset.was,fig:$('.hero .amt .fig').textContent}));
+   ok(roll.was===before && roll.txt===roll.fig && roll.txt!==before,'M: the number roll keeps the real text (only the new amount is read; the old one is a pseudo-element) '+JSON.stringify(roll));
+   await pg.waitForTimeout(300);
+   // settle-up done: the hero pulses once; paid off in full, "You're all settled" lands like a stamp
+   await pg.getByRole('button',{name:/Settle up/}).click(); await pg.waitForTimeout(250);
+   await pg.evaluate(()=>{ const v=vol(), me=balances(v)[v.meId], o=v.members.find(m=>m.id!==v.meId).id; $('#s-from').value=me<0?v.meId:o; $('#s-to').value=me<0?o:v.meId; $('#s-amt').value=(Math.abs(me)/100).toFixed(2); });
+   await pg.locator('#sheetForm button.primary').click();
+   await step(pg,'settle-up done pulses the balance',x=>x.name==='pulse');
+   await step(pg,'all settled lands like a stamp',x=>x.name==='stamp'&&/stamped/.test(x.on));
+   await step(pg,'"Payment recorded" toast is brushed in',x=>x.name==='toast-in');
+   await pg.waitForFunction(()=>!!document.querySelector('.toast.out'),null,{timeout:4000});
+   await step(pg,'the toast is wiped off when it ends',x=>x.name==='toast-out');
+   await pg.waitForFunction(()=>!document.querySelector('.toast'),null,{timeout:1000}).catch(()=>{});
+   ok(await pg.evaluate(()=>!document.querySelector('.toast')),'M: a wiped-off toast is removed');
+   // empty state: the kaomoji lands like a stamp
+   await pg.evaluate(()=>{ go('hub'); ui.volId='mEmpty'; go('volume'); });
+   await step(pg,'an empty state stamps its kaomoji',x=>x.name==='stamp'&&/kao/.test(x.on));
+   // share/invite: the summary inks in and the QR prints top to bottom
+   await pg.waitForTimeout(400); await pg.getByRole('button',{name:'Share volume'}).click(); await pg.waitForSelector('svg.qr');
+   await step(pg,'the QR prints in',x=>x.name==='qr-print');
+   await step(pg,'the share summary inks in',x=>x.name==='ink-off'&&/share-sum/.test(x.on));
+   await pg.waitForTimeout(300); await pg.keyboard.press('Escape');
+   // the bounds: transform/opacity (clip-path only on small things), no interaction animation over 300 ms, a stagger
+   // all in by 400 ms; collected from every step above
+   const props=new Set(seen.flatMap(x=>x.props)), bad=seen.filter(x=>x.d>300||x.delay+x.d>400||x.props.some(p=>!['transform','opacity','clipPath'].includes(p)));
+   const clip=[...new Set(seen.filter(x=>x.props.includes('clipPath')).map(x=>x.on.split(' ')[0]||x.on))];
+   ok(seen.length>20 && bad.length===0,`M: ${seen.length} animations measured with getAnimations(): longest ${Math.max(...seen.map(x=>x.d))} ms, all in by ${Math.max(...seen.map(x=>x.delay+x.d))} ms, properties ${[...props].join('/')} ${JSON.stringify(bad.slice(0,3))}`);
+   ok(clip.every(c=>['toast','qr','msg','span'].includes(c)),'M: clip-path only on small things (toast, QR, messages, sync words): '+clip.join(','));
+   // rapid navigation: taps and history steps without waiting end in a right, settled state
+   await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('hub'); }); await pg.waitForTimeout(300);
+   await pg.locator('.vol').first().click(); await pg.locator('[data-act=history]').first().click(); await pg.goBack(); await pg.goBack(); await pg.goForward();
+   await pg.locator('[data-act=settle]').click(); await pg.keyboard.press('Escape'); await pg.locator('[data-act=volMenu]').click(); await pg.keyboard.press('Escape');
+   await pg.locator('[data-act=history]').first().click(); await pg.locator('[data-act=back]').click();
+   await pg.waitForTimeout(500);
+   const fin=await pg.evaluate(()=>({view:ui.view,route:parseHash().view,h1:$('#app h1').textContent,title:vol()&&vol().title,ghosts:document.querySelectorAll('.ghost').length+Object.keys(ghosts).length,sheet:sheetOpen(),inert:$('#app').inert,nav:$('#nav [aria-current]').textContent,hist:depth()}));
+   ok(fin.view==='volume' && fin.route==='volume' && fin.h1===fin.title && fin.ghosts===0 && !fin.sheet && !fin.inert && fin.nav==='Volumes','M: after rapid taps, Back and Forward the app ends on the right screen with no ghost or sheet left '+JSON.stringify(fin));
+   // an interrupted sheet: close and open another at once; one sheet, focus in it, nothing left behind
+   await pg.evaluate(()=>{ settleSheet(null); closeSheet(); volMenuSheet(); }); await pg.waitForTimeout(400);
+   const sh=await pg.evaluate(()=>({n:$('#layer').children.length,title:$('#sheetTitle').textContent,focus:$('#sheetForm').contains(document.activeElement),ghosts:document.querySelectorAll('.ghost').length}));
+   ok(sh.n===1 && sh.title===(await pg.evaluate(()=>vol().title)) && sh.focus && sh.ghosts===0,'M: a sheet closed and another opened at once: one sheet, focused, no ghost left '+JSON.stringify(sh));
+   await pg.keyboard.press('Escape');
+   ok(A.e.length===0,'M: no page errors with motion on '+JSON.stringify(A.e));
+   await A.c.close();
+
+   // Reduced motion: the same paths run no animation at all (no ghosts, no CSS animations or transitions, no rolls)
+   { const R=await mk({viewport:{width:390,height:844},reducedMotion:'reduce'}); const rp=R.pg; await seed(rp); const left=[];
+     const none=async tag=>{ const a=await anims(rp), g=await rp.evaluate(()=>document.querySelectorAll('.ghost,.roll,.done').length); if (a.length||g) left.push(`${tag}: ${a.map(x=>x.name).join(',')} ${g}`); };
+     await rp.locator('.vol').first().click(); await none('hub to volume');
+     await rp.locator('[data-act=history]').first().click(); await none('history');
+     await rp.locator('[data-act=back]').click(); await none('back');
+     { const r=await rp.locator('.btn.primary').boundingBox(); await rp.mouse.move(r.x+r.width/2,r.y+r.height/2); await rp.mouse.down(); await rp.waitForTimeout(100); await none('press'); await rp.mouse.move(1,1); await rp.mouse.up(); }
+     await rp.getByRole('button',{name:/Settle up/}).click(); await none('sheet open');
+     await rp.evaluate(()=>{ const v=vol(), me=balances(v)[v.meId], o=v.members.find(m=>m.id!==v.meId).id; $('#s-from').value=me<0?v.meId:o; $('#s-to').value=me<0?o:v.meId; $('#s-amt').value=(Math.abs(me)/100).toFixed(2); });
+     await rp.locator('#sheetForm button.primary').click(); await none('settle done and toast');
+     await rp.getByRole('button',{name:/Add expense/}).click(); await rp.fill('#f-amount','90'); await rp.fill('#f-desc','Roll'); await rp.locator('#expForm button[type=submit]').click(); await rp.waitForFunction(()=>ui.view==='volume'); await none('balance update');
+     await rp.evaluate(()=>{ go('hub'); ui.volId='mEmpty'; go('volume'); }); await none('empty state');
+     await rp.getByRole('button',{name:'Share volume'}).click(); await rp.waitForSelector('svg.qr'); await none('share sheet');
+     await rp.keyboard.press('Escape'); await none('sheet close');
+     ok(left.length===0,'M: reduced motion: no running animation, ghost or roll on any of these paths '+JSON.stringify(left));
+     ok(R.e.length===0,'M: no page errors under reduced motion '+JSON.stringify(R.e));
+     await R.c.close(); }
+
+   // Performance at 4x CPU throttle (CDP Emulation.setCPUThrottlingRate): a screen change into a 100-row list, a sheet
+   // and a Back, 3 times each, with motion and with reduced motion as the baseline. Long tasks come from a
+   // PerformanceObserver('longtask'), frame pacing from requestAnimationFrame over the 400 ms after the first frame.
+   { const perf={};
+     for (const rm of ['no-preference','reduce']) {
+       const P=await mk({viewport:{width:390,height:844},reducedMotion:rm}); const q=P.pg; await seed(q);
+       await q.evaluate(()=>{ const v=S.volumes[0], ids=v.members.map(m=>m.id); for (let i=40;i<100;i++){ const amt=1000+i*7; v.expenses.push({id:'m'+i,desc:'Dinner '+i,amount:amt,paidBy:ids[i%ids.length],category:'food',date:'2026-03-'+String(1+i%28).padStart(2,'0'),splitType:'equal',splits:splitEqual(amt,ids),inputs:{},note:'',upd:1}); } commit(); render(); }); await q.waitForTimeout(800);
+       const cdp=await P.c.newCDPSession(q); await cdp.send('Emulation.setCPUThrottlingRate',{rate:4});
+       const run=async(label,fn)=>{
+         await q.evaluate(()=>{ window.__lt=[]; window.__fr=[]; if (window.__po) __po.disconnect(); window.__po=new PerformanceObserver(l=>l.getEntries().forEach(e=>__lt.push({s:e.startTime,d:e.duration}))); __po.observe({type:'longtask'}); const gen=(window.__gen=(window.__gen||0)+1); const tick=t=>{ if (gen!==__gen) return; __fr.push(t); if (__fr.length<300) requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
+         await q.waitForTimeout(250); const t0=await q.evaluate(fn); await q.waitForTimeout(800);
+         const r=await q.evaluate(t0=>{ const f=__fr.filter(t=>t>=t0), first=f[0], win=f.filter(t=>t<=first+400), d=win.slice(1).map((t,i)=>t-win[i]); const s=[...d].sort((a,b)=>a-b);
+           const lt=__lt.filter(x=>x.s+x.d>=t0-1); return {input:Math.round(Math.max(0,...lt.filter(x=>x.s<first).map(x=>x.d))),during:lt.filter(x=>x.s>=first).map(x=>Math.round(x.d)),med:+s[s.length>>1].toFixed(1),slow:d.slice(1).filter(x=>x>25).length,fps:Math.round((win.length-1)/((win[win.length-1]-first)/1000))}; },t0);
+         (perf[label]=perf[label]||{})[rm]=[...((perf[label]||{})[rm]||[]),r]; };
+       for (let k=0;k<3;k++) {
+         await run('hub to volume',()=>{ const t=performance.now(); $('.vol').click(); return t; });
+         await run('volume to history (100 rows)',()=>{ const t=performance.now(); $('[data-act=history]').click(); return t; });
+         await run('Back to volume',()=>{ const t=performance.now(); $('[data-act=back]').click(); return t; });
+         await run('Settle up sheet',()=>{ const t=performance.now(); $('[data-act=settle]').click(); return t; });
+         await run('sheet close',()=>{ const t=performance.now(); closeSheet(); return t; });
+         await run('Back to volumes',()=>{ const t=performance.now(); $('[data-act=back]').click(); return t; }); }
+       ok(P.e.length===0,`M-perf: no page errors (${rm}) `+JSON.stringify(P.e)); await P.c.close(); }
+     const med=a=>[...a].sort((x,y)=>x-y)[a.length>>1];
+     for (const [label,v] of Object.entries(perf)) {
+       // medians of 3 runs, so one GC pause on a shared CI machine does not decide it; every run is printed
+       const m=v['no-preference'], base=v.reduce, during=m.map(r=>r.during), worst=med(during.map(d=>Math.max(0,...d))), inM=med(m.map(r=>r.input)), inB=med(base.map(r=>r.input));
+       console.log(`  perf 4x ${label}: input task ${inM} ms (reduced motion ${inB} ms), long tasks during the animation ${JSON.stringify(during)}, frame median ${med(m.map(r=>r.med))} ms, ${med(m.map(r=>r.fps))} fps, slow frames after the first ${m.map(r=>r.slow).join('/')}`);
+       ok(worst<=50 && (inM<=50 || inM-inB<=15) && med(m.map(r=>r.med))<=17.5 && med(m.map(r=>r.slow))<=1,`M-perf 4x CPU: ${label}: no long task over 50 ms from the animation (input task ${inM} ms vs ${inB} ms without motion; during ${JSON.stringify(during)}), frames ${med(m.map(r=>r.med))} ms median, ${med(m.map(r=>r.fps))} fps`); } }
+ }
  await b.close();
 })();
