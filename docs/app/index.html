@@ -236,6 +236,14 @@ section > .label, section > .row > .label { margin-top: 6px; }
 @media (max-width: 379px) { .hero .vno { display: none; } }
 .hero .mine { margin: 8px 0 0; padding: 8px 0 0; border-top: 1.5px solid var(--rule); display: flex; flex-direction: column; gap: 4px; font-size: .92rem; list-style: none; }
 .amt.pos, .k.pos { color: var(--pos); } .amt.neg, .k.neg { color: var(--neg); }
+/* Live sync status: one small ink line in the hero. The square is a stamp: filled = synced, open = waiting, red = stuck. */
+.hero .sync { display: flex; align-items: center; gap: 7px; margin: 10px 0 0; font-size: .8rem; font-weight: 600; color: color-mix(in srgb, var(--fg) 72%, var(--hero)); }
+.sync i { width: 9px; height: 9px; flex: none; border: 2px solid var(--fg); background: transparent; }
+.sync[data-s="ok"] i { background: var(--fg); }
+.sync[data-s="bad"] i, .sync[data-s="big"] i { border-color: var(--neg); background: var(--neg); }
+.sync.in span, .sync.in i { animation: sync-in 180ms cubic-bezier(.2,.8,.2,1); }
+@keyframes sync-in { from { opacity: 0; transform: translateY(3px); } }
+@media (prefers-reduced-motion: reduce) { .sync.in span, .sync.in i { animation: none; } }
 
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 8px 4px 4px; border-radius: var(--r); border: 1.5px solid var(--line); background: var(--panel); font-size: .9rem; font-weight: 600; }
@@ -470,6 +478,7 @@ function save() {
   try {
     const json = JSON.stringify(S);
     localStorage.setItem(KEY, json); lastGood = json;
+    syncNoteSave();
     if (!persistAsked) { persistAsked = true; try { const p = navigator.storage && navigator.storage.persist && navigator.storage.persist(); if (p && p.catch) p.catch(() => {}); } catch (_) {} }
     return true;
   } catch (e) {
@@ -707,6 +716,7 @@ const views = {
         <div class="k ${cls}">${settled ? "You're all settled" : mine > 0 ? "You are owed" : "You owe"}</div>
         ${settled ? "" : `<div class="amt num ${cls} ${amtSize(fmt(Math.abs(mine), v.currency))}">${esc(fmt(Math.abs(mine), v.currency))}</div>`}
         ${myDebts.length ? `<ul class="mine">${myDebts.map(d => `<li class="row between"><span class="who">${d.from === v.meId ? `<span>Pay</span> <span class="nm">${esc(nameOf(v, d.to))}</span>` : `<span class="nm">${esc(nameOf(v, d.from))}</span> <span>pays you</span>`}</span><b class="num">${esc(fmt(d.amount, v.currency))}</b></li>`).join("")}</ul>` : ""}
+        ${syncTag(v)}
       </section>
       <div class="btns pair acts">
         <button class="btn primary" data-act="addExpense">${I.plus} Add expense</button>
@@ -882,7 +892,7 @@ function sheet(html, onSubmit) {
   form.addEventListener("input", () => { const m = $("#sheetMsg"); if (m && !m.classList.contains("ok")) m.textContent = ""; });
   $("#sheetTitle").focus();
 }
-function dropSheet() { $("#layer").innerHTML = ""; $("#app").inert = false; $("#nav").inert = false; }
+function dropSheet() { $("#layer").innerHTML = ""; $("#app").inert = false; $("#nav").inert = false; syncHeld(); }
 function closeSheet() { dropSheet(); if (lastFocus && document.contains(lastFocus)) lastFocus.focus(); }
 const sheetMsg = t => { const m = $("#sheetMsg"); if (m) m.textContent = t; };
 const sheetButtons = (label, cls = "primary") => `<div class="btns"><button type="button" class="btn quiet" data-act="closeSheet">Cancel</button><button class="btn ${cls}">${label}</button></div>`;
@@ -1032,13 +1042,18 @@ function nameFirstSheet(v) {
     });
 }
 async function shareSheet() {
-  const v = vol(); if (!v) return;
+  let v = vol(); if (!v) return;
   if (nameless(v)) return nameFirstSheet(v);
-  const code = shareCodeOf(v);
-  let link = "";
+  // Sharing makes the volume live: a room and key, then the short link. Offline, or too big for the server, the
+  // link carries a copy of the volume instead (the snapshot invite); with a room in it, live sync starts once online.
+  const id = v.id, st = await shareRoom(v);
+  v = vol(); if (!v || v.id !== id) return;
+  const live = !!(st && st.version > 0), code = shareCodeOf(v);
+  let link = live ? appBase() + "#join=" + st.room + "." + st.key : "";
   // A receiver reads at most JOIN_OUT_MAX bytes from a link, so a bigger volume goes as a code instead.
-  if (canInvite() && new TextEncoder().encode(code).length <= JOIN_OUT_MAX) try { link = await inviteLink(v); } catch (e) { link = ""; }
-  if (vol() !== v) return;
+  if (!live && canInvite() && new TextEncoder().encode(code).length <= JOIN_OUT_MAX) try { link = await inviteLink(v); } catch (e) { link = ""; }
+  if (!vol() || vol().id !== id) return;
+  v = vol();
   const send = !!sendFn(), qr = link ? qrSvg(link) : "";
   shareLink = link;
   const codeBox = `<details class="codebox" id="s-codebox"><summary>Show code</summary><div class="stack">
@@ -1047,7 +1062,9 @@ async function shareSheet() {
       ${link ? `<button type="button" class="btn quiet block" data-act="copyCode">Copy code</button>` : ""}</div></details>`;
   sheet(`<h2>Share volume</h2><div class="stack">
     <div class="share-sum"><b class="ellip">${esc(v.title)}</b><span class="muted small">${countLine(v)}</span></div>
-    ${link ? `<p class="small" style="margin:0">Send this link to the others. It opens HATI² and adds the volume on their phone.</p>
+    ${link ? `<p class="small" style="margin:0" id="s-how">${live ? "Send this link to the others. It opens HATI² and keeps this volume in sync on every phone."
+      : st ? "You're offline, so this link carries a copy of the volume. It syncs once you're both online." : "Send this link to the others. It opens HATI² and adds the volume on their phone."}</p>
+    ${st ? `<p class="muted small" style="margin:0">Anyone with the link can see and change this volume.</p>` : ""}
     <div class="btns">${send ? `<button type="button" class="btn primary" data-act="sendLink">${I.share} Send invite</button><button type="button" class="btn" data-act="copyLink">Copy link</button>`
       : `<button type="button" class="btn primary" data-act="copyLink" style="grid-column:1/-1">Copy link</button>`}</div>
     <label class="sr" for="s-link">Invite link</label><input id="s-link" class="input" readonly hidden value="${esc(link)}">
@@ -1079,7 +1096,8 @@ const PAGES_URL = "https://p1xellzxc.github.io/HATI_v2/app/";
 const JOIN_MAX = 1000000, JOIN_OUT_MAX = 512 * 1024;
 const JOIN_BROKEN = "This invite link is broken. Ask for a new one.", JOIN_NEWER = "This invite needs a newer version of HATI².";
 const canInvite = () => typeof CompressionStream === "function" && typeof DecompressionStream === "function";
-const shareCodeOf = v => JSON.stringify({ app: "hati2-mock", v: 1, volume: v });
+// A shared volume's code and snapshot link also carry its room, so whoever opens them joins the live sync.
+const shareCodeOf = v => JSON.stringify({ app: "hati2-mock", v: 1, volume: v, ...(SY[v.id] ? { sync: { room: SY[v.id].room, key: SY[v.id].key } } : {}) });
 // Inside the APK the page origin is local to that phone, so links point at the published app instead.
 const appBase = () => location.hostname === "appassets.androidplatform.net" ? PAGES_URL : location.origin + location.pathname;
 const b64url = u8 => { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000)); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); };
@@ -1106,6 +1124,8 @@ async function inflateCapped(bytes, cap) {
 const joinPayloadIn = t => { const m = /#join=([\w.-]*)/.exec(String(t)); return m ? m[1].replace(/\.+$/, "") : null; };
 // Never throws: { volume } (already through parseCode → validVolume) or { error }.
 async function readInvite(payload) {
+  const live = LIVE_RE.exec(payload || "");
+  if (live) return readLiveInvite(live[1], live[2]);
   if (/^[\w-]+\.[\w-]+$/.test(payload)) return { error: JOIN_NEWER };
   if (!payload || payload.length > JOIN_MAX || !/^[\w-]+$/.test(payload)) return { error: JOIN_BROKEN };
   if (!canInvite()) return { error: "This browser can't open invite links. Ask for the share code instead." };
@@ -1113,6 +1133,16 @@ async function readInvite(payload) {
   try { text = await inflateCapped(unb64url(payload), JOIN_OUT_MAX); } catch (e) { return { error: JOIN_BROKEN }; }
   const p = text === null ? null : parseCode(text);
   return p && p.volume ? p : { error: JOIN_BROKEN };
+}
+// A live invite: fetch the room's blob and decrypt it here. A wrong key reads as a broken link and changes nothing.
+async function readLiveInvite(room, key) {
+  if (!syncOn()) return { error: location.hostname === "appassets.androidplatform.net" ? JOIN_APK : "This browser can't open live invites. Ask for the share code instead." };
+  let g; try { g = await api("GET", room); } catch (e) { return { error: JOIN_OFFLINE }; }
+  if (g.status === 429) return { error: "Too many tries. Wait a minute, then open the link again." };
+  if (g.status !== 200 || !g.j || !Number.isInteger(g.j.version)) return { error: g.status === 400 || g.status === 404 ? JOIN_BROKEN : JOIN_OFFLINE };
+  if (!g.j.blob) return { error: JOIN_EMPTY };
+  const x = await unseal(room, key, g.j.blob);
+  return x ? { volume: x, room: { room, key, version: g.j.version }, seen: canon(x) } : { error: JOIN_BROKEN };
 }
 let joinBusy = null, skipPop = false;
 async function startJoin(payload) {
@@ -1134,14 +1164,14 @@ async function startJoin(payload) {
       <button type="button" class="btn primary block" data-act="closeSheet">OK</button></div>`);
     return;
   }
-  joinSheet(p.volume, appBase() + "#join=" + payload);
+  joinSheet(p, appBase() + "#join=" + payload);
 }
 function joinFromHash() {
   if (!location.hash.startsWith("#join=")) return false;
   startJoin(joinPayloadIn(location.hash)); return true;
 }
-function joinSheet(x, link) {
-  const local = S.volumes.find(v => v.id === x.id), safari = isIOS() && !navigator.standalone;
+function joinSheet(p, link) {
+  const x = p.volume, local = S.volumes.find(v => v.id === x.id), safari = isIOS() && !navigator.standalone;
   sheet(`<h2>Join volume</h2><div class="stack">
     <div class="share-sum"><b class="ellip">${esc(x.title)}</b><span class="muted small">${countLine(x)}</span></div>
     ${local ? "" : `<p class="small" id="s-new" style="margin:0">New volume on this phone. Pick your name, then tap <b>Join</b>.</p>`}
@@ -1151,8 +1181,251 @@ function joinSheet(x, link) {
     ${safari ? `<p class="small muted" id="s-safari" style="margin:0">Using HATI² from your home screen? Copy this link and paste it in Import.</p>
     <label class="sr" for="s-link">Invite link</label><input id="s-link" class="input" readonly hidden value="${esc(link)}">
     <button type="button" class="btn quiet block" data-act="copyLink">Copy link</button>` : ""}</div>`,
-    () => importVolume(x));
+    () => importVolume(p));
   fillPick($("#s-pick"), x);
+}
+
+// ── Live sync (protocol: sync/README.md) ─────────────────
+// A shared volume has a room on the sync server and an AES-GCM-256 key. Both travel only in the invite's #fragment
+// and stay on this device (localStorage SYNC_KEY), never inside the volume. The server keeps one encrypted blob and
+// a version: GET pulls, PUT with baseVersion pushes, a 409 means someone wrote first, so we merge and try again.
+// Local saves never wait for the network; a changed shared volume is marked dirty (the outbox) and pushed later.
+const SYNC_BASE = "https://hati-sync.gerymefernando.workers.dev";
+const SYNC_KEY = "hati2.sync.v1";
+const SYNC_MAX = 512 * 1024, SYNC_PLAIN_MAX = 380 * 1024; // the server's blob limit; plaintext that still fits once encrypted
+const ROOM_RE = /^[\w-]{22,64}$/, KEY_RE = /^[\w-]{43}$/, LIVE_RE = /^([\w-]{22,64})\.([\w-]{43})$/;
+const JOIN_OFFLINE = "Can't reach the sync server. Check your connection, then open the link again.";
+const JOIN_EMPTY = "This volume isn't online yet. Ask whoever sent the link to open HATI² while online, then try again.";
+const JOIN_APK = "The Android app can't open live invites yet. Open the link in your browser.";
+// The APK has no internet permission, so there the app stays local-only and shares snapshot links.
+const syncOn = () => location.hostname !== "appassets.androidplatform.net" && typeof fetch === "function" && !!(window.crypto && crypto.subtle);
+function loadSync() {
+  const out = {};
+  try {
+    const x = JSON.parse(localStorage.getItem(SYNC_KEY) || "{}");
+    for (const [id, r] of Object.entries(x && typeof x === "object" ? x : {}))
+      if (okId(id) && r && ROOM_RE.test(r.room) && KEY_RE.test(r.key)) out[id] = { room: r.room, key: r.key, version: Number.isInteger(r.version) && r.version >= 0 ? r.version : 0, dirty: r.dirty !== false };
+  } catch (e) {}
+  return out;
+}
+let SY = loadSync(); // { [volume id]: { room, key, version, dirty } }
+const forgotten = new Set();
+// Another tab may have added a room since this page read the list, so its entries are kept, not overwritten.
+function saveSync() {
+  try {
+    const disk = loadSync();
+    for (const id of Object.keys(disk)) if (!SY[id] && !forgotten.has(id)) SY[id] = disk[id];
+    localStorage.setItem(SYNC_KEY, JSON.stringify(SY)); return true;
+  } catch (e) { return false; }
+}
+// Runtime state per shared volume, not stored: seen = canon() of what the server holds (undefined: not asked yet,
+// null: empty room), want = a newer version the socket announced, state = what the status line says.
+const RT = {};
+const rt = id => RT[id] || (RT[id] = { seen: undefined, want: 0, run: null, again: false, timer: 0, until: 0, tries: 0, state: "wait", hold: false, ws: null, wsTries: 0, wsTimer: 0, ping: 0 });
+// What gets encrypted: the volume without meId (who "you" are differs per phone).
+const payload = v => JSON.stringify({ ...v, meId: undefined });
+// Content only, in a fixed order, so two phones holding the same data compare equal (no endless re-pushing).
+const canon = v => {
+  const c = cleanVolume(v), by = a => [...a].sort((x, y) => x.id < y.id ? -1 : x.id > y.id ? 1 : 0).map(x => JSON.stringify({ ...x, upd: 0 }));
+  return JSON.stringify([c.id, c.title, c.type, c.currency, by(c.members), by(c.expenses), by(c.settlements), [...c.deleted].sort()]);
+};
+// Merged lists follow the server copy's order (items only here go last), so every phone shows the same order.
+const remoteOrder = (v, rem) => {
+  const ord = (a, b) => { const ix = new Map(b.map((x, i) => [x.id, i])), at = x => ix.has(x.id) ? ix.get(x.id) : 1e9; return [...a].sort((x, y) => at(x) - at(y)); };
+  return { ...v, members: ord(v.members, rem.members), expenses: ord(v.expenses, rem.expenses), settlements: ord(v.settlements, rem.settlements) };
+};
+const te = new TextEncoder();
+const aesKey = k => crypto.subtle.importKey("raw", unb64url(k), "AES-GCM", false, ["encrypt", "decrypt"]);
+async function seal(room, k, text) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv, additionalData: te.encode(room) }, await aesKey(k), te.encode(text));
+  return { v: 1, iv: b64url(iv), ct: b64url(new Uint8Array(ct)) };
+}
+// The volume in a blob, or null if it can't be read (wrong key, another room's blob, damaged or invalid data).
+async function unseal(room, k, blob) {
+  try {
+    if (!blob || blob.v !== 1 || typeof blob.iv !== "string" || typeof blob.ct !== "string") return null;
+    const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64url(blob.iv), additionalData: te.encode(room) }, await aesKey(k), unb64url(blob.ct));
+    const x = JSON.parse(new TextDecoder().decode(pt));
+    return validVolume(x) ? x : null;
+  } catch (e) { return null; }
+}
+async function api(method, room, body) {
+  const r = await fetch(`${SYNC_BASE}/v1/rooms/${room}`, { method, cache: "no-store", headers: body ? { "content-type": "application/json" } : undefined, body: body ? JSON.stringify(body) : undefined });
+  let j = null; try { j = await r.json(); } catch (e) {}
+  return { status: r.status, j, retry: Number(r.headers.get("retry-after")) || 60 };
+}
+async function newRoom() {
+  const k = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
+  return { room: b64url(crypto.getRandomValues(new Uint8Array(16))), key: b64url(new Uint8Array(await crypto.subtle.exportKey("raw", k))) };
+}
+// Links a volume on this phone to a room. seen: canon() of the server copy when it is known.
+function attachRoom(id, room, seen) {
+  if (!syncOn() || !room || !ROOM_RE.test(room.room) || !KEY_RE.test(room.key)) return;
+  wsClose(id); forgotten.delete(id);
+  SY[id] = { room: room.room, key: room.key, version: room.version || 0, dirty: true };
+  const r = rt(id); r.seen = seen; r.want = 0; r.state = "wait"; r.tries = 0; r.until = 0;
+  saveSync(); wsOpen(id); syncRun(id);
+}
+function forget(id) {
+  wsClose(id); clearTimeout(rt(id).timer); delete RT[id];
+  if (SY[id]) { delete SY[id]; forgotten.add(id); saveSync(); }
+}
+// Called after every successful save: a shared volume that now differs from the server copy goes in the outbox.
+function syncNoteSave() {
+  try {
+    for (const id of Object.keys(SY)) {
+      const v = S.volumes.find(x => x.id === id);
+      if (!v) { forget(id); continue; }
+      const r = rt(id);
+      if (r.seen !== undefined && canon(v) === r.seen) continue;
+      if (!SY[id].dirty) { SY[id].dirty = true; saveSync(); }
+      paintSync(id); syncSoon(id, 250);
+    }
+  } catch (e) {}
+}
+function syncSoon(id, ms = 0) {
+  const r = rt(id); clearTimeout(r.timer);
+  r.timer = setTimeout(() => syncRun(id), Math.max(ms, r.until - Date.now()));
+}
+// One run at a time per volume; a request during a run makes it go round once more.
+function syncRun(id) {
+  const r = rt(id);
+  if (r.run) { r.again = true; return r.run; }
+  r.run = (async () => { do { r.again = false; await syncOnce(id); } while (r.again); })().catch(() => setSync(id, "off")).finally(() => { r.run = null; });
+  return r.run;
+}
+const syncAll = () => Object.keys(SY).forEach(id => { syncRun(id); wsOpen(id); });
+async function syncOnce(id) {
+  const st = SY[id], r = rt(id);
+  if (!st || !syncOn()) return;
+  if (!S.volumes.some(v => v.id === id)) return forget(id);
+  if (navigator.onLine === false) return setSync(id, "off");
+  if (r.until > Date.now()) return syncSoon(id);
+  try {
+    for (let round = 0; round < 6; round++) {
+      if (r.seen === undefined || r.want > st.version) {
+        const g = await api("GET", st.room);
+        if (g.status !== 200 || !g.j) return failed(id, g);
+        if (!(await take(id, g.j))) return;
+      }
+      const v = S.volumes.find(x => x.id === id); if (!v) return forget(id);
+      const c = canon(v);
+      if (c === r.seen) { r.tries = 0; if (st.dirty) { st.dirty = false; saveSync(); } return setSync(id, "ok"); }
+      const text = payload(v);
+      if (text.length > SYNC_PLAIN_MAX) return setSync(id, "big");
+      setSync(id, "wait");
+      const blob = await seal(st.room, st.key, text);
+      if (JSON.stringify(blob).length > SYNC_MAX) return setSync(id, "big");
+      const p = await api("PUT", st.room, { baseVersion: st.version, blob });
+      if (SY[id] !== st) return; // forgotten or re-linked meanwhile
+      if (p.status === 200 && p.j && Number.isInteger(p.j.version)) { st.version = p.j.version; r.seen = c; saveSync(); continue; }
+      if (p.status === 409 && p.j) { if (!(await take(id, p.j))) return; continue; }
+      return failed(id, p);
+    }
+    syncSoon(id, 1000);
+  } catch (e) { failed(id, null); }
+}
+// Takes the server's {version, blob}: decrypt, check, merge into the local copy. False stops the run.
+// A blob this phone can't read never touches local data.
+async function take(id, j) {
+  const st = SY[id], r = rt(id);
+  if (!st || !Number.isInteger(j.version) || j.version < 0) return failed(id, null), false;
+  if (!j.blob) { st.version = j.version; r.seen = null; r.want = 0; saveSync(); return true; } // empty room: new, or expired after 180 days
+  const remote = await unseal(st.room, st.key, j.blob);
+  if (SY[id] !== st) return false;
+  if (!remote || remote.id !== id) { setSync(id, "bad"); return false; }
+  const local = S.volumes.find(x => x.id === id); if (!local) { forget(id); return false; }
+  const m = mergeVolumes(local, remote);
+  if (m.error) { setSync(id, "bad"); return false; }
+  const merged = cleanVolume(remoteOrder(m.vol, cleanVolume(remote)));
+  if (canon(merged) !== canon(local)) {
+    // A sheet open on this volume holds its objects (the payment or member being edited); merge once it closes.
+    if (sheetOpen() && ui.volId === id) { r.hold = true; return false; }
+    S.volumes = S.volumes.map(x => x.id === id ? merged : x);
+    if (!save()) { render(); toast(saveGone ? SAVE_GONE : SAVE_FAIL); setSync(id, "bad"); return false; } // save() put S back
+    liveRedraw(id);
+    const said = mergeSummary(m);
+    if (said) toast(`${merged.title}: ${said[0].toLowerCase() + said.slice(1)}`);
+  }
+  st.version = j.version; r.seen = canon(remote); r.want = 0; saveSync();
+  return true;
+}
+// Redraw after a live change, unless that would get in the way: the expense form keeps its own state (and
+// goneElsewhere() catches an expense deleted meanwhile), and an open sheet stays as it is.
+function liveRedraw(id) {
+  if (ui.view === "expense" || sheetOpen()) return;
+  if (ui.view === "hub" || ui.volId === id) render();
+}
+// 413: too big, stop. 429: wait as long as the server says. Network or server trouble: retry 1 s, 2 s, 4 s … 60 s.
+function failed(id, res) {
+  const r = rt(id), s = res ? res.status : 0;
+  if (s === 413) return setSync(id, "big");
+  if (s === 429) { r.until = Date.now() + res.retry * 1000; setSync(id, "busy"); return syncSoon(id); }
+  if (s && s < 500) return setSync(id, "bad");
+  setSync(id, "off");
+  syncSoon(id, Math.min(60000, 1000 * 2 ** r.tries++));
+}
+// Changes are merged into a sheet's volume once the sheet closes (see take()).
+function syncHeld() { for (const id of Object.keys(RT)) if (RT[id].hold) { RT[id].hold = false; syncRun(id); } }
+
+// The socket only says "version n exists"; the data always comes by GET. Open while the page is visible.
+function wsOpen(id) {
+  const st = SY[id], r = rt(id);
+  if (!st || r.ws || document.hidden || navigator.onLine === false || !syncOn() || typeof WebSocket !== "function") return;
+  clearTimeout(r.wsTimer);
+  let ws; try { ws = new WebSocket(SYNC_BASE.replace(/^http/, "ws") + `/v1/rooms/${st.room}/ws`); } catch (e) { return; }
+  r.ws = ws;
+  ws.onopen = () => { r.wsTries = 0; clearInterval(r.ping); r.ping = setInterval(() => { try { ws.send("ping"); } catch (e) {} }, 30000); syncRun(id); };
+  ws.onmessage = ev => {
+    let m = null; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    const s = SY[id];
+    if (s && m && Number.isInteger(m.version) && m.version > s.version) { r.want = Math.max(r.want, m.version); syncRun(id); }
+  };
+  ws.onerror = () => {};
+  ws.onclose = ev => {
+    clearInterval(r.ping);
+    if (r.ws !== ws) return;
+    r.ws = null;
+    if (!SY[id] || document.hidden || navigator.onLine === false) return;
+    if (ev.code === 1001) { r.seen = undefined; syncRun(id); } // the room expired: push this phone's copy again
+    r.wsTimer = setTimeout(() => wsOpen(id), Math.min(60000, 1000 * 2 ** r.wsTries++));
+  };
+}
+function wsClose(id) {
+  const r = RT[id]; if (!r) return;
+  clearTimeout(r.wsTimer); clearInterval(r.ping);
+  const ws = r.ws; r.ws = null;
+  if (ws) try { ws.close(); } catch (e) {}
+}
+
+// The status line in the hero of a shared volume, in plain words.
+function syncSay(id) {
+  const st = SY[id], r = rt(id);
+  if (navigator.onLine === false || r.state === "off") return st.dirty ? "Offline — will sync" : "Offline";
+  return { ok: "Synced", wait: "Syncing…", busy: "Server busy — will sync soon", big: "Too big to sync. It stays on this phone.", bad: "Can't read the shared copy. Your data here is safe." }[r.state] || "Syncing…";
+}
+const syncState = id => navigator.onLine === false ? "off" : rt(id).state;
+const syncTag = v => SY[v.id] ? `<p class="sync" id="syncTag" data-s="${syncState(v.id)}"><i aria-hidden="true"></i><span>${esc(syncSay(v.id))}</span></p>` : "";
+function setSync(id, s) { rt(id).state = s; paintSync(id); }
+function paintSync(id) {
+  if (ui.view !== "volume" || ui.volId !== id || !SY[id]) return;
+  const el = $("#syncTag") || ($(".hero") && ($(".hero").insertAdjacentHTML("beforeend", syncTag(vol())), $("#syncTag")));
+  if (!el) return;
+  const s = syncState(id), t = syncSay(id), span = el.lastElementChild;
+  if (el.dataset.s === s && span.textContent === t) return;
+  el.dataset.s = s; span.textContent = t;
+  el.classList.remove("in"); void el.offsetWidth; el.classList.add("in");
+}
+// The share sheet asks for a room first; it waits for the first upload at most a few seconds.
+async function shareRoom(v) {
+  if (!syncOn() || te.encode(payload(v)).length > SYNC_PLAIN_MAX) return null;
+  if (!SY[v.id]) {
+    try { const n = await newRoom(); if (!SY[v.id]) { forgotten.delete(v.id); SY[v.id] = { ...n, version: 0, dirty: true }; rt(v.id).seen = null; if (!saveSync()) { delete SY[v.id]; return null; } wsOpen(v.id); } }
+    catch (e) { return null; }
+  }
+  await Promise.race([syncRun(v.id), new Promise(r => setTimeout(r, 3000))]);
+  return SY[v.id] || null;
 }
 
 // ── QR code: byte mode, error correction L, versions 1–20 (ISO/IEC 18004) ──
@@ -1371,7 +1644,8 @@ function parseCode(text) {
     return { backup: uniq, bad: data.volumes.length - vols.length };
   }
   if (!validVolume(data.volume)) return { error: "This code doesn't contain a HATI² volume, or its totals don't add up." };
-  return { volume: data.volume };
+  const sy = data.sync;
+  return sy && typeof sy === "object" && ROOM_RE.test(sy.room) && KEY_RE.test(sy.key) ? { volume: data.volume, room: { room: sy.room, key: sy.key, version: 0 } } : { volume: data.volume };
 }
 function backupPlan(p) {
   let fresh = 0, merged = 0, skipped = p.bad;
@@ -1421,15 +1695,18 @@ function fillPick(pick, x) {
     <div class="field"><label for="s-mode">What to do</label><select id="s-mode" class="input"><option value="merge">Merge with my copy</option><option value="replace">Replace my copy with this one</option><option value="copy">Keep both</option></select></div>` + who;
   $("#s-mode").addEventListener("change", ev => { $("#s-whobox").hidden = ev.target.value === "merge"; $("#s-sum").textContent = say(ev.target.value); });
 }
-// Imports volume x (already through validVolume) the way the picker in the open sheet says, then opens it.
-function importVolume(x) {
-  const mode = $("#s-mode") ? $("#s-mode").value : "new";
+// Imports p.volume (already through validVolume) the way the picker in the open sheet says, then opens it.
+// p.room (a live invite, or a code from a shared volume) links the volume to its sync room; "Keep both" makes a
+// separate volume, which stays local.
+function importVolume(p) {
+  const x = p.volume, mode = $("#s-mode") ? $("#s-mode").value : "new";
+  const link = id => { if (p.room && mode !== "copy") attachRoom(id, p.room, p.seen); };
   if (mode === "merge") {
     const r = mergeVolumes(S.volumes.find(v => v.id === x.id), x);
     if (r.error) return sheetMsg(r.error);
     S.volumes = S.volumes.map(v => v.id === r.vol.id ? r.vol : v);
     if (!save()) return sheetMsg(saveGone ? SAVE_GONE : "Couldn't save on this device. Nothing was changed.");
-    closeSheet(); ui.volId = r.vol.id; go("volume"); const said = mergeSummary(r); toast(said ? `Merged: ${said[0].toLowerCase() + said.slice(1)}` : "Already up to date"); return;
+    link(r.vol.id); closeSheet(); ui.volId = r.vol.id; go("volume"); const said = mergeSummary(r); toast(said ? `Merged: ${said[0].toLowerCase() + said.slice(1)}` : "Already up to date"); return;
   }
   const nv = cleanVolume(x), who = $("#s-who").value;
   if (!nv.members.some(m => m.id === who)) return sheetMsg("Choose which member you are.");
@@ -1437,7 +1714,7 @@ function importVolume(x) {
   if (mode === "replace") S.volumes = S.volumes.map(v => v.id === nv.id ? nv : v);
   else { if (mode === "copy") { nv.id = uid(); nv.deleted = []; } S.volumes.unshift(nv); }
   if (!save()) return sheetMsg(saveGone ? SAVE_GONE : "Couldn't save on this device. Nothing was changed.");
-  closeSheet(); ui.volId = nv.id; go("volume"); toast(mode === "new" ? `You joined ${nv.title}` : "Volume imported");
+  link(nv.id); closeSheet(); ui.volId = nv.id; go("volume"); toast(mode === "new" ? `You joined ${nv.title}` : "Volume imported");
 }
 function importSheet({ restore = false } = {}) {
   let read = null;
@@ -1473,7 +1750,7 @@ function importSheet({ restore = false } = {}) {
         if (!save()) return sheetMsg(saveGone ? SAVE_GONE : "Couldn't save on this device. Nothing was changed.");
         go("hub", { replace: true }); toast(`Backup restored: ${plural(plan.steps.length, "volume")}`); return;
       }
-      importVolume(p.volume);
+      importVolume(p);
     });
   $("#s-paste").addEventListener("input", () => { $("#s-pick").innerHTML = ""; $("#s-go").textContent = "Check code"; $("#s-help").innerHTML = help; sheetMsg(""); });
   $("#s-file").addEventListener("change", ev => {
@@ -1673,6 +1950,7 @@ document.addEventListener("keydown", ev => {
   }
 });
 addEventListener("storage", ev => {
+  if (ev.key === SYNC_KEY) { const disk = loadSync(); for (const id of Object.keys(disk)) if (!SY[id] && !forgotten.has(id)) { SY[id] = disk[id]; syncRun(id); wsOpen(id); } return; }
   if (ev.key !== KEY || ev.newValue === null) return;
   const fresh = load(); if (!fresh) return;
   S = fresh; applyTheme();
@@ -1692,6 +1970,12 @@ applyRoute();
 if (!joinAtStart && hashFor() !== (location.hash || "")) setUrl(true);
 render();
 if (joinAtStart) joinFromHash();
+// Live sync: push the outbox and catch up at start, when the network comes back and when the app is shown again.
+// A hidden page closes its sockets (phones kill them anyway); the next visible one reopens them and pulls.
+addEventListener("online", syncAll);
+addEventListener("offline", () => Object.keys(SY).forEach(id => { wsClose(id); setSync(id, "off"); }));
+document.addEventListener("visibilitychange", () => { if (document.hidden) Object.keys(SY).forEach(wsClose); else syncAll(); });
+syncAll();
 
 if ("serviceWorker" in navigator && window.isSecureContext) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
