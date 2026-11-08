@@ -37,31 +37,44 @@
   --clay-hi: color-mix(in srgb, var(--paper-l) 70%, transparent);
   --clay-lo: color-mix(in srgb, var(--ink-l) 16%, transparent);
   --clay-sel: var(--clay-lo); /* shade inside the selected (inverted) .seg segment */
+  /* Roles that dark mode sets apart; in light they equal what was there before */
+  --off: var(--rule);            /* hard offset shadow */
+  --sel-bg: var(--fg); --sel-fg: var(--bg); /* selected (inverted) segment */
+  --scrim: rgba(10, 10, 14, 0.5); --sheet: var(--bg); --field: var(--panel);
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #131217; --fg: #EDEBE4; --sub: #A8A6B0; --label: #A8A6B0;
-    --panel: #1B1A21; --sunk: #17161C; --line: #3A3842; --rule: #EDEBE4;
-    --accent: var(--acc-d); --on-accent: #131217; --hero: var(--hero-d);
-    --chip: color-mix(in srgb, var(--food-l) 28%, #1B1A21);
-    --tone: rgba(237, 235, 228, 0.14);
-    --pos: #BBF7D0; --neg: #FBCFE8; --err: #F2B8B5; --nav: #131217; --sbar: #131217;
-    --clay-hi: color-mix(in srgb, var(--fg) 10%, transparent); --clay-lo: color-mix(in srgb, var(--bg) 60%, transparent);
-    --clay-sel: color-mix(in srgb, var(--bg) 30%, transparent);
-    color-scheme: dark;
-  }
-}
+/* Dark: ink on night paper. Written once: build.py copies everything between the DARK markers into
+   @media (prefers-color-scheme: dark) with :root:not([data-theme="light"]), so the two can't drift.
+   Night paper is the plate's own ink, nearly black; layers step up bg < sunk < panel < hero < selected, all mixed from
+   chalk (--fg) into the night, never from the accent: a dark yellow/orange is olive or brown mud. The accent appears only
+   at full strength (primary, nav tab, spines, focus). Frames are chalk at 62%, quieter than text; the offset slab is
+   chalk at 20%, quieter again. Web dark no longer reads HatiPalette.kt heroD (see Team log). */
+/*DARK{*/
 :root[data-theme="dark"] {
-  --bg: #131217; --fg: #EDEBE4; --sub: #A8A6B0; --label: #A8A6B0;
-  --panel: #1B1A21; --sunk: #17161C; --line: #3A3842; --rule: #EDEBE4;
-  --accent: var(--acc-d); --on-accent: #131217; --hero: var(--hero-d);
-  --chip: color-mix(in srgb, var(--food-l) 28%, #1B1A21);
-  --tone: rgba(237, 235, 228, 0.14);
-  --pos: #BBF7D0; --neg: #FBCFE8; --err: #F2B8B5; --nav: #131217; --sbar: #131217;
-  --clay-hi: color-mix(in srgb, var(--fg) 10%, transparent); --clay-lo: color-mix(in srgb, var(--bg) 60%, transparent);
-  --clay-sel: color-mix(in srgb, var(--bg) 30%, transparent);
+  --bg: color-mix(in srgb, var(--ink-l) 20%, #0E0D12);
+  --fg: #EDEBE4; --sub: #A8A6B0; --label: #A8A6B0;
+  --sunk: color-mix(in srgb, var(--fg) 3.5%, var(--bg));
+  --panel: color-mix(in srgb, var(--fg) 11%, var(--bg));
+  --line: color-mix(in srgb, var(--fg) 38%, var(--panel));
+  --rule: color-mix(in srgb, var(--fg) 62%, var(--bg));
+  --off: color-mix(in srgb, var(--fg) 20%, var(--bg));
+  --accent: var(--acc-d); --on-accent: #131217;
+  --hero: color-mix(in srgb, var(--fg) 19%, var(--bg));
+  --sel-bg: var(--fg); --sel-fg: var(--bg); /* chalk on night: the same inversion as light, no accent so no mud */
+  --chip: var(--food-l); /* the plate's pastel at full strength (never diluted into the night, which turns it brown) */
+  --tone: color-mix(in srgb, var(--fg) 16%, transparent);
+  --pos: #BBF7D0; --neg: #FBCFE8; --err: #F2B8B5; --nav: var(--bg); --sbar: var(--bg);
+  --scrim: rgba(0, 0, 0, 0.7); --sheet: var(--panel); --field: var(--sunk);
+  --clay-hi: color-mix(in srgb, var(--fg) 10%, transparent); --clay-lo: color-mix(in srgb, #000 45%, transparent);
+  --clay-sel: color-mix(in srgb, var(--bg) 10%, transparent);
   color-scheme: dark;
 }
+/* Light fills (accent, chalk, pastel) take the light-mode shade strength: 45% black on them reads as an olive/brown edge */
+:root[data-theme="dark"] :is(.btn.primary, .spine, .nav button[aria-current="page"], .cat[aria-pressed="true"]) { --clay-lo: color-mix(in srgb, #000 16%, transparent); }
+:root[data-theme="dark"] .cat[aria-pressed="true"] { color: var(--on-accent); }
+:root[data-theme="dark"] .pal { background: var(--panel); color: var(--fg); border-color: var(--line); }
+:root[data-theme="dark"] .pal .n { color: var(--sub); }
+:root[data-theme="dark"] .pal[aria-checked="true"] { border-color: var(--rule); }
+/*}DARK*/
 
 *, *::before, *::after { box-sizing: border-box; }
 html { height: 100%; background: var(--bg); }
@@ -84,7 +97,7 @@ h1, h2 { text-wrap: balance; }
 /* Top bar */
 .topbar {
   position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
-  display: flex; align-items: center; gap: 10px; min-height: 66px;
+  display: flex; align-items: center; gap: 10px; min-height: 70px;
   margin: 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px))) 14px;
   padding: 10px max(16px, env(safe-area-inset-left, 0px));
   background: var(--nav); border-bottom: 2px solid var(--rule);
@@ -121,7 +134,7 @@ section > .label, section > .row > .label { margin-top: 6px; }
    inner shade bottom-right, the 2px ink outline and the hard 0-blur ink offset. Pressed: the offset drops to 0, the shade
    grows and the body moves 3px (the move is dropped under reduced motion, the shading stays). Reading surfaces stay flat 3px. */
 .btn, .ico, .cat, .vol, button.chip:not(.add), .nav button[aria-current="page"] {
-  --c-x: 3px; --c-in: 0px; --c-off: var(--rule); --c-hi: var(--clay-hi); --c-lo: var(--clay-lo);
+  --c-x: 3px; --c-in: 0px; --c-off: var(--off); --c-hi: var(--clay-hi); --c-lo: var(--clay-lo);
   --clay: inset 2px 2px 3px var(--c-hi), inset -3px -3px 4px var(--c-lo), inset var(--c-in) var(--c-in) calc(2 * var(--c-in)) var(--c-lo), var(--c-x) var(--c-x) 0 var(--c-off);
   border-radius: var(--clay-r); box-shadow: var(--clay); transition: transform .08s, box-shadow .08s;
 }
@@ -150,14 +163,21 @@ section > .label, section > .row > .label { margin-top: 6px; }
 .spine span { font-size: .68rem; font-weight: 700; letter-spacing: .12em; }
 .spine b { font: 400 1.6rem/1 var(--font-disp); }
 .vol-info { padding: 12px 14px; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.vol-name { font: 400 1.1rem/1.2 var(--font-disp); letter-spacing: .02em; }
+.vol-name { font: 400 1.1rem/1.2 var(--font-disp); letter-spacing: .02em; overflow-wrap: anywhere; }
+/* Card meta wraps between its parts (never inside "¥48,000.00 spent"), so nothing on the first screen is cut off */
+.vol-meta > span { white-space: nowrap; }
+/* Separator dots belong to the part after them; the row starts .9em left and clip-path hides that strip, so a dot that
+   lands at a line start is cut and none hangs at a line end */
+.vol-meta { display: flex; flex-wrap: wrap; margin-left: -.9em; clip-path: inset(0 0 0 .9em); }
+.vol-meta > span::before { content: "·"; display: inline-block; width: .9em; text-align: center; }
 .vol-bal { font-weight: 700; font-size: .95rem; }
+.vol-info .vol-bal { white-space: normal; }
 .vol-bal.pos { color: var(--pos); } .vol-bal.neg { color: var(--neg); } .vol-bal.even { color: var(--sub); }
 .dashed { border: 2px dashed var(--line); border-radius: var(--r); background: transparent; padding: 16px; width: 100%; display: flex; align-items: center; gap: 12px; text-align: left; }
 .dashed b { font-size: 1rem; display: block; }
 
 /* Volume: balance panel with screentone */
-.hero { position: relative; overflow: hidden; padding: 16px 16px 14px; background: var(--hero); border: 2px solid var(--rule); border-radius: var(--r); box-shadow: 4px 4px 0 var(--rule); }
+.hero { position: relative; overflow: hidden; padding: 16px 16px 14px; background: var(--hero); border: 2px solid var(--rule); border-radius: var(--r); box-shadow: 4px 4px 0 var(--off); }
 .hero::after { content: ""; position: absolute; right: -10px; top: -10px; width: 46%; height: 140%; background: radial-gradient(circle, var(--tone) 1.3px, transparent 1.6px) 0 0 / 7px 7px; transform: rotate(8deg); pointer-events: none; -webkit-mask-image: linear-gradient(to left, #000 30%, transparent); mask-image: linear-gradient(to left, #000 30%, transparent); }
 .hero > * { position: relative; }
 .hero .k { font-weight: 700; font-size: .95rem; }
@@ -204,7 +224,8 @@ button.tx:active, button.debt:active { background: var(--sunk); }
 .field > label, .legend { font-size: .85rem; font-weight: 700; color: var(--fg); }
 fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 legend { padding: 0; margin-bottom: 6px; }
-.input, select.input, textarea.input { width: 100%; padding: 11px 12px; border-radius: var(--r); font-size: 16px; border: 2px solid var(--line); background: var(--panel); outline: none; -webkit-appearance: none; appearance: none; }
+.input, select.input, textarea.input { width: 100%; height: 48px; padding: 10px 12px; border-radius: var(--r); font-size: 16px; border: 2px solid var(--line); background: var(--field); outline: none; -webkit-appearance: none; appearance: none; }
+textarea.input { height: auto; }
 .input:focus { border-color: var(--rule); }
 .input[aria-invalid="true"] { border-color: var(--err); }
 .input:disabled { background: var(--sunk); color: var(--sub); }
@@ -214,12 +235,12 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 .amount-box .row { gap: 6px; }
 .amount-box .cur { font: 400 1.6rem var(--font-disp); }
 .amount-box input { flex: 1; min-width: 0; min-height: 44px; font: 400 2.2rem/1.1 var(--font-disp); background: transparent; border: none; outline: none; padding: 0; }
-.seg { display: flex; flex-wrap: wrap; border: 2px solid var(--rule); border-radius: var(--clay-r); overflow: hidden; box-shadow: 3px 3px 0 var(--rule); }
+.seg { display: flex; flex-wrap: wrap; border: 2px solid var(--rule); border-radius: var(--clay-r); overflow: hidden; box-shadow: 3px 3px 0 var(--off); }
 .seg button { flex: 1 1 auto; min-height: 44px; border: none; background: var(--panel); padding: 8px 4px; font-size: .9rem; font-weight: 700; color: var(--fg); box-shadow: inset 2px 2px 3px var(--clay-hi), inset -3px -3px 4px var(--clay-lo); }
 .seg button + button { border-left: 2px solid var(--rule); }
 /* Selected segment is pushed in: inverted fill, inner shade only (no inner light) */
 .seg button[aria-pressed="true"], .seg button:active { box-shadow: inset 3px 3px 5px var(--clay-lo); }
-.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); box-shadow: inset 3px 3px 5px var(--clay-sel); }
+.seg button[aria-pressed="true"] { background: var(--sel-bg); color: var(--sel-fg); box-shadow: inset 3px 3px 5px var(--clay-sel); }
 .seg button:focus-visible { outline: 3px solid currentColor; outline-offset: -7px; box-shadow: inset 3px 3px 5px var(--clay-lo); }
 .seg button[aria-pressed="true"]:focus-visible { box-shadow: inset 3px 3px 5px var(--clay-sel); }
 @media (min-width: 350px) { .seg:has(> :nth-child(3)) { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; } }
@@ -231,7 +252,7 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 .split-row.typed > .row:last-child { grid-column: 2; justify-content: flex-end; }
 .split-row input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--fg); }
 .split-row .share { text-align: right; font-weight: 700; white-space: nowrap; }
-.split-row .input { width: 110px; padding: 8px 10px; text-align: right; }
+.split-row .input { width: 110px; height: auto; padding: 8px 10px; text-align: right; }
 .split-in { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
 .msg { font-size: .9rem; font-weight: 600; color: var(--err); min-height: 1.2em; }
 .msg.ok { color: var(--pos); }
@@ -250,10 +271,10 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 .nav svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 /* Sheet */
-.scrim { position: fixed; inset: 0; z-index: 20; background: rgba(10, 10, 14, 0.5); display: flex; align-items: flex-end; justify-content: center; }
+.scrim { position: fixed; inset: 0; z-index: 20; background: var(--scrim); display: flex; align-items: flex-end; justify-content: center; }
 .sheet {
   width: 100%; max-width: 520px; max-height: min(88%, var(--vvh, 100dvh)); overflow: auto; overscroll-behavior: contain;
-  border-radius: 6px 6px 0 0; border: 2px solid var(--rule); border-bottom: none; background: var(--bg);
+  border-radius: 6px 6px 0 0; border: 2px solid var(--rule); border-bottom: none; background: var(--sheet);
   padding: 16px max(16px, env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
 }
 .sheet h2 { margin: 0 0 12px; font: 400 1.35rem var(--font-disp); letter-spacing: .02em; }
@@ -263,12 +284,8 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 .pals { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 10px 8px; }
 .pal { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 6px 6px 7px; min-height: 64px; border-radius: var(--r); border: 2px solid var(--pi); background: var(--pp); color: var(--pi); text-align: left; }
 .pal:first-child { grid-column: 1 / -1; }
-.pal[aria-checked="true"] { box-shadow: 3px 3px 0 var(--rule); }
+.pal[aria-checked="true"] { box-shadow: 3px 3px 0 var(--off); }
 .pal .n { color: var(--pm); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pal { background: var(--panel); color: var(--fg); border-color: var(--line); } :root:not([data-theme="light"]) .pal .n { color: var(--sub); } :root:not([data-theme="light"]) .pal[aria-checked="true"] { border-color: var(--rule); } }
-:root[data-theme="dark"] .pal { background: var(--panel); color: var(--fg); border-color: var(--line); }
-:root[data-theme="dark"] .pal .n { color: var(--sub); }
-:root[data-theme="dark"] .pal[aria-checked="true"] { border-color: var(--rule); }
 .sw { display: flex; height: 18px; border: 1.5px solid currentColor; }
 .sw i { flex: 1; }
 .pal b { font-size: .85rem; line-height: 1.15; overflow-wrap: anywhere; }
@@ -509,6 +526,8 @@ function niceDate(d) {
 
 // ── Theme ─────────────────────────────────────────────────
 const hostTheme = document.documentElement.getAttribute("data-theme");
+// "rgb(r, g, b)" or "color(srgb r g b)" (what color-mix computes to) → "#RRGGBB", for meta theme-color
+const cssHex = c => { const n = c.match(/[\d.]+/g).slice(0, 3).map(Number), k = c.startsWith("color(") ? 255 : 1; return "#" + n.map(x => Math.round(x * k).toString(16).padStart(2, "0").toUpperCase()).join(""); };
 function applyTheme() {
   const p = PALETTES.find(x => x.id === S.settings.palette) || PALETTES[0];
   const r = document.documentElement.style;
@@ -524,7 +543,7 @@ function applyTheme() {
   const attr = root.getAttribute("data-theme");
   const dark = attr ? attr === "dark" : !!(window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", dark ? "#0B0A18" : p.paper);
+  if (meta) meta.setAttribute("content", dark ? cssHex(getComputedStyle(document.body).backgroundColor) : p.paper); // dark: the resolved night paper (= --sbar)
 }
 
 // ── Icons ─────────────────────────────────────────────────
@@ -604,9 +623,9 @@ const views = {
       const bal = settled ? "All settled" : b > 0 ? `You're owed ${fmt(b, v.currency)}` : `You owe ${fmt(-b, v.currency)}`;
       return `<button class="vol" data-act="open" data-id="${esc(v.id)}" aria-label="${esc(`Volume ${n}, ${v.title}, ${bal}, ${plural(v.expenses.length, "expense")}`)}">
         <span class="spine" aria-hidden="true"><span>VOL.</span><b>${n}</b></span>
-        <span class="vol-info" aria-hidden="true"><span class="vol-name ellip">${esc(v.title)}</span>
+        <span class="vol-info" aria-hidden="true"><span class="vol-name">${esc(v.title)}</span>
         <span class="vol-bal num ${settled ? "even" : b > 0 ? "pos" : "neg"}">${esc(bal)}</span>
-        <span class="muted small ellip">${t[1]} · ${plural(v.members.length, "member")} · ${esc(fmt(total(v), v.currency))} spent</span></span></button>`;
+        <span class="muted small vol-meta"><span>${t[1]}</span><span>${plural(v.members.length, "member")}</span><span>${esc(fmt(total(v), v.currency))} spent</span></span></span></button>`;
     }).join("");
     return topbar("HATI²", { right: `<button class="btn quiet" data-act="import">${I.import} Import</button>` }) +
       `<p class="tagline">Split trip and home costs with your group.</p>${iosHint()}
@@ -948,10 +967,12 @@ function nameFirstSheet(v) {
 async function shareSheet() {
   const v = vol(); if (!v) return;
   if (nameless(v)) return nameFirstSheet(v);
+  const code = shareCodeOf(v);
   let link = "";
-  if (canInvite()) try { link = await inviteLink(v); } catch (e) { link = ""; }
+  // A receiver reads at most JOIN_OUT_MAX bytes from a link, so a bigger volume goes as a code instead.
+  if (canInvite() && new TextEncoder().encode(code).length <= JOIN_OUT_MAX) try { link = await inviteLink(v); } catch (e) { link = ""; }
   if (vol() !== v) return;
-  const send = !!sendFn(), code = shareCodeOf(v), qr = link ? qrSvg(link) : "";
+  const send = !!sendFn(), qr = link ? qrSvg(link) : "";
   shareLink = link;
   const codeBox = `<details class="codebox" id="s-codebox"><summary>Show code</summary><div class="stack">
       <p class="muted small" style="margin:0">For someone on an older HATI²: they tap <b>Import</b> on Volumes and paste it.</p>
@@ -1026,11 +1047,18 @@ async function readInvite(payload) {
   const p = text === null ? null : parseCode(text);
   return p && p.volume ? p : { error: JOIN_BROKEN };
 }
-let joinBusy = null;
+let joinBusy = null, skipPop = false;
 async function startJoin(payload) {
-  if (joinBusy === payload) return;
+  // Going back below leaves the invite's entry as Forward, marked done; Forward onto it steps straight back off.
+  // A new tap on the same link is a new entry with no mark, so it opens again.
+  if (history.state && history.state.joinDone) { if (!skipPop) { skipPop = true; history.back(); } return; }
+  // One fragment change fires both popstate and hashchange; the second call finds the first one under way.
+  if (joinBusy === payload || (skipPop && !history.state)) return;
   joinBusy = payload;
-  setUrl(true); // the invite leaves the address bar and history now, so Back and reload never reopen it
+  // The invite leaves the address bar and history now, so Back and reload never reopen it. In a running page the
+  // browser added an entry for it on top of the page it came over; going back drops that entry, so Back stays live.
+  if (history.state) setUrl(true);
+  else { try { history.replaceState({ joinDone: true }, ""); } catch (e) {} skipPop = true; history.back(); }
   const p = await readInvite(payload);
   joinBusy = null;
   if (sheetOpen()) dropSheet();
@@ -1443,6 +1471,7 @@ function leave() {
 function focusTitle() { const h = $("#app h1"); if (h) h.focus({ preventScroll: true }); }
 // An invite opened while the app is running (a tapped link in the APK, a pasted address) arrives as a fragment change.
 addEventListener("popstate", () => {
+  if (skipPop && !location.hash.startsWith("#join=")) { skipPop = false; return; } // startJoin's own step back
   if (joinFromHash()) return;
   if (sheetOpen()) { dropSheet(); setUrl(false); return; }
   applyRoute(); render(); window.scrollTo(0, 0); focusTitle();

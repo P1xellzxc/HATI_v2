@@ -477,8 +477,8 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      if (r[0]!==r[1] || r[2]!=='none') bad.push(`${id}/${mode} quiet r${r[0]} vs primary r${r[1]} ${r[2]}`);
      if (mode==='dark') {
        await pg.evaluate(()=>{ ui.view='volume'; openExpense(null); }); const el=pg.locator('.seg button[aria-pressed="true"]').first(); await el.scrollIntoViewIfNeeded(); await pg.waitForTimeout(120);
-       const box=await el.boundingBox(); const buf=await pg.screenshot({clip:box}); const fg=(await el.evaluate(x=>getComputedStyle(x).color)).match(/\d+/g).slice(0,3).map(Number);
-       const px=await pg.evaluate(async b64=>{ const im=new Image(); im.src='data:image/png;base64,'+b64; await im.decode(); const cv=document.createElement('canvas'); cv.width=im.width; cv.height=im.height; const x=cv.getContext('2d'); x.drawImage(im,0,0); const d=x.getImageData(0,0,cv.width,cv.height).data; const at=(i,j)=>{const k=(j*cv.width+i)*4; return [d[k],d[k+1],d[k+2]];}; let min=at(cv.width-6,cv.height-6); const fill=min; for(let j=0;j<cv.height;j++) for(let i=0;i<cv.width;i++){ if(i>=12&&j>=12) continue; const v=at(i,j); if(v[0]+v[1]+v[2]<min[0]+min[1]+min[2]) min=v; } return {fill,min}; },buf.toString('base64'));
+       const box=await el.boundingBox(); const buf=await pg.screenshot({clip:box}); const fgs=await el.evaluate(x=>getComputedStyle(x).color), fg=fgs.match(/[\d.]+/g).slice(0,3).map(Number).map(v=>fgs.startsWith('color(')?v*255:v);
+       const px=await pg.evaluate(async b64=>{ const im=new Image(); im.src='data:image/png;base64,'+b64; await im.decode(); const cv=document.createElement('canvas'); cv.width=im.width; cv.height=im.height; const x=cv.getContext('2d'); x.drawImage(im,0,0); const d=x.getImageData(0,0,cv.width,cv.height).data; const at=(i,j)=>{const k=(j*cv.width+i)*4; return [d[k],d[k+1],d[k+2]];}; let min=at(cv.width-6,cv.height-6); const fill=min; for(let j=0;j<cv.height;j++) for(let i=0;i<cv.width;i++){ if((i>=12&&j>=12)||((i<8||i>=cv.width-8)&&(j<8||j>=cv.height-8))) continue; /* the container's rounded corner is its frame, not shade */ const v=at(i,j); if(v[0]+v[1]+v[2]<min[0]+min[1]+min[2]) min=v; } return {fill,min}; },buf.toString('base64'));
        if (cr(fg,px.min)<4.5 || cr(px.fill,px.min)>2.5) segBad.push(`${id} text/shade ${cr(fg,px.min).toFixed(2)} fill/shade ${cr(px.fill,px.min).toFixed(2)}`);
        await pg.evaluate(()=>dropSheet()); } }
    ok(bad.length===0,'R2-4: .btn.quiet has the same corner as .btn.primary and stays flat, 13 palettes x light/dark '+JSON.stringify(bad.slice(0,4)));
@@ -490,6 +490,66 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      const t=await pg.evaluate(()=>{ const el=$('.tagline'); return {lines:Math.round(el.getBoundingClientRect().height/parseFloat(getComputedStyle(el).lineHeight)),text:el.textContent,gloss:/trip or group/.test($('[data-act=newVolume]').textContent)}; });
      ok(t.lines===1 && t.gloss,`R2-4: hub tagline is one line at ${w} and "New volume" still says what a volume is ${JSON.stringify(t)}`); }
    ok(e.length===0,'no page errors in R2-4 checks '+JSON.stringify(e));
+   await c.close(); }
+ // L3-dark (design): ink on night paper. Layer steps, chalk frames quieter than text, a quiet offset slab, hero/selected
+ // states mixed from chalk (never diluted accent), sheet lifts off a darker scrim, one dark source (no drift), status bar
+ // colour = night paper, focus ring and toasts in dark. All measured from computed colours in 13 palettes.
+ { const c=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780},deviceScaleFactor:1}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); await pg.goto(URL);
+   const ids=await pg.evaluate(()=>PALETTES.map(x=>x.id)); const bad=[], drift=[];
+   const TOK=['--bg','--fg','--sub','--panel','--sunk','--line','--rule','--off','--accent','--on-accent','--hero','--chip','--sel-bg','--sel-fg','--tone','--nav','--sbar','--scrim','--sheet','--field','--clay-hi','--clay-lo','--clay-sel','--pos','--neg','--err'];
+   const snap=()=>pg.evaluate(TOK=>{ const pr=document.createElement('i'); document.body.appendChild(pr); const o={}; for(const k of TOK){ pr.style.background='var('+k+')'; o[k]=getComputedStyle(pr).backgroundColor; } pr.remove();
+     const pal=document.createElement('div'); pal.innerHTML='<button class="pal" aria-checked="true"><span class="n">x</span></button>'; document.body.appendChild(pal); const pc=getComputedStyle(pal.firstChild); o.pal=[pc.backgroundColor,pc.color,pc.borderTopColor,pc.boxShadow,getComputedStyle(pal.querySelector('.n')).color].join('|'); pal.remove(); return o; },TOK);
+   const rgba=s=>{ const m=s.match(/[\d.]+/g).map(Number), k=s.startsWith('color(')?255:1; return {c:m.slice(0,3).map(x=>x*k),a:m.length>3?m[3]:1}; };
+   const hex=s=>'#'+C(s).map(x=>Math.round(x).toString(16).padStart(2,'0').toUpperCase()).join('');
+   const over=(t,b)=>{ const x=rgba(t), y=rgba(b).c; return x.c.map((v,i)=>v*x.a+y[i]*(1-x.a)); };
+   const lum=([r,g,b])=>{const f=c=>{c/=255;return c<=.04045?c/12.92:((c+.055)/1.055)**2.4};return .2126*f(r)+.7152*f(g)+.0722*f(b)}; const cr=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05)};
+   const C=s=>rgba(s).c;
+   for (const id of ids) {
+     await pg.emulateMedia({colorScheme:'dark'});
+     await pg.evaluate(id=>{ S.settings.palette=id; S.settings.mode='system'; applyTheme(); },id); const sys=await snap();
+     await pg.evaluate(()=>{ S.settings.mode='dark'; applyTheme(); }); const t=await snap();
+     for (const k of Object.keys(t)) if (t[k]!==sys[k]) drift.push(`${id} ${k}: ${t[k]} vs system ${sys[k]}`);
+     const [bg,fg,panel,sunk,line,rule,off,hero,sel,selfg,acc,chip,sheet,field]=['--bg','--fg','--panel','--sunk','--line','--rule','--off','--hero','--sel-bg','--sel-fg','--accent','--chip','--sheet','--field'].map(k=>C(t[k]));
+     const r={ pb:cr(panel,bg), lp:cr(line,panel), rp:cr(rule,panel), rb:cr(rule,bg), fb:cr(fg,bg), ob:cr(off,bg), hp:cr(hero,panel), fh:cr(fg,hero),
+       tone:cr(over(t['--tone'],t['--hero']),hero), sa:cr(sel,acc), sp:cr(sel,panel), fs:cr(selfg,sel), cp:cr(chip,panel), fc:cr(C(t['--on-accent']),chip), fld:cr(field,sheet),
+       sheet:cr(sheet,over(t['--scrim'],t['--bg'])), ring:cr(fg,panel), halo:cr(acc,bg) };
+     const order=lum(bg)<lum(sunk) && lum(sunk)<lum(panel);
+     await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); }); const meta=C(await pg.evaluate(()=>getComputedStyle($('.hero .meta')).color)); r.mh=cr(meta,hero);
+     const tc=await pg.evaluate(()=>[document.querySelector('meta[name=theme-color]').content,getComputedStyle(document.body).backgroundColor,getComputedStyle(document.body,'::before').backgroundColor]);
+     const why=[];
+     if(!order) why.push('bg<sunk<panel'); if(r.pb<1.25) why.push('panel/bg '+r.pb.toFixed(2)); if(r.lp<3) why.push('line/panel '+r.lp.toFixed(2)); if(r.rp<3) why.push('rule/panel '+r.rp.toFixed(2)); if(!(r.rb<r.fb)) why.push('rule as loud as text');
+     if(r.ob<1.3 || r.ob>0.6*r.rb) why.push(`off/bg ${r.ob.toFixed(2)} not in [1.3, ${(0.6*r.rb).toFixed(2)}]`); if(r.hp<1.15) why.push('hero/panel '+r.hp.toFixed(2)); if(r.fh<4.5||r.mh<4.5) why.push(`hero text ${r.fh.toFixed(2)}/${r.mh.toFixed(2)}`);
+     if(r.tone<1.3||r.tone>=1.6) why.push('screentone '+r.tone.toFixed(2)); if(r.sp<3||r.fs<4.5) why.push(`selected seg ${r.sp.toFixed(2)}/${r.fs.toFixed(2)}`); if(r.cp<3||r.fc<4.5) why.push(`selected cat ${r.cp.toFixed(2)}/${r.fc.toFixed(2)}`);
+     if(r.fld<1.15) why.push('field/sheet '+r.fld.toFixed(2)); if(r.sheet<1.3) why.push('sheet/scrimmed page '+r.sheet.toFixed(2)); if(r.ring<3||r.halo<3) why.push(`focus ${r.ring.toFixed(2)}/${r.halo.toFixed(2)}`);
+     if(tc[0]!==hex(tc[1]) || tc[1]!==tc[2]) why.push('theme-color '+tc.join(' / '));
+     if(why.length) bad.push(id+': '+why.join(', '));
+     // the rendered selected segment and category really use the selected fill
+     await pg.evaluate(()=>{ ui.view='volume'; openExpense(null); });
+     const rs=await pg.evaluate(()=>[getComputedStyle($('.seg button[aria-pressed="true"]')).backgroundColor,getComputedStyle($('.seg button[aria-pressed="true"]')).color,getComputedStyle($('.cat[aria-pressed="true"]')).backgroundColor,getComputedStyle($('.cat[aria-pressed="true"]')).color,getComputedStyle($('.cat[aria-pressed="true"]')).getPropertyValue('--clay-lo').trim(),getComputedStyle($('.input')).backgroundColor,getComputedStyle($('.btn.primary')||$('.sheet')).backgroundColor]);
+     if(rs[0]!==t['--sel-bg']||rs[1]!==t['--sel-fg']||rs[2]!==t['--chip']||rs[3]!==t['--on-accent']||!/16%/.test(rs[4])) bad.push(`${id}: rendered selected fills ${rs.join(' | ')}`);
+     await pg.evaluate(()=>dropSheet()); }
+   await pg.emulateMedia({colorScheme:'light'});
+   ok(bad.length===0,'L3-dark: night paper layers (panel/bg ≥1.25, line & rule/panel ≥3, frames quieter than text, 1.3 ≤ offset/bg ≤ 0.6×rule/bg), hero ≥1.15 with text ≥4.5, screentone 1.3–1.6, selected seg/cat ≥3 vs unselected (WCAG 1.4.11) with text ≥4.5, field/sheet ≥1.15, sheet/scrim ≥1.3, focus ring ≥3, theme-color = night paper, 13 palettes '+JSON.stringify(bad.slice(0,3)));
+   ok(drift.length===0,'L3-dark: OS dark and the Dark setting give identical tokens and .pal tiles in 13 palettes (one dark source) '+JSON.stringify(drift.slice(0,3)));
+   // light keeps the old scrim and sheet, offsets stay ink
+   const lt=await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); settleSheet(null); const r=[getComputedStyle($('.scrim')).backgroundColor,getComputedStyle($('.sheet')).backgroundColor,getComputedStyle(document.body).backgroundColor,getComputedStyle($('.hero')).boxShadow,document.querySelector('meta[name=theme-color]').content]; dropSheet(); return r; });
+   ok(lt[0]==='rgba(10, 10, 14, 0.5)' && lt[1]===lt[2] && /rgb\(0, 0, 0\) 4px 4px 0px/.test(lt[3]) && lt[4]==='#FFFFFF','L3-dark: light scrim, sheet, hero offset and theme-color unchanged '+JSON.stringify(lt));
+   // toasts in dark wrap at 320/360/390 (merge summary and SAVE_GONE), offset stays the accent
+   const tb=[];
+   for (const w of [320,360,390]) { await pg.setViewportSize({width:w,height:780});
+     for (const msg of ['Adds 3 expenses, 1 payment and 2 members. Updates 1 expense and the volume details. Removes 1 expense.','__SAVE_GONE__']) {
+       const m=await pg.evaluate(msg=>{ if(msg==='__SAVE_GONE__') msg=SAVE_GONE; S.settings.mode='dark'; applyTheme(); go('hub'); toast(msg); const n=$('.toast'); const r=n.getBoundingClientRect(); return {sw:n.scrollWidth,cw:n.clientWidth,sh:n.scrollHeight,ch:n.clientHeight,l:r.left,r:r.right,vw:innerWidth,sh2:getComputedStyle(n).boxShadow,acc:(()=>{const i=document.createElement('i'); i.style.color='var(--accent)'; document.body.appendChild(i); const c=getComputedStyle(i).color; i.remove(); return c;})()}; },msg);
+       if(m.sw>m.cw||m.sh>m.ch||m.l<0||m.r>m.vw||!m.sh2.startsWith(m.acc)) tb.push(`${w}: ${JSON.stringify(m)}`); } }
+   ok(tb.length===0,'L3-dark: dark toasts (merge summary, SAVE_GONE) wrap inside the screen at 320/360/390 with the accent offset '+JSON.stringify(tb.slice(0,2)));
+   // L3-4: hub card text never cut off (title, balance, meta), 320/360/390, both themes, example and a 40-char title with a huge amount
+   const vb=[];
+   for (const mode of ['light','dark']) for (const w of [320,360,390]) { await pg.setViewportSize({width:w,height:780});
+     const r=await pg.evaluate(mode=>{ S.settings.mode=mode; applyTheme(); S.volumes=S.volumes.filter(v=>v.id!=='l34'); const v=exampleVolume(); v.id='l34'; v.title='Bartholomew and friends: summer road trip'.slice(0,40); v.currency='RM'; v.expenses[0].amount=99999999999; S.volumes.push(v); go('hub');
+       return [...document.querySelectorAll('.vol-info > *')].filter(x=>x.scrollWidth>x.clientWidth||x.scrollHeight>x.clientHeight).map(x=>x.className+' '+x.scrollWidth+'/'+x.clientWidth); },mode);
+     if(r.length) vb.push(`${mode}/${w}: ${r}`); }
+   await pg.evaluate(()=>{ S.volumes=S.volumes.filter(v=>v.id!=='l34'); S.settings.mode='light'; applyTheme(); go('hub'); });
+   ok(vb.length===0,'L3-4: hub card title, balance and meta are never cut off at 320/360/390 in both themes '+JSON.stringify(vb.slice(0,3)));
+   ok(e.length===0,'no page errors in L3-dark checks '+JSON.stringify(e));
    await c.close(); }
  // R1-ioshint: short hint with OK inline (iPhone Safari at 360)
  { const c=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780}}); const pg=await c.newPage(); await pg.goto(URL);
@@ -710,5 +770,29 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    const ov=await pg.evaluate(()=>{ const t=document.querySelector('.toast'); if(!t) return {toast:false}; const tr=t.getBoundingClientRect(); const hit=[...document.querySelectorAll('#sheetForm input,#sheetForm select,#sheetForm button')].filter(x=>{ const r=x.getBoundingClientRect(); return r.width && !(r.right<=tr.left||r.left>=tr.right||r.bottom<=tr.top||r.top>=tr.bottom); }).map(x=>x.id||x.textContent); return {toast:true,text:t.textContent,top:t.classList.contains('top'),hit}; });
    ok(ov.toast && /Expense saved/.test(ov.text) && ov.top && ov.hit.length===0,'Settle up right after "Expense saved": the toast stays, moved to the top, covering none of the sheet\'s fields '+JSON.stringify(ov));
    ok(e.length===0,'no page errors in R2-5 checks '+JSON.stringify(e)); await c.close(); }
+ // L3-3 (code): a volume too big for a link gets the Copy code sheet; an invite opened in a running page leaves no dead Back press
+ { const c=await b.newContext({...devices['Pixel 7']}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.goto(URL);
+   const big=await pg.evaluate(()=>{ const v=JSON.parse(JSON.stringify(S.volumes[0])); v.id='bigLink1'; v.title='Big'; v.expenses=[];
+     for (let i=0;i<2600;i++) v.expenses.push({id:'bl'+i,desc:'Shared thing '+i+' é '+Math.random().toString(36).slice(2,12)+Math.random().toString(36).slice(2,12),amount:1000+i,paidBy:v.meId,category:'food',date:'2026-10-01',splitType:'exact',splits:{[v.meId]:1000+i},inputs:{},note:'',upd:0});
+     S.volumes.push(v); ui.volId=v.id; go('volume'); return new TextEncoder().encode(shareCodeOf(v)).length; });
+   await pg.evaluate(()=>shareSheet());
+   ok(big>512*1024 && await pg.locator('#sheetForm [data-act=copyCode]').first().isVisible() && !(await pg.locator('#sheetForm [data-act=copyLink],#sheetForm [data-act=sendLink],svg.qr').count()) && /tap <b>Import<\/b>|tap Import/.test(await pg.locator('#sheetForm').innerHTML()),`a ${(big/1024|0)} KB volume (over the 512 KB a receiver reads) gets the Copy code sheet, no link`);
+   await pg.evaluate(()=>{ dropSheet(); ui.volId=S.volumes[0].id; go('volume'); return shareSheet(); });
+   ok(await pg.locator('#sheetForm [data-act=copyLink]').isVisible(),'a normal volume still gets the link');
+   const link=await pg.locator('#s-link').inputValue(), pay=link.split('#join=')[1];
+   await pg.evaluate(()=>{ dropSheet(); S.volumes=S.volumes.filter(v=>v.id!=='bigLink1'); save(); go('hub'); ui.volId=S.volumes[0].id; go('volume'); });
+   const h0=await pg.evaluate(()=>history.length);
+   for (const [p,why] of [[pay,'a good invite'],[pay.slice(0,30),'a broken invite']]) {
+     await pg.evaluate(p=>{ location.hash='join='+p; },p); await pg.waitForSelector('#sheetForm'); await pg.waitForTimeout(150);
+     const at=await pg.evaluate(()=>({view:ui.view,hash:location.hash,sheet:sheetOpen()}));
+     await pg.keyboard.press('Escape'); await pg.waitForTimeout(50);
+     await pg.goForward(); await pg.waitForTimeout(250);
+     const fw=await pg.evaluate(()=>({view:ui.view,hash:location.hash,sheet:sheetOpen()}));
+     ok(!fw.sheet && fw.view==='volume' && !/join/.test(fw.hash),`${why} opened in a running page: Forward after closing its sheet does not reopen it `+JSON.stringify(fw));
+     await pg.goBack(); await pg.waitForTimeout(150);
+     const r=await pg.evaluate(()=>({view:ui.view,hash:location.hash,n:history.length}));
+     ok(at.sheet && at.view==='volume' && !/join/.test(at.hash) && r.view==='hub' && !/join/.test(r.hash),`${why} opened in a running page: after closing its sheet, Back goes from the volume to the hub `+JSON.stringify([at,r]));
+     await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); }); }
+   ok(e.length===0,'no page errors in L3-3 checks '+JSON.stringify(e)); await c.close(); }
  await b.close();
 })();
