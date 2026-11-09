@@ -16,6 +16,7 @@ Everything the HATI² team knows and has decided, as linked notes. This vault is
 - [[Decisions]]: settled decisions and which skill owns each kind
 - [[Team loop]]: plan → do → audit → revise
 - [[Team log]]: per-round handoffs between roles
+- [[Roadmap]]: what to build next (Now / Next / Later), from the 2026-11-09 all-skills discussion
 
 ## Team
 - [[Skills index]] (20 skills)
