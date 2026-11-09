@@ -1727,6 +1727,9 @@ function backupPlan(p) {
 async function downloadBackup() {
   const data = JSON.stringify({ app: "hati2-mock", kind: "backup", v: 1, volumes: S.volumes }), name = `hati2-backup-${today()}.json`;
   const done = () => toast(`Backup saved: ${plural(S.volumes.length, "volume")}`);
+  // Android app: a WebView ignores <a download>, so hand the file to the app's own "save as" dialog.
+  // The app shows "Saved" itself once a place is picked; no toast here, the person may still cancel.
+  if (window.HatiAndroid && typeof HatiAndroid.saveFile === "function") { HatiAndroid.saveFile(name, "application/json", data); return; }
   const ios = isIOS();
   let file = null; try { file = new File([data], name, { type: "application/json" }); } catch (e) {}
   if (ios && file && typeof navigator.share === "function" && navigator.canShare && navigator.canShare({ files: [file] })) {

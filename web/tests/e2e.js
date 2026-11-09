@@ -414,7 +414,11 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      ok(sent && /^hati2-backup-\d{4}-\d{2}-\d{2}\.json:application\/json$/.test(sent[0]) && /Backup saved/.test(await toastText(G.pg)),'iOS: Save backup hands the file to the share sheet '+JSON.stringify(sent));
      await G.pg.evaluate(()=>{ document.querySelectorAll('.toast').forEach(n=>n.remove()); navigator.share=()=>Promise.reject(new DOMException('x','AbortError')); });
      await G.pg.locator('[data-act=backup]').click(); await G.pg.waitForTimeout(100);
-     ok(!/Backup saved/.test(await toastText(G.pg)),'iOS: cancelling the share sheet does not claim the backup was saved'); }
+     ok(!/Backup saved/.test(await toastText(G.pg)),'iOS: cancelling the share sheet does not claim the backup was saved');
+     await K.pg.evaluate(()=>{ window.__saved=null; window.HatiAndroid={ saveFile:(n,m,t)=>{ window.__saved=[n,m,JSON.parse(t).kind,JSON.parse(t).volumes.length]; } }; document.querySelectorAll('.toast').forEach(n=>n.remove()); go('settings'); });
+     await K.pg.locator('[data-act=backup]').click(); await K.pg.waitForTimeout(100);
+     const kept=await K.pg.evaluate(()=>[window.__saved,S.volumes.length]);
+     ok(kept[0] && /^hati2-backup-\d{4}-\d{2}-\d{2}\.json$/.test(kept[0][0]) && kept[0][1]==='application/json' && kept[0][2]==='backup' && kept[0][3]===kept[1] && !/Backup saved/.test(await toastText(K.pg)),'Android app: Save backup goes to the app\'s save-as dialog with every volume, and does not claim it saved '+JSON.stringify(kept)); }
    // Ponytail R1: Replace counts a newer local edit and a member only on this phone; volume-only edits get their own line
    { const R=await fresh(); all.push(R);
      const code=await R.pg.evaluate(()=>JSON.stringify({app:'hati2-mock',v:1,volume:S.volumes[0]}));
