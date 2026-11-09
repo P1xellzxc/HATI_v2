@@ -70,7 +70,7 @@
    @media (prefers-color-scheme: dark) with :root:not([data-theme="light"]), so the two can't drift.
    Night paper is one near-neutral night with a 5% whisper of the plate's ink (max-min RGB spread <= 14 in every plate:
    at 20% Lagoon was violet, Peony indigo, Harbor maroon, so those plates read as another app). The plate shows in dark
-   through the accent (primary, nav tab, spines, focus), the category pastel and the hero, not the page. Layers step up bg < sunk < panel < hero < selected,
+   through the accent (primary, spines, focus), the category pastel and the hero, not the page. Layers step up bg < sunk < panel < hero < selected,
    mixed from chalk (--fg) into the night. The hero alone takes an 11% whisper of the accent over the panel (16% turned
    yellow/orange plates olive/brown mud). Frames and the offset slab are chalk at 62%, quieter than text: the slab is
    chalk ink, a manga negative panel (at 20% it vanished, 1.03:1 on the hero). Web dark no longer reads HatiPalette.kt heroD (see Team log). */
@@ -95,7 +95,7 @@
   color-scheme: dark;
 }
 /* Light fills (accent, chalk, pastel) take the light-mode shade strength: 45% black on them reads as an olive/brown edge */
-:root[data-theme="dark"] :is(.btn.primary, .spine, .nav button[aria-current="page"], .cat[aria-pressed="true"]) { --clay-lo: color-mix(in srgb, #000 16%, transparent); }
+:root[data-theme="dark"] :is(.btn.primary, .spine, .cat[aria-pressed="true"]) { --clay-lo: color-mix(in srgb, #000 16%, transparent); }
 :root[data-theme="dark"] .cat[aria-pressed="true"] { color: var(--on-accent); }
 :root[data-theme="dark"] .pal { background: var(--panel); color: var(--fg); border-color: var(--line); }
 :root[data-theme="dark"] .pal .n { color: var(--sub); }
@@ -122,7 +122,7 @@
   color-scheme: dark;
 }
 /* Light fills (accent, chalk, pastel) take the light-mode shade strength: 45% black on them reads as an olive/brown edge */
-:root:not([data-theme="light"]) :is(.btn.primary, .spine, .nav button[aria-current="page"], .cat[aria-pressed="true"]) { --clay-lo: color-mix(in srgb, #000 16%, transparent); }
+:root:not([data-theme="light"]) :is(.btn.primary, .spine, .cat[aria-pressed="true"]) { --clay-lo: color-mix(in srgb, #000 16%, transparent); }
 :root:not([data-theme="light"]) .cat[aria-pressed="true"] { color: var(--on-accent); }
 :root:not([data-theme="light"]) .pal { background: var(--panel); color: var(--fg); border-color: var(--line); }
 :root:not([data-theme="light"]) .pal .n { color: var(--sub); }
@@ -143,7 +143,7 @@ h1, h2 { text-wrap: balance; }
   max-width: 520px; margin: 0 auto;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 0 calc(96px + env(safe-area-inset-bottom, 0px));
+  padding-block: 0 calc(24px + env(safe-area-inset-bottom, 0px));
   min-height: 100%;
 }
 
@@ -186,7 +186,7 @@ section > .label, section > .row > .label { margin-top: 6px; }
 /* Manga clay: only pressable things are clay. A flat palette fill (no gradients) with an inner light top-left and an
    inner shade bottom-right, the 2px ink outline and the hard 0-blur ink offset. Pressed: the offset drops to 0, the shade
    grows and the body moves 3px (the move is dropped under reduced motion, the shading stays). Reading surfaces stay flat 3px. */
-.btn, .ico, .cat, .vol, button.chip:not(.add), .nav button[aria-current="page"] {
+.btn, .ico, .cat, .vol, button.chip:not(.add) {
   --c-x: 3px; --c-in: 0px; --c-off: var(--off); --c-hi: var(--clay-hi); --c-lo: var(--clay-lo);
   --clay: inset 2px 2px 3px var(--c-hi), inset -3px -3px 4px var(--c-lo), inset var(--c-in) var(--c-in) calc(2 * var(--c-in)) var(--c-lo), var(--c-x) var(--c-x) 0 var(--c-off);
   border-radius: var(--clay-r); box-shadow: var(--clay); transition: transform .08s, box-shadow .08s;
@@ -228,6 +228,26 @@ section > .label, section > .row > .label { margin-top: 6px; }
 .vol-bal.pos { color: var(--pos); } .vol-bal.neg { color: var(--neg); } .vol-bal.even { color: var(--sub); }
 .dashed { border: 2px dashed var(--line); border-radius: var(--r); background: transparent; padding: 16px; width: 100%; display: flex; align-items: center; gap: 12px; text-align: left; }
 .dashed b { font-size: 1rem; display: block; }
+/* A card and its options button (hidden until it has keyboard focus, then a clay .ico on the card's top-right) */
+.volw { position: relative; border-radius: var(--clay-r); }
+.vol { position: relative; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+.vol-more { position: absolute; top: 8px; right: 8px; background: var(--panel); }
+.vol-more:not(:focus) { width: 1px; height: 1px; min-height: 0; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); box-shadow: none; }
+/* Archived: a shelf at the bottom, closed by default; an archived spine is plain paper, not the plate's accent */
+.arch-box { margin-top: 8px; }
+.arch-box > summary { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; list-style: none; width: max-content; }
+.arch-box > summary::-webkit-details-marker { display: none; }
+.arch-box > summary::before { content: ""; border-left: 7px solid currentColor; border-block: 6px solid transparent; transition: transform .1s; }
+.arch-box[open] > summary::before { transform: rotate(90deg); }
+.arch-box > .stack { margin-top: 4px; }
+.vol.arch .spine { background: var(--sunk); color: var(--fg); }
+.arch-note { gap: 12px; }
+/* Edit volume: one line per member, × marks a removal (struck through until Save) */
+.mems { padding: 4px 0; }
+.mem-row { display: flex; align-items: center; gap: 8px; padding: 6px 10px; }
+.mem-row .input { flex: 1; min-width: 0; }
+.mem-row.drop .input { text-decoration: line-through; }
+.mem-row .ico[aria-pressed="true"] { --c-x: 0px; --c-in: 3px; background: var(--sunk); }
 
 /* Volume: balance panel with screentone */
 .hero { position: relative; overflow: hidden; padding: 16px 16px 14px; background: var(--hero); border: 2px solid var(--rule); border-radius: var(--r); box-shadow: 4px 4px 0 var(--off); }
@@ -311,8 +331,9 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 .seg button:focus-visible { outline: 3px solid currentColor; outline-offset: -7px; box-shadow: inset 3px 3px 5px var(--clay-lo); }
 .seg button[aria-pressed="true"]:focus-visible { box-shadow: inset 3px 3px 5px var(--clay-sel); }
 @media (min-width: 350px) { .seg:has(> :nth-child(3)) { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; } }
-.cats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.cat { border: 2px solid var(--rule); background: var(--panel); padding: 10px 6px; min-height: 60px; font-size: .85rem; font-weight: 600; display: grid; justify-items: center; gap: 4px; }
+/* 12 categories: 4 across from 360 px (3 rows), 3 across on a 320 px phone (4 rows); one tap, no scrolling inside */
+.cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; }
+.cat { border: 2px solid var(--rule); background: var(--panel); padding: 8px 4px; min-height: 58px; font-size: .8rem; line-height: 1.15; font-weight: 600; display: grid; justify-items: center; align-content: center; gap: 4px; text-align: center; }
 .cat[aria-pressed="true"] { background: var(--chip); }
 .split-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 12px; min-height: 52px; }
 .split-row.typed { grid-template-columns: auto minmax(0, 1fr); }
@@ -325,17 +346,6 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 .msg.ok { color: var(--pos); }
 .stack > .msg:empty, .stack > [aria-live]:empty, .stack > #s-pick:empty { min-height: 0; margin-top: -12px; }
 .field > .msg:empty { min-height: 0; margin-top: -6px; }
-
-/* Bottom nav */
-.nav {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 6;
-  display: flex; justify-content: center; gap: 8px;
-  padding: 6px max(16px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
-  background: var(--nav); border-top: 2px solid var(--rule);
-}
-.nav button { flex: 1; max-width: 160px; min-height: 52px; border: 2px solid transparent; background: none; display: grid; justify-items: center; gap: 2px; padding: 4px; border-radius: var(--clay-r); font-size: .78rem; font-weight: 700; color: var(--sub); }
-.nav button[aria-current="page"] { color: var(--on-accent); background: var(--accent); border-color: var(--rule); }
-.nav svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 /* Sheet */
 .scrim { position: fixed; inset: 0; z-index: 20; background: var(--scrim); display: flex; align-items: flex-end; justify-content: center; }
@@ -370,10 +380,13 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 .filepick { flex-wrap: wrap; }
 .filepick:focus-within .btn { outline: 3px solid var(--fg); outline-offset: 2px; }
 .banner { font-size: .9rem; padding: 10px 12px; margin-top: 12px; }
-.toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 30; padding: 10px 14px; border-radius: var(--r); background: var(--fg); color: var(--bg); font-size: .9rem; font-weight: 700; line-height: 1.35; text-align: left; width: max-content; max-width: min(calc(100vw - 32px), 480px); white-space: normal; overflow-wrap: anywhere; box-shadow: 3px 3px 0 var(--accent); }
+.toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 30; padding: 10px 14px; border-radius: var(--r); background: var(--fg); color: var(--bg); font-size: .9rem; font-weight: 700; line-height: 1.35; text-align: left; width: max-content; max-width: min(calc(100vw - 32px), 480px); white-space: normal; overflow-wrap: anywhere; box-shadow: 3px 3px 0 var(--accent); }
 .toast.top { top: calc(12px + env(safe-area-inset-top, 0px)); bottom: auto; }
+.toast.has-undo { display: flex; align-items: center; gap: 12px; }
+.toast .undo { flex: none; min-height: 44px; min-width: 44px; margin: -10px -6px; padding: 0 8px; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.toast .undo:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
 /* Focus on clay: the ring joins the clay stack instead of replacing it */
-:is(.btn, .ico, .cat, .vol, button.chip:not(.add), .nav button[aria-current="page"]):focus-visible { box-shadow: var(--clay), 0 0 0 6px var(--accent); }
+:is(.btn, .ico, .cat, .vol, button.chip:not(.add)):focus-visible { box-shadow: var(--clay), 0 0 0 6px var(--accent); }
 :root .cat[aria-pressed="true"]:focus-visible { box-shadow: inset 0 0 0 2px var(--sel-edge), var(--clay), 0 0 0 6px var(--accent); }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } .btn:active, .ico:active, .cat:active, .vol:active, button.chip:active { transform: none !important; } }
 
@@ -402,30 +415,35 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 @media (prefers-reduced-motion: no-preference) {
   /* Clay squash: down in 90 ms, flattening on the way (1.03 x .94, about the same area), landing pushed in.
      No transform transition on the way down (it would hide the squash); the release eases back over 160 ms. */
-  .btn, .ico, .cat, .vol, button.chip:not(.add), .nav button[aria-current="page"] { transition: transform var(--dur-out) var(--ease-out); }
+  .btn, .ico, .cat, .vol, button.chip:not(.add) { transition: transform var(--dur-out) var(--ease-out); }
   :is(.btn:not(.quiet):not(.text):not(:disabled), .ico, .cat, .vol, button.chip:not(.add)):active { transition: none; animation: squash var(--dur-press) var(--ease-out); }
   @keyframes squash { 0% { transform: none; } 55% { transform: translate(2px, 2px) scale(1.03, .94); } 100% { transform: translate(3px, 3px); } }
 
   /* Lists ink in on a screen change (#app[data-turn]): the frame is drawn first, then a paper cover with an ink edge is
      wiped off the row (scaleX on a pseudo-element: compositor only, the row's box and taps never change) */
   /* Rows past the 12th are below the fold: they are simply there (no pseudo-element to style, nothing to wait for) */
-  #app[data-turn] :is(.ledger > *, .stack > .vol, .stack > .dashed, .chips > *, .bars > *):nth-child(-n+12), .sheet .share-sum, .tx.ink-new { position: relative; }
-  #app[data-turn] :is(.ledger > *, .stack > .vol, .stack > .dashed, .chips > *, .bars > *):nth-child(-n+12)::after, .sheet .share-sum::after, .tx.ink-new::after {
+  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(-n+12), .sheet .share-sum, .tx.ink-new { position: relative; }
+  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(-n+12)::after, .sheet .share-sum::after, .tx.ink-new::after {
     content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
     background: linear-gradient(to right, var(--fg) 0 3px, var(--cover, var(--panel)) 3px); transform-origin: right;
     animation: ink-off var(--dur-in) var(--ease-out) both;
   }
   /* 30 ms apart, set on the pseudo-element only: a custom property on each row would be inherited by its whole subtree
      and cost every row its shared style */
-  #app[data-turn] :is(.ledger > *, .stack > .vol, .stack > .dashed, .chips > *, .bars > *):nth-child(2)::after { animation-delay: calc(1 * var(--stagger)); }
-  #app[data-turn] :is(.ledger > *, .stack > .vol, .stack > .dashed, .chips > *, .bars > *):nth-child(3)::after { animation-delay: calc(2 * var(--stagger)); }
-  #app[data-turn] :is(.ledger > *, .stack > .vol, .stack > .dashed, .chips > *, .bars > *):nth-child(4)::after { animation-delay: calc(3 * var(--stagger)); }
-  #app[data-turn] :is(.ledger > *, .stack > .vol, .stack > .dashed, .chips > *, .bars > *):nth-child(5)::after { animation-delay: calc(4 * var(--stagger)); }
-  #app[data-turn] :is(.ledger > *, .stack > .vol, .stack > .dashed, .chips > *, .bars > *):nth-child(6)::after { animation-delay: calc(5 * var(--stagger)); }
-  #app[data-turn] :is(.ledger > *, .stack > .vol, .stack > .dashed, .chips > *, .bars > *):nth-child(n+7)::after { animation-delay: calc(6 * var(--stagger)); }
+  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(2)::after { animation-delay: calc(1 * var(--stagger)); }
+  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(3)::after { animation-delay: calc(2 * var(--stagger)); }
+  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(4)::after { animation-delay: calc(3 * var(--stagger)); }
+  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(5)::after { animation-delay: calc(4 * var(--stagger)); }
+  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(6)::after { animation-delay: calc(5 * var(--stagger)); }
+  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(n+7)::after { animation-delay: calc(6 * var(--stagger)); }
   #app[data-turn] :is(.stack > .dashed, .chips > .add)::after { --cover: var(--bg); }
-  #app[data-turn="back"] :is(.ledger > *, .stack > .vol, .stack > .dashed, .chips > *, .bars > *):nth-child(-n+12)::after { background: linear-gradient(to left, var(--fg) 0 3px, var(--cover, var(--panel)) 3px); transform-origin: left; }
+  #app[data-turn="back"] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(-n+12)::after { background: linear-gradient(to left, var(--fg) 0 3px, var(--cover, var(--panel)) 3px); transform-origin: left; }
   @keyframes ink-off { to { transform: scaleX(0); } }
+  /* Press and hold a volume card: an ink wash fills it from the left over the hold (450 ms = HOLD_MS, linear: it is the
+     hold itself, so it tracks the finger like a progress bar, rule 14); lifting early drops it at once. */
+  .vol::before { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; border-radius: inherit; background: color-mix(in srgb, var(--fg) 18%, transparent); transform-origin: left; transform: scaleX(0); visibility: hidden; }
+  .vol.holding::before { visibility: visible; animation: hold-ink 450ms linear forwards; }
+  @keyframes hold-ink { to { transform: scaleX(1); } }
   /* Empty states: the kaomoji lands like a stamp */
   #app[data-turn] .empty .kao { animation: stamp var(--dur-in) var(--ease-out) 60ms both; }
   @keyframes stamp { from { opacity: 0; transform: scale(1.5) rotate(-8deg); } 40% { opacity: 1; } }
@@ -473,27 +491,37 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 
 <main id="app"></main>
 <div id="status" class="sr" role="status" aria-live="polite"></div>
-<nav class="nav" id="nav" aria-label="Main"></nav>
 <div id="layer"></div>
 
 <script>
 "use strict";
 const PALETTES = [{"id":"classic","name":"Classic","n":null,"sw":["#FEF08A","#BFDBFE","#BBF7D0","#000000"],"ink":"#000000","paper":"#FFFFFF","acc":"#FEF08A","tert":"#BFDBFE","hero":"#FFF5D6","food":"#FFC9A8","muted":"#6B7280","accD":"#FFF3B0","heroD":"#3A3422"},{"id":"persimmon","name":"Persimmon","n":338,"sw":["#A10B2B","#FFAB00","#00592E","#BFABCC"],"ink":"#003119","paper":"#FFF8EB","acc":"#FFAB00","tert":"#D99CA9","hero":"#FFE7B8","food":"#D99DAA","muted":"#597763","accD":"#FFB31A","heroD":"#46340E"},{"id":"lantern","name":"Lantern","n":335,"sw":["#740909","#FF8C00","#2619D1","#1B3644"],"ink":"#172E3A","paper":"#FFF6EB","acc":"#FF8C00","tert":"#A7A2EC","hero":"#FFDFB8","food":"#A8A3ED","muted":"#616E72","accD":"#FF981A","heroD":"#462D0E"},{"id":"vermilion","name":"Vermilion","n":144,"sw":["#B319AB","#FF5200","#000000"],"ink":"#000000","paper":"#FFF1EB","acc":"#FF5200","tert":"#DD98D9","hero":"#FFCFB8","food":"#D580D1","muted":"#706A67","accD":"#FF7D40","heroD":"#46200E"},{"id":"moss","name":"Moss","n":270,"sw":["#E62E73","#F5F5B8","#58771E","#328E13"],"ink":"#23300C","paper":"#FEFEF9","acc":"#84BB71","tert":"#F4A1C0","hero":"#DDECD7","food":"#F18CB2","muted":"#697258","accD":"#90C280","heroD":"#2B3727"},{"id":"fern","name":"Fern","n":304,"sw":["#681916","#FFB852","#7E8743","#00D973"],"ink":"#581513","paper":"#FFF9F1","acc":"#00D973","tert":"#FFDFB1","hero":"#B8F4D8","food":"#FFD8A0","muted":"#936561","accD":"#1ADD81","heroD":"#0E3E27"},{"id":"spring","name":"Spring","n":347,"sw":["#99B333","#33FF7D","#0057BA","#B875EB"],"ink":"#002C5D","paper":"#EFFFF5","acc":"#33FF7D","tert":"#8CB3E0","hero":"#C6FFDB","food":"#8CB3E0","muted":"#547692","accD":"#47FF8A","heroD":"#19462A"},{"id":"lagoon","name":"Lagoon","n":172,"sw":["#C2612C","#008AA1","#3400A3"],"ink":"#2A0082","paper":"#EBF6F7","acc":"#59B3C2","tert":"#B5A2DD","hero":"#D1EAEE","food":"#B8A6DF","muted":"#735DAF","accD":"#6ABBC8","heroD":"#223539"},{"id":"patina","name":"Patina","n":244,"sw":["#B08699","#C74300","#5C8A73","#008AA1"],"ink":"#501B00","paper":"#F9F5F7","acc":"#66B9C7","tert":"#E6AA8C","hero":"#D4EBEF","food":"#E3A180","muted":"#8B6756","accD":"#75C0CC","heroD":"#24373A"},{"id":"harbor","name":"Harbor","n":194,"sw":["#FA2B00","#FFCFC4","#4F8FE6"],"ink":"#570F00","paper":"#FFFBFA","acc":"#7BABEC","tert":"#FDA08C","hero":"#DAE7FA","food":"#FC8A73","muted":"#926258","accD":"#88B3EE","heroD":"#293442"},{"id":"wisteria","name":"Wisteria","n":269,"sw":["#B85E00","#730F1F","#9C52F2","#000000"],"ink":"#000000","paper":"#F7F1FE","acc":"#AB6CF4","tert":"#DFB78C","hero":"#E7D6FC","food":"#D8A673","muted":"#6D6A70","accD":"#BC89F6","heroD":"#342644"},{"id":"peony","name":"Peony","n":277,"sw":["#FF4DC9","#B319AB","#718600","#06004F"],"ink":"#06004F","paper":"#FFF1FB","acc":"#FF4DC9","tert":"#BFC98C","hero":"#FFCDF0","food":"#B1BC73","muted":"#6C6395","accD":"#FF68D1","heroD":"#461F3A"},{"id":"coral","name":"Coral","n":341,"sw":["#FF616B","#328E13","#172713","#A6E6DB"],"ink":"#172713","paper":"#F8FDFC","acc":"#FF7981","tert":"#A3CC95","hero":"#FFD9DC","food":"#8EC17D","muted":"#667265","accD":"#FF868E","heroD":"#46292A"}];
+// Categories (hati-design + hati-copy): the 12 things a trip or a household really splits, most used first, so the
+// grid reads row by row. Ids are stored data: the original six (food, transport, entertainment, utilities, shopping,
+// other) never change, for old backups, links and phones on older versions; an id this version doesn't know is Other.
 const CAT_ICON = {
   food: '<svg viewBox="0 0 24 24"><path d="M7 3v7a2 2 0 0 0 2 2v9M11 3v7a2 2 0 0 1-2 2M7 3v4M18 3c-2.5 1.5-3 5-3 8h3v10"/></svg>',
+  groceries: '<svg viewBox="0 0 24 24"><path d="M3 10h18l-2.2 10H5.2zM7.5 10l3.5-6M16.5 10 13 4M9.5 13.5l.5 3.5M14.5 13.5 14 17"/></svg>',
+  drinks: '<svg viewBox="0 0 24 24"><path d="M7 3h10l-1 6a4 4 0 0 1-8 0zM7.4 6.5h9.2M12 13v8M8 21h8"/></svg>',
   transport: '<svg viewBox="0 0 24 24"><path d="M5 16V9l2-4h10l2 4v7M3 16h18M7 16v3M17 16v3M5 11h14"/></svg>',
+  fuel: '<svg viewBox="0 0 24 24"><path d="M4 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M3 21h12M4 10h10M14 8h2l3 3v6.5a1.5 1.5 0 0 1-3 0V14h-2"/></svg>',
+  lodging: '<svg viewBox="0 0 24 24"><path d="M3 5v14M3 15h18v4M21 15v-3a3 3 0 0 0-3-3h-7v6M7 12.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3"/></svg>',
   entertainment: '<svg viewBox="0 0 24 24"><path d="M3 7h18v3a2 2 0 0 0 0 4v3H3v-3a2 2 0 0 0 0-4z"/><path d="M15 8v2M15 12v1M15 15v1"/></svg>',
-  utilities: '<svg viewBox="0 0 24 24"><path d="M13 3 5 14h6l-1 7 8-11h-6z"/></svg>',
   shopping: '<svg viewBox="0 0 24 24"><path d="M5 8h14l-1 13H6zM9 8V6a3 3 0 0 1 6 0v2"/></svg>',
+  utilities: '<svg viewBox="0 0 24 24"><path d="M13 3 5 14h6l-1 7 8-11h-6z"/></svg>',
+  health: '<svg viewBox="0 0 24 24"><path d="M9.5 3.5h5v6h6v5h-6v6h-5v-6h-6v-5h6z"/></svg>',
+  gifts: '<svg viewBox="0 0 24 24"><path d="M3.5 8.5h17v4h-17zM5 12.5V21h14v-8.5M12 8.5V21M12 8.5C10.5 5 7 4 6.5 6s2.5 2.5 5.5 2.5c3 0 6-.5 5.5-2.5s-4-1-5.5 2.5"/></svg>',
   other: '<svg viewBox="0 0 24 24"><path d="M3 7.5 12 3l9 4.5-9 4.5zM3 7.5v9L12 21l9-4.5v-9M12 12v9"/></svg>',
   settle: '<svg viewBox="0 0 24 24"><path d="M5 8h13l-3-3M19 16H6l3 3"/></svg>'
 };
-const CATEGORIES = [["food", "Food"], ["transport", "Transport"], ["entertainment", "Fun"], ["utilities", "Utilities"], ["shopping", "Shopping"], ["other", "Other"]];
+const CATEGORIES = [["food", "Eating out"], ["groceries", "Groceries"], ["drinks", "Drinks"], ["transport", "Transport"],
+  ["fuel", "Fuel"], ["lodging", "Stay & rent"], ["entertainment", "Fun"], ["shopping", "Shopping"],
+  ["utilities", "Bills"], ["health", "Health"], ["gifts", "Gifts"], ["other", "Other"]];
 const TYPES = [["travel", "Travel"], ["household", "Household"], ["event", "Event"], ["other", "Other"]];
 const CURRENCIES = ["₱", "$", "€", "£", "¥", "Rp", "₩", "฿", "₹", "RM"];
 const KEY = "hati2.mock.v1";
 const MAX_CENTS = 100000000000; // 1,000,000,000.00
-const MAX_DELETED = 20000, MAX_BACKUP = 500;
+const MAX_DELETED = 20000, MAX_BACKUP = 500, MAX_GONE = 2000;
 
 // ── Utilities ─────────────────────────────────────────────
 const $ = (s, r = document) => r.querySelector(s);
@@ -526,7 +554,7 @@ const has = (o, k) => !!o && Object.hasOwn(o, k);
 const updOf = n => Number.isInteger(n) && n >= 0 && n <= Date.now() + 864e5 ? n : 0;
 const initials = n => n.trim().split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 const typeOf = id => TYPES.find(t => t[0] === id) || TYPES[3];
-const catOf = id => CATEGORIES.find(c => c[0] === id) || CATEGORIES[5];
+const catOf = id => CATEGORIES.find(c => c[0] === id) || CATEGORIES[CATEGORIES.length - 1];
 
 // ── Storage ───────────────────────────────────────────────
 let storageOk = true, recovered = false, setAsideRaw = null;
@@ -562,7 +590,9 @@ function normalize(d) {
     fixed.expenses = fixed.expenses.filter(e => e && typeof e === "object").map(e => ({ ...e, date: typeof e.date === "string" ? e.date : today(), splits: e.splits && typeof e.splits === "object" ? e.splits : {} }));
     if (validVolume(fixed)) volumes.push(cleanVolume(fixed)); else recovered = true;
   }
-  return { settings: st, volumes };
+  // gone: ids of volumes deleted on this phone (tombstones), so a backup or another tab can't bring them back unasked
+  const gone = Array.isArray(d.gone) ? [...new Set(d.gone.filter(okId))].slice(-MAX_GONE) : [];
+  return { settings: st, volumes: volumes.filter(v => !gone.includes(v.id)), gone };
 }
 let persistAsked = false;
 // Writes S. If the write fails (storage full), S goes back to what is stored, so the screen never shows
@@ -602,7 +632,7 @@ function exampleVolume() {
     expenses: [
       { id: uid(), desc: "Ramen at Ichiran", amount: 330000, paidBy: me, category: "food", date: d(1), splitType: "equal", splits: eq(330000, [me, mira, rio]), inputs: {} },
       { id: uid(), desc: "Shinkansen tickets", amount: 1410000, paidBy: mira, category: "transport", date: d(2), splitType: "equal", splits: eq(1410000, [me, mira, rio]), inputs: {} },
-      { id: uid(), desc: "Shibuya hotel, 2 nights", amount: 2100000, paidBy: rio, category: "other", date: d(3), splitType: "equal", splits: eq(2100000, [me, mira, rio]), inputs: {} },
+      { id: uid(), desc: "Shibuya hotel, 2 nights", amount: 2100000, paidBy: rio, category: "lodging", date: d(3), splitType: "equal", splits: eq(2100000, [me, mira, rio]), inputs: {} },
       { id: uid(), desc: "teamLab tickets", amount: 960000, paidBy: me, category: "entertainment", date: d(3), splitType: "shares", splits: splitShares(960000, { [me]: 1, [mira]: 1, [rio]: 2 }), inputs: { [me]: "1", [mira]: "1", [rio]: "2" } }
     ],
     settlements: [{ id: uid(), from: me, to: rio, amount: 100000, date: d(0) }]
@@ -668,7 +698,7 @@ const debts = v => S.settings.strategy === "pairwise" ? pairwise(v) : simplify(b
 // ── State ─────────────────────────────────────────────────
 let S = load();
 if (!S) {
-  S = { settings: { ...DEFAULT_SETTINGS }, volumes: recovered ? [] : [exampleVolume()] };
+  S = { settings: { ...DEFAULT_SETTINGS }, volumes: recovered ? [] : [exampleVolume()], gone: [] };
   if (storageOk) try { lastGood = JSON.stringify(S); localStorage.setItem(KEY, lastGood); } catch (e) { storageOk = false; }
 }
 const ui = { view: "hub", volId: null, form: null, from: "volume", histLimit: 100 };
@@ -712,14 +742,14 @@ function applyTheme() {
 const I = {
   back: '<svg viewBox="0 0 24 24"><path d="M19 12H5m7-7-7 7 7 7"/></svg>',
   plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
-  hub: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
   gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   dots: '<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>',
   settle: '<svg viewBox="0 0 24 24"><path d="M7 17 17 7M17 7H8M17 7v9"/></svg>',
   list: '<svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>',
   clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   share: '<svg viewBox="0 0 24 24"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/></svg>',
-  import: '<svg viewBox="0 0 24 24"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M8 11l4 4 4-4M12 15V3"/></svg>'
+  import: '<svg viewBox="0 0 24 24"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M8 11l4 4 4-4M12 15V3"/></svg>',
+  x: '<svg viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>'
 };
 
 // ── Rendering ─────────────────────────────────────────────
@@ -757,8 +787,12 @@ function banner() {
 function memberChip(v, m, c) {
   const say = Math.abs(c) <= 1 ? "is settled" : c > 0 ? `is owed ${fmt(c, v.currency)}` : `owes ${fmt(-c, v.currency)}`;
   const show = Math.abs(c) <= 1 ? "settled" : signed(c, v.currency);
+  if (v.archived) return `<span class="chip">${avatar(v, m.id)}${esc(meName(v, m.id))}<span class="sr">, ${esc(say)}</span><span class="muted num small" aria-hidden="true">${esc(show)}</span></span>`;
   return `<button type="button" class="chip" data-act="editMember" data-id="${esc(m.id)}" aria-label="${esc(`${meName(v, m.id)}, ${say}, edit`)}">${avatar(v, m.id)}${esc(meName(v, m.id))}<span class="muted num small" aria-hidden="true">${esc(show)}</span></button>`;
 }
+// An archived volume is read-only on this phone: its rows are plain lines, not buttons.
+const txOpen = (v, act, id) => v.archived ? `<div class="tx" data-id="${esc(id)}">` : `<button class="tx" data-act="${act}" data-id="${esc(id)}">`;
+const txClose = v => v.archived ? "</div>" : "</button>";
 const CHECK = `<span class="ck" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>`;
 function debtRow(v, d, tag = "div", extra = "", tail = "") {
   return `<${tag} class="debt" ${extra}>${avatar(v, d.from)}<span class="grow small who"><b class="nm">${esc(meName(v, d.from))}</b> <span>${pays(v, d.from)}</span> <b class="nm">${esc(meObj(v, d.to))}</b></span><b class="num">${esc(fmt(d.amount, v.currency))}</b>${tail}</${tag}>`;
@@ -766,35 +800,40 @@ function debtRow(v, d, tag = "div", extra = "", tail = "") {
 function itemRow(v, it) {
   if (it.k === "e") return expenseRow(v, it.x);
   const s = it.x;
-  return `<button class="tx" data-act="editSettle" data-id="${esc(s.id)}"><span class="tx-ic" aria-hidden="true">${CAT_ICON.settle}</span><span class="grow"><b class="tx-t">${esc(meName(v, s.from))} paid ${esc(meObj(v, s.to))}</b><span class="muted small tx-m">Payment</span></span><span class="tx-r"><span class="tx-a num">${esc(fmt(s.amount, v.currency))}</span><span class="muted small date">${esc(niceDate(s.date))}</span></span></button>`;
+  return `${txOpen(v, "editSettle", s.id)}<span class="tx-ic" aria-hidden="true">${CAT_ICON.settle}</span><span class="grow"><b class="tx-t">${esc(meName(v, s.from))} paid ${esc(meObj(v, s.to))}</b><span class="muted small tx-m">Payment</span></span><span class="tx-r"><span class="tx-a num">${esc(fmt(s.amount, v.currency))}</span><span class="muted small date">${esc(niceDate(s.date))}</span></span>${txClose(v)}`;
 }
 function expenseRow(v, e) {
   const c = catOf(e.category), mineShare = e.splits[v.meId] || 0;
   const effect = (e.paidBy === v.meId ? e.amount : 0) - mineShare;
-  return `<button class="tx" data-act="editExpense" data-id="${esc(e.id)}"><span class="tx-ic" aria-hidden="true">${CAT_ICON[c[0]]}</span>
+  return `${txOpen(v, "editExpense", e.id)}<span class="tx-ic" aria-hidden="true">${CAT_ICON[c[0]]}</span>
     <span class="grow"><b class="tx-t">${esc(e.desc)}</b><span class="muted small tx-m">${esc(meName(v, e.paidBy))} paid ${esc(fmt(e.amount, v.currency))}</span></span>
-    <span class="tx-r"><span class="tx-a num" style="color:${effect > 0 ? "var(--pos)" : effect < 0 ? "var(--neg)" : "var(--sub)"}">${effect === 0 ? "—" : esc(signed(effect, v.currency))}</span><span class="muted small date">${esc(niceDate(e.date))}</span></span></button>`;
+    <span class="tx-r"><span class="tx-a num" style="color:${effect > 0 ? "var(--pos)" : effect < 0 ? "var(--neg)" : "var(--sub)"}">${effect === 0 ? "—" : esc(signed(effect, v.currency))}</span><span class="muted small date">${esc(niceDate(e.date))}</span></span>${txClose(v)}`;
 }
 const emptyCard = (kao, text) => `<div class="panel empty"><div class="kao" aria-hidden="true">${kao}</div><div class="muted small">${text}</div></div>`;
 
 const views = {
   hub() {
-    const vs = S.volumes;
-    const cards = vs.map(v => {
+    // Each card is a button (tap opens). Press and hold, right-click, Shift+F10 or the menu key open its options
+    // sheet; for screen readers and keyboards the options are also a real button after the card (shown on focus).
+    const card = v => {
       const b = balances(v)[v.meId] || 0, t = typeOf(v.type), n = volNo(v);
       const settled = Math.abs(b) <= 1;
       const bal = settled ? "All settled" : b > 0 ? `You're owed ${fmt(b, v.currency)}` : `You owe ${fmt(-b, v.currency)}`;
       const roll = FX.bal[v.id] !== undefined && FX.bal[v.id] !== bal && motionOn() ? " roll" : ""; FX.bal[v.id] = bal;
-      return `<button class="vol" data-act="open" data-id="${esc(v.id)}" aria-label="${esc(`Volume ${n}, ${v.title}, ${bal}, ${plural(v.expenses.length, "expense")}`)}">
+      return `<div class="volw"><button class="vol${v.archived ? " arch" : ""}" data-act="open" data-id="${esc(v.id)}" aria-label="${esc(`Volume ${n}, ${v.title}, ${v.archived ? "archived, " : ""}${bal}, ${plural(v.expenses.length, "expense")}`)}" aria-describedby="${v.archived ? "archTip" : "volTip"}" aria-keyshortcuts="Shift+F10">
         <span class="spine" aria-hidden="true"><span>VOL.</span><b>${n}</b></span>
         <span class="vol-info" aria-hidden="true"><span class="vol-name">${esc(v.title)}</span>
         <span class="vol-bal num ${settled ? "even" : b > 0 ? "pos" : "neg"}${roll}">${esc(bal)}</span>
-        <span class="muted small vol-meta"><span>${t[1]}</span><span>${plural(v.members.length, "member")}</span><span>${esc(fmt(total(v), v.currency))} spent</span></span></span></button>`;
-    }).join("");
-    return topbar("HATI²", { right: `<button class="btn quiet" data-act="import">${I.import} Import</button>` }) +
+        <span class="muted small vol-meta"><span>${t[1]}</span><span>${plural(v.members.length, "member")}</span><span>${esc(fmt(total(v), v.currency))} spent</span></span></span></button>
+        <button class="ico vol-more" data-act="volActs" data-id="${esc(v.id)}" aria-haspopup="dialog" aria-label="${esc(`Options for ${v.title}`)}">${I.dots}</button></div>`;
+    };
+    const live = S.volumes.filter(v => !v.archived), arch = S.volumes.filter(v => v.archived);
+    return topbar("HATI²", { right: `<button class="btn quiet" data-act="import">${I.import} Import</button><button class="ico" data-act="settings" aria-label="Settings">${I.gear}</button>` }) +
       `<p class="tagline">Split trip and home costs with your group.</p>${iosHint()}
-      <h2 class="label">Your volumes</h2><div class="stack">${cards}
-      <button class="dashed" data-act="newVolume"><span class="logo" aria-hidden="true">${I.plus}</span><span><b>New volume</b><span class="muted small">One for each trip or group</span></span></button></div>`;
+      <h2 class="label">Your volumes</h2><div class="stack">${live.map(card).join("")}
+      <button class="dashed" data-act="newVolume"><span class="logo" aria-hidden="true">${I.plus}</span><span><b>New volume</b><span class="muted small">One for each trip or group</span></span></button></div>
+      ${arch.length ? `<details class="arch-box" id="archBox"${ui.archOpen ? " open" : ""}><summary class="label">Archived (${arch.length})</summary><div class="stack">${arch.map(card).join("")}</div></details>` : ""}
+      <p id="volTip" hidden>Press and hold, right-click or press Shift+F10 for Edit, Archive and Delete.</p><p id="archTip" hidden>Press and hold, right-click or press Shift+F10 to unarchive or delete.</p>`;
   },
 
   volume() {
@@ -806,7 +845,7 @@ const views = {
     FX.amt[v.id] = settled ? null : { t: fig, c: Math.abs(mine) }; FX.settled = null;
     const roll = !settled && was && was.t !== fig && motionOn() ? (Math.abs(mine) < was.c ? " roll down" : " roll") : "";
     const items = timeline(v), tot = total(v);
-    const byCat = {}; v.expenses.forEach(e => byCat[e.category] = (byCat[e.category] || 0) + e.amount);
+    const byCat = {}; v.expenses.forEach(e => { const k = catOf(e.category)[0]; byCat[k] = (byCat[k] || 0) + e.amount; });
     const catRows = Object.entries(byCat).sort((a, c) => c[1] - a[1]);
     const myDebts = ds.filter(d => d.from === v.meId || d.to === v.meId);
     const hist = items.length ? `<button class="ico" data-act="history" aria-label="History">${I.clock}</button>` : "";
@@ -819,19 +858,19 @@ const views = {
         ${myDebts.length ? `<ul class="mine">${myDebts.map(d => `<li class="row between"><span class="who">${d.from === v.meId ? `<span>Pay</span> <span class="nm">${esc(nameOf(v, d.to))}</span>` : `<span class="nm">${esc(nameOf(v, d.from))}</span> <span>pays you</span>`}</span><b class="num">${esc(fmt(d.amount, v.currency))}</b></li>`).join("")}</ul>` : ""}
         ${syncTag(v)}
       </section>
-      <div class="btns pair acts">
+      ${v.archived ? `<div class="panel pad row between arch-note" role="note"><span class="small"><b>Archived.</b> Read-only on this phone.</span><button class="btn" data-act="unarchive" data-id="${esc(v.id)}">Unarchive</button></div>` : `<div class="btns pair acts">
         <button class="btn primary" data-act="addExpense">${I.plus} Add expense</button>
         <button class="btn" data-act="settle">${I.settle} Settle up</button>
         <button class="btn" data-act="share" aria-label="Share volume">${I.share} Share</button>
-      </div>
-      ${v.members.length < 2 ? `<div class="panel pad row between"><span class="small">You're the only member so far.</span><button class="btn quiet" data-act="addMember">Add someone</button></div>` : ""}
+      </div>`}
+      ${v.members.length < 2 && !v.archived ? `<div class="panel pad row between"><span class="small">You're the only member so far.</span><button class="btn quiet" data-act="addMember">Add someone</button></div>` : ""}
       <section><h2 class="label">Members</h2><div class="chips">
         ${v.members.map(m => memberChip(v, m, b[m.id] || 0)).join("")}
-        <button class="chip add" data-act="addMember">+ Add</button></div></section>
+        ${v.archived ? "" : `<button class="chip add" data-act="addMember">+ Add</button>`}</div></section>
       <section><h2 class="label">Who pays whom <span class="muted small" style="font-family:var(--font-body)">${S.settings.strategy === "pairwise" ? "pairwise" : "fewest payments"}</span></h2>
         ${ds.length ? `<div class="ledger">${ds.map(d => debtRow(v, d)).join("")}</div>` : emptyCard("(＾▽＾)", "Nobody owes anything.")}</section>
       <section><div class="row between"><h2 class="label">Recent</h2>${items.length > 4 ? `<button class="btn quiet" data-act="history">${I.list} See all ${items.length}</button>` : ""}</div>
-        ${items.length ? `<div class="ledger">${items.slice(0, 4).map(it => itemRow(v, it)).join("")}</div>` : emptyCard("(・_・;)", "No expenses yet. Add the first one.")}</section>
+        ${items.length ? `<div class="ledger">${items.slice(0, 4).map(it => itemRow(v, it)).join("")}</div>` : emptyCard("(・_・;)", v.archived ? "No expenses." : "No expenses yet. Add the first one.")}</section>
       ${catRows.length ? `<section><h2 class="label">Spending by category</h2><div class="panel bars">${catRows.map(([c, a]) => {
         const k = catOf(c); return `<div><div class="row between small"><span>${k[1]}</span><b class="num">${esc(fmt(a, v.currency))} · ${Math.round(a * 100 / tot)}%</b></div><div class="bar" aria-hidden="true"><i style="width:${(a * 100 / tot).toFixed(1)}%"></i></div></div>`;
       }).join("")}</div></section>` : ""}
@@ -842,7 +881,7 @@ const views = {
     const v = vol(); if (!v) { ui.view = "hub"; return views.hub(); }
     const items = timeline(v), shown = items.slice(0, ui.histLimit);
     return topbar("History", { back: true, right: `<span class="muted sub ellip">${esc(v.title)}</span>` }) +
-      `<p class="muted small" style="margin:0 0 8px">${plural(v.expenses.length, "expense")} and ${plural(v.settlements.length, "payment")}. Tap one to edit it.</p>` +
+      `<p class="muted small" style="margin:0 0 8px">${plural(v.expenses.length, "expense")} and ${plural(v.settlements.length, "payment")}. ${v.archived ? "Archived: read-only." : "Tap one to edit it."}</p>` +
       (shown.length ? `<div class="ledger">${shown.map(it => itemRow(v, it)).join("")}</div>` : emptyCard("(・_・;)", "Nothing recorded yet.")) +
       (items.length > shown.length ? `<button class="btn block" data-act="more" style="margin-top:12px">Show ${Math.min(100, items.length - shown.length)} more</button>` : "");
   },
@@ -850,6 +889,7 @@ const views = {
   expense() {
     const v = vol(), f = ui.form;
     if (!v || !f) { ui.view = "hub"; return views.hub(); }
+    if (v.archived) { ui.view = "volume"; return views.volume(); } // read-only: no expense form
     return topbar(f.id ? "Edit expense" : "New expense", { back: true, right: `<span class="muted sub ellip">${esc(v.title)}</span>` }) +
       `<form id="expForm" class="stack" novalidate>
       <div class="amount-box"><label for="f-amount" class="legend">Amount</label>
@@ -873,7 +913,7 @@ const views = {
   settings() {
     const st = S.settings;
     const seg = (key, label, opts) => `<div class="seg" role="group" aria-label="${label}">${opts.map(o => `<button type="button" data-set="${key}" data-val="${o[0]}" aria-pressed="${st[key] === o[0]}">${o[1]}</button>`).join("")}</div>`;
-    return topbar("Settings") + `<div class="stack">
+    return topbar("Settings", { back: true }) + `<div class="stack">
       <section class="panel pad stack"><h2 class="label" style="margin:0">Appearance</h2>${seg("mode", "Appearance", [["system", "System"], ["light", "Light"], ["dark", "Dark"]])}
         <div><h3 class="legend" style="margin:0" id="palLabel">Color theme</h3><div class="muted small">From Sanzo Wada's A Dictionary of Color Combinations (1918).</div></div>
         <div class="pals" role="radiogroup" aria-labelledby="palLabel">${PALETTES.map(p => `<button type="button" class="pal" role="radio" aria-checked="${p.id === st.palette}" tabindex="${p.id === st.palette ? 0 : -1}" data-pal="${p.id}" style="--pp:${p.paper};--pi:${p.ink};--pm:${p.muted}">
@@ -892,7 +932,7 @@ const views = {
 
 function splitRow(v, m) {
   const f = ui.form, on = f.include[m.id], t = f.splitType;
-  const inp = t === "equal" ? "" : `<span class="split-in"><input class="input num" data-in="${esc(m.id)}" inputmode="decimal" aria-label="${esc(meName(v, m.id))} ${t}" value="${esc(f.inputs[m.id] || "")}" ${on ? "" : "disabled"}>${t === "percent" ? "%" : t === "shares" ? "×" : ""}</span>`;
+  const inp = t === "equal" ? "" : `<span class="split-in"><input class="input num" data-in="${esc(m.id)}" inputmode="decimal" maxlength="20" aria-label="${esc(meName(v, m.id))} ${t}" value="${esc(f.inputs[m.id] || "")}" ${on ? "" : "disabled"}>${t === "percent" ? "%" : t === "shares" ? "×" : ""}</span>`;
   return `<label class="split-row${t === "equal" ? "" : " typed"}"><input type="checkbox" data-inc="${esc(m.id)}" ${on ? "checked" : ""}>
     <span class="row grow">${avatar(v, m.id)}<span class="ellip">${esc(meName(v, m.id))}</span></span>
     <span class="row">${inp}<span class="share num" data-share="${esc(m.id)}"></span></span></label>`;
@@ -937,7 +977,7 @@ function formFrom(e) {
   const v = vol();
   const f = e ? { id: e.id, amount: (e.amount / 100).toFixed(2), desc: e.desc, paidBy: e.paidBy, date: e.date, category: e.category, splitType: e.splitType || "equal", note: e.note || "",
     include: Object.fromEntries(v.members.map(m => [m.id, has(e.splits, m.id)])), inputs: { ...(e.inputs || {}) } }
-    : { amount: "", desc: "", paidBy: v.meId, date: today(), category: "food", splitType: "equal", note: "", include: Object.fromEntries(v.members.map(m => [m.id, true])), inputs: {} };
+    : { amount: "", desc: "", paidBy: v.meId, date: today(), category: lastCat(v.id), splitType: "equal", note: "", include: Object.fromEntries(v.members.map(m => [m.id, true])), inputs: {} };
   if (e && e.splitType === "exact") v.members.forEach(m => { if (has(e.splits, m.id)) f.inputs[m.id] = (e.splits[m.id] / 100).toFixed(2); });
   return f;
 }
@@ -966,7 +1006,17 @@ function submitExpense() {
   const i = v.expenses.findIndex(e => e.id === rec.id);
   if (i >= 0) v.expenses[i] = rec; else v.expenses.push(rec);
   if (!commit()) return;
+  if (i < 0) rememberCat(v.id, rec.category);
   clearDraft(); leave(); toast(i >= 0 ? "Expense updated" : "Expense saved");
+}
+// A new expense starts on the category last used for a new one in this volume (on this phone; a convenience, not data).
+const LAST_CAT = "hati2.lastCat";
+function lastCat(volId) {
+  try { const c = (JSON.parse(localStorage.getItem(LAST_CAT) || "{}") || {})[volId]; if (CATEGORIES.some(k => k[0] === c)) return c; } catch (e) {}
+  return "food";
+}
+function rememberCat(volId, c) {
+  try { const m = JSON.parse(localStorage.getItem(LAST_CAT) || "{}") || {}; m[volId] = c; localStorage.setItem(LAST_CAT, JSON.stringify(m)); } catch (e) {}
 }
 
 // The volume or the expense being edited was deleted in another tab (on Android the browser tab and the
@@ -987,14 +1037,14 @@ function sheet(html, onSubmit) {
   lastFocus = document.activeElement;
   if (sheetOpen()) layerOut(true);
   $("#layer").innerHTML = `<div class="scrim"><form class="sheet" id="sheetForm" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" novalidate>${html.replace("<h2>", '<h2 id="sheetTitle" tabindex="-1">')}</form></div>`;
-  $("#app").inert = true; $("#nav").inert = true;
+  $("#app").inert = true;
   document.querySelectorAll(".toast").forEach(n => n.classList.add("top")); // a toast from before the sheet moves out of its way
   const form = $("#sheetForm");
   form.addEventListener("submit", ev => { ev.preventDefault(); onSubmit && onSubmit(form); });
   form.addEventListener("input", () => { const m = $("#sheetMsg"); if (m && !m.classList.contains("ok")) m.textContent = ""; });
   $("#sheetTitle").focus();
 }
-function dropSheet() { layerOut(false); $("#layer").innerHTML = ""; $("#app").inert = false; $("#nav").inert = false; syncHeld(); }
+function dropSheet() { layerOut(false); $("#layer").innerHTML = ""; $("#app").inert = false; syncHeld(); }
 function closeSheet() { dropSheet(); if (lastFocus && document.contains(lastFocus)) lastFocus.focus(); }
 // A new message is written in, left to right (a success says so once; rule 8)
 const sheetMsg = t => { const m = $("#sheetMsg"); if (!m) return; m.textContent = t; if (t && motionOn()) m.animate([{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0)" }], { duration: motionTimes().in, easing: motionTimes().easeOut }); };
@@ -1007,14 +1057,14 @@ function volumeSheet(v) {
       <div class="field"><label for="s-type">Type</label><select id="s-type" class="input">${TYPES.map(t => `<option value="${t[0]}" ${v && v.type === t[0] ? "selected" : ""}>${t[1]}</option>`).join("")}</select></div>
       <div class="field"><label for="s-cur">Currency</label><select id="s-cur" class="input">${CURRENCIES.map(c => `<option ${(v ? v.currency : lastCurrency()) === c ? "selected" : ""}>${c}</option>`).join("")}</select></div>
     </div>
-    ${v ? "" : `<div class="field"><label for="s-me">Your name in this volume</label><input id="s-me" class="input" maxlength="40" placeholder="So others know who you are" autocomplete="off"></div>
+    ${v ? memberFields(v) : `<div class="field"><label for="s-me">Your name in this volume</label><input id="s-me" class="input" maxlength="40" placeholder="So others know who you are" autocomplete="off"></div>
     <div class="field"><label for="s-others">Who else is in? (optional)</label><input id="s-others" class="input" maxlength="2000" placeholder="Mira, Rio" autocomplete="off"></div>`}
     <div class="msg" id="sheetMsg" role="alert"></div>
     ${sheetButtons(v ? "Save" : "Create")}</div>`,
     () => {
       const title = $("#s-title").value.trim();
       if (!title) return sheetMsg("Give the volume a name.");
-      if (v) { Object.assign(v, { title, type: $("#s-type").value, currency: $("#s-cur").value, upd: Date.now() }); if (!commit()) return; closeSheet(); render(); toast("Volume updated"); return; }
+      if (v) return saveVolumeEdit(v, title);
       const meId = uid(), myName = $("#s-me").value.trim().replace(/\s+/g, " ") || "Me";
       const nv = { id: uid(), title, type: $("#s-type").value, currency: $("#s-cur").value, meId, created: Date.now(), members: [{ id: meId, name: myName }], expenses: [], settlements: [] };
       for (const n of $("#s-others").value.split(",").map(x => x.trim().replace(/\s+/g, " ")).filter(Boolean)) {
@@ -1027,6 +1077,142 @@ function volumeSheet(v) {
     });
 }
 const lastCurrency = () => (S.volumes[0] && S.volumes[0].currency) || "$";
+// Edit volume: every member's name is a field; a member in no expense or payment (and not you) can be marked for
+// removal (× toggles it, nothing changes before Save); new people go in one comma list, as when creating.
+function memberFields(v) {
+  const used = v.members.some(m => m.id !== v.meId && memberUsed(v, m.id));
+  return `<fieldset><legend class="legend">Members</legend><div class="ledger mems">${v.members.map(m => {
+    const fixed = m.id === v.meId || memberUsed(v, m.id);
+    return `<div class="mem-row"><input class="input" data-mem="${esc(m.id)}" maxlength="40" autocomplete="off" value="${esc(m.name)}" aria-label="${esc(m.id === v.meId ? "Your name" : `Name of ${m.name}`)}">${fixed ? "" : `<button type="button" class="ico" data-drop="${esc(m.id)}" aria-pressed="false" aria-label="${esc(`Remove ${m.name}`)}">${I.x}</button>`}</div>`;
+  }).join("")}</div>${used ? `<p class="muted small" style="margin:6px 0 0">People in an expense or payment can't be removed.</p>` : ""}</fieldset>
+    <div class="field"><label for="s-others">Add people (optional)</label><input id="s-others" class="input" maxlength="2000" placeholder="Mira, Rio" autocomplete="off"></div>`;
+}
+function toggleDrop(b) {
+  const on = b.getAttribute("aria-pressed") !== "true", row = b.closest(".mem-row"), inp = row.querySelector("[data-mem]");
+  const name = inp.defaultValue;
+  b.setAttribute("aria-pressed", String(on)); b.setAttribute("aria-label", `${on ? "Keep" : "Remove"} ${name}`);
+  row.classList.toggle("drop", on); inp.disabled = on;
+}
+function saveVolumeEdit(v, title) {
+  const tidy = s => s.trim().replace(/\s+/g, " ");
+  const drop = new Set([...document.querySelectorAll("#sheetForm [data-drop][aria-pressed=true]")].map(b => b.dataset.drop).filter(id => id !== v.meId && !memberUsed(v, id)));
+  const names = [...document.querySelectorAll("#sheetForm [data-mem]")].filter(i => !drop.has(i.dataset.mem)).map(i => [i.dataset.mem, tidy(i.value)]);
+  const adds = $("#s-others").value.split(",").map(tidy).filter(Boolean);
+  const seen = new Set();
+  for (const [id, n] of [...names, ...adds.map(n => [null, n])]) {
+    if (!n) return sheetMsg("Enter a name for every member.");
+    if (n.length > 40) return sheetMsg(`Keep each name to 40 characters (${n.slice(0, 12)}…).`);
+    if (n.toLowerCase() === "you") return sheetMsg("\"You\" is how the app shows you. Use the person's name.");
+    if (seen.has(n.toLowerCase())) return sheetMsg(`${n} is already in this volume.`);
+    seen.add(n.toLowerCase());
+  }
+  if (names.length + adds.length > 200) return sheetMsg("A volume can have up to 200 members.");
+  const now = Date.now(), type = $("#s-type").value, currency = $("#s-cur").value;
+  if (title !== v.title || type !== v.type || currency !== v.currency) Object.assign(v, { title, type, currency, upd: now });
+  for (const [id, n] of names) { const m = v.members.find(x => x.id === id); if (m && m.name !== n) { m.name = n; m.upd = now; } }
+  if (drop.size) { v.members = v.members.filter(m => !drop.has(m.id)); drop.forEach(id => tombstone(v, id)); }
+  for (const n of adds) v.members.push({ id: uid(), name: n, upd: now });
+  if (!commit()) return;
+  closeSheet(); render(); toast("Volume updated");
+}
+
+// ── Volume options (long-press on a hub card) ────────────
+// Archived is this phone's own shelf, like meId: it is kept in the volume on this device (save, backup, merges keep the
+// local value) but never sent (payload() and shareCodeOf() leave it out), so archiving never hides a volume from the
+// others. Delete removes the volume from this phone only and leaves its sync room; its id stays in S.gone so a backup
+// or another tab can't bring it back unasked (opening an invite to it again is asking).
+const goneIds = () => S.gone || (S.gone = []);
+const volById = id => S.volumes.find(v => v.id === id);
+function volActsSheet(id, from) {
+  const v = volById(id); if (!v) return;
+  const a = v.archived;
+  sheet(`<h2>${esc(v.title)}</h2><div class="stack">
+    ${a ? `<p class="muted small" style="margin:0">Archived: read-only on this phone.</p>
+    <button type="button" class="btn block" data-act="open" data-id="${esc(v.id)}">Open</button>
+    <button type="button" class="btn block" data-act="unarchive" data-id="${esc(v.id)}">Unarchive</button>`
+    : `<button type="button" class="btn block" data-act="editVol" data-id="${esc(v.id)}">Edit volume</button>
+    <button type="button" class="btn block" data-act="archive" data-id="${esc(v.id)}" aria-describedby="s-archwhy">Archive</button>
+    <p class="muted small" id="s-archwhy" style="margin:-4px 0 0">Moves it to Archived at the bottom. Nothing is deleted, and the others still see it.</p>`}
+    <button type="button" class="btn danger block" data-act="delVol" data-id="${esc(v.id)}">Delete volume</button>
+    <button type="button" class="btn quiet block" data-act="closeSheet">Cancel</button></div>`);
+  if (from) lastFocus = from;
+}
+function setArchived(v, on) {
+  if (on) v.archived = Date.now(); else delete v.archived;
+  if (!commit()) return false;
+  return true;
+}
+function archiveVolume(id) {
+  const v = volById(id); if (!v || v.archived) return;
+  if (!setArchived(v, true)) return;
+  dropSheet(); if (ui.view !== "hub") go("hub", { replace: true }); else render();
+  const s = $("#archBox summary"); if (s) s.focus();
+  toast(`${v.title} archived`);
+}
+function unarchiveVolume(id) {
+  const v = volById(id); if (!v || !v.archived) return;
+  if (!setArchived(v, false)) return;
+  dropSheet(); render();
+  const c = $(`.vol[data-id="${CSS.escape(id)}"]`); if (c) c.focus();
+  toast(`${v.title} is back in your volumes`);
+}
+function deleteVolume(id) {
+  const v = volById(id); if (!v) return;
+  confirmSheet("Delete volume?", `${v.title} and all its expenses and payments will be removed from this phone. Anyone you shared it with keeps their copy.`, "Delete", () => {
+    const at = S.volumes.indexOf(v), room = SY[id] ? { ...SY[id] } : null;
+    S.volumes = S.volumes.filter(x => x !== v); S.gone = [...goneIds().filter(x => x !== id), id].slice(-MAX_GONE);
+    if (!commit()) return;
+    if (ui.view !== "hub") go("hub", { replace: true }); else { render(); focusTitle(); }
+    toast("Volume deleted", { undo: () => undoDelete(v, at, room), ms: 6000 });
+  });
+}
+// Undo puts the same volume back where it was, drops its tombstone and rejoins its sync room.
+function undoDelete(v, at, room) {
+  if (volById(v.id)) return;
+  S.volumes.splice(Math.min(at, S.volumes.length), 0, v); S.gone = goneIds().filter(x => x !== v.id);
+  if (!commit()) return;
+  if (room) attachRoom(v.id, room, undefined);
+  if (sheetOpen()) dropSheet();
+  if (ui.view === "hub") render();
+  const c = $(`.vol[data-id="${CSS.escape(v.id)}"]`); if (c) c.focus();
+  toast(`${v.title} is back`);
+}
+// Press and hold a volume card (450 ms, a short buzz where the phone has one) for its options; moving the finger
+// cancels, and the tap that ends a hold never opens the volume. Right-click, Shift+F10 and the menu key do the same.
+const HOLD_MS = 450;
+let hold = null, eatClick = false, eatTimer = 0;
+function holdStart(ev) {
+  eatClick = false; clearTimeout(eatTimer);
+  const card = ev.target.closest && ev.target.closest("#app .vol[data-id]");
+  if (!card || ev.button > 0 || ev.isPrimary === false || sheetOpen()) return;
+  holdEnd();
+  hold = { card, x: ev.clientX, y: ev.clientY, t: setTimeout(holdFire, HOLD_MS) };
+  if (motionOn()) card.classList.add("holding");
+}
+function holdEnd() {
+  if (!hold) return;
+  clearTimeout(hold.t); hold.card.classList.remove("holding"); hold = null;
+}
+function holdFire() {
+  const card = hold && hold.card; holdEnd(); if (!card || !document.contains(card)) return;
+  eatClick = true;
+  try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) {}
+  volActsSheet(card.dataset.id, card);
+}
+document.addEventListener("pointerdown", holdStart, { passive: true });
+document.addEventListener("pointermove", ev => { if (hold && Math.hypot(ev.clientX - hold.x, ev.clientY - hold.y) > 10) holdEnd(); }, { passive: true });
+["pointerup", "pointercancel"].forEach(t => document.addEventListener(t, () => {
+  holdEnd(); if (eatClick) { clearTimeout(eatTimer); eatTimer = setTimeout(() => { eatClick = false; }, 400); }
+}, { passive: true }));
+addEventListener("scroll", holdEnd, { passive: true, capture: true });
+// The click that ends a hold: swallowed before anything sees it (it would open the volume or hit the new sheet's scrim).
+document.addEventListener("click", ev => { if (eatClick) { eatClick = false; ev.stopPropagation(); ev.preventDefault(); } }, true);
+document.addEventListener("contextmenu", ev => {
+  const card = ev.target.closest && ev.target.closest("#app .vol[data-id]");
+  if (!card) return;
+  ev.preventDefault(); holdEnd();
+  if (!sheetOpen()) volActsSheet(card.dataset.id, card);
+});
 function memberSheet() {
   const v = vol();
   sheet(`<h2>Add member</h2><div class="stack">
@@ -1118,8 +1304,9 @@ function confirmSheet(title, body, label, onYes) {
 function volMenuSheet() {
   const v = vol();
   sheet(`<h2>${esc(v.title)}</h2><div class="stack">
-    <button type="button" class="btn block" data-act="editVolume">Edit volume</button>
+    ${v.archived ? `<button type="button" class="btn block" data-act="unarchive" data-id="${esc(v.id)}">Unarchive</button>` : `<button type="button" class="btn block" data-act="editVolume">Edit volume</button>
     <button type="button" class="btn block" data-act="share">${I.share} Share with someone</button>
+    <button type="button" class="btn block" data-act="archive" data-id="${esc(v.id)}">Archive</button>`}
     <button type="button" class="btn danger block" data-act="deleteVolume">Delete volume</button>
     <button type="button" class="btn quiet block" data-act="closeSheet">Close</button></div>`);
 }
@@ -1127,7 +1314,12 @@ function volMenuSheet() {
 // others, so they are asked for their name once before the link is made.
 const nameless = v => { const m = v.members.find(x => x.id === v.meId); return !m || /^me$/i.test(m.name); };
 const sendFn = () => typeof navigator.share === "function" ? d => navigator.share(d)
-  : window.HatiAndroid && typeof HatiAndroid.share === "function" ? d => { HatiAndroid.share(d.url || d.text); return Promise.resolve(); } : null;
+  : window.HatiAndroid && typeof HatiAndroid.share === "function" ? d => {
+    // Android hands the text over in one Binder call (1 MB, 2 bytes a character); a bigger one crashes the app,
+    // so a long code is copied instead (the caller's fallback).
+    const t = d.url || d.text; if (t.length > ANDROID_SHARE_MAX) return Promise.reject(new Error("too long to share"));
+    HatiAndroid.share(t); return Promise.resolve(); } : null;
+const ANDROID_SHARE_MAX = 100000;
 const countLine = v => `${plural(v.members.length, "member")} · ${plural(v.expenses.length, "expense")} · ${plural(v.settlements.length, "payment")}`;
 let shareLink = "";
 function nameFirstSheet(v) {
@@ -1200,7 +1392,7 @@ const JOIN_MAX = 1000000, JOIN_OUT_MAX = 512 * 1024;
 const JOIN_BROKEN = "This invite link is broken. Ask for a new one.", JOIN_NEWER = "This invite needs a newer version of HATI².";
 const canInvite = () => typeof CompressionStream === "function" && typeof DecompressionStream === "function";
 // A shared volume's code and snapshot link also carry its room, so whoever opens them joins the live sync.
-const shareCodeOf = v => JSON.stringify({ app: "hati2-mock", v: 1, volume: v, ...(SY[v.id] ? { sync: { room: SY[v.id].room, key: SY[v.id].key } } : {}) });
+const shareCodeOf = v => JSON.stringify({ app: "hati2-mock", v: 1, volume: { ...v, archived: undefined }, ...(SY[v.id] ? { sync: { room: SY[v.id].room, key: SY[v.id].key } } : {}) });
 // Inside the APK the page origin is local to that phone, so links point at the published app instead.
 const appBase = () => location.hostname === "appassets.androidplatform.net" ? PAGES_URL : location.origin + location.pathname;
 const b64url = u8 => { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000)); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); };
@@ -1235,7 +1427,7 @@ async function readInvite(payload) {
   let text;
   try { text = await inflateCapped(unb64url(payload), JOIN_OUT_MAX); } catch (e) { return { error: JOIN_BROKEN }; }
   const p = text === null ? null : parseCode(text);
-  return p && p.volume ? p : { error: JOIN_BROKEN };
+  return p && p.volume ? p : { error: p && p.error === NEWER ? JOIN_NEWER : JOIN_BROKEN };
 }
 // A live invite: fetch the room's blob and decrypt it here. A wrong key reads as a broken link and changes nothing.
 async function readLiveInvite(room, key) {
@@ -1325,7 +1517,7 @@ function saveSync() {
 const RT = {};
 const rt = id => RT[id] || (RT[id] = { seen: undefined, want: 0, run: null, again: false, timer: 0, until: 0, tries: 0, state: "wait", hold: false, ws: null, wsTries: 0, wsTimer: 0, ping: 0 });
 // What gets encrypted: the volume without meId (who "you" are differs per phone).
-const payload = v => JSON.stringify({ ...v, meId: undefined });
+const payload = v => JSON.stringify({ ...v, meId: undefined, archived: undefined });
 // Content only, in a fixed order, so two phones holding the same data compare equal (no endless re-pushing).
 const canon = v => {
   const c = cleanVolume(v), by = a => [...a].sort((x, y) => x.id < y.id ? -1 : x.id > y.id ? 1 : 0).map(x => JSON.stringify({ ...x, upd: 0 }));
@@ -1670,11 +1862,11 @@ function validVolume(x) {
 function cleanVolume(x) {
   return {
     id: x.id, title: x.title.trim(), type: typeOf(x.type)[0], currency: CURRENCIES.includes(x.currency) ? x.currency : "$",
-    meId: okId(x.meId) && x.members.some(m => m.id === x.meId) ? x.meId : x.members[0].id, created: Number(x.created) || Date.now(), upd: updOf(x.upd),
+    meId: okId(x.meId) && x.members.some(m => m.id === x.meId) ? x.meId : x.members[0].id, created: Number(x.created) || Date.now(), upd: updOf(x.upd), ...(x.archived ? { archived: updOf(x.archived) || 1 } : {}),
     members: x.members.map(m => ({ id: m.id, name: m.name.trim(), upd: updOf(m.upd) })),
     expenses: x.expenses.map(e => ({ id: e.id, desc: e.desc.trim(), amount: e.amount, paidBy: e.paidBy, category: catOf(e.category)[0], date: e.date,
       splitType: ["equal", "exact", "percent", "shares"].includes(e.splitType) ? e.splitType : "exact",
-      splits: { ...e.splits }, inputs: Object.fromEntries(Object.entries(e.inputs && typeof e.inputs === "object" ? e.inputs : {}).filter(([k, v]) => x.members.some(m => m.id === k) && typeof v === "string" && v.length <= 12)),
+      splits: { ...e.splits }, inputs: Object.fromEntries(Object.entries(e.inputs && typeof e.inputs === "object" ? e.inputs : {}).filter(([k, v]) => x.members.some(m => m.id === k) && typeof v === "string" && v.length <= 20)),
       note: typeof e.note === "string" ? e.note : "", upd: updOf(e.upd) })),
     settlements: x.settlements.map(t => ({ id: t.id, from: t.from, to: t.to, amount: t.amount, date: t.date, upd: updOf(t.upd) })),
     deleted: [...new Set((x.deleted || []).filter(i => okId(i)))]
@@ -1695,12 +1887,15 @@ function replaceLoss(localRaw, codeRaw) {
 // Combine two copies of one volume. Union by id; on the same id the newer `upd` wins (incoming wins ties);
 // a tombstone in `deleted` beats any edit. Keeps the local meId. Returns { vol, added, updated, removed } or { error };
 // each count is per kind, e.g. added = { expense: 1, payment: 0, member: 2 }, and updated.details is 1 when the title, type or currency changed.
+// Archived and meId are this phone's own (the local copy's are kept).
 function mergeVolumes(localRaw, incomingRaw) {
   const loc = cleanVolume(localRaw), inc = cleanVolume(incomingRaw);
   // Local tombstones go last so the cap below never evicts them for a flood of incoming ones.
   const locGone = new Set(loc.deleted), deleted = new Set([...inc.deleted.filter(id => !locGone.has(id)), ...loc.deleted]);
   const added = { expense: 0, payment: 0, member: 0 }, updated = { ...added, details: 0 }, removed = { ...added };
-  const same = sameEntry;
+  // A phone on an older version reads a category it doesn't know as Other and may send it back with the same edit
+  // time; a real change of category always has a newer one, so that copy doesn't overwrite the category here.
+  const same = (x, mine) => sameEntry(x, mine) || (x.upd === mine.upd && x.category === "other" && !!mine.category && mine.category !== "other" && sameEntry({ ...x, category: mine.category }, mine));
   const union = (a, b, isGone, kind) => {
     const out = new Map(a.map(x => [x.id, x]));
     for (const x of b) {
@@ -1736,16 +1931,19 @@ const mergeSummary = r => {
   return [say("Adds", r.added), say("Updates", r.updated), say("Removes", r.removed)].filter(Boolean).join(" ");
 };
 // Accepts a share code or a backup file, even with chat text around it.
+const NEWER = "This was made by a newer version of HATI². Update the app, then try again.", BACKUP_BAD = "This backup file can't be read.";
 function parseCode(text) {
   const t = String(text), a = t.indexOf("{"), b = t.lastIndexOf("}");
   let data;
   try { data = JSON.parse(t.slice(a, b + 1)); } catch (e) { return { error: "That code isn't valid. Copy the whole code and try again." }; }
   if (!data || data.app !== "hati2-mock") return { error: "This code doesn't contain a HATI² volume, or its totals don't add up." };
+  // A later format may hold more than this version knows; reading it anyway would drop that part without a word.
+  if (typeof data.v === "number" && data.v > 1) return { error: NEWER };
   if (data.kind === "backup") {
-    if (!Array.isArray(data.volumes) || !data.volumes.length || data.volumes.length > MAX_BACKUP) return { error: "This backup file can't be read." };
+    if (!Array.isArray(data.volumes) || !data.volumes.length || data.volumes.length > MAX_BACKUP) return { error: BACKUP_BAD };
     const vols = data.volumes.filter(validVolume).map(cleanVolume);
     const seen = new Set(), uniq = vols.filter(x => !seen.has(x.id) && seen.add(x.id));
-    if (!uniq.length) return { error: "This backup file can't be read." };
+    if (!uniq.length) return { error: BACKUP_BAD };
     return { backup: uniq, bad: data.volumes.length - vols.length };
   }
   if (!validVolume(data.volume)) return { error: "This code doesn't contain a HATI² volume, or its totals don't add up." };
@@ -1753,16 +1951,17 @@ function parseCode(text) {
   return sy && typeof sy === "object" && ROOM_RE.test(sy.room) && KEY_RE.test(sy.key) ? { volume: data.volume, room: { room: sy.room, key: sy.key, version: 0 } } : { volume: data.volume };
 }
 function backupPlan(p) {
-  let fresh = 0, merged = 0, skipped = p.bad;
+  let fresh = 0, merged = 0, skipped = p.bad, kept = 0;
   const steps = p.backup.map(x => {
     const local = S.volumes.find(v => v.id === x.id);
+    if (!local && goneIds().includes(x.id)) { kept++; return null; } // deleted here: a backup does not bring it back
     if (!local) { fresh++; return { x }; }
     const r = mergeVolumes(local, x);
     if (r.error) { skipped++; return null; }
     merged++; return { r };
   }).filter(Boolean);
   const parts = [fresh && `restores ${plural(fresh, "volume")}`, merged && `merges ${plural(merged, "volume")} you already have`].filter(Boolean).join(", ");
-  const text = (parts ? parts[0].toUpperCase() + parts.slice(1) + "." : "Nothing to restore.") + (skipped ? ` ${plural(skipped, "volume")} couldn't be read and will be skipped.` : "");
+  const text = (parts ? parts[0].toUpperCase() + parts.slice(1) + "." : "Nothing to restore.") + (skipped ? ` ${plural(skipped, "volume")} couldn't be read and will be skipped.` : "") + (kept ? ` ${plural(kept, "volume")} you deleted on this phone ${kept === 1 ? "stays" : "stay"} deleted.` : "");
   return { steps, text, ok: steps.length > 0 };
 }
 // On iOS a blob download from the Home Screen app can strand the user in a viewer, so the file goes to the
@@ -1770,6 +1969,9 @@ function backupPlan(p) {
 async function downloadBackup() {
   const data = JSON.stringify({ app: "hati2-mock", kind: "backup", v: 1, volumes: S.volumes }), name = `hati2-backup-${today()}.json`;
   const done = () => toast(`Backup saved: ${plural(S.volumes.length, "volume")}`);
+  // Android app: a WebView ignores <a download>, so hand the file to the app's own "save as" dialog.
+  // The app shows "Saved" itself once a place is picked; no toast here, the person may still cancel.
+  if (window.HatiAndroid && typeof HatiAndroid.saveFile === "function") { HatiAndroid.saveFile(name, "application/json", data); return; }
   const ios = isIOS();
   let file = null; try { file = new File([data], name, { type: "application/json" }); } catch (e) {}
   if (ios && file && typeof navigator.share === "function" && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -1816,18 +2018,24 @@ function importVolume(p) {
   const nv = cleanVolume(x), who = $("#s-who").value;
   if (!nv.members.some(m => m.id === who)) return sheetMsg("Choose which member you are.");
   nv.meId = who;
+  // Opening an invite to a volume deleted here is asking for it back: its tombstone goes. Archived is this phone's own.
+  S.gone = goneIds().filter(id => id !== nv.id);
+  const had = mode === "replace" && volById(nv.id); if (had && had.archived) nv.archived = had.archived; else delete nv.archived;
   if (mode === "replace") S.volumes = S.volumes.map(v => v.id === nv.id ? nv : v);
   else { if (mode === "copy") { nv.id = uid(); nv.deleted = []; } S.volumes.unshift(nv); }
   if (!save()) return sheetMsg(saveGone ? SAVE_GONE : "Couldn't save on this device. Nothing was changed.");
   link(nv.id); closeSheet(); ui.volId = nv.id; go("volume"); toast(mode === "new" ? `You joined ${nv.title}` : "Volume imported");
 }
+// A backup can't be bigger than what a phone's storage holds (about 5 MB), so a far bigger file is never read in.
+const FILE_MAX = 16 * 1024 * 1024;
+const fileError = (text, e) => !text.trim() ? "This file is empty." : e === NEWER || e === BACKUP_BAD ? e : "This file isn't a HATI² backup or share code.";
 function importSheet({ restore = false } = {}) {
-  let read = null;
+  let read = null, fromFile = false;
   const help = restore ? "Open the backup file you saved, or paste what's in it, then tap <b>Check code</b>." : "Someone shared a volume with you? Paste the link or code they sent, then tap <b>Check code</b>.";
   sheet(`<h2>${restore ? "Restore backup" : "Import volume"}</h2><div class="stack">
     <p class="small" id="s-help" style="margin:0">${help}</p>
     <div class="field"><label for="s-paste">${restore ? "Backup" : "Invite link or share code"}</label><textarea id="s-paste" class="input" rows="4" placeholder="Long-press here and tap Paste" autocomplete="off" spellcheck="false"></textarea></div>
-    <div class="row filepick"><span class="muted small grow">${restore ? "Saved a backup file?" : "Got a file or a backup instead?"}</span><label class="btn ${restore ? "primary" : "quiet"}" for="s-file">Open file</label><input id="s-file" type="file" accept=".json,application/json,text/plain" class="sr"></div>
+    <div class="row filepick"><span class="muted small grow">${restore ? "Saved a backup file?" : "Got a file or a backup instead?"}</span><label class="btn ${restore ? "primary" : "quiet"}" for="s-file">Open file</label><input id="s-file" type="file"${window.HatiAndroid ? "" : ` accept="application/json,.json,text/plain"`} class="sr"></div>
     <div id="s-pick"></div>
     <div class="msg" id="sheetMsg" role="alert"></div>
     <div class="btns"><button type="button" class="btn quiet" data-act="closeSheet">Cancel</button><button class="btn primary" id="s-go">Check code</button></div></div>`,
@@ -1837,7 +2045,7 @@ function importSheet({ restore = false } = {}) {
       const p = jp === null ? parseCode(text) : read && read.text === text ? read.p : (read = { text, p: await readInvite(jp) }).p;
       const pick = $("#s-pick");
       if (!pick || $("#s-paste").value !== text) return; // closed or edited while the link was read
-      if (p.error) return sheetMsg(p.error);
+      if (p.error) return sheetMsg(fromFile && jp === null ? fileError(text, p.error) : p.error);
       if (!pick.innerHTML) {
         if (p.backup) {
           const plan = backupPlan(p);
@@ -1857,10 +2065,11 @@ function importSheet({ restore = false } = {}) {
       }
       importVolume(p);
     });
-  $("#s-paste").addEventListener("input", () => { $("#s-pick").innerHTML = ""; $("#s-go").textContent = "Check code"; $("#s-help").innerHTML = help; sheetMsg(""); });
+  $("#s-paste").addEventListener("input", () => { fromFile = false; $("#s-pick").innerHTML = ""; $("#s-go").textContent = "Check code"; $("#s-help").innerHTML = help; sheetMsg(""); });
   $("#s-file").addEventListener("change", ev => {
-    const file = ev.target.files[0]; if (!file) return;
-    const rd = new FileReader(); rd.onload = () => { $("#s-paste").value = String(rd.result); $("#s-paste").dispatchEvent(new Event("input")); }; rd.readAsText(file);
+    const file = ev.target.files[0]; ev.target.value = ""; if (!file) return;
+    if (file.size > FILE_MAX) { $("#s-paste").value = ""; $("#s-paste").dispatchEvent(new Event("input")); return sheetMsg("This file is too big to be a HATI² backup."); }
+    const rd = new FileReader(); rd.onload = () => { $("#s-paste").value = String(rd.result); $("#s-paste").dispatchEvent(new Event("input")); fromFile = true; }; rd.readAsText(file);
   });
 }
 
@@ -1925,7 +2134,7 @@ function turn(from, to, box) {
   requestAnimationFrame(() => {
     if (ghosts.screen !== g.host) return;
     gin.append(main); gw.append(gin); g.root.append(gw, gl);
-    document.body.insertBefore(g.host, $("#nav"));
+    document.body.insertBefore(g.host, $("#layer"));
     const a = g.host.animate([{ transform: "none" }, { transform: `translateX(${(box.w + s + 80) * (back ? 1 : -1)}px)` }], { duration: T.wipe, easing: T.easeOut, fill: "forwards" });
     gl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: T.wipe, easing: "ease-in", fill: "forwards" });
     ghostDone("screen", g.host, a);
@@ -1975,7 +2184,7 @@ function applyRoute() {
   ui.view = r.view; ui.volId = r.volId || null;
   if (r.view === "expense") {
     const v = vol(), e = r.expId ? v.expenses.find(x => x.id === r.expId) : null;
-    if (r.expId && !e) ui.view = "volume";
+    if ((r.expId && !e) || v.archived) ui.view = "volume";
     else ui.form = draftFor(r.expId || null) || formFrom(e);
   }
 }
@@ -2019,19 +2228,22 @@ function render() {
     $("#app").innerHTML = topbar("HATI²") + `<div class="panel pad stack"><b>This screen couldn't be shown.</b><p class="muted small" style="margin:0">Your data is still on this device. Go back to your volumes; if this keeps happening, erase the damaged volume in Settings.</p><button class="btn primary" data-act="home">Back to volumes</button></div>`;
     ui.view = "hub";
   }
-  const top = ui.view === "settings" ? "settings" : "hub";
-  $("#nav").innerHTML = `<button data-act="home" ${top === "hub" ? 'aria-current="page"' : ""}>${I.hub}Volumes</button><button data-act="settings" ${top === "settings" ? 'aria-current="page"' : ""}>${I.gear}Settings</button>`;
   if (ui.view === "expense" && $("#expForm")) bindExpenseForm();
   // Rows a live change just brought in ink in on their own (see take()).
   if (FX.fresh && FX.fresh.size && motionOn()) app.querySelectorAll(".tx[data-id]").forEach(r => { if (FX.fresh.has(r.dataset.id)) r.classList.add("ink-new"); });
 }
 let toastTimer;
-function toast(t) {
+// With { undo }, the toast carries an Undo button (a real button, so keyboards and screen readers reach it) for `ms`.
+function toast(t, { undo, ms } = {}) {
   document.querySelectorAll(".toast").forEach(n => n.remove());
-  const n = document.createElement("div"); n.className = "toast" + (sheetOpen() ? " top" : ""); n.setAttribute("aria-hidden", "true"); n.textContent = t;
+  const n = document.createElement("div"); n.className = "toast" + (sheetOpen() ? " top" : "") + (undo ? " has-undo" : ""); n.textContent = t;
+  if (undo) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "undo"; b.textContent = "Undo";
+    b.addEventListener("click", () => { n.remove(); undo(); }, { once: true }); n.appendChild(b);
+  } else n.setAttribute("aria-hidden", "true");
   // long warnings stay long enough to read; then it is wiped off (gone at once under reduced motion)
   const off = () => { if (!motionOn()) return n.remove(); n.classList.add("out"); setTimeout(() => n.remove(), motionTimes().out + 40); };
-  document.body.appendChild(n); clearTimeout(toastTimer); toastTimer = setTimeout(off, Math.max(2400, t.length * 50));
+  document.body.appendChild(n); clearTimeout(toastTimer); toastTimer = setTimeout(off, Math.max(ms || 0, 2400, t.length * 50));
   const live = $("#status"); live.textContent = ""; setTimeout(() => { live.textContent = t; }, 30);
 }
 function bindExpenseForm() {
@@ -2083,6 +2295,7 @@ function selectPalette(id) {
 document.addEventListener("touchstart", () => {}, { passive: true });
 document.addEventListener("click", async ev => {
   if (ev.target.classList && ev.target.classList.contains("scrim")) return closeSheet();
+  const drop = ev.target.closest && ev.target.closest("#sheetForm [data-drop]"); if (drop) return toggleDrop(drop);
   const el = ev.target.closest("[data-act],[data-pal],[data-set]"); if (!el) return;
   if (el.dataset.pal) return selectPalette(el.dataset.pal);
   if (el.dataset.set) {
@@ -2091,7 +2304,14 @@ document.addEventListener("click", async ev => {
     return;
   }
   const a = el.dataset.act, v = vol();
+  // An archived volume is read-only: nothing that would change it runs (its screen doesn't offer these either).
+  if (v && v.archived && ui.view !== "hub" && ["addExpense", "editExpense", "settle", "editSettle", "editMember", "removeMember", "addMember", "editVolume", "share", "deleteExpense", "deleteSettle"].includes(a)) return;
   switch (a) {
+    case "volActs": volActsSheet(el.dataset.id, el); break;
+    case "editVol": { const x = volById(el.dataset.id); if (x && !x.archived) volumeSheet(x); break; }
+    case "archive": archiveVolume(el.dataset.id); break;
+    case "unarchive": unarchiveVolume(el.dataset.id); break;
+    case "delVol": deleteVolume(el.dataset.id); break;
     case "home": if (ui.view !== "hub" || sheetOpen()) go("hub"); break;
     case "settings": if (ui.view !== "settings" || sheetOpen()) go("settings"); break;
     case "back": leave(); break;
@@ -2120,7 +2340,7 @@ document.addEventListener("click", async ev => {
       break;
     }
     case "copyLink": await copyShareLink(); break;
-    case "deleteVolume": confirmSheet("Delete volume?", `${v.title} and all its expenses and payments will be removed from this device.`, "Delete", () => { S.volumes = S.volumes.filter(x => x.id !== v.id); if (!commit()) return; go("hub", { replace: true }); toast("Volume deleted"); }); break;
+    case "deleteVolume": deleteVolume(v.id); break;
     case "addMember": if (sheetOpen()) dropSheet(); memberSheet(); break;
     case "addExpense": openExpense(null); break;
     case "editExpense": openExpense(v.expenses.find(e => e.id === el.dataset.id)); break;
@@ -2138,6 +2358,9 @@ document.addEventListener("click", async ev => {
 });
 document.addEventListener("keydown", ev => {
   if (ev.key === "Escape" && sheetOpen()) { closeSheet(); return; }
+  eatClick = false;
+  const card = (ev.key === "ContextMenu" || (ev.shiftKey && ev.key === "F10")) && ev.target.closest && ev.target.closest("#app .vol[data-id]");
+  if (card) { ev.preventDefault(); if (!sheetOpen()) volActsSheet(card.dataset.id, card); return; }
   const p = ev.target.closest && ev.target.closest("[data-pal]");
   if (p && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(ev.key)) {
     ev.preventDefault();
@@ -2156,6 +2379,8 @@ addEventListener("storage", ev => {
   render();
 });
 addEventListener("hashchange", joinFromHash);
+// The Archived shelf on the hub stays open or closed across redraws (this page only).
+document.addEventListener("toggle", ev => { if (ev.target.id === "archBox") ui.archOpen = ev.target.open; }, true);
 if (window.matchMedia) { const mq = matchMedia("(prefers-color-scheme: dark)"); mq.addEventListener && mq.addEventListener("change", () => applyTheme()); }
 if (window.visualViewport) { const vv = () => document.documentElement.style.setProperty("--vvh", visualViewport.height + "px"); visualViewport.addEventListener("resize", vv); vv(); }
 

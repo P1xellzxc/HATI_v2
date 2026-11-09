@@ -56,7 +56,10 @@ class MainActivity : ComponentActivity() {
             if (text == null || uri == null) return@registerForActivityResult
             Thread {
                 val ok = runCatching {
-                    contentResolver.openOutputStream(uri, "wt")!!.use { it.write(text.toByteArray()) }
+                    // "wt" (truncate) is refused by some providers, e.g. some Drive versions: fall back to "w".
+                    val out = runCatching { contentResolver.openOutputStream(uri, "wt") }.getOrNull()
+                        ?: contentResolver.openOutputStream(uri, "w")
+                    out!!.use { it.write(text.toByteArray()) }
                 }.isSuccess
                 runOnUiThread { toast(if (ok) R.string.saved else R.string.save_failed) }
             }.start()
@@ -179,6 +182,9 @@ class MainActivity : ComponentActivity() {
             startActivity(intent)
         } catch (e: ActivityNotFoundException) {
             toast(R.string.no_app)
+        } catch (e: RuntimeException) {
+            // e.g. a text too large to pass to another app (TransactionTooLargeException).
+            toast(R.string.no_app)
         }
     }
 
@@ -219,7 +225,11 @@ class MainActivity : ComponentActivity() {
             fileCallback?.onReceiveValue(null)
             fileCallback = callback
             return try {
-                openDocument.launch(params.createIntent())
+                // params.createIntent() uses only the first accept type, which can hide the file.
+                // Any openable file: the web app checks what it reads.
+                openDocument.launch(
+                    Intent(Intent.ACTION_GET_CONTENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*")
+                )
                 true
             } catch (e: ActivityNotFoundException) {
                 fileCallback = null

@@ -40,6 +40,11 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
  // Cut a context off the network (and the mock server), or bring it back.
  const setNet=async(c,on)=>{ if (on) mock.down.delete(c); else { mock.down.add(c); for (const s of mock.socks.values()) for (const ws of s) if (ws.__c===c) ws.close({code:1011}); } await c.setOffline(!on); };
  const ok=(c,msg)=>{console.log((c?'PASS ':'FAIL ')+msg); if(!c) process.exitCode=1;};
+ // There is no bottom bar: the hub is reached with the top bar's Back (or Escape for a sheet), Settings with the hub's gear.
+ const toHub=async pg=>{ for (let i=0;i<8;i++) { const s=await pg.evaluate(()=>({v:ui.view,sh:sheetOpen()}));
+     if (s.sh) { await pg.keyboard.press('Escape'); continue; } if (s.v==='hub') return;
+     await pg.locator('#app .topbar [data-act=back]').click(); await pg.waitForFunction(v=>ui.view!==v,s.v,{timeout:2000}).catch(()=>{}); } };
+ const toSettings=async pg=>{ await toHub(pg); await pg.locator('#app .topbar [data-act=settings]').click(); };
  const ctx=await b.newContext({...devices['iPhone 13']});
  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
  await p.goto(URL);
@@ -53,7 +58,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
  ok(/^v-[a-z0-9]+$/.test((await p.evaluate(()=>location.hash)).slice(1)),'volume has its own URL hash');
  await p.reload(); ok(await p.evaluate(()=>ui.view)==='volume','reload keeps you on the volume page');
  // back button stays in the app
- await p.locator('#nav [data-act=home]').click(); await p.locator('.vol').first().click();
+ await toHub(p); await p.locator('.vol').first().click();
  await p.goBack(); ok(await p.evaluate(()=>ui.view)==='hub' && p.url().startsWith(URL),'browser Back returns to the hub inside the app');
  await p.goForward(); ok(await p.evaluate(()=>ui.view)==='volume','browser Forward returns to the volume');
  // exact split + comma decimal
@@ -99,7 +104,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
  // share & import as copy; XSS code rejected
  await p.locator('[data-act=volMenu]').click(); await p.locator('.sheet [data-act=share]').click();
  const code=await p.locator('#s-code').inputValue(); await p.locator('[data-act=closeSheet]').first().click();
- await p.locator('#nav [data-act=home]').click(); await p.getByRole('button',{name:'Import'}).click();
+ await toHub(p); await p.getByRole('button',{name:'Import'}).click();
  const evil=JSON.parse(code); evil.volume.id='q"><img src=x onerror=window.__x=1>'; evil.volume.members[1].id='a"><b>';
  await p.fill('#s-paste',JSON.stringify(evil)); await p.locator('#s-go').click();
  ok((await p.locator('#sheetMsg').innerText()).length>0 && !(await p.evaluate(()=>window.__x)),'malicious share code is rejected');
@@ -109,7 +114,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
  ok(await p.evaluate(()=>{const v=S.volumes.find(x=>x.id===ui.volId);return nameOf(v,v.meId)})==='Mira','importer is Mira in the copy');
  await p.reload(); ok(await p.locator('h1').count()===1,'data survives reload');
  // themes
- await p.locator('#nav [data-act=settings]').click(); await p.locator('[data-pal=persimmon]').click(); await p.locator('[data-set=mode][data-val=dark]').click();
+ await toSettings(p); await p.locator('[data-pal=persimmon]').click(); await p.locator('[data-set=mode][data-val=dark]').click();
  ok(await p.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--acc-d').trim())==='#FFB31A','Persimmon dark accent applied');
  ok(await p.evaluate(()=>document.activeElement && document.activeElement.dataset.val)==='dark','focus stays on the toggle after switching');
  await p.keyboard.press('Shift+Tab'); 
@@ -121,8 +126,8 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
  ok(true,'checked 390/360/320 for horizontal scroll');
  await p.setViewportSize({width:390,height:844});
  await p.evaluate(()=>{ui.volId=S.volumes[0].id; go('volume');}); await p.screenshot({path:process.argv[2]+'/after-dark.png'});
- await p.locator('#nav [data-act=settings]').click(); await p.locator('[data-pal=lagoon]').click(); await p.locator('[data-set=mode][data-val=light]').click();
- await p.locator('#nav [data-act=home]').click(); await p.screenshot({path:process.argv[2]+'/after-light-hub.png'});
+ await toSettings(p); await p.locator('[data-pal=lagoon]').click(); await p.locator('[data-set=mode][data-val=light]').click();
+ await toHub(p); await p.screenshot({path:process.argv[2]+'/after-light-hub.png'});
  await p.locator('.vol').first().click(); await p.getByRole('button',{name:/Add expense/}).click(); await p.locator('[data-split="exact"]').click();
  await p.screenshot({path:process.argv[2]+'/after-light-form.png'});
  // inputs are 16px (no iOS zoom)
@@ -164,11 +169,11 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await d.evaluate(()=>{ navigator.share=()=>Promise.reject(new DOMException('cancel','AbortError')); });
    await d.getByRole('button',{name:'Send invite'}).click(); await d.waitForTimeout(100);
    ok(await d.evaluate(()=>window.__copied===0 && !$('#sheetMsg').textContent),'cancelling the share sheet is silent and does not copy');
-   await d.locator('[data-act=closeSheet]').click(); await d.locator('#nav [data-act=home]').click(); await d.getByRole('button',{name:'Import'}).click();
+   await d.locator('[data-act=closeSheet]').click(); await toHub(d); await d.getByRole('button',{name:'Import'}).click();
    const ph=await d.locator('#s-paste').getAttribute('placeholder'); ok(!/[{}"]/.test(ph),'import placeholder has no JSON: '+ph);
    ok(await d.getByText('Open file').isVisible(),'file import is a labeled button, not a bare file input');
    await d.locator('[data-act=closeSheet]').click();
-   await d.locator('#nav [data-act=settings]').click();
+   await toSettings(d);
    ok(await d.evaluate(()=>document.scrollingElement.scrollHeight)<=1300,'settings is at most 1300px tall at 360 (got '+await d.evaluate(()=>document.scrollingElement.scrollHeight)+')');
    const names=await d.evaluate(()=>PALETTES.map(x=>x.name)); let allSel=true;
    for (const n of names) { await d.getByRole('radio',{name:new RegExp(n,'i')}).click(); if(await d.getByRole('radio',{name:new RegExp(n,'i')}).getAttribute('aria-checked')!=='true') allSel=false; }
@@ -207,9 +212,49 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(/tap Import/.test(await pg.locator('#s-help').innerText()) && /\.$/.test(await pg.locator('#s-sum').innerText()),'after Check code the help line says Import and the summary ends with a full stop: '+await pg.locator('#s-sum').innerText());
    await c.close(); }
 
+ // NB: no bottom bar (owner, 2026-11-09). Settings is the gear in the hub's top bar; Back returns to the hub.
+ { const c=await b.newContext({...devices['iPhone 13']}); await c.addInitScript(noSync); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())});
+   await pg.goto(URL);
+   ok(await pg.evaluate(()=>!document.querySelector('#nav, nav, .nav') && ![...document.body.querySelectorAll('*')].some(n=>{ const s=getComputedStyle(n); if (!/fixed|sticky/.test(s.position) || n.closest('.toast')) return false; const r=n.getBoundingClientRect(); return r.height>0 && r.bottom>=innerHeight-1 && r.top>innerHeight/2; })),'NB: there is no #nav and no bar fixed to the bottom of the screen');
+   const gear=await pg.evaluate(()=>{ const g=$('#app .topbar [data-act=settings]'); if (!g) return null; const r=g.getBoundingClientRect(), t=g.closest('.topbar').getBoundingClientRect(); return {cls:g.className,label:g.getAttribute('aria-label'),w:r.width,h:r.height,last:g===g.parentElement.lastElementChild,right:Math.round(t.right-r.right),mid:Math.abs((r.top+r.bottom)/2-(t.top+t.bottom)/2)}; });
+   ok(gear && gear.cls==='ico' && gear.label==='Settings' && gear.w>=44 && gear.h>=44 && gear.last && gear.right<=17 && gear.mid<=1.5,'NB: the hub top bar ends with a clay .ico gear labelled "Settings", 44px+, top-right '+JSON.stringify(gear));
+   const t0=await pg.evaluate(()=>history.length);
+   await pg.locator('#app .topbar [data-act=settings]').click();
+   await pg.waitForFunction(()=>$('#app').dataset.turn==='fwd',null,{timeout:2000}).catch(()=>{});
+   const s1=await pg.evaluate(()=>({view:ui.view,h1:$('#app h1').textContent,hash:location.hash,turn:$('#app').dataset.turn,back:!!$('#app .topbar [data-act=back]'),focus:document.activeElement===$('#app h1')}));
+   ok(s1.view==='settings' && s1.h1==='Settings' && s1.hash==='#prefs' && s1.turn==='fwd' && s1.back && s1.focus,'NB: one tap on the gear opens Settings (#prefs, wipe goes left, title focused, Back in its top bar) '+JSON.stringify(s1));
+   await pg.locator('#app .topbar [data-act=back]').click(); await pg.waitForFunction(()=>ui.view==='hub',null,{timeout:2000}).catch(()=>{});
+   await pg.waitForFunction(()=>$('#app').dataset.turn==='back',null,{timeout:2000}).catch(()=>{});
+   const s2=await pg.evaluate(()=>({view:ui.view,hash:location.hash,turn:$('#app').dataset.turn}));
+   ok(s2.view==='hub' && s2.hash==='' && s2.turn==='back' && await pg.evaluate(()=>history.length)===t0+1,'NB: Settings Back returns to the hub (wipe goes right, no extra history entry) '+JSON.stringify(s2));
+   await pg.locator('#app .topbar [data-act=settings]').click(); await pg.goBack(); await pg.waitForFunction(()=>ui.view==='hub',null,{timeout:2000}).catch(()=>{});
+   ok(await pg.evaluate(()=>ui.view)==='hub' && pg.url().startsWith(URL),'NB: Android/browser Back from Settings returns to the hub inside the app');
+   await pg.locator('.vol').first().click();
+   ok(await pg.evaluate(()=>ui.view==='volume' && !$('#app [data-act=settings]')),'NB: a volume has no Settings button (hub only; Back then the gear)');
+   await pg.goto(URL+'#prefs'); await pg.reload();
+   ok(await pg.evaluate(()=>ui.view==='settings' && $('#app h1').textContent==='Settings'),'NB: the #prefs deep link opens Settings');
+   await pg.locator('#app .topbar [data-act=back]').click(); await pg.waitForFunction(()=>ui.view==='hub',null,{timeout:2000}).catch(()=>{});
+   ok(await pg.evaluate(()=>ui.view==='hub' && location.hash==='') && pg.url().startsWith(URL),'NB: Back from a #prefs deep link lands on the hub, still in the app');
+   // content reaches the bottom: no dead strip under it (only #app's 24px + safe-area padding)
+   await pg.evaluate(()=>{ for (let i=0;i<6;i++) { const v=JSON.parse(JSON.stringify(S.volumes[0])); v.id='nb'+i; v.title='Trip '+i; v.created=(S.volumes[0].created||0)+i+1; S.volumes.push(v); } save(); });
+   const padRule=await pg.evaluate(()=>[...document.styleSheets].flatMap(s=>[...s.cssRules]).filter(r=>r.selectorText==='#app').map(r=>(/padding-block:[^;]*/.exec(r.cssText)||[''])[0]).join(' '));
+   ok(/safe-area-inset-bottom/.test(padRule) && /24px/.test(padRule),'NB: #app keeps only 24px plus the bottom safe area under the content: '+padRule);
+   const strips=[];
+   for (const w of [320,360,390]) for (const mode of ['light','dark']) { await pg.setViewportSize({width:w,height:640});
+     for (const view of ['hub','settings']) {
+       const m=await pg.evaluate(([mode,view])=>{ S.settings.mode=mode; applyTheme(); go(view); window.scrollTo(0,document.scrollingElement.scrollHeight);
+         const bottom=Math.max(...[...$('#app').children].map(n=>n.getBoundingClientRect().bottom)), at=document.elementFromPoint(innerWidth/2,innerHeight-3);
+         const gw=$('#app .topbar [data-act=settings]'), h1=$('#app h1');
+         return {gap:Math.round(innerHeight-bottom),at:at?(at===document.documentElement||at===document.body||!!at.closest('#app')):true,sw:document.scrollingElement.scrollWidth<=innerWidth,
+           gear:gw?gw.getBoundingClientRect().right<=innerWidth-15:true,h1:h1.scrollWidth<=h1.clientWidth+1}; },[mode,view]);
+       if (m.gap<8 || m.gap>40 || !m.at || !m.sw || !m.gear || !m.h1) strips.push(`${w}/${mode}/${view} ${JSON.stringify(m)}`); } }
+   ok(strips.length===0,'NB: at 320/360/390, light and dark, hub and Settings scroll down to content 8-40px from the bottom edge, nothing fixed there, gear and title fit '+JSON.stringify(strips.slice(0,3)));
+   ok(e.length===0,'NB: no console errors '+e.slice(0,2).join(' | '));
+   await c.close(); }
+
  // R1-1/R1-2/R1-3 (code): merge on import, member edit, native share, backup
  { const fresh=async()=>{ const c=await b.newContext({...devices['iPhone 13'],acceptDownloads:true}); await c.addInitScript(noSync); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.goto(URL); return {c,pg,e}; };
-   const home=async pg=>{ if(await pg.evaluate(()=>sheetOpen())) await pg.keyboard.press('Escape'); await pg.locator('#nav [data-act=home]').click(); };
+   const home=async pg=>{ if(await pg.evaluate(()=>sheetOpen())) await pg.keyboard.press('Escape'); await toHub(pg); };
    const openVol=async (pg,title)=>{ await home(pg); await pg.locator('.vol',{hasText:title}).first().click(); };
    const shareCode=async (pg,title)=>{ await openVol(pg,title); await pg.locator('[data-act=volMenu]').click(); await pg.locator('.sheet [data-act=share]').click(); const c=await pg.locator('#s-code').inputValue(); await pg.keyboard.press('Escape'); return c; };
    const check=async (pg,text)=>{ await home(pg); await pg.getByRole('button',{name:'Import'}).click(); await pg.fill('#s-paste',text); await pg.locator('#s-go').click(); };
@@ -311,12 +356,12 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    const D=await fresh(); await check(D.pg,sent); await D.pg.selectOption('#s-who',{label:'Alex'}); await doImport(D.pg);
    ok(await D.pg.evaluate(id=>ui.volId===id,volId) && await zs(D.pg),'the link passed to navigator.share, pasted into Import on another phone, imports '+JSON.stringify([String(sent).slice(0,60),await D.pg.evaluate(()=>[ui.view,ui.volId,$('#sheetMsg')&&$('#sheetMsg').textContent])]));
    // backup: download, restore on a fresh phone and onto a phone that already has one volume
-   await home(A.pg); await A.pg.locator('#nav [data-act=settings]').click();
+   await toSettings(A.pg);
    const [dl]=await Promise.all([A.pg.waitForEvent('download'),A.pg.locator('[data-act=backup]').click()]);
    ok(/^hati2-backup-\d{4}-\d{2}-\d{2}\.json$/.test(dl.suggestedFilename()),'Save backup downloads '+dl.suggestedFilename());
    const file=await dl.path(); const nA=await A.pg.evaluate(()=>S.volumes.length);
    const E=await fresh(); await E.pg.evaluate(()=>{S.volumes=[];save();}); await E.pg.reload();
-   await home(E.pg); await E.pg.locator('#nav [data-act=settings]').click(); await E.pg.locator('[data-act=restore]').click(); await E.pg.setInputFiles('#s-file',file); await E.pg.waitForTimeout(100); await E.pg.locator('#s-go').click();
+   await toSettings(E.pg); await E.pg.locator('[data-act=restore]').click(); await E.pg.setInputFiles('#s-file',file); await E.pg.waitForTimeout(100); await E.pg.locator('#s-go').click();
    ok(new RegExp('Restores '+nA+' volume').test(await E.pg.locator('#s-sum').innerText()),'backup summary: '+await E.pg.locator('#s-sum').innerText());
    await doImport(E.pg);
    ok(await E.pg.evaluate(()=>S.volumes.length)===nA && await zs(E.pg) && await E.pg.evaluate(id=>S.volumes.some(v=>v.id===id&&nameOf(v,v.meId)==='Alex'),volId),'backup restores every volume on a fresh phone, each with its own member, zero-sum');
@@ -414,7 +459,11 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      ok(sent && /^hati2-backup-\d{4}-\d{2}-\d{2}\.json:application\/json$/.test(sent[0]) && /Backup saved/.test(await toastText(G.pg)),'iOS: Save backup hands the file to the share sheet '+JSON.stringify(sent));
      await G.pg.evaluate(()=>{ document.querySelectorAll('.toast').forEach(n=>n.remove()); navigator.share=()=>Promise.reject(new DOMException('x','AbortError')); });
      await G.pg.locator('[data-act=backup]').click(); await G.pg.waitForTimeout(100);
-     ok(!/Backup saved/.test(await toastText(G.pg)),'iOS: cancelling the share sheet does not claim the backup was saved'); }
+     ok(!/Backup saved/.test(await toastText(G.pg)),'iOS: cancelling the share sheet does not claim the backup was saved');
+     await K.pg.evaluate(()=>{ window.__saved=null; window.HatiAndroid={ saveFile:(n,m,t)=>{ window.__saved=[n,m,JSON.parse(t).kind,JSON.parse(t).volumes.length]; } }; document.querySelectorAll('.toast').forEach(n=>n.remove()); go('settings'); });
+     await K.pg.locator('[data-act=backup]').click(); await K.pg.waitForTimeout(100);
+     const kept=await K.pg.evaluate(()=>[window.__saved,S.volumes.length]);
+     ok(kept[0] && /^hati2-backup-\d{4}-\d{2}-\d{2}\.json$/.test(kept[0][0]) && kept[0][1]==='application/json' && kept[0][2]==='backup' && kept[0][3]===kept[1] && !/Backup saved/.test(await toastText(K.pg)),'Android app: Save backup goes to the app\'s save-as dialog with every volume, and does not claim it saved '+JSON.stringify(kept)); }
    // Ponytail R1: Replace counts a newer local edit and a member only on this phone; volume-only edits get their own line
    { const R=await fresh(); all.push(R);
      const code=await R.pg.evaluate(()=>JSON.stringify({app:'hati2-mock',v:1,volume:S.volumes[0]}));
@@ -445,11 +494,11 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    const c=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780}}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())});
    await pg.goto(URL);
    const ids=await pg.evaluate(()=>PALETTES.map(x=>x.id)); const bad=[];
-   const CLAY_SET='.btn:not(.quiet):not(.text), .ico, .cat, .seg button, .vol, button.chip:not(.add), .nav [aria-current]';
+   const CLAY_SET='.btn:not(.quiet):not(.text), .ico, .cat, .seg button, .vol, button.chip:not(.add)';
    for (const id of ids) for (const mode of ['light','dark']) {
      const set=async v=>pg.evaluate(([id,mode,v])=>{ S.settings.palette=id; S.settings.mode=mode; applyTheme(); dropSheet&&dropSheet(); if(v==='expense'){ ui.volId=S.volumes[0].id; ui.view='volume'; openExpense(null); } else { if(v==='volume') ui.volId=S.volumes[0].id; go(v); } },[id,mode,v]);
      const want=async(sel,clay,tag)=>{ const s=await st(pg,sel); if(!s) { bad.push(`${id}/${mode} ${tag||sel}: missing`); return; } if(clay? !isClay(s) : (/inset/.test(s.boxShadow)||s.borderTopLeftRadius!==(tag==='sheet'?'6px':'3px'))) bad.push(`${id}/${mode} ${tag||sel}: ${s.borderTopWidth} r${s.borderTopLeftRadius} ${s.boxShadow}`); };
-     await set('hub'); await want('.vol',true); await want('.nav [aria-current]',true);
+     await set('hub'); await want('.vol',true); await want('.topbar [data-act=settings]',true,'hub gear');
      await set('volume'); await want('.btn.primary',true); await want('.ico',true); await want('button.chip:not(.add)',true); await want('.ledger',false); await want('.hero',false);
      await want('.chip.add',false,'chip.add (flat, 3px)');
      await set('expense'); await want('.cat[aria-pressed="false"]',true); await want('.cat[aria-pressed="true"]',true); await want('.input',false);
@@ -1034,6 +1083,199 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await rm.close();
    const errs=[...A.e,...B.e,...C.e]; ok(errs.length===0,'no page errors in the live sync scenario '+JSON.stringify(errs));
    for (const x of [A,B,C]) await x.c.close(); }
+ // LP (owner: "long press volume at the home page to edit, delete or archive"; hati-design, hati-motion, hati-a11y,
+ // hati-sync, hati-copy): hold a hub card 450 ms for its options sheet (also right-click, Shift+F10, the menu key and a
+ // real "Options for …" button); Edit (name, type, currency, members), Archive (per phone, a closed shelf, read-only),
+ // Delete (per phone, a tombstone, Undo). And CAT: 12 expense categories, old ids kept, unknown ids are Other.
+ { const mk=async (o={},sync=false)=>{ const c=await b.newContext({...devices['iPhone 13'],...o}); if (!sync) await c.addInitScript(noSync);
+     await c.addInitScript(()=>{ window.__buzz=[]; navigator.vibrate=ms=>{ window.__buzz.push(ms); return true; }; });
+     const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{ if (m.type()==='error' && !/Failed to load resource|ERR_INTERNET_DISCONNECTED|WebSocket/.test(m.text())) e.push(m.text()); });
+     await pg.goto(URL); return {c,pg,e}; };
+   const twoVols=pg=>pg.evaluate(()=>{ const x=exampleVolume(); x.title='Bali'; x.members.push({id:'zed',name:'Zed'}); S.volumes.unshift(x); save(); render(); return x.id; });
+   const sheetState=pg=>pg.evaluate(()=>({view:ui.view,open:sheetOpen(),title:sheetOpen()&&$('#sheetTitle').textContent,acts:[...document.querySelectorAll('#sheetForm [data-act]')].map(x=>x.textContent.trim())}));
+   // a real touch through CDP: finger down, hold, (move), up
+   const touchHold=async (pg,sel,ms,move=0)=>{ const cdp=await pg.context().newCDPSession(pg); const r=await pg.locator(sel).first().boundingBox(), x=r.x+r.width*0.6, y=r.y+r.height/2;
+     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});
+     if (move) { await pg.waitForTimeout(100); await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y+move}]}); }
+     await pg.waitForTimeout(ms); const mid=await sheetState(pg); await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]}); await pg.waitForTimeout(250); return mid; };
+   const P=await mk(), pg=P.pg; const baliId=await twoVols(pg);
+   // LP-1 hold: the sheet opens at ~450 ms (not before), with a buzz; releasing never opens the volume
+   const early=await touchHold(pg,'.vol',200);
+   ok(!early.open && (await sheetState(pg)).view==='volume' && !(await sheetState(pg)).open,'LP-1: a 200 ms touch is a tap, not a hold (opens the volume, no sheet) '+JSON.stringify(early));
+   await pg.evaluate(()=>{ ui.view='hub'; go('hub',{replace:true}); });
+   const mid=await touchHold(pg,'.vol',650), after=await sheetState(pg);
+   ok(mid.open && mid.title==='Bali' && JSON.stringify(mid.acts)==='["Edit volume","Archive","Delete volume","Cancel"]','LP-1: holding a hub card ~450 ms opens its sheet: Edit volume, Archive, Delete volume, Cancel '+JSON.stringify(mid));
+   ok(after.view==='hub' && after.open && await pg.evaluate(()=>location.hash)==='','LP-1: lifting the finger after the hold does not open the volume or close the sheet '+JSON.stringify(after));
+   ok(JSON.stringify(await pg.evaluate(()=>__buzz))==='[12]','LP-1: the hold buzzes once (navigator.vibrate 12 ms)');
+   await pg.keyboard.press('Escape');
+   // LP-2 a moving finger cancels; a tap opens
+   const moved=await touchHold(pg,'.vol',600,40);
+   ok(!moved.open && !(await sheetState(pg)).open,'LP-2: moving the finger 40px cancels the hold (no sheet) '+JSON.stringify(moved));
+   await pg.evaluate(()=>go('hub',{replace:true}));
+   await pg.locator('.vol').first().tap(); await pg.waitForFunction(()=>ui.view==='volume',null,{timeout:2000}).catch(()=>{});
+   ok(await pg.evaluate(()=>ui.view==='volume' && vol().title==='Bali' && !sheetOpen()),'LP-2: a plain tap still opens the volume');
+   await toHub(pg);
+   // LP-3 ink fill while holding (mouse hold): a wash grows from the left over 450 ms, linear; gone on release
+   await pg.locator('.vol').first().hover(); await pg.mouse.down(); await pg.waitForTimeout(120);
+   const ink=await pg.evaluate(()=>{ const c=$('.vol'); const a=c.getAnimations({subtree:true}).filter(a=>a.animationName==='hold-ink'); return {cls:c.classList.contains('holding'),n:a.length,d:a[0]&&a[0].effect.getTiming().duration,ease:a[0]&&a[0].effect.getTiming().easing,pseudo:a[0]&&a[0].effect.pseudoElement,tf:getComputedStyle(c,'::before').transform}; });
+   await pg.mouse.up(); await pg.waitForTimeout(50);
+   const gone=await pg.evaluate(()=>({cls:!!document.querySelector('.vol.holding'),open:sheetOpen(),view:ui.view}));
+   ok(ink.cls && ink.n===1 && ink.d===450 && ink.pseudo==='::before' && ink.tf!=='none','LP-3: holding inks the card from the left (::before, scaleX, 450 ms) '+JSON.stringify(ink));
+   ok(!gone.cls && !gone.open && gone.view==='volume','LP-3: letting go at 120 ms drops the ink and is a plain tap '+JSON.stringify(gone));
+   await toHub(pg);
+   // LP-4 the same sheet without a hold: right-click, Shift+F10, the menu key, the Options button (keyboard and screen reader)
+   await pg.locator('.vol').first().click({button:'right'});
+   ok((await sheetState(pg)).title==='Bali' && (await sheetState(pg)).view==='hub','LP-4: right-click opens the sheet');
+   await pg.keyboard.press('Escape');
+   ok(await pg.evaluate(()=>document.activeElement===$('.vol')),'LP-4: closing it returns focus to the card');
+   await pg.keyboard.press('Shift+F10'); ok((await sheetState(pg)).title==='Bali','LP-4: Shift+F10 on the focused card opens the sheet');
+   await pg.keyboard.press('Escape'); await pg.keyboard.press('ContextMenu'); ok((await sheetState(pg)).title==='Bali','LP-4: the context-menu key opens the sheet');
+   await pg.keyboard.press('Escape');
+   const ax=await pg.evaluate(()=>{ const c=$('.vol'), d=document.getElementById(c.getAttribute('aria-describedby')); return {keys:c.getAttribute('aria-keyshortcuts'),desc:d&&d.textContent}; });
+   ok(ax.keys==='Shift+F10' && /Press and hold, right-click or press Shift\+F10 for Edit, Archive and Delete/.test(ax.desc),'LP-4: the card describes its options and announces Shift+F10 '+JSON.stringify(ax));
+   const opt=pg.getByRole('button',{name:'Options for Bali'});
+   ok(await opt.count()===1 && await opt.getAttribute('aria-haspopup')==='dialog','LP-4: screen readers get a real "Options for Bali" button (aria-haspopup=dialog)');
+   await pg.keyboard.press('Tab');
+   const ob=await pg.evaluate(()=>{ const a=document.activeElement, r=a.getBoundingClientRect(), c=$('.vol').getBoundingClientRect(); return {lbl:a.getAttribute('aria-label'),w:r.width,h:r.height,inCard:r.right<=c.right+1&&r.top>=c.top-1}; });
+   ok(ob.lbl==='Options for Bali' && ob.w>=44 && ob.h>=44 && ob.inCard,'LP-4: Tab from the card lands on the Options button, shown 44px on the card '+JSON.stringify(ob));
+   await pg.keyboard.press('Enter'); ok((await sheetState(pg)).title==='Bali','LP-4: Enter on it opens the sheet');
+   await pg.keyboard.press('Escape');
+   const hid=await pg.evaluate(()=>{ const f=document.activeElement===$('.vol-more'); $('.vol').focus(); const r=$('.vol-more').getBoundingClientRect(); return {back:f,w:r.width,h:r.height}; });
+   ok(hid.back && hid.w<=1 && hid.h<=1,'LP-4: closing returns focus to the Options button, which is hidden from sight when not focused '+JSON.stringify(hid));
+   // LP-5 Edit: name, type, currency, members (rename, add, remove only an unused one)
+   await pg.locator('.vol').first().click({button:'right'}); await pg.locator('[data-act=editVol]').click();
+   const rows=await pg.evaluate(()=>[...document.querySelectorAll('#sheetForm .mem-row')].map(r=>({n:r.querySelector('[data-mem]').value,x:!!r.querySelector('[data-drop]')})));
+   ok(JSON.stringify(rows)==='[{"n":"Alex","x":false},{"n":"Mira","x":false},{"n":"Rio","x":false},{"n":"Zed","x":true}]','LP-5: Edit lists every member; only Zed (no expenses, not you) can be removed '+JSON.stringify(rows));
+   await pg.fill('#s-title','Bali 2026'); await pg.selectOption('#s-type','event'); await pg.selectOption('#s-cur','€');
+   await pg.locator('#sheetForm [data-mem]').nth(1).fill('Mira K'); await pg.locator('[data-drop]').click(); await pg.fill('#s-others','Noor, Ola');
+   ok(await pg.evaluate(()=>$('.mem-row.drop [data-mem]').disabled && $('[data-drop]').getAttribute('aria-label')==='Keep Zed'),'LP-5: × marks Zed for removal (struck, "Keep Zed" undoes it)');
+   await pg.fill('#s-others','Mira K'); await pg.locator('#sheetForm button.primary').click();
+   ok(/Mira K is already in this volume/.test(await pg.locator('#sheetMsg').innerText()) && await pg.evaluate(()=>S.volumes[0].title==='Bali'),'LP-5: a duplicate name is refused and nothing changes');
+   await pg.fill('#s-others','Noor, Ola'); await pg.locator('#sheetForm button.primary').click(); await pg.waitForTimeout(100);
+   const ed=await pg.evaluate(id=>{ const v=S.volumes.find(x=>x.id===id); return {t:v.title,ty:v.type,c:v.currency,m:v.members.map(m=>m.name),gone:v.deleted.includes('zed'),valid:validVolume(v),sum:Object.values(balances(v)).reduce((a,b)=>a+b,0)}; },baliId);
+   ok(ed.t==='Bali 2026' && ed.ty==='event' && ed.c==='€' && JSON.stringify(ed.m)==='["Alex","Mira K","Rio","Noor","Ola"]' && ed.gone && ed.valid && ed.sum===0,'LP-5: Save renames the volume and Mira, sets type and currency, removes Zed (tombstoned), adds Noor and Ola; balances still sum to 0 '+JSON.stringify(ed));
+   await pg.reload(); ok(await pg.evaluate(id=>{ const v=S.volumes.find(x=>x.id===id); return v.title==='Bali 2026' && v.members.length===5; },baliId),'LP-5: the edit survives a reload');
+   // LP-6 Archive: a closed "Archived (1)" shelf at the bottom, read-only page, survives reload
+   await pg.locator('.vol',{hasText:'Bali 2026'}).click({button:'right'}); await pg.locator('#sheetForm [data-act=archive]').click();
+   const sh=await pg.evaluate(()=>({live:[...document.querySelectorAll('#app > .stack .vol')].map(x=>x.querySelector('.vol-name').textContent),box:!!$('#archBox'),open:$('#archBox')&&$('#archBox').open,sum:$('#archBox summary').textContent,last:$('#archBox')===$('#archBox').parentElement.querySelector('details:last-of-type'),focus:document.activeElement===$('#archBox summary'),toast:$('.toast').textContent}));
+   ok(JSON.stringify(sh.live)==='["Tokyo Trip (example)"]' && sh.box && !sh.open && sh.sum==='Archived (1)' && sh.focus && /Bali 2026 archived/.test(sh.toast),'LP-6: Archive moves it to a closed "Archived (1)" shelf at the bottom, focus on the shelf '+JSON.stringify(sh));
+   await pg.reload();
+   ok(await pg.evaluate(id=>!!S.volumes.find(x=>x.id===id).archived && $('#archBox summary').textContent==='Archived (1)',baliId),'LP-6: archived survives a reload');
+   await pg.locator('#archBox summary').click(); await pg.locator('.vol.arch').click(); await pg.waitForFunction(()=>ui.view==='volume');
+   const ro=await pg.evaluate(()=>({add:!!$('[data-act=addExpense]'),settle:!!$('[data-act=settle]'),share:!!$('#app [data-act=share]'),rows:document.querySelectorAll('#app .tx').length,btnRows:document.querySelectorAll('#app button.tx').length,chips:document.querySelectorAll('#app button.chip').length,note:($('.arch-note')||{}).textContent,un:!!$('.arch-note [data-act=unarchive]')}));
+   ok(!ro.add && !ro.settle && !ro.share && ro.rows>0 && ro.btnRows===0 && ro.chips===0 && /Archived\. Read-only on this phone\./.test(ro.note) && ro.un,'LP-6: an archived volume opens read-only (no Add, Settle, Share; rows and members are not buttons; Unarchive there) '+JSON.stringify(ro));
+   await pg.evaluate(()=>{ location.hash='#v-'+ui.volId+'-new'; }); await pg.waitForTimeout(150);
+   ok(await pg.evaluate(()=>ui.view)!=='expense','LP-6: the new-expense address of an archived volume does not open the form');
+   await toHub(pg); if (!(await pg.evaluate(()=>$('#archBox').open))) await pg.locator('#archBox summary').click();
+   await pg.locator('.vol.arch').click({button:'right'});
+   ok(JSON.stringify((await sheetState(pg)).acts)==='["Open","Unarchive","Delete volume","Cancel"]','LP-6: an archived card\'s sheet offers Open, Unarchive, Delete volume');
+   await pg.locator('#sheetForm [data-act=unarchive]').click();
+   ok(await pg.evaluate(id=>!S.volumes.find(x=>x.id===id).archived && !$('#archBox') && document.activeElement===$(`.vol[data-id="${id}"]`),baliId),'LP-6: Unarchive puts it back with the others and focuses it');
+   // LP-7 archive is this phone's: kept by backup/restore and mergeVolumes, never sent in a share code or sync payload
+   await pg.evaluate(id=>{ S.volumes.find(x=>x.id===id).archived=Date.now(); save(); render(); },baliId);
+   const backup=await pg.evaluate(()=>JSON.stringify({app:'hati2-mock',kind:'backup',v:1,volumes:S.volumes}));
+   const mg=await pg.evaluate(id=>{ const v=S.volumes.find(x=>x.id===id), plain={...v}; delete plain.archived;
+     return {keep:!!mergeVolumes(v,plain).vol.archived, notTaken:!mergeVolumes(plain,v).vol.archived, payload:!/archived/.test(payload(v)), code:!/archived/.test(shareCodeOf(v)), canon:canon(v)===canon(plain)}; },baliId);
+   ok(mg.keep && mg.notTaken && mg.payload && mg.code && mg.canon,'LP-7: mergeVolumes keeps the local archived and never takes it from the other copy; sync payload, share code and canon leave it out '+JSON.stringify(mg));
+   const R=await mk(); await R.pg.evaluate(()=>{ S.volumes=[]; save(); render(); });
+   await R.pg.evaluate(()=>importSheet({restore:true})); await R.pg.fill('#s-paste',backup); await R.pg.locator('#s-go').click(); await R.pg.waitForTimeout(600); await R.pg.locator('#s-go').click();
+   await R.pg.waitForFunction(()=>!sheetOpen(),null,{timeout:3000}).catch(()=>{});
+   ok(await R.pg.evaluate(id=>!!(S.volumes.find(x=>x.id===id)||{}).archived && $('#archBox summary').textContent==='Archived (1)',baliId),'LP-7: a backup restored on a fresh phone keeps the volume archived');
+   await R.c.close();
+   await pg.evaluate(id=>{ delete S.volumes.find(x=>x.id===id).archived; save(); render(); },baliId);
+   // LP-8 Delete: confirm in the house voice, Undo for 6 s, a tombstone that a reload or a backup doesn't undo
+   const before=await pg.evaluate(()=>S.volumes.map(v=>v.id).join());
+   await pg.locator('.vol',{hasText:'Bali 2026'}).click({button:'right'}); await pg.locator('#sheetForm [data-act=delVol]').click();
+   const cf=await pg.evaluate(()=>({h:$('#sheetTitle').textContent,p:$('#sheetForm p').textContent,b:$('#sheetForm button.danger').textContent}));
+   ok(cf.h==='Delete volume?' && cf.p==='Bali 2026 and all its expenses and payments will be removed from this phone. Anyone you shared it with keeps their copy.' && cf.b==='Delete','LP-8: Delete asks first, plainly '+JSON.stringify(cf));
+   await pg.locator('#sheetForm button.danger').click();
+   const dl=await pg.evaluate(id=>({there:S.volumes.some(v=>v.id===id),gone:S.gone.includes(id),stored:JSON.parse(localStorage.getItem('hati2.mock.v1')).gone.includes(id),toast:$('.toast').textContent,undo:!!$('.toast button.undo'),hidden:$('.toast').getAttribute('aria-hidden')}),baliId);
+   ok(!dl.there && dl.gone && dl.stored && dl.toast==='Volume deletedUndo' && dl.undo && dl.hidden===null,'LP-8: Delete removes it, stores a tombstone, and the toast offers a real Undo button '+JSON.stringify(dl));
+   await pg.locator('.toast button.undo').click();
+   ok(await pg.evaluate(([b,id])=>S.volumes.map(v=>v.id).join()===b && !S.gone.includes(id) && document.activeElement===$(`.vol[data-id="${id}"]`),[before,baliId]),'LP-8: Undo puts it back in the same place, drops the tombstone, focuses it');
+   await pg.locator('.vol',{hasText:'Bali 2026'}).click({button:'right'}); await pg.locator('#sheetForm [data-act=delVol]').click(); await pg.locator('#sheetForm button.danger').click();
+   await pg.waitForTimeout(6600);
+   ok(await pg.locator('.toast').count()===0,'LP-8: the Undo toast is gone after about 6 s');
+   await pg.reload(); ok(await pg.evaluate(id=>!S.volumes.some(v=>v.id===id) && S.gone.includes(id),baliId),'LP-8: after a reload it stays deleted (tombstone kept)');
+   await pg.evaluate(()=>importSheet({restore:true})); await pg.fill('#s-paste',backup); await pg.locator('#s-go').click(); await pg.waitForTimeout(300);
+   const rt1=await pg.locator('#s-sum').innerText();
+   ok(/1 volume you deleted on this phone stays deleted/.test(rt1) && /merges 1 volume/i.test(rt1),'LP-8: restoring a backup that has it says it stays deleted: "'+rt1+'"');
+   await pg.waitForTimeout(500); await pg.locator('#s-go').click(); await pg.waitForFunction(()=>!sheetOpen(),null,{timeout:3000}).catch(()=>{});
+   ok(await pg.evaluate(id=>!S.volumes.some(v=>v.id===id),baliId),'LP-8: and the restore does not bring it back');
+   ok(await pg.evaluate(()=>{ const v=exampleVolume(), raw=JSON.parse(localStorage.getItem('hati2.mock.v1')); raw.volumes.push({...v,id:raw.gone[0]}); return normalize(raw).volumes.every(x=>!raw.gone.includes(x.id)); }),'LP-8: a stored copy of a deleted volume (another tab, an old write) is dropped on load');
+   // LP-9 reduced motion: no ink fill, the hold still works
+   { const Q=await mk({reducedMotion:'reduce'}); await Q.pg.locator('.vol').first().hover(); await Q.pg.mouse.down(); await Q.pg.waitForTimeout(150);
+     const rm=await Q.pg.evaluate(()=>({cls:$('.vol').classList.contains('holding'),an:document.getAnimations().length}));
+     await Q.pg.waitForTimeout(450); const op=await sheetState(Q.pg); await Q.pg.mouse.up(); await Q.pg.waitForTimeout(200);
+     ok(!rm.cls && rm.an===0 && op.open && (await sheetState(Q.pg)).view==='hub','LP-9: reduced motion: no ink fill or animation, the hold still opens the sheet '+JSON.stringify(rm));
+     ok(Q.e.length===0,'LP-9: no page errors '+JSON.stringify(Q.e)); await Q.c.close(); }
+   ok(P.e.length===0,'LP: no page errors '+JSON.stringify(P.e)); await P.c.close();
+   // LP-10 two phones (mocked sync server): archive is per phone and sends nothing; delete leaves the room, nothing comes back; Undo rejoins
+   { const A=await mk({...devices['Pixel 7']},true), B=await mk({},true);
+     const addExp=async (pg,desc,amt)=>{ await pg.getByRole('button',{name:/Add expense/}).click(); await pg.fill('#f-amount',amt); await pg.fill('#f-desc',desc); await pg.locator('#expForm button[type=submit]').click(); await pg.waitForFunction(()=>ui.view==='volume' && !!$('.hero')); };
+     await A.pg.locator('[data-act=newVolume]').click(); await A.pg.fill('#s-title','Lake'); await A.pg.fill('#s-me','Ana'); await A.pg.fill('#s-others','Ben'); await A.pg.locator('#sheetForm button.primary').click();
+     await addExp(A.pg,'Cabin','200');
+     await A.pg.locator('.acts [data-act=share]').click(); await A.pg.waitForSelector('#s-link',{state:'attached'});
+     const link=await A.pg.locator('#s-link').inputValue(), room=link.split('#join=')[1].split('.')[0]; await A.pg.keyboard.press('Escape');
+     await B.pg.goto(link); await B.pg.waitForSelector('#s-who'); await B.pg.selectOption('#s-who',{label:'Ben'}); await B.pg.getByRole('button',{name:'Join'}).click();
+     await B.pg.waitForFunction(()=>$('#syncTag') && $('#syncTag').textContent==='Synced',null,{timeout:5000}).catch(()=>{});
+     const lakeId=await A.pg.evaluate(()=>ui.volId); await toHub(A.pg); await A.pg.waitForTimeout(400);
+     const puts0=mock.puts.length;
+     await A.pg.locator('.vol',{hasText:'Lake'}).click({button:'right'}); await A.pg.locator('#sheetForm [data-act=archive]').click(); await A.pg.waitForTimeout(800);
+     ok(mock.puts.length===puts0 && await A.pg.evaluate(id=>!!S.volumes.find(v=>v.id===id).archived,lakeId) && await B.pg.evaluate(()=>!vol().archived),'LP-10: archiving on one phone sends nothing and the other phone keeps it unarchived (per-phone)');
+     await addExp(B.pg,'Boat','60');
+     const got=await A.pg.waitForFunction(id=>{ const v=S.volumes.find(x=>x.id===id); return v && v.expenses.some(e=>e.desc==='Boat'); },lakeId,{timeout:5000}).then(()=>true,()=>false);
+     ok(got && await A.pg.evaluate(id=>!!S.volumes.find(v=>v.id===id).archived,lakeId),'LP-10: an archived volume still receives live changes and stays archived');
+     const blob=mroom(room).blob, plain=await A.pg.evaluate(async([r,k,bl])=>JSON.stringify(await unseal(r,k,bl)),[room,link.split('.').pop(),blob]);
+     ok(!/archived/.test(plain),'LP-10: the encrypted copy on the server has no archived flag');
+     if (!(await A.pg.evaluate(()=>$('#archBox').open))) await A.pg.locator('#archBox summary').click();
+     await A.pg.locator('.vol.arch').click({button:'right'}); await A.pg.locator('#sheetForm [data-act=delVol]').click(); await A.pg.locator('#sheetForm button.danger').click();
+     ok(await A.pg.evaluate(id=>!SY[id] && !JSON.parse(localStorage.getItem('hati2.sync.v1')||'{}')[id] && S.gone.includes(id),lakeId),'LP-10: deleting leaves the sync room on this phone (tombstone kept)');
+     await A.pg.locator('.toast button.undo').click(); await A.pg.waitForTimeout(300);
+     ok(await A.pg.evaluate(([id,r])=>!!S.volumes.find(v=>v.id===id) && SY[id] && SY[id].room===r,[lakeId,room]),'LP-10: Undo brings the volume back into the same room');
+     await addExp(B.pg,'Fuel stop','15');
+     const back=await A.pg.waitForFunction(id=>{ const v=S.volumes.find(x=>x.id===id); return v && v.expenses.some(e=>e.desc==='Fuel stop'); },lakeId,{timeout:5000}).then(()=>true,()=>false);
+     ok(back,'LP-10: after Undo, live changes arrive again');
+     await A.pg.evaluate(()=>{ if (!$('#archBox').open) $('#archBox summary').click(); });
+     await A.pg.locator('.vol.arch').click({button:'right'}); await A.pg.locator('#sheetForm [data-act=delVol]').click(); await A.pg.locator('#sheetForm button.danger').click(); await A.pg.waitForTimeout(6600);
+     await addExp(B.pg,'Ice cream','4'); await A.pg.waitForTimeout(1500);
+     ok(await A.pg.evaluate(id=>!S.volumes.some(v=>v.id===id),lakeId) && await A.pg.evaluate(()=>!document.body.innerText.includes('Lake')),'LP-10: once deleted, a live change from the other phone does not bring it back');
+     await A.pg.reload(); await A.pg.waitForTimeout(800);
+     ok(await A.pg.evaluate(id=>!S.volumes.some(v=>v.id===id),lakeId) && await B.pg.evaluate(()=>vol().expenses.length===4),'LP-10: nor does a reload; the other phone keeps the volume with all 4 expenses');
+     const bc=[...A.e,...B.e]; ok(bc.length===0,'LP-10: no page errors '+JSON.stringify(bc)); await A.c.close(); await B.c.close(); }
+ }
+ // CAT (hati-design + hati-copy): 12 categories for trips and households, one tap, readable at 320, old ids kept
+ { const c=await b.newContext({...devices['iPhone 13']}); await c.addInitScript(noSync); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())});
+   await pg.goto(URL);
+   const cats=await pg.evaluate(()=>({ids:CATEGORIES.map(c=>c[0]),labels:CATEGORIES.map(c=>c[1]),icons:CATEGORIES.map(c=>CAT_ICON[c[0]])}));
+   ok(JSON.stringify(cats.labels)==='["Eating out","Groceries","Drinks","Transport","Fuel","Stay & rent","Fun","Shopping","Bills","Health","Gifts","Other"]','CAT: the 12 categories '+cats.labels.join(', '));
+   ok(['food','transport','entertainment','utilities','shopping','other'].every(id=>cats.ids.includes(id)),'CAT: the six original ids are still categories (old data, links, older phones)');
+   ok(cats.icons.every(s=>/^<svg viewBox="0 0 24 24"><path d="[^"]+"\/>/.test(s)) && new Set(cats.icons).size===12,'CAT: every category has its own 24px ink-line icon');
+   const un=await pg.evaluate(()=>{ const v=exampleVolume(); v.expenses[0].category='pets'; v.expenses[1].category='groceries'; const cl=cleanVolume(v); S.volumes.unshift(cl); save(); ui.volId=cl.id; go('volume');
+     return {pets:cl.expenses[0].category,gro:cl.expenses[1].category,bars:[...document.querySelectorAll('.bars .row span')].map(x=>x.textContent),icon:CAT_ICON.other.includes(document.querySelector('.tx[data-id="'+cl.expenses[0].id+'"] .tx-ic path').getAttribute('d'))}; });
+   ok(un.pets==='other' && un.gro==='groceries' && un.icon && un.bars.includes('Other') && un.bars.includes('Groceries') && new Set(un.bars).size===un.bars.length,'CAT: an unknown id reads as Other (icon and summary), a new id is kept; the summary has one row per category '+JSON.stringify(un));
+   const mg=await pg.evaluate(()=>{ const v=S.volumes[0], o=JSON.parse(JSON.stringify(v)); v.expenses[1].upd=5; o.expenses[1].upd=5; o.expenses[1].category='other';
+     const a=mergeVolumes(v,o).vol.expenses[1].category; o.expenses[1].upd=6; const b=mergeVolumes(v,o).vol.expenses[1].category; return [a,b]; });
+   ok(mg[0]==='groceries' && mg[1]==='other','CAT: an older phone sending a new category back as Other (same edit time) does not overwrite it; a newer edit does '+JSON.stringify(mg));
+   for (const w of [320,360,390]) for (const mode of ['light','dark']) {
+     await pg.setViewportSize({width:w,height:780});
+     const r=await pg.evaluate(m=>{ S.settings.mode=m; applyTheme(); ui.volId=S.volumes[0].id; ui.view='volume'; openExpense(null); const g=$('.cats'), cs=[...g.querySelectorAll('.cat')];
+       return {cols:getComputedStyle(g).gridTemplateColumns.split(' ').length,h:Math.round(g.getBoundingClientRect().height),cut:cs.filter(x=>x.scrollWidth>x.clientWidth+1||x.scrollHeight>x.clientHeight+1).map(x=>x.textContent),minH:Math.min(...cs.map(x=>x.getBoundingClientRect().height)),minW:Math.min(...cs.map(x=>x.getBoundingClientRect().width)),font:parseFloat(getComputedStyle(cs[0]).fontSize),pageX:document.documentElement.scrollWidth<=innerWidth}; },mode);
+     ok(r.cols===(w<350?3:4) && r.cut.length===0 && r.minH>=44 && r.minW>=44 && r.font>=12.5 && r.h<=(w<350?280:220) && r.pageX,`CAT: ${w}px ${mode}: ${r.cols} across, all 12 readable (≥12.5px, nothing cut), targets ≥44px, grid ${r.h}px tall, no sideways scroll `+JSON.stringify(r));
+   }
+   await pg.setViewportSize({width:390,height:844});
+   await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); });
+   await pg.getByRole('button',{name:/Add expense/}).click();
+   ok(await pg.locator('.cat[aria-pressed=true]').innerText()==='Eating out','CAT: a volume with no saved expense starts on Eating out');
+   await pg.fill('#f-amount','12'); await pg.fill('#f-desc','Milk'); await pg.locator('.cat',{hasText:'Groceries'}).click();
+   ok(await pg.locator('.cat[aria-pressed=true]').innerText()==='Groceries','CAT: one tap picks a category');
+   await pg.locator('#expForm button[type=submit]').click(); await pg.waitForFunction(()=>ui.view==='volume');
+   await pg.getByRole('button',{name:/Add expense/}).click();
+   ok(await pg.locator('.cat[aria-pressed=true]').innerText()==='Groceries','CAT: the next new expense in this volume starts on the last category used (Groceries)');
+   await pg.reload(); ok(await pg.locator('.cat[aria-pressed=true]').innerText()==='Groceries','CAT: remembered after a reload');
+   await pg.evaluate(()=>{ sessionStorage.clear(); ui.volId=S.volumes[1].id; go('volume'); openExpense(null); });
+   ok(await pg.locator('.cat[aria-pressed=true]').innerText()==='Eating out','CAT: another volume keeps its own (Eating out)');
+   ok(e.length===0,'CAT: no page errors '+JSON.stringify(e)); await c.close(); }
  // M (hati-motion, owner: "go all out with the animation, but make it still fast and optimized"): manga motion on every
  // change, all inside the timing tokens, transform/opacity/clip-path only, nothing at all under reduced motion, taps never
  // wait, rapid navigation ends in the right state, and a 4x-throttled CPU keeps long tasks out of the animation.
@@ -1113,8 +1355,8 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await pg.locator('[data-act=settle]').click(); await pg.keyboard.press('Escape'); await pg.locator('[data-act=volMenu]').click(); await pg.keyboard.press('Escape');
    await pg.locator('[data-act=history]').first().click(); await pg.locator('[data-act=back]').click();
    await pg.waitForTimeout(500);
-   const fin=await pg.evaluate(()=>({view:ui.view,route:parseHash().view,h1:$('#app h1').textContent,title:vol()&&vol().title,ghosts:document.querySelectorAll('.ghost').length+Object.keys(ghosts).length,sheet:sheetOpen(),inert:$('#app').inert,nav:$('#nav [aria-current]').textContent,hist:depth()}));
-   ok(fin.view==='volume' && fin.route==='volume' && fin.h1===fin.title && fin.ghosts===0 && !fin.sheet && !fin.inert && fin.nav==='Volumes','M: after rapid taps, Back and Forward the app ends on the right screen with no ghost or sheet left '+JSON.stringify(fin));
+   const fin=await pg.evaluate(()=>({view:ui.view,route:parseHash().view,h1:$('#app h1').textContent,title:vol()&&vol().title,ghosts:document.querySelectorAll('.ghost').length+Object.keys(ghosts).length,sheet:sheetOpen(),inert:$('#app').inert,nav:!!document.querySelector('#nav, nav, .nav'),hist:depth()}));
+   ok(fin.view==='volume' && fin.route==='volume' && fin.h1===fin.title && fin.ghosts===0 && !fin.sheet && !fin.inert && !fin.nav,'M: after rapid taps, Back and Forward the app ends on the right screen with no ghost or sheet left '+JSON.stringify(fin));
    // an interrupted sheet: close and open another at once; one sheet, focus in it, nothing left behind
    await pg.evaluate(()=>{ settleSheet(null); closeSheet(); volMenuSheet(); }); await pg.waitForTimeout(400);
    const sh=await pg.evaluate(()=>({n:$('#layer').children.length,title:$('#sheetTitle').textContent,focus:$('#sheetForm').contains(document.activeElement),ghosts:document.querySelectorAll('.ghost').length}));

@@ -13,13 +13,34 @@ android {
         applicationId = "com.hativ2.web"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        // CI run number, so every published APK is newer than the last and
+        // installs as an update. Local builds stay at 1.
+        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionName = "1.0.$versionCode"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // One fixed key for every published build. The CI runner's default debug key
+    // is new on each run, and Android refuses to update an app signed with another
+    // key. CI writes the key from the HATI_KEYSTORE_B64 secret to the file named in
+    // HATI_KEYSTORE; local builds without it use the usual debug key.
+    val fixedKey = System.getenv("HATI_KEYSTORE")?.let { file(it) }?.takeIf { it.exists() }
+    signingConfigs {
+        if (fixedKey != null) {
+            create("hati") {
+                storeFile = fixedKey
+                storePassword = System.getenv("HATI_KEYSTORE_PASSWORD")?.trim()
+                keyAlias = "hati"
+                keyPassword = System.getenv("HATI_KEYSTORE_PASSWORD")?.trim()
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            if (fixedKey != null) signingConfig = signingConfigs.getByName("hati")
+        }
         release {
             // A thin WebView shell: nothing worth shrinking, and R8 must not strip
             // the @JavascriptInterface bridge.

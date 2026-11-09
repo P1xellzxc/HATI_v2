@@ -48,7 +48,7 @@ const MODE = arg('--mode', 'light'), WIDTH = +arg('--width', 390);
         }
       });
       // 5. Tap targets under 44px and text truncated by accident.
-      document.querySelectorAll('#app button, #app a, #app input, #app select, #nav button').forEach(el => {
+      document.querySelectorAll('#app button, #app a, #app input, #app select').forEach(el => {
         const r = box(el); if (r.width && (r.height < 44 && !el.matches('input[type=checkbox]'))) F.push(`small tap target ${Math.round(r.width)}×${Math.round(r.height)} ${name(el)}`);
       });
       document.querySelectorAll('#app *').forEach(el => {
