@@ -30,9 +30,9 @@ android {
         if (fixedKey != null) {
             create("hati") {
                 storeFile = fixedKey
-                storePassword = System.getenv("HATI_KEYSTORE_PASSWORD")
+                storePassword = System.getenv("HATI_KEYSTORE_PASSWORD")?.trim()
                 keyAlias = "hati"
-                keyPassword = System.getenv("HATI_KEYSTORE_PASSWORD")
+                keyPassword = System.getenv("HATI_KEYSTORE_PASSWORD")?.trim()
             }
         }
     }

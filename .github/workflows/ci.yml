@@ -106,9 +106,18 @@ jobs:
       - name: Write the fixed APK signing key
         env:
           HATI_KEYSTORE_B64: ${{ secrets.HATI_KEYSTORE_B64 }}
+          HATI_KEYSTORE_PASSWORD: ${{ secrets.HATI_KEYSTORE_PASSWORD }}
         run: |
           if [ -n "$HATI_KEYSTORE_B64" ]; then
-            printf %s "$HATI_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/hati.keystore"
+            # Pasting into the secrets form can add line breaks or spaces: drop them.
+            if ! printf %s "$HATI_KEYSTORE_B64" | tr -d ' \r\n\t' | base64 -d > "$RUNNER_TEMP/hati.keystore" 2>/dev/null; then
+              echo "::error::HATI_KEYSTORE_B64 is not valid base64 ($(printf %s "$HATI_KEYSTORE_B64" | tr -d ' \r\n\t' | wc -c) characters after removing whitespace; expected 3484). Paste the whole file again."
+              exit 1
+            fi
+            if ! keytool -list -keystore "$RUNNER_TEMP/hati.keystore" -storepass "$(printf %s "$HATI_KEYSTORE_PASSWORD" | tr -d ' \r\n\t')" -alias hati >/dev/null 2>&1; then
+              echo "::error::The key in HATI_KEYSTORE_B64 does not open with HATI_KEYSTORE_PASSWORD (or is cut short). Paste both secrets again."
+              exit 1
+            fi
             echo "HATI_KEYSTORE=$RUNNER_TEMP/hati.keystore" >> "$GITHUB_ENV"
           else
             echo "::warning::HATI_KEYSTORE_B64 is not set: the web APK uses a throwaway key and won't install as an update."
