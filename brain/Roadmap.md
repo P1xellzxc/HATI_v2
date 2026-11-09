@@ -167,3 +167,9 @@ Facts from the code (`web/src/app.src.html`) behind the debate:
 - **Rejected in this pass:** custom ₱ keypad, amount arithmetic, haptics, remember-last-payer, `<datalist>`.
 
 **Judge (hati-goal-judge):** G2 served most (D1–D4 hit the household's daily jobs, nothing new to learn); G1 kept (no iOS-only or Android-only behavior, haptics cut for that reason); G3 kept (sheets and ledgers, no tiles, no new motion).
+
+
+### D0 · Designed pickers (owner, 2026-11-09), ranked first in the depth backlog
+Replace all 7 native `<select>`s with the app's own controls: a segmented clay row for ≤4 short options, otherwise an in-app ink sheet list. Owners: hati-design + hati-code (a11y, lazy-check, ios). Size M.
+- **Accept:** no `<select>` left in app.src.html; payer is one tap for 2–4 members; keyboard (arrows, Enter, Esc) and screen reader (role, name, checked state) pass; 44px targets; light and dark in all 13 palettes, contrast ≥4.5; slop 0; pixel.js clean at 320/360/390; values and saves are identical to before (e2e for every form that used a select).
+- **Order:** Next becomes D8 (with N4), **D0**, D1+D7, D2, D3, D4, X2, X1, D5, D6.
