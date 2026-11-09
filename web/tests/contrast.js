@@ -5,12 +5,15 @@ const URL = process.env.URL || 'http://127.0.0.1:8765/';
 (async () => {
   const b = await chromium.launch(); const p = await (await b.newContext({ ...devices['iPhone 13'] })).newPage();
   await p.goto(URL);
+  // An archived volume too (the Archived shelf open on the hub, and its read-only page as view 'archived')
+  await p.evaluate(() => { const a = exampleVolume(); a.title = 'Archived trip'; a.archived = Date.now(); S.volumes.push(a); ui.archOpen = true; });
   const ids = await p.evaluate(() => PALETTES.map(x => x.id));
   let worst = [], fail = false;
-  for (const id of ids) for (const mode of ['light', 'dark']) for (const view of ['hub', 'volume', 'expense', 'settings']) {
+  for (const id of ids) for (const mode of ['light', 'dark']) for (const view of ['hub', 'volume', 'expense', 'settings', 'archived']) {
     const res = await p.evaluate(([id, mode, view]) => {
       S.settings.palette = id; S.settings.mode = mode; applyTheme();
       if (view === 'expense') { ui.volId = S.volumes[0].id; ui.view = 'volume'; openExpense(null); }
+      else if (view === 'archived') { ui.volId = S.volumes.find(v => v.archived).id; go('volume'); }
       else { if (view !== 'hub' && view !== 'settings') ui.volId = S.volumes[0].id; go(view); }
       const parse = c => { const m = c.match(/[\d.]+/g); if (!m) return [0, 0, 0, 0]; const n = m.map(Number); if (/^color\(srgb/.test(c)) { n[0] *= 255; n[1] *= 255; n[2] *= 255; } return n; }; // color-mix() computes to color(srgb r g b [/ a]) with 0..1 channels
       const lin = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
