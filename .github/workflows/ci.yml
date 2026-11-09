@@ -103,7 +103,20 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug
 
+      - name: Write the fixed APK signing key
+        env:
+          HATI_KEYSTORE_B64: ${{ secrets.HATI_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$HATI_KEYSTORE_B64" ]; then
+            printf %s "$HATI_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/hati.keystore"
+            echo "HATI_KEYSTORE=$RUNNER_TEMP/hati.keystore" >> "$GITHUB_ENV"
+          else
+            echo "::warning::HATI_KEYSTORE_B64 is not set: the web APK uses a throwaway key and won't install as an update."
+          fi
+
       - name: Build web app APK (debug)
+        env:
+          HATI_KEYSTORE_PASSWORD: ${{ secrets.HATI_KEYSTORE_PASSWORD }}
         run: ./gradlew :webapk:assembleDebug
 
       - name: Build release APK
@@ -149,8 +162,15 @@ jobs:
         run: |
           set -euo pipefail
           f=$(ls apk/*.apk | head -1)
+          # Only publish an APK signed with the fixed key; anything else can't
+          # update the app already on a phone.
+          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner"
+          if ! "$apksigner" verify --print-certs "$f" | grep -q "CN=HATI2"; then
+            echo "::error::APK is not signed with the HATI2 key (set the HATI_KEYSTORE_B64 and HATI_KEYSTORE_PASSWORD secrets). Not publishing."
+            exit 1
+          fi
           cp "$f" HATI2.apk
-          notes="Debug-signed APK of the HATI² web app, built from ${GITHUB_SHA::7}. On your Android phone: open this page, download HATI2.apk, and allow installs from your browser when asked."
+          notes="APK of the HATI² web app, built from ${GITHUB_SHA::7}. On your Android phone: open this page, download HATI2.apk, and allow installs from your browser when asked."
           if gh release view latest >/dev/null 2>&1; then
             gh release edit latest --title "HATI² (latest build)" --notes "$notes" --prerelease
             gh release upload latest HATI2.apk --clobber
