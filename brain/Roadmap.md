@@ -192,10 +192,24 @@ Done when data-io.js has new checks for all three and CI is green.
 
 **Block 3: dates (N5).** "Today / Yesterday / Pick a date" on the expense form, plus a History "Set date" mode for several selected rows. That fixes the owner's imported Bebetime data, which has every date set to today. Done when e2e covers multi-row set date and the date never changes money.
 
-**Block 4: faster repeat entry (D1 + D7).** The last 3 descriptions as buttons (filling category and split), a "Last time ₱…" hint, and a one-tap payer using the D0 control. The extra centavo goes to the payer and the preview shows it (money-parity signs off, including the Kotlin check). Done when a repeat meal takes 4 taps or fewer in the scenario test.
+**Block 4: faster repeat entry (D1 + D7 + D9 paste a receipt).** The last 3 descriptions as buttons (filling category and split), a "Last time ₱…" hint, and a one-tap payer using the D0 control. The extra centavo goes to the payer and the preview shows it (money-parity signs off, including the Kotlin check). Done when a repeat meal takes 4 taps or fewer in the scenario test.
 
 **Block 5: if there's budget left (X2, then X1).** Month headings in History, then the At-a-glance panel using the owner's chosen stacked-strip layout. The mock was local to the 2026-11-09 session; redraw it from the X1 spec.
 
 **End of every block:** PR → CI green → merge → verify the release says "built from <merge sha>" → send the APK. It installs as an update (fixed key). Update the "Session handoff" entry in the Team log.
 
 **Owner to-dos (no code):** the N2 two-phone sync check (Pages link on the iPhone and the APK on Android: add, go offline, reconnect), and fixing the Bebetime dates after Block 3.
+
+
+### D9 · Paste a receipt into the amount (owner, 2026-11-09)
+The owner chose this over OCR. Phones already copy text from photos (iPhone Live Text, Android Google Lens); the app only has to understand what's pasted. No OCR library, no photo stored, nothing new synced.
+**What the skills said:**
+- **money-parity:** parse into integer cents only. Accept "1,674.72", "₱334.13", "PHP 334.13" and "334.13". Reject anything over MAX_CENTS or unparseable. Never use floats.
+- **lazy-check:** paste and the amount is filled in one step. If there are several numbers, prefer the one after TOTAL / GRAND TOTAL / AMOUNT DUE / TOTAL DUE. Ignore CASH, CHANGE, VAT and SUBTOTAL lines. If it's still unclear, show up to 3 candidate amounts as one-tap chips and never guess silently.
+- **copy:** a quiet line under the field, "From paste: TOTAL ₱334.13". If no amount is found: "No amount found in what you pasted."
+- **code-audit:** handle huge pastes (cap at 20k chars), HTML and odd whitespace. The description is filled from the first text line only if it's still empty, and is editable.
+- **a11y:** the chips are real buttons, and the result line is announced (aria-live polite).
+- **ponytail:** no new screen or button; it hooks into the paste event of the existing amount field (plus the description field). One parser function with a unit table of real receipts.
+- **design / slop:** chips use the existing clay chip style; nothing new visually.
+**Accept:** a parser table of ≥20 real-style receipt texts (PH formats: Jollibee/Chowking/Grab/GCash), including CASH and CHANGE traps, gives the right cents. e2e: paste into the amount on desktop and in Android/iOS emulation fills it; ambiguous text shows chips; garbage shows the message and changes nothing.
+**Slot:** Block 4 of the weekend plan, with D1+D7 (same form). Size S–M. Owner: hati-code, with hati-money-parity.
