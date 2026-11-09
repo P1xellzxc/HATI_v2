@@ -879,7 +879,7 @@ const views = {
 
 function splitRow(v, m) {
   const f = ui.form, on = f.include[m.id], t = f.splitType;
-  const inp = t === "equal" ? "" : `<span class="split-in"><input class="input num" data-in="${esc(m.id)}" inputmode="decimal" aria-label="${esc(meName(v, m.id))} ${t}" value="${esc(f.inputs[m.id] || "")}" ${on ? "" : "disabled"}>${t === "percent" ? "%" : t === "shares" ? "×" : ""}</span>`;
+  const inp = t === "equal" ? "" : `<span class="split-in"><input class="input num" data-in="${esc(m.id)}" inputmode="decimal" maxlength="20" aria-label="${esc(meName(v, m.id))} ${t}" value="${esc(f.inputs[m.id] || "")}" ${on ? "" : "disabled"}>${t === "percent" ? "%" : t === "shares" ? "×" : ""}</span>`;
   return `<label class="split-row${t === "equal" ? "" : " typed"}"><input type="checkbox" data-inc="${esc(m.id)}" ${on ? "checked" : ""}>
     <span class="row grow">${avatar(v, m.id)}<span class="ellip">${esc(meName(v, m.id))}</span></span>
     <span class="row">${inp}<span class="share num" data-share="${esc(m.id)}"></span></span></label>`;
@@ -1114,7 +1114,12 @@ function volMenuSheet() {
 // others, so they are asked for their name once before the link is made.
 const nameless = v => { const m = v.members.find(x => x.id === v.meId); return !m || /^me$/i.test(m.name); };
 const sendFn = () => typeof navigator.share === "function" ? d => navigator.share(d)
-  : window.HatiAndroid && typeof HatiAndroid.share === "function" ? d => { HatiAndroid.share(d.url || d.text); return Promise.resolve(); } : null;
+  : window.HatiAndroid && typeof HatiAndroid.share === "function" ? d => {
+    // Android hands the text over in one Binder call (1 MB, 2 bytes a character); a bigger one crashes the app,
+    // so a long code is copied instead (the caller's fallback).
+    const t = d.url || d.text; if (t.length > ANDROID_SHARE_MAX) return Promise.reject(new Error("too long to share"));
+    HatiAndroid.share(t); return Promise.resolve(); } : null;
+const ANDROID_SHARE_MAX = 100000;
 const countLine = v => `${plural(v.members.length, "member")} · ${plural(v.expenses.length, "expense")} · ${plural(v.settlements.length, "payment")}`;
 let shareLink = "";
 function nameFirstSheet(v) {
@@ -1222,7 +1227,7 @@ async function readInvite(payload) {
   let text;
   try { text = await inflateCapped(unb64url(payload), JOIN_OUT_MAX); } catch (e) { return { error: JOIN_BROKEN }; }
   const p = text === null ? null : parseCode(text);
-  return p && p.volume ? p : { error: JOIN_BROKEN };
+  return p && p.volume ? p : { error: p && p.error === NEWER ? JOIN_NEWER : JOIN_BROKEN };
 }
 // A live invite: fetch the room's blob and decrypt it here. A wrong key reads as a broken link and changes nothing.
 async function readLiveInvite(room, key) {
@@ -1661,7 +1666,7 @@ function cleanVolume(x) {
     members: x.members.map(m => ({ id: m.id, name: m.name.trim(), upd: updOf(m.upd) })),
     expenses: x.expenses.map(e => ({ id: e.id, desc: e.desc.trim(), amount: e.amount, paidBy: e.paidBy, category: catOf(e.category)[0], date: e.date,
       splitType: ["equal", "exact", "percent", "shares"].includes(e.splitType) ? e.splitType : "exact",
-      splits: { ...e.splits }, inputs: Object.fromEntries(Object.entries(e.inputs && typeof e.inputs === "object" ? e.inputs : {}).filter(([k, v]) => x.members.some(m => m.id === k) && typeof v === "string" && v.length <= 12)),
+      splits: { ...e.splits }, inputs: Object.fromEntries(Object.entries(e.inputs && typeof e.inputs === "object" ? e.inputs : {}).filter(([k, v]) => x.members.some(m => m.id === k) && typeof v === "string" && v.length <= 20)),
       note: typeof e.note === "string" ? e.note : "", upd: updOf(e.upd) })),
     settlements: x.settlements.map(t => ({ id: t.id, from: t.from, to: t.to, amount: t.amount, date: t.date, upd: updOf(t.upd) })),
     deleted: [...new Set((x.deleted || []).filter(i => okId(i)))]
@@ -1723,16 +1728,19 @@ const mergeSummary = r => {
   return [say("Adds", r.added), say("Updates", r.updated), say("Removes", r.removed)].filter(Boolean).join(" ");
 };
 // Accepts a share code or a backup file, even with chat text around it.
+const NEWER = "This was made by a newer version of HATI². Update the app, then try again.", BACKUP_BAD = "This backup file can't be read.";
 function parseCode(text) {
   const t = String(text), a = t.indexOf("{"), b = t.lastIndexOf("}");
   let data;
   try { data = JSON.parse(t.slice(a, b + 1)); } catch (e) { return { error: "That code isn't valid. Copy the whole code and try again." }; }
   if (!data || data.app !== "hati2-mock") return { error: "This code doesn't contain a HATI² volume, or its totals don't add up." };
+  // A later format may hold more than this version knows; reading it anyway would drop that part without a word.
+  if (typeof data.v === "number" && data.v > 1) return { error: NEWER };
   if (data.kind === "backup") {
-    if (!Array.isArray(data.volumes) || !data.volumes.length || data.volumes.length > MAX_BACKUP) return { error: "This backup file can't be read." };
+    if (!Array.isArray(data.volumes) || !data.volumes.length || data.volumes.length > MAX_BACKUP) return { error: BACKUP_BAD };
     const vols = data.volumes.filter(validVolume).map(cleanVolume);
     const seen = new Set(), uniq = vols.filter(x => !seen.has(x.id) && seen.add(x.id));
-    if (!uniq.length) return { error: "This backup file can't be read." };
+    if (!uniq.length) return { error: BACKUP_BAD };
     return { backup: uniq, bad: data.volumes.length - vols.length };
   }
   if (!validVolume(data.volume)) return { error: "This code doesn't contain a HATI² volume, or its totals don't add up." };
@@ -1811,13 +1819,16 @@ function importVolume(p) {
   if (!save()) return sheetMsg(saveGone ? SAVE_GONE : "Couldn't save on this device. Nothing was changed.");
   link(nv.id); closeSheet(); ui.volId = nv.id; go("volume"); toast(mode === "new" ? `You joined ${nv.title}` : "Volume imported");
 }
+// A backup can't be bigger than what a phone's storage holds (about 5 MB), so a far bigger file is never read in.
+const FILE_MAX = 16 * 1024 * 1024;
+const fileError = (text, e) => !text.trim() ? "This file is empty." : e === NEWER || e === BACKUP_BAD ? e : "This file isn't a HATI² backup or share code.";
 function importSheet({ restore = false } = {}) {
-  let read = null;
+  let read = null, fromFile = false;
   const help = restore ? "Open the backup file you saved, or paste what's in it, then tap <b>Check code</b>." : "Someone shared a volume with you? Paste the link or code they sent, then tap <b>Check code</b>.";
   sheet(`<h2>${restore ? "Restore backup" : "Import volume"}</h2><div class="stack">
     <p class="small" id="s-help" style="margin:0">${help}</p>
     <div class="field"><label for="s-paste">${restore ? "Backup" : "Invite link or share code"}</label><textarea id="s-paste" class="input" rows="4" placeholder="Long-press here and tap Paste" autocomplete="off" spellcheck="false"></textarea></div>
-    <div class="row filepick"><span class="muted small grow">${restore ? "Saved a backup file?" : "Got a file or a backup instead?"}</span><label class="btn ${restore ? "primary" : "quiet"}" for="s-file">Open file</label><input id="s-file" type="file" accept=".json,application/json,text/plain" class="sr"></div>
+    <div class="row filepick"><span class="muted small grow">${restore ? "Saved a backup file?" : "Got a file or a backup instead?"}</span><label class="btn ${restore ? "primary" : "quiet"}" for="s-file">Open file</label><input id="s-file" type="file"${window.HatiAndroid ? "" : ` accept="application/json,.json,text/plain"`} class="sr"></div>
     <div id="s-pick"></div>
     <div class="msg" id="sheetMsg" role="alert"></div>
     <div class="btns"><button type="button" class="btn quiet" data-act="closeSheet">Cancel</button><button class="btn primary" id="s-go">Check code</button></div></div>`,
@@ -1827,7 +1838,7 @@ function importSheet({ restore = false } = {}) {
       const p = jp === null ? parseCode(text) : read && read.text === text ? read.p : (read = { text, p: await readInvite(jp) }).p;
       const pick = $("#s-pick");
       if (!pick || $("#s-paste").value !== text) return; // closed or edited while the link was read
-      if (p.error) return sheetMsg(p.error);
+      if (p.error) return sheetMsg(fromFile && jp === null ? fileError(text, p.error) : p.error);
       if (!pick.innerHTML) {
         if (p.backup) {
           const plan = backupPlan(p);
@@ -1847,10 +1858,11 @@ function importSheet({ restore = false } = {}) {
       }
       importVolume(p);
     });
-  $("#s-paste").addEventListener("input", () => { $("#s-pick").innerHTML = ""; $("#s-go").textContent = "Check code"; $("#s-help").innerHTML = help; sheetMsg(""); });
+  $("#s-paste").addEventListener("input", () => { fromFile = false; $("#s-pick").innerHTML = ""; $("#s-go").textContent = "Check code"; $("#s-help").innerHTML = help; sheetMsg(""); });
   $("#s-file").addEventListener("change", ev => {
-    const file = ev.target.files[0]; if (!file) return;
-    const rd = new FileReader(); rd.onload = () => { $("#s-paste").value = String(rd.result); $("#s-paste").dispatchEvent(new Event("input")); }; rd.readAsText(file);
+    const file = ev.target.files[0]; ev.target.value = ""; if (!file) return;
+    if (file.size > FILE_MAX) { $("#s-paste").value = ""; $("#s-paste").dispatchEvent(new Event("input")); return sheetMsg("This file is too big to be a HATI² backup."); }
+    const rd = new FileReader(); rd.onload = () => { $("#s-paste").value = String(rd.result); $("#s-paste").dispatchEvent(new Event("input")); fromFile = true; }; rd.readAsText(file);
   });
 }
 
