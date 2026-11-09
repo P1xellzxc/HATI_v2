@@ -112,3 +112,58 @@ Ship as two rounds: A = N1, N2, N3 (no data-shape change); B = N4, N5.
 - **G2 (real use):** served. N4 stops a silent fork after a restore and N5 makes the dates true, which At a glance (X1), the month view (X2) and every "when did we pay that" question need; X1 answers the owner's "where does our money go" at a glance and X2–X6 are the household's everyday jobs. Nothing touches balance math.
 - **G3 (not slop):** served by what was cut: no chart library, KPI tiles, donuts or emoji methods; the owner's dashboard is one ruled ink panel built from existing sections. X1 (the dashboard, highest slop risk), X2 and X4 must pass the slop rubric and pixel.js before ship.
 - **Criterion 1 (`web/test.sh` green) is unmet today:** N1 goes first, no exceptions.
+
+## Depth pass (2026-11-09)
+
+Owner: "What features to add more? Goal is to deepen the app, not broaden." Depth = the existing jobs done better: add an expense, see who owes whom, settle up, share/sync a volume, browse history, back up. No new feature areas, screens or integrations. Every skill proposed and challenged (one agent voicing them, per the owner's rule when usage is tight); [[hati-plan]] merged.
+
+Facts from the code (`web/src/app.src.html`) behind the debate:
+- New expense (`formFrom`, ~l.940): description empty, payer always `meId`, split always Equal, category = this volume's last category (`lastCat`). Nothing learns from "Chowking" or "House of Bagnet" repeating in Bebetime. A repeat meal Ivy paid: amount (1) + description (1) + category (1 unless last) + payer select (2) + Save (1) = 6 taps.
+- Settle-up sheet (`settleSheet`, ~l.1217): prefilled from the first suggested debt and the amount is editable, so partial payments already work in 2 taps. But the payment's date is always `today()` with no field, even on edit, and there is no method or reference.
+- Undo exists only for volume delete (`toast(t,{undo})`, ~l.1123). Deleting or editing an expense or payment is final.
+- Remote changes (`syncRun` merge, ~l.1590) only ink-mark new rows (`FX.fresh`); an edit from the other phone changes a number silently, and nothing says who changed it. The status tag says "Synced"/"Offline — will sync" with no time and no count of waiting changes.
+- `splitEqual` (~l.600) gives the extra centavo to members in list order, so on odd-centavo meals (₱334.13 → 167.07/167.06) the same person always carries it, and the preview doesn't say so.
+- `balances()` is a sum the user never sees: "You owe Ivy ₱1,240.55" has no way to show its parts.
+- Backup: no record of when the last one was made; the "Backup saved" toast can't confirm a save on the web (Later item).
+
+### Proposals and challenges (condensed)
+
+- **hati-lazy-check:** repeat entries are this couple's daily job; one tap on a past description should fill it. Challenged *ponytail* "remember last payer": for a couple the payer alternates, so remembering is wrong half the time; X4's one-tap payer switch fixes it without guessing. *Settled:* payer stays "you", X4 folded into D1.
+- **hati-code:** suggestions come from this volume's own expenses (most recent per normalized description, top 3 matches by prefix then frequency); no new data. Picking one fills description, category, and split type/weights when the same members are included.
+- **hati-money-parity:** a suggestion must never fill the amount (same-amount repeats are real, but a silent ₱334.13 on a ₱412 meal is a wrong balance nobody notices). *Lazy-check* objected (Bagnet repeats exactly); *settled:* the last amount shows as a tappable hint "Last time ₱334.13" beside the field, one extra tap, never auto-filled. Weights copied, cents recomputed by `splitWeighted`.
+- **hati-a11y / hati-ios:** no `<datalist>` (iOS Safari renders it poorly, VoiceOver reads it inconsistently) and no full combobox; up to 3 plain buttons under the field ("Chowking · Eating out"), results count to `#status`, 44 px targets.
+- **hati-sync:** D1, D3, D4, D6, D7, D8 change no data shape. D2 adds optional `method`, `ref` and an editable `date` on payments; D5 adds optional `by` (member id of the writing phone's `meId`) on expenses and payments. Both survive `cleanVolume`/`mergeVolumes` with the winning record; an older phone drops them, which only loses a label. `by` is a label, not proof (no accounts) — *code-audit* accepted that.
+- **hati-code-audit:** Undo of a delete must re-add through the normal write with a fresh `upd` and clear the tombstone, or the other phone keeps it deleted; undo of an edit writes the previous fields with a fresh `upd`. Repro required both ways across two contexts.
+- **hati-money-parity:** "why this balance" lines are the same integer-cent sums as `balances()`: paid − share + payments sent − payments received = balance, checked by fuzz. The centavo: rotate the extra cent to the payer when the payer is included, else list order. Debt math (`CalculateDebtsUseCase.kt`) reads stored splits, so parity is unchanged; splits still sum exactly.
+- **hati-design / hati-slop-rubric:** D4 is a sheet with a ruled ledger, not a new screen and not tiles; D5 is words in the toast and a small "edited by Ivy" in the row meta, no badges or avatars stacks.
+- **hati-copy:** "Last time ₱334.13"; "Ivy added Chowking · ₱412.00" / "Ivy changed 2 expenses"; "Synced 2 min ago" / "3 changes waiting"; "+₱0.01 goes to Ivy"; "Last backup 12 days ago"; "Backup ready. Check your Downloads." where saving can't be confirmed.
+- **hati-motion:** no new motion. Haptics (*proposed*) rejected: `navigator.vibrate` doesn't exist on iOS, so it splits G1 behavior; the existing press and stamp carry feedback.
+- **hati-ponytail:** cut a custom ₱ keypad (the native decimal keypad already works, a custom one is slop risk and an a11y cost); cut arithmetic in the amount field until asked; "Copy as new" (X6) is covered by D1 suggestions. Every D item needs a failing check first.
+- **hati-scenarios:** new budgets: "repeat Chowking, Ivy paid" ≤4 taps (from 6); "record yesterday's GCash payment" ≤4; "undo a wrong delete" 1 tap; "why do I owe Ivy" 1 tap from the volume page.
+- **hati-pixel-perfectionist:** suggestion buttons share the input's left edge and height; the "Last time" hint sits on the amount baseline; no layout shift when hints appear (reserved line).
+- **hati-ios:** the install path itself has no open defect (banner + standalone note exist); its depth is D8 (storage eviction makes backup trust matter most on iPhone). No separate item.
+- **hati-a11y:** accessibility depth is an acceptance line on every item below, not its own item.
+
+### Depth backlog (ranked)
+
+| # | Item | Owner | Size | Acceptance checks | Slot |
+|---|---|---|---|---|---|
+| D1 | **Add-expense learns from the volume**: up to 3 description suggestions from this volume's past expenses; a tap fills description, category and split type/weights; "Last time ₱…" hint fills the amount only when tapped; payer one-tap switch for ≤3 members (absorbs X4) | hati-code with hati-lazy-check, hati-a11y, hati-money-parity | M | Scenario "repeat Chowking, Ivy paid" ≤4 taps; amount never prefilled without a tap (e2e); copied weights give splits summing to the amount (fuzz); buttons reach by keyboard, count via `#status`; no new stored field; 16 px inputs | Next #1 (after Now round B) |
+| D2 | **Undo on every change**: delete and edit of expenses and payments get the toast Undo (absorbs X6's undo half) | hati-code with hati-sync, hati-code-audit | S | Delete → Undo restores and the other context gets it back (tombstone cleared, fresh `upd`); edit → Undo restores previous fields on both contexts; balances byte-identical to before | Next #2 |
+| D3 | **Payments recorded as they happened**: date field on the settle sheet (Today/Yesterday as in N5), optional method Cash/GCash/Bank/Other + ref ≤40 chars (absorbs X5) | hati-code with hati-copy, hati-sync | S | Edit keeps/changes date; fields survive reload, backup, merge, older-phone record; amount math untouched (money-parity fuzz unchanged); scenario "yesterday's GCash payment" ≤4 taps | Next #3 |
+| D4 | **Why this balance**: tap your balance or a member chip → sheet with that member's ledger: paid, share, payments sent, received = balance, then the entries behind it (newest first, 20 then "Show more") | hati-design + hati-code, with hati-money-parity, hati-a11y | M | Lines sum to `balances()` in cents for random volumes (fuzz); reuses X1's `glance(v)` pass; heading + list semantics; slop 0, ledger not tiles; 1 tap from volume page | Next #4 (before X1, shares its function) |
+| D5 | **Changes from the other phone in words**: arrival toast names who and what ("Ivy added Chowking · ₱412.00", "Ivy changed 2 expenses"); History row meta shows "edited by Ivy" when `by` ≠ you; optional `by` field | hati-sync with hati-copy, hati-code | M | Two-context e2e: add/edit/delete on B → A's toast names B's member and the item; older record without `by` shows no label; `cleanVolume` rejects a `by` that isn't a member; toast via `#status` | Next, after X1 |
+| D6 | **Sync status you can trust**: tag shows "Synced 2 min ago" / "3 changes waiting" / "Offline — 3 changes will sync" | hati-sync with hati-copy | S | Offline e2e: count rises per change, falls to 0 on reconnect; time updates without re-render jank; no new stored data | Next, after D5 |
+| D7 | **The extra centavo, fair and shown**: equal split gives the odd cent to the payer when included, else list order; preview says "+₱0.01 goes to Ivy" | hati-money-parity with hati-code, hati-copy | S | Splits sum exactly (fuzz 10k); preview text matches stored splits; old expenses untouched; Android debt parity test unchanged | Next #1, ships with D1 |
+| D8 | **Backup you can trust**: "Last backup N days ago" in Settings (this phone only, in `settings`), honest toast where saving can't be confirmed (promoted from Later) | hati-copy with hati-code, hati-ios | S | Line updates after a backup, survives reload, not synced, not in the backup; toast wording per platform; restore path unchanged | With N4 (round B) |
+
+### Order and what is demoted
+
+- **Now is unchanged** (N1–N5): perf, real two-phone check, K3, restore re-join, dates are all depth already.
+- **Next, new order:** D8 rides with N4 → D1 (+D7) → D2 → D3 → D4 → X2 → X1 → D5 → D6.
+- **Kept in Next:** X2 History by month (depth of browsing history). X1 At a glance stays (owner request, settled layout) but after D4, which builds the shared `glance(v)` function; its "spent over time" block is the one breadth-leaning part and must stay one ruled line pair, no chart growth.
+- **Folded in:** X4 → D1, X5 → D3, X6 Undo → D2.
+- **Demoted as breadth (to Later):** X6 "Copy as new" (a new action; D1 suggestions cover rent and bills), X3 Search and filter (a new control and index; for a 2-member volume month headings plus D4's per-member ledger answer "when did we pay that"; reopen when a volume passes ~300 items).
+- **Rejected in this pass:** custom ₱ keypad, amount arithmetic, haptics, remember-last-payer, `<datalist>`.
+
+**Judge (hati-goal-judge):** G2 served most (D1–D4 hit the household's daily jobs, nothing new to learn); G1 kept (no iOS-only or Android-only behavior, haptics cut for that reason); G3 kept (sheets and ledgers, no tiles, no new motion).
