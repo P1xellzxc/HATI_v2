@@ -1180,3 +1180,18 @@ Every decision goes to the skill whose specialty it is. That skill decides, logs
 - For @design-auditor / @pixel-perfectionist: score the options sheet, the hold wash, the Archived shelf and the 12-category grid at 320/360/390; the archived spine is plain `--sunk` paper on purpose.
 - For @code-auditor: risks to probe: an older phone downgrading a new category while also editing the same expense (then its newer edit wins, by design); `hati2.lastCat` keeps entries for deleted volumes (tiny, per phone).
 - Disagree: none.
+
+### Session handoff · 2026-11-09 (main session) — START HERE next session
+**Shipped to main (0a04c7b, PR #29):** Settings gear in the hub top bar (bottom nav removed); volume long-press sheet (Edit incl. members, Archive per phone, Delete per phone with Undo + `S.gone`); 12 expense categories (old ids kept); data-io tests (`web/tests/data-io.js`, 68 checks) + 6 import/export fixes; Save backup in the APK goes through `HatiAndroid.saveFile`; webapk K1/K2/K4; fixed APK signing key from secrets `HATI_KEYSTORE_B64`/`HATI_KEYSTORE_PASSWORD` (set and verified 2026-11-09), versionCode = run number; GitHub Pages on (main /docs). Earlier: live sync client + server, motion pass, dark redesign.
+
+**Owner state:** has an APK signed with an old throwaway key, so the first APK from the fixed key needs ONE uninstall. Their installed version's Save backup was broken, so they keep data via each volume's Share link. Every APK after that installs as an update.
+
+**Open, in priority order:**
+1. **Perf regression (blocks web/test.sh green).** On an idle machine 2 checks fail: "M-perf 4x CPU: hub to volume" (input task 57 ms, a 76 ms long task) and "volume to history (100 rows)" (177 ms vs 101 ms without motion, 30 fps). It was green at the motion pass (656b88f). Cause found by the perf agent (stopped for owner usage limits, unfinished): `#app[data-turn]` attribute selectors restyle every element on each screen change. Fix in progress: render() marks only the first 12 rows of each list with `.ink`/`.ink-l` instead of the #app attribute, plus `content-visibility:auto` on history rows after the 32nd. Unfinished, untested patch: `brain/WIP/perf-fix-wip.patch` (apply on 66d5095+). Finish it, bisect if the cause isn't only that (suspects 4f713ae nav removal, 4c418bb long-press/categories), run the full suite green twice, then ship as an update APK.
+2. K3: pending APK save is lost if Android kills the app during the save-as picker (MainActivity pendingSave). Saved state can't hold it (1 MB limit); consider a temp file in cacheDir.
+3. Desktop shows "Backup saved" even when the browser's Save dialog is cancelled (can't be detected with `<a download>`); on iPhone a non-cancel share failure falls back to download and still says saved.
+4. Restoring a backup doesn't carry live-sync rooms or keys (by design); after a reinstall the owner must reopen invite links to re-join. Consider a "re-share" hint (hati-sync).
+5. Live sync has never been tested against the real Worker (the sandbox can't reach workers.dev or github.io). Needs a two-phone check by the owner.
+6. Release signing for a store build (owner's call). The fixed key is a private debug-style key in repo secrets.
+
+**Process notes:** web tests don't run in CI (only Android jobs do); run `PORT=<free> bash web/test.sh <dir>` locally. Perf checks fail when agents run suites in parallel, so judge them only on an idle machine. CI on main publishes `latest/HATI2.apk`; verify the release body says "built from <merge sha>" before sending. The owner's usage limits matter: prefer fewer, larger agents.
