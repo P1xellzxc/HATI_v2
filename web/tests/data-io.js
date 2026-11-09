@@ -80,7 +80,7 @@ const TMP=fs.mkdtempSync(path.join(os.tmpdir(),'hati-dio-'));
 const stored=pg=>pg.evaluate(()=>JSON.stringify(normalize(JSON.parse(localStorage.getItem('hati2.mock.v1')))));
  const toastText=pg=>pg.evaluate(()=>[...document.querySelectorAll('.toast')].map(n=>n.textContent).join('|'));
  const clearToasts=pg=>pg.evaluate(()=>document.querySelectorAll('.toast').forEach(n=>n.remove()));
- const settings=async pg=>{ await pg.evaluate(()=>{ if (sheetOpen()) closeSheet(); }); await pg.locator('#nav [data-act=settings]').click(); };
+ const settings=async pg=>{ await pg.evaluate(()=>{ if (sheetOpen()) closeSheet(); go('hub'); }); await pg.locator('#app .topbar [data-act=settings]').click(); };
  // Save backup the way each platform does it; returns the file's name, type and text.
  const saveBackup=async P=>{ await settings(P.pg); await clearToasts(P.pg);
    if (P.kind==='desktop') { const [dl]=await Promise.all([P.pg.waitForEvent('download'),P.pg.locator('[data-act=backup]').click()]);

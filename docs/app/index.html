@@ -56,6 +56,10 @@
   --clay-sel: var(--clay-lo); /* shade inside the selected (inverted) .seg segment */
   /* Roles that dark mode sets apart; in light they equal what was there before */
   --off: var(--rule);            /* hard offset shadow */
+  /* Depth by rank (owner, direction A "layered"): a hard 0-blur ink slab whose distance says how raised a thing is.
+     Pressable controls 3px, cards and page panels 5px, the balance panel 8px (a dotted slab). A press lands on the slab. */
+  --off-ctl: 3px; --off-card: 5px; --off-hero: 8px;
+  --shade: color-mix(in srgb, var(--rule) 45%, var(--panel)); /* opaque dots of the card's shaded far edges */
   --sel-bg: var(--fg); --sel-fg: var(--bg); /* selected (inverted) segment */
   --sel-edge: var(--fg); /* inner ink edge on the selected .cat: in light the pastel alone is hue-only (1.29:1 in Fern) */
   --scrim: rgba(10, 10, 14, 0.5); --sheet: var(--bg); --field: var(--panel);
@@ -86,9 +90,10 @@
   --hero: color-mix(in srgb, var(--accent) 11%, var(--panel));
   --sel-bg: var(--fg); --sel-fg: var(--bg); /* chalk on night: the same inversion as light, no accent so no mud */
   --sel-edge: transparent; /* dark: the full pastel on night already stands 5.8:1 apart */
+  --shade: color-mix(in srgb, var(--rule) 50%, var(--panel));
   --chip: var(--food-l); /* the plate's pastel at full strength (never diluted into the night, which turns it brown) */
   --tone: color-mix(in srgb, var(--fg) 16%, transparent);
-  --pos: #BBF7D0; --neg: #FBCFE8; --err: #F2B8B5; --nav: var(--bg); --sbar: var(--bg);
+  --pos: #BBF7D0; --neg: #FBCFE8; --err: #F2B8B5; --nav: var(--panel); --sbar: var(--bg);
   --scrim: rgba(0, 0, 0, 0.7); --sheet: var(--panel); --field: var(--sunk);
   --clay-hi: color-mix(in srgb, var(--fg) 10%, transparent); --clay-lo: color-mix(in srgb, #000 45%, transparent);
   --clay-sel: color-mix(in srgb, var(--bg) 10%, transparent);
@@ -113,9 +118,10 @@
   --hero: color-mix(in srgb, var(--accent) 11%, var(--panel));
   --sel-bg: var(--fg); --sel-fg: var(--bg); /* chalk on night: the same inversion as light, no accent so no mud */
   --sel-edge: transparent; /* dark: the full pastel on night already stands 5.8:1 apart */
+  --shade: color-mix(in srgb, var(--rule) 50%, var(--panel));
   --chip: var(--food-l); /* the plate's pastel at full strength (never diluted into the night, which turns it brown) */
   --tone: color-mix(in srgb, var(--fg) 16%, transparent);
-  --pos: #BBF7D0; --neg: #FBCFE8; --err: #F2B8B5; --nav: var(--bg); --sbar: var(--bg);
+  --pos: #BBF7D0; --neg: #FBCFE8; --err: #F2B8B5; --nav: var(--panel); --sbar: var(--bg);
   --scrim: rgba(0, 0, 0, 0.7); --sheet: var(--panel); --field: var(--sunk);
   --clay-hi: color-mix(in srgb, var(--fg) 10%, transparent); --clay-lo: color-mix(in srgb, #000 45%, transparent);
   --clay-sel: color-mix(in srgb, var(--bg) 10%, transparent);
@@ -151,10 +157,15 @@ h1, h2 { text-wrap: balance; }
 .topbar {
   position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
   display: flex; align-items: center; gap: 10px; min-height: 70px;
-  margin: 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px))) 14px;
+  margin: 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px))) 16px;
   padding: 10px max(16px, env(safe-area-inset-left, 0px));
-  background: var(--nav); border-bottom: 2px solid var(--rule);
+  background: var(--nav); border-bottom: 3px solid var(--rule);
 }
+/* The header is a raised printed panel: a heavier ink edge than any card (3px) and an 8px screentone band under it, its
+   cast shade on the page (heavy dots by the edge, a lighter offset row below). Opaque and drawn once, so nothing changes while the page scrolls under it. */
+.topbar::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 8px; margin-top: 3px; pointer-events: none;
+  background: radial-gradient(circle, var(--rule) 1.3px, transparent 1.7px) 0 0 / 4px 4px repeat-x,
+    radial-gradient(circle, var(--rule) .8px, transparent 1.2px) 2px 4px / 4px 4px repeat-x, var(--bg); }
 .topbar h1 { flex: 1; min-width: 0; margin: 0; font: 400 1.35rem/1.1 var(--font-disp); letter-spacing: .02em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
 .topbar h1:focus, .topbar h1:focus-visible { outline: none; box-shadow: none; }
 .topbar .sub { font-size: .85rem; max-width: 40%; }
@@ -169,6 +180,8 @@ h1, h2 { text-wrap: balance; }
 .stack { display: flex; flex-direction: column; gap: 12px; }
 section { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
 .panel { background: var(--panel); border: 2px solid var(--rule); border-radius: var(--r); }
+/* Page panels and ledgers are cards: a 5px slab, never clay shading (reading surfaces stay flat paper). Inside a sheet they stay flat. */
+#app :is(.panel, .ledger) { box-shadow: var(--off-card) var(--off-card) 0 var(--off); }
 .pad { padding: 14px; }
 .label { margin: 18px 0 2px; font: 400 1.05rem/1.2 var(--font-disp); letter-spacing: .02em; color: var(--fg); }
 section > .label, section > .row > .label { margin-top: 6px; }
@@ -187,11 +200,11 @@ section > .label, section > .row > .label { margin-top: 6px; }
    inner shade bottom-right, the 2px ink outline and the hard 0-blur ink offset. Pressed: the offset drops to 0, the shade
    grows and the body moves 3px (the move is dropped under reduced motion, the shading stays). Reading surfaces stay flat 3px. */
 .btn, .ico, .cat, .vol, button.chip:not(.add) {
-  --c-x: 3px; --c-in: 0px; --c-off: var(--off); --c-hi: var(--clay-hi); --c-lo: var(--clay-lo);
+  --c-lift: var(--off-ctl); --c-x: var(--c-lift); --c-in: 0px; --c-off: var(--off); --c-hi: var(--clay-hi); --c-lo: var(--clay-lo);
   --clay: inset 2px 2px 3px var(--c-hi), inset -3px -3px 4px var(--c-lo), inset var(--c-in) var(--c-in) calc(2 * var(--c-in)) var(--c-lo), var(--c-x) var(--c-x) 0 var(--c-off);
   border-radius: var(--clay-r); box-shadow: var(--clay); transition: transform .08s, box-shadow .08s;
 }
-.btn:active, .ico:active, .cat:active, .vol:active, button.chip:not(.add):active { --c-x: 0px; --c-in: 3px; transform: translate(3px, 3px); }
+.btn:active, .ico:active, .cat:active, .vol:active, button.chip:not(.add):active { --c-x: 0px; --c-in: 3px; transform: translate(var(--c-lift), var(--c-lift)); }
 .cat[aria-pressed="true"] { --c-x: 0px; --c-in: 3px; box-shadow: inset 0 0 0 2px var(--sel-edge), var(--clay); }
 .btn {
   min-height: 44px; border: 2px solid var(--rule);
@@ -211,11 +224,16 @@ section > .label, section > .row > .label { margin-top: 6px; }
 @media (max-width: 360px) { .btns:not(.pair) { grid-template-columns: 1fr; } }
 
 /* Hub: volumes as numbered spines */
-.vol { display: grid; grid-template-columns: 64px 1fr; text-align: left; padding: 0; width: 100%; overflow: hidden; background: var(--panel); border: 2px solid var(--rule); }
+.vol { --c-lift: var(--off-card); display: grid; grid-template-columns: 64px 1fr; text-align: left; padding: 0; width: 100%; overflow: hidden; background: var(--panel); border: 2px solid var(--rule); }
 .spine { box-shadow: inset 2px 2px 3px var(--clay-hi), inset -3px -3px 4px var(--clay-lo); background: var(--accent); color: var(--on-accent); border-right: 2px solid var(--rule); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 10px 4px; }
 .spine span { font-size: .68rem; font-weight: 700; letter-spacing: .12em; }
 .spine b { font: 400 1.6rem/1 var(--font-disp); }
 .vol-info { padding: 12px 14px; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+/* Shade on the card's far edges (light from the top left): two rows of dots along the right and the bottom, an L with
+   no ruled edge, so it reads as the shaded side of a raised card, not as a scrollbar. Opaque dots: the corner overlap is invisible. */
+.vol-info { --d: radial-gradient(circle, var(--shade) 1px, transparent 1.4px);
+  background: var(--d) right 0 bottom 0 / 4px 4px repeat-y, var(--d) right 4px bottom 0 / 4px 4px repeat-y,
+    var(--d) right 0 bottom 0 / 4px 4px repeat-x, var(--d) right 0 bottom 4px / 4px 4px repeat-x; }
 .vol-name { font: 400 1.1rem/1.2 var(--font-disp); letter-spacing: .02em; overflow-wrap: anywhere; }
 /* Card meta wraps between its parts (never inside "¥48,000.00 spent"), so nothing on the first screen is cut off */
 .vol-meta > span { white-space: nowrap; }
@@ -250,8 +268,24 @@ section > .label, section > .row > .label { margin-top: 6px; }
 .mem-row .ico[aria-pressed="true"] { --c-x: 0px; --c-in: 3px; background: var(--sunk); }
 
 /* Volume: balance panel with screentone */
-.hero { position: relative; overflow: hidden; padding: 16px 16px 14px; background: var(--hero); border: 2px solid var(--rule); border-radius: var(--r); box-shadow: 4px 4px 0 var(--off); }
-.hero::after { content: ""; position: absolute; right: -10px; top: -10px; width: 46%; height: 140%; background: radial-gradient(circle, var(--tone) 1.3px, transparent 1.6px) 0 0 / 7px 7px; transform: rotate(8deg); pointer-events: none; -webkit-mask-image: linear-gradient(to left, #000 30%, transparent); mask-image: linear-gradient(to left, #000 30%, transparent); }
+/* The top rank: an 8px dotted slab (::after, clipped to the L that shows beside and under the panel) and a screentone
+   ramp, fine dots to heavy ones toward the right edge, one column of dots per layer (no mask, no fade). Nine columns, 54px:
+   the panel's right padding is 32px, so text only ever meets the light columns (dots ≤1.05px), never the heavy 30px. */
+.hero { position: relative; padding: 16px 32px 14px 16px; border: 2px solid var(--rule); border-radius: var(--r); --t: var(--tone);
+  background:
+    radial-gradient(circle, var(--t) 2.4px, transparent 2.8px) right 0 top 0 / 6px 6px repeat-y,
+    radial-gradient(circle, var(--t) 2.1px, transparent 2.5px) right 6px top 0 / 6px 6px repeat-y,
+    radial-gradient(circle, var(--t) 1.8px, transparent 2.2px) right 12px top 0 / 6px 6px repeat-y,
+    radial-gradient(circle, var(--t) 1.5px, transparent 1.9px) right 18px top 0 / 6px 6px repeat-y,
+    radial-gradient(circle, var(--t) 1.25px, transparent 1.65px) right 24px top 0 / 6px 6px repeat-y,
+    radial-gradient(circle, var(--t) 1.05px, transparent 1.45px) right 30px top 0 / 6px 6px repeat-y,
+    radial-gradient(circle, var(--t) .9px, transparent 1.3px) right 36px top 0 / 6px 6px repeat-y,
+    radial-gradient(circle, var(--t) .75px, transparent 1.15px) right 42px top 0 / 6px 6px repeat-y,
+    radial-gradient(circle, var(--t) .6px, transparent 1px) right 48px top 0 / 6px 6px repeat-y,
+    var(--hero); }
+.hero::after { content: ""; position: absolute; top: calc(var(--off-hero) - 2px); left: calc(var(--off-hero) - 2px); right: calc(-2px - var(--off-hero)); bottom: calc(-2px - var(--off-hero)); pointer-events: none;
+  border: 2px solid var(--rule); border-radius: var(--r); background: radial-gradient(circle, var(--rule) 1.1px, transparent 1.5px) 0 0 / 4px 4px, var(--bg);
+  clip-path: polygon(calc(100% - var(--off-hero)) 0, 100% 0, 100% 100%, 0 100%, 0 calc(100% - var(--off-hero)), calc(100% - var(--off-hero)) calc(100% - var(--off-hero))); }
 .hero > * { position: relative; }
 .hero .k { font-weight: 700; font-size: .95rem; }
 .hero .amt { font: 400 clamp(1.9rem, 10vw, 2.6rem)/1.1 var(--font-disp); letter-spacing: .01em; margin: 2px 0 6px; }
@@ -260,7 +294,8 @@ section > .label, section > .row > .label { margin-top: 6px; }
 .amt .fig { display: inline-block; } /* the figure moves on its own when the balance rolls; the line keeps its box */
 .hero .meta { font-size: .85rem; color: color-mix(in srgb, var(--fg) 72%, var(--hero)); }
 @media (max-width: 379px) { .hero .vno { display: none; } }
-.hero .mine { margin: 8px 0 0; padding: 8px 0 0; border-top: 1.5px solid var(--rule); display: flex; flex-direction: column; gap: 4px; font-size: .92rem; list-style: none; }
+/* The rule over "Pay …" is drawn in the text ink: in dark the 62% chalk frame was 3.8-4.4:1 on the hero; ink is 4.5+ in every plate */
+.hero .mine { margin: 8px 0 0; padding: 8px 0 0; border-top: 2px solid var(--fg); display: flex; flex-direction: column; gap: 4px; font-size: .92rem; list-style: none; }
 .amt.pos, .k.pos { color: var(--pos); } .amt.neg, .k.neg { color: var(--neg); }
 /* Live sync status: one small ink line in the hero. The square is a stamp: filled = synced, open = waiting, red = stuck. */
 .hero .sync { display: flex; align-items: center; gap: 7px; margin: 10px 0 0; font-size: .8rem; font-weight: 600; color: color-mix(in srgb, var(--fg) 72%, var(--hero)); }
@@ -417,7 +452,7 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
      No transform transition on the way down (it would hide the squash); the release eases back over 160 ms. */
   .btn, .ico, .cat, .vol, button.chip:not(.add) { transition: transform var(--dur-out) var(--ease-out); }
   :is(.btn:not(.quiet):not(.text):not(:disabled), .ico, .cat, .vol, button.chip:not(.add)):active { transition: none; animation: squash var(--dur-press) var(--ease-out); }
-  @keyframes squash { 0% { transform: none; } 55% { transform: translate(2px, 2px) scale(1.03, .94); } 100% { transform: translate(3px, 3px); } }
+  @keyframes squash { 0% { transform: none; } 55% { transform: translate(calc(var(--c-lift) * .67), calc(var(--c-lift) * .67)) scale(1.03, .94); } 100% { transform: translate(var(--c-lift), var(--c-lift)); } }
 
   /* Lists ink in on a screen change (#app[data-turn]): the frame is drawn first, then a paper cover with an ink edge is
      wiped off the row (scaleX on a pseudo-element: compositor only, the row's box and taps never change) */
@@ -851,7 +886,7 @@ const views = {
     const hist = items.length ? `<button class="ico" data-act="history" aria-label="History">${I.clock}</button>` : "";
     return topbar(v.title, { back: true, right: `${hist}<button class="ico" data-act="volMenu" aria-label="Volume options">${I.dots}</button>` }) +
       `<div class="stack">
-      <section class="hero${done ? " done" : ""}" aria-label="Your balance" style="margin:0">
+      <section class="hero${done ? " done" : ""}" aria-label="Your balance" style="margin:0 0 8px">
         <div class="meta"><span class="vno">Vol. ${volNo(v)} · </span>${t[1]} · ${plural(v.members.length, "member")} · <span class="money">${esc(fmt(tot, v.currency))} spent</span></div>
         <div class="k ${cls}${done && settled ? " stamped" : ""}">${settled ? "You're all settled" : mine > 0 ? "You are owed" : "You owe"}</div>
         ${settled ? "" : `<div class="amt num ${cls} ${amtSize(fig)}${roll}"${roll ? ` data-was="${esc(was.t)}"` : ""}><span class="fig">${esc(fig)}</span></div>`}

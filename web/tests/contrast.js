@@ -31,8 +31,29 @@ const URL = process.env.URL || 'http://127.0.0.1:8765/';
     }, [id, mode, view]);
     for (const r of res) { if (r.ratio < 4.5) fail = true; worst.push({ palette: id, mode, view, ...r }); }
   }
+  // Depth (direction A): the ink lines that carry the raised panels hold 4.5:1 too, against the fill they are drawn on:
+  // the header's 3px edge on --nav and on the page, the hero's "Pay …" rule on the hero (the dark panel's top line), the
+  // hero slab's frame on the page, and the slab colour of cards and panels on the page.
+  const lines = [];
+  for (const id of ids) for (const mode of ['light', 'dark']) {
+    const res = await p.evaluate(([id, mode]) => {
+      S.settings.palette = id; S.settings.mode = mode; applyTheme(); ui.volId = S.volumes.find(v => !v.archived).id; go('volume');
+      const parse = c => { const n = (c.match(/[\d.]+/g) || [0, 0, 0]).map(Number); if (/^color\(srgb/.test(c)) { n[0] *= 255; n[1] *= 255; n[2] *= 255; } return n; };
+      const lin = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+      const L = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+      const cr = (a, c) => { const x = L(parse(a)), y = L(parse(c)); return Math.round((Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05) * 100) / 100; };
+      const cs = (s, pe) => getComputedStyle(document.querySelector(s), pe || null), page = getComputedStyle(document.body).backgroundColor;
+      const t = cs('.topbar'), h = cs('.hero'), off = cs('#app .ledger').boxShadow.match(/^(rgba?|color)\([^)]*\)/)[0];
+      return [['topbar edge / --nav', cr(t.borderBottomColor, t.backgroundColor)], ['topbar edge / page', cr(t.borderBottomColor, page)],
+        ['hero "Pay" rule / hero', cr(cs('.hero .mine').borderTopColor, h.backgroundColor)], ['hero slab frame / page', cr(cs('.hero', '::after').borderTopColor, page)],
+        ['card slab / page', cr(off, page)]];
+    }, [id, mode]);
+    for (const [what, ratio] of res) { if (ratio < 4.5) fail = true; lines.push({ palette: id, mode, line: what, ratio }); }
+  }
+  lines.sort((x, y) => x.ratio - y.ratio);
   worst.sort((x, y) => x.ratio - y.ratio);
   console.table(worst.slice(0, 25));
-  console.log(fail ? 'FAIL: some text is under 4.5:1' : 'PASS: all measured text is at least 4.5:1');
+  console.table(lines.slice(0, 8));
+  console.log(fail ? 'FAIL: some text or depth line is under 4.5:1' : 'PASS: all measured text and depth lines are at least 4.5:1');
   await b.close(); process.exit(fail ? 1 : 0);
 })();

@@ -518,7 +518,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    for (const [sel,view] of [['.btn.primary','volume'],['.vol','hub']]) {
      await pg.evaluate(v=>{ ui.volId=S.volumes[0].id; go(v); },view);
      const {rest,held}=await press(pg,sel); const m=/matrix\(1, 0, 0, 1, ([\d.]+), ([\d.]+)\)/.exec(held.transform)||[];
-     ok(+m[1]>=2 && +m[1]<=3 && nums(offLayer(held.boxShadow)).slice(0,3).every(x=>x===0) && shade(held.boxShadow)>shade(rest.boxShadow),`clay: held ${sel} moves 2-3px, loses its offset and its inner shade grows (${held.transform}; ${held.boxShadow})`); }
+     { const lift=nums(offLayer(rest.boxShadow))[0]; ok(+m[1]===lift && +m[2]===lift && lift===(sel===".vol"?5:3) && nums(offLayer(held.boxShadow)).slice(0,3).every(x=>x===0) && shade(held.boxShadow)>shade(rest.boxShadow),`clay: held ${sel} moves exactly onto its ${lift}px slab (controls 3, cards 5), loses its offset and its inner shade grows (${held.transform}; ${held.boxShadow})`); } }
    { const rc=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780},reducedMotion:'reduce'}); const R=await rc.newPage(); await R.goto(URL);
      for (const [sel,view] of [['.btn.primary','volume'],['.vol','hub']]) {
        await R.evaluate(v=>{ ui.volId=S.volumes[0].id; go(v); },view);
@@ -580,6 +580,55 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      ok(t.lines===1 && t.gloss,`R2-4: hub tagline is one line at ${w} and "New volume" still says what a volume is ${JSON.stringify(t)}`); }
    ok(e.length===0,'no page errors in R2-4 checks '+JSON.stringify(e));
    await c.close(); }
+ // DEPTH (owner 2026-11-09, direction A "layered"): hard 0-blur ink slabs by rank (controls 3px, cards and page panels 5px,
+ // the hero an 8px dotted slab), a dotted L shade on the card's far edges, a stepped dot ramp on the hero only, and a header
+ // with a 3px ink edge and an 8px screentone band that stays the same while the page scrolls. 13 palettes x light/dark.
+ { const c=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780},deviceScaleFactor:1}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())});
+   await pg.goto(URL);
+   const ids=await pg.evaluate(()=>PALETTES.map(x=>x.id)); const bad=[], band=[], flat=[];
+   for (const id of ids) for (const mode of ['light','dark']) {
+     const r=await pg.evaluate(([id,mode])=>{ S.settings.palette=id; S.settings.mode=mode; applyTheme(); dropSheet(); const out={};
+       const lay=s=>s==='none'?[]:s.split(/,(?![^(]*\))/).map(x=>x.trim());
+       const off=el=>{ const l=lay(getComputedStyle(el).boxShadow).find(x=>!/inset/.test(x)); if(!l) return null; const n=(l.replace(/(rgba?|color)\([^)]*\)/g,'').match(/-?[\d.]+px/g)||[]).map(parseFloat); return n.slice(0,3).join('/'); };
+       const blurs=el=>lay(getComputedStyle(el).boxShadow).filter(x=>!/inset/.test(x)).map(l=>(l.replace(/(rgba?|color)\([^)]*\)/g,'').match(/-?[\d.]+px/g)||[]).map(parseFloat)[2]).filter(x=>x>0).length;
+       go('hub'); out.vol=off($('.vol')); out.gear=off($('.topbar [data-act=settings]')); const vi=getComputedStyle($('.vol-info'));
+       out.strip=[(vi.backgroundImage.match(/radial-gradient/g)||[]).length, /repeat-x/.test(vi.backgroundRepeat)&&/repeat-y/.test(vi.backgroundRepeat), /linear-gradient/.test(vi.backgroundImage)];
+       const tb=getComputedStyle($('.topbar')), ta=getComputedStyle($('.topbar'),'::after');
+       out.head=[tb.borderBottomWidth, getComputedStyle($('.vol')).borderTopWidth, ta.content, ta.height, ta.position, /radial-gradient/.test(ta.backgroundImage), ta.backgroundColor===getComputedStyle(document.body).backgroundColor, tb.boxShadow, tb.filter, tb.backdropFilter];
+       ui.volId=S.volumes[0].id; go('volume');
+       out.btn=off($('.btn.primary')); out.ico=off($('.topbar .ico')); out.chip=off($('button.chip:not(.add)')); out.ledger=off($('#app .ledger'));
+       const h=$('.hero'), hs=getComputedStyle(h), ha=getComputedStyle(h,'::after');
+       out.hero=[hs.boxShadow, hs.marginBottom, ha.top, ha.left, ha.right, ha.bottom, ha.borderTopWidth, /radial-gradient/.test(ha.backgroundImage), /8px/.test(ha.clipPath), (hs.backgroundImage.match(/radial-gradient/g)||[]).length, /linear-gradient|conic/.test(hs.backgroundImage), hs.maskImage||hs.webkitMaskImage];
+       // the heavy end of the ramp (the 5 columns with dots over 1.2px: the right 30px of the padding box) holds no text
+       const hr=h.getBoundingClientRect(), heavyL=hr.right-2-30; out.heavy=[...h.querySelectorAll('*')].filter(x=>[...x.childNodes].some(n=>n.nodeType===3&&n.textContent.trim())).map(x=>{ const g=document.createRange(); g.selectNodeContents(x); return g.getBoundingClientRect().right; }).filter(x=>x>heavyL).length;
+       out.rows=[...document.querySelectorAll('#app .ledger, #app .ledger > *, #app .tx, #app .debt')].reduce((a,x)=>a+blurs(x),0);
+       out.filters=[...document.querySelectorAll('#app *')].filter(x=>{ const s=getComputedStyle(x); return s.filter!=='none'||s.backdropFilter!=='none'; }).length;
+       go('settings'); out.panel=off($('#app .panel')); ui.volId=S.volumes[0].id; ui.view='volume'; openExpense(null); out.cat=off($('.cat[aria-pressed="false"]')); out.seg=off($('.seg')); dropSheet();
+       return out; },[id,mode]);
+     const why=[];
+     for (const k of ['gear','btn','ico','chip','cat','seg']) if (r[k]!=='3/3/0') why.push(`${k} ${r[k]}`);
+     for (const k of ['vol','ledger','panel']) if (r[k]!=='5/5/0') why.push(`${k} ${r[k]}`);
+     const H=r.hero; if (H[0]!=='none'||H[1]!=='8px'||H[2]!=='6px'||H[3]!=='6px'||H[4]!=='-10px'||H[5]!=='-10px'||H[6]!=='2px'||!H[7]||!H[8]||H[9]!==9||H[10]||(H[11]&&H[11]!=='none')) why.push('hero '+JSON.stringify(H));
+     if (r.heavy) why.push(`${r.heavy} text runs reach the heavy end`);
+     if (r.strip[0]!==4||!r.strip[1]||r.strip[2]) why.push('card strip '+JSON.stringify(r.strip));
+     if (why.length) bad.push(`${id}/${mode}: ${why.join(', ')}`);
+     const T=r.head; if (T[0]!=='3px'||T[1]!=='2px'||T[2]!=='""'||T[3]!=='8px'||T[4]!=='absolute'||!T[5]||!T[6]||T[7]!=='none'||T[8]!=='none'||T[9]!=='none') band.push(`${id}/${mode} ${JSON.stringify(T)}`);
+     if (r.rows||r.filters) flat.push(`${id}/${mode} rows with blur ${r.rows}, filters ${r.filters}`); }
+   ok(bad.length===0,'DEPTH: offsets by rank — controls 3px (gear, primary, icon, chip, category, segmented), cards and page panels 5px (volume card, ledger, panel), hero 8px dotted slab (pseudo-element, 8px margin under it, 9-column dot ramp, no gradient fade or mask), heavy ramp end free of text, card shade is an L (right and bottom), all 0-blur, 13 palettes x light/dark '+JSON.stringify(bad.slice(0,3)));
+   ok(band.length===0,'DEPTH: header band present in both themes — 3px ink edge (cards 2px), an 8px opaque screentone band under it, no shadow, filter or blur, 13 palettes x light/dark '+JSON.stringify(band.slice(0,3)));
+   ok(flat.length===0,'DEPTH: paint cost — no blurred box-shadow on ledgers or list rows and no filter/backdrop-filter anywhere in the volume page, 13 palettes x light/dark '+JSON.stringify(flat.slice(0,3)));
+   // The header is static: scrolling a long history changes neither its edge, its band nor where they are drawn
+   await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); const v=S.volumes[0], ids=v.members.map(m=>m.id); for (let i=0;i<40;i++) v.expenses.push({id:'dp'+i,desc:'Lunch '+i,amount:1000,paidBy:ids[0],category:'food',date:'2026-01-01',splitType:'equal',splits:splitEqual(1000,ids),inputs:{},note:'',upd:1}); ui.volId=v.id; go('history'); scrollTo(0,0); });
+   const hs=async()=>pg.evaluate(()=>{ const t=$('.topbar'), s=getComputedStyle(t), a=getComputedStyle(t,'::after'); return JSON.stringify([Math.round(t.getBoundingClientRect().top),Math.round(t.getBoundingClientRect().bottom),s.borderBottom,s.boxShadow,s.background,a.background,a.height,a.top,a.opacity]); });
+   const top0=await hs(); await pg.mouse.move(180,500); await pg.mouse.wheel(0,900); await pg.waitForTimeout(300); const sy=await pg.evaluate(()=>scrollY); const top1=await hs();
+   ok(sy>300 && top0===top1,`DEPTH: the header and its band look and sit the same after scrolling ${sy}px (no scroll-linked shadow) ${top0===top1?'':top0+' vs '+top1}`);
+   await pg.evaluate(()=>{ S.volumes[0].expenses=S.volumes[0].expenses.filter(x=>!/^dp/.test(x.id)); scrollTo(0,0); });
+   // Slabs stay on the screen at phone widths: nothing scrolls sideways and the hero's slab ends inside the gutter
+   for (const w of [320,360,390]) { await pg.setViewportSize({width:w,height:780});
+     const m=await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); const h=$('.hero').getBoundingClientRect(); return {sw:document.scrollingElement.scrollWidth,cw:document.scrollingElement.clientWidth,slabR:h.right+8,vw:innerWidth}; });
+     ok(m.sw<=m.cw && m.slabR<=m.vw-8,`DEPTH: at ${w}px no sideways scroll and the hero slab ends ≥8px from the screen edge ${JSON.stringify(m)}`); }
+   ok(e.length===0,'no page errors in DEPTH checks '+JSON.stringify(e));
+   await c.close(); }
  // L3-dark (design): ink on night paper. Layer steps, chalk frames quieter than text, a chalk-ink offset slab (R2 revise), plate-tinted hero, selected
  // states mixed from chalk (never diluted accent), sheet lifts off a darker scrim, one dark source (no drift), status bar
  // colour = night paper, focus ring and toasts in dark. All measured from computed colours in 13 palettes.
@@ -621,8 +670,8 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(bad.length===0,'L3-dark: night paper layers (panel/bg ≥1.25, line & rule/panel ≥3, frames quieter than text, offset slab ≥3 vs night and hero, ≤ rule), hero ≥1.15 with text ≥4.5, screentone 1.3–1.6, selected seg/cat ≥3 vs unselected (WCAG 1.4.11) with text ≥4.5, field/sheet ≥1.15, sheet/scrim ≥1.3, focus ring ≥3, theme-color = night paper, 13 palettes '+JSON.stringify(bad.slice(0,3)));
    ok(drift.length===0,'L3-dark: OS dark and the Dark setting give identical tokens and .pal tiles in 13 palettes (one dark source) '+JSON.stringify(drift.slice(0,3)));
    // light keeps the old scrim and sheet, offsets stay ink
-   const lt=await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); settleSheet(null); const r=[getComputedStyle($('.scrim')).backgroundColor,getComputedStyle($('.sheet')).backgroundColor,getComputedStyle(document.body).backgroundColor,getComputedStyle($('.hero')).boxShadow,document.querySelector('meta[name=theme-color]').content]; dropSheet(); return r; });
-   ok(lt[0]==='rgba(10, 10, 14, 0.5)' && lt[1]===lt[2] && /rgb\(0, 0, 0\) 4px 4px 0px/.test(lt[3]) && lt[4]==='#FFFFFF','L3-dark: light scrim, sheet, hero offset and theme-color unchanged '+JSON.stringify(lt));
+   const lt=await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); settleSheet(null); const r=[getComputedStyle($('.scrim')).backgroundColor,getComputedStyle($('.sheet')).backgroundColor,getComputedStyle(document.body).backgroundColor,getComputedStyle($('.hero')).boxShadow+' / '+getComputedStyle($('.hero'),'::after').right,document.querySelector('meta[name=theme-color]').content]; dropSheet(); return r; });
+   ok(lt[0]==='rgba(10, 10, 14, 0.5)' && lt[1]===lt[2] && lt[3]==='none / -10px' && lt[4]==='#FFFFFF','L3-dark: light scrim, sheet, hero 8px slab (a pseudo-element, no shadow) and theme-color '+JSON.stringify(lt));
    // toasts in dark wrap at 320/360/390 (merge summary and SAVE_GONE), offset stays the accent
    const tb=[];
    for (const w of [320,360,390]) { await pg.setViewportSize({width:w,height:780});
