@@ -17,7 +17,7 @@ const URL = process.env.URL || 'http://127.0.0.1:8765/';
       const L = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
       const bgOf = el => { for (let e = el; e; e = e.parentElement) { const c = parse(getComputedStyle(e).backgroundColor); if (c.length < 4 || c[3] > 0.95) return c; } return parse(getComputedStyle(document.body).backgroundColor); };
       const out = [];
-      document.querySelectorAll('#app *, #nav *').forEach(el => {
+      document.querySelectorAll('#app *').forEach(el => {
         if (!el.childNodes.length || ![...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())) return;
         const r = el.getBoundingClientRect(); if (!r.width || !r.height) return;
         const fg = parse(getComputedStyle(el).color), bg = bgOf(el);

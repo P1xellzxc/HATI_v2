@@ -70,7 +70,7 @@
    @media (prefers-color-scheme: dark) with :root:not([data-theme="light"]), so the two can't drift.
    Night paper is one near-neutral night with a 5% whisper of the plate's ink (max-min RGB spread <= 14 in every plate:
    at 20% Lagoon was violet, Peony indigo, Harbor maroon, so those plates read as another app). The plate shows in dark
-   through the accent (primary, nav tab, spines, focus), the category pastel and the hero, not the page. Layers step up bg < sunk < panel < hero < selected,
+   through the accent (primary, spines, focus), the category pastel and the hero, not the page. Layers step up bg < sunk < panel < hero < selected,
    mixed from chalk (--fg) into the night. The hero alone takes an 11% whisper of the accent over the panel (16% turned
    yellow/orange plates olive/brown mud). Frames and the offset slab are chalk at 62%, quieter than text: the slab is
    chalk ink, a manga negative panel (at 20% it vanished, 1.03:1 on the hero). Web dark no longer reads HatiPalette.kt heroD (see Team log). */
@@ -95,7 +95,7 @@
   color-scheme: dark;
 }
 /* Light fills (accent, chalk, pastel) take the light-mode shade strength: 45% black on them reads as an olive/brown edge */
-:root[data-theme="dark"] :is(.btn.primary, .spine, .nav button[aria-current="page"], .cat[aria-pressed="true"]) { --clay-lo: color-mix(in srgb, #000 16%, transparent); }
+:root[data-theme="dark"] :is(.btn.primary, .spine, .cat[aria-pressed="true"]) { --clay-lo: color-mix(in srgb, #000 16%, transparent); }
 :root[data-theme="dark"] .cat[aria-pressed="true"] { color: var(--on-accent); }
 :root[data-theme="dark"] .pal { background: var(--panel); color: var(--fg); border-color: var(--line); }
 :root[data-theme="dark"] .pal .n { color: var(--sub); }
@@ -122,7 +122,7 @@
   color-scheme: dark;
 }
 /* Light fills (accent, chalk, pastel) take the light-mode shade strength: 45% black on them reads as an olive/brown edge */
-:root:not([data-theme="light"]) :is(.btn.primary, .spine, .nav button[aria-current="page"], .cat[aria-pressed="true"]) { --clay-lo: color-mix(in srgb, #000 16%, transparent); }
+:root:not([data-theme="light"]) :is(.btn.primary, .spine, .cat[aria-pressed="true"]) { --clay-lo: color-mix(in srgb, #000 16%, transparent); }
 :root:not([data-theme="light"]) .cat[aria-pressed="true"] { color: var(--on-accent); }
 :root:not([data-theme="light"]) .pal { background: var(--panel); color: var(--fg); border-color: var(--line); }
 :root:not([data-theme="light"]) .pal .n { color: var(--sub); }
@@ -143,7 +143,7 @@ h1, h2 { text-wrap: balance; }
   max-width: 520px; margin: 0 auto;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 0 calc(96px + env(safe-area-inset-bottom, 0px));
+  padding-block: 0 calc(24px + env(safe-area-inset-bottom, 0px));
   min-height: 100%;
 }
 
@@ -186,7 +186,7 @@ section > .label, section > .row > .label { margin-top: 6px; }
 /* Manga clay: only pressable things are clay. A flat palette fill (no gradients) with an inner light top-left and an
    inner shade bottom-right, the 2px ink outline and the hard 0-blur ink offset. Pressed: the offset drops to 0, the shade
    grows and the body moves 3px (the move is dropped under reduced motion, the shading stays). Reading surfaces stay flat 3px. */
-.btn, .ico, .cat, .vol, button.chip:not(.add), .nav button[aria-current="page"] {
+.btn, .ico, .cat, .vol, button.chip:not(.add) {
   --c-x: 3px; --c-in: 0px; --c-off: var(--off); --c-hi: var(--clay-hi); --c-lo: var(--clay-lo);
   --clay: inset 2px 2px 3px var(--c-hi), inset -3px -3px 4px var(--c-lo), inset var(--c-in) var(--c-in) calc(2 * var(--c-in)) var(--c-lo), var(--c-x) var(--c-x) 0 var(--c-off);
   border-radius: var(--clay-r); box-shadow: var(--clay); transition: transform .08s, box-shadow .08s;
@@ -326,17 +326,6 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 .stack > .msg:empty, .stack > [aria-live]:empty, .stack > #s-pick:empty { min-height: 0; margin-top: -12px; }
 .field > .msg:empty { min-height: 0; margin-top: -6px; }
 
-/* Bottom nav */
-.nav {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 6;
-  display: flex; justify-content: center; gap: 8px;
-  padding: 6px max(16px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
-  background: var(--nav); border-top: 2px solid var(--rule);
-}
-.nav button { flex: 1; max-width: 160px; min-height: 52px; border: 2px solid transparent; background: none; display: grid; justify-items: center; gap: 2px; padding: 4px; border-radius: var(--clay-r); font-size: .78rem; font-weight: 700; color: var(--sub); }
-.nav button[aria-current="page"] { color: var(--on-accent); background: var(--accent); border-color: var(--rule); }
-.nav svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-
 /* Sheet */
 .scrim { position: fixed; inset: 0; z-index: 20; background: var(--scrim); display: flex; align-items: flex-end; justify-content: center; }
 .sheet {
@@ -370,10 +359,10 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 .filepick { flex-wrap: wrap; }
 .filepick:focus-within .btn { outline: 3px solid var(--fg); outline-offset: 2px; }
 .banner { font-size: .9rem; padding: 10px 12px; margin-top: 12px; }
-.toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 30; padding: 10px 14px; border-radius: var(--r); background: var(--fg); color: var(--bg); font-size: .9rem; font-weight: 700; line-height: 1.35; text-align: left; width: max-content; max-width: min(calc(100vw - 32px), 480px); white-space: normal; overflow-wrap: anywhere; box-shadow: 3px 3px 0 var(--accent); }
+.toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 30; padding: 10px 14px; border-radius: var(--r); background: var(--fg); color: var(--bg); font-size: .9rem; font-weight: 700; line-height: 1.35; text-align: left; width: max-content; max-width: min(calc(100vw - 32px), 480px); white-space: normal; overflow-wrap: anywhere; box-shadow: 3px 3px 0 var(--accent); }
 .toast.top { top: calc(12px + env(safe-area-inset-top, 0px)); bottom: auto; }
 /* Focus on clay: the ring joins the clay stack instead of replacing it */
-:is(.btn, .ico, .cat, .vol, button.chip:not(.add), .nav button[aria-current="page"]):focus-visible { box-shadow: var(--clay), 0 0 0 6px var(--accent); }
+:is(.btn, .ico, .cat, .vol, button.chip:not(.add)):focus-visible { box-shadow: var(--clay), 0 0 0 6px var(--accent); }
 :root .cat[aria-pressed="true"]:focus-visible { box-shadow: inset 0 0 0 2px var(--sel-edge), var(--clay), 0 0 0 6px var(--accent); }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } .btn:active, .ico:active, .cat:active, .vol:active, button.chip:active { transform: none !important; } }
 
@@ -402,7 +391,7 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 @media (prefers-reduced-motion: no-preference) {
   /* Clay squash: down in 90 ms, flattening on the way (1.03 x .94, about the same area), landing pushed in.
      No transform transition on the way down (it would hide the squash); the release eases back over 160 ms. */
-  .btn, .ico, .cat, .vol, button.chip:not(.add), .nav button[aria-current="page"] { transition: transform var(--dur-out) var(--ease-out); }
+  .btn, .ico, .cat, .vol, button.chip:not(.add) { transition: transform var(--dur-out) var(--ease-out); }
   :is(.btn:not(.quiet):not(.text):not(:disabled), .ico, .cat, .vol, button.chip:not(.add)):active { transition: none; animation: squash var(--dur-press) var(--ease-out); }
   @keyframes squash { 0% { transform: none; } 55% { transform: translate(2px, 2px) scale(1.03, .94); } 100% { transform: translate(3px, 3px); } }
 
@@ -473,7 +462,6 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 
 <main id="app"></main>
 <div id="status" class="sr" role="status" aria-live="polite"></div>
-<nav class="nav" id="nav" aria-label="Main"></nav>
 <div id="layer"></div>
 
 <script>
@@ -712,7 +700,6 @@ function applyTheme() {
 const I = {
   back: '<svg viewBox="0 0 24 24"><path d="M19 12H5m7-7-7 7 7 7"/></svg>',
   plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
-  hub: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
   gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   dots: '<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>',
   settle: '<svg viewBox="0 0 24 24"><path d="M7 17 17 7M17 7H8M17 7v9"/></svg>',
@@ -791,7 +778,7 @@ const views = {
         <span class="vol-bal num ${settled ? "even" : b > 0 ? "pos" : "neg"}${roll}">${esc(bal)}</span>
         <span class="muted small vol-meta"><span>${t[1]}</span><span>${plural(v.members.length, "member")}</span><span>${esc(fmt(total(v), v.currency))} spent</span></span></span></button>`;
     }).join("");
-    return topbar("HATI²", { right: `<button class="btn quiet" data-act="import">${I.import} Import</button>` }) +
+    return topbar("HATI²", { right: `<button class="btn quiet" data-act="import">${I.import} Import</button><button class="ico" data-act="settings" aria-label="Settings">${I.gear}</button>` }) +
       `<p class="tagline">Split trip and home costs with your group.</p>${iosHint()}
       <h2 class="label">Your volumes</h2><div class="stack">${cards}
       <button class="dashed" data-act="newVolume"><span class="logo" aria-hidden="true">${I.plus}</span><span><b>New volume</b><span class="muted small">One for each trip or group</span></span></button></div>`;
@@ -873,7 +860,7 @@ const views = {
   settings() {
     const st = S.settings;
     const seg = (key, label, opts) => `<div class="seg" role="group" aria-label="${label}">${opts.map(o => `<button type="button" data-set="${key}" data-val="${o[0]}" aria-pressed="${st[key] === o[0]}">${o[1]}</button>`).join("")}</div>`;
-    return topbar("Settings") + `<div class="stack">
+    return topbar("Settings", { back: true }) + `<div class="stack">
       <section class="panel pad stack"><h2 class="label" style="margin:0">Appearance</h2>${seg("mode", "Appearance", [["system", "System"], ["light", "Light"], ["dark", "Dark"]])}
         <div><h3 class="legend" style="margin:0" id="palLabel">Color theme</h3><div class="muted small">From Sanzo Wada's A Dictionary of Color Combinations (1918).</div></div>
         <div class="pals" role="radiogroup" aria-labelledby="palLabel">${PALETTES.map(p => `<button type="button" class="pal" role="radio" aria-checked="${p.id === st.palette}" tabindex="${p.id === st.palette ? 0 : -1}" data-pal="${p.id}" style="--pp:${p.paper};--pi:${p.ink};--pm:${p.muted}">
@@ -987,14 +974,14 @@ function sheet(html, onSubmit) {
   lastFocus = document.activeElement;
   if (sheetOpen()) layerOut(true);
   $("#layer").innerHTML = `<div class="scrim"><form class="sheet" id="sheetForm" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" novalidate>${html.replace("<h2>", '<h2 id="sheetTitle" tabindex="-1">')}</form></div>`;
-  $("#app").inert = true; $("#nav").inert = true;
+  $("#app").inert = true;
   document.querySelectorAll(".toast").forEach(n => n.classList.add("top")); // a toast from before the sheet moves out of its way
   const form = $("#sheetForm");
   form.addEventListener("submit", ev => { ev.preventDefault(); onSubmit && onSubmit(form); });
   form.addEventListener("input", () => { const m = $("#sheetMsg"); if (m && !m.classList.contains("ok")) m.textContent = ""; });
   $("#sheetTitle").focus();
 }
-function dropSheet() { layerOut(false); $("#layer").innerHTML = ""; $("#app").inert = false; $("#nav").inert = false; syncHeld(); }
+function dropSheet() { layerOut(false); $("#layer").innerHTML = ""; $("#app").inert = false; syncHeld(); }
 function closeSheet() { dropSheet(); if (lastFocus && document.contains(lastFocus)) lastFocus.focus(); }
 // A new message is written in, left to right (a success says so once; rule 8)
 const sheetMsg = t => { const m = $("#sheetMsg"); if (!m) return; m.textContent = t; if (t && motionOn()) m.animate([{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0)" }], { duration: motionTimes().in, easing: motionTimes().easeOut }); };
@@ -1925,7 +1912,7 @@ function turn(from, to, box) {
   requestAnimationFrame(() => {
     if (ghosts.screen !== g.host) return;
     gin.append(main); gw.append(gin); g.root.append(gw, gl);
-    document.body.insertBefore(g.host, $("#nav"));
+    document.body.insertBefore(g.host, $("#layer"));
     const a = g.host.animate([{ transform: "none" }, { transform: `translateX(${(box.w + s + 80) * (back ? 1 : -1)}px)` }], { duration: T.wipe, easing: T.easeOut, fill: "forwards" });
     gl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: T.wipe, easing: "ease-in", fill: "forwards" });
     ghostDone("screen", g.host, a);
@@ -2019,8 +2006,6 @@ function render() {
     $("#app").innerHTML = topbar("HATI²") + `<div class="panel pad stack"><b>This screen couldn't be shown.</b><p class="muted small" style="margin:0">Your data is still on this device. Go back to your volumes; if this keeps happening, erase the damaged volume in Settings.</p><button class="btn primary" data-act="home">Back to volumes</button></div>`;
     ui.view = "hub";
   }
-  const top = ui.view === "settings" ? "settings" : "hub";
-  $("#nav").innerHTML = `<button data-act="home" ${top === "hub" ? 'aria-current="page"' : ""}>${I.hub}Volumes</button><button data-act="settings" ${top === "settings" ? 'aria-current="page"' : ""}>${I.gear}Settings</button>`;
   if (ui.view === "expense" && $("#expForm")) bindExpenseForm();
   // Rows a live change just brought in ink in on their own (see take()).
   if (FX.fresh && FX.fresh.size && motionOn()) app.querySelectorAll(".tx[data-id]").forEach(r => { if (FX.fresh.has(r.dataset.id)) r.classList.add("ink-new"); });
