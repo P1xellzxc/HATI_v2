@@ -173,3 +173,29 @@ Facts from the code (`web/src/app.src.html`) behind the debate:
 Replace all 7 native `<select>`s with the app's own controls: a segmented clay row for ≤4 short options, otherwise an in-app ink sheet list. Owners: hati-design + hati-code (a11y, lazy-check, ios). Size M.
 - **Accept:** no `<select>` left in app.src.html; payer is one tap for 2–4 members; keyboard (arrows, Enter, Esc) and screen reader (role, name, checked state) pass; 44px targets; light and dark in all 13 palettes, contrast ≥4.5; slop 0; pixel.js clean at 320/360/390; values and saves are identical to before (e2e for every form that used a select).
 - **Order:** Next becomes D8 (with N4), **D0**, D1+D7, D2, D3, D4, X2, X1, D5, D6.
+
+
+## Weekend session plan (written 2026-11-09)
+Start the session with: "Read the brain. Run the weekend plan in brain/Roadmap.md." Follow CLAUDE.md: discuss with the skills before each block, record in the Team log, and export the brain after.
+
+**Usage budget:** the owner is on Pro with tight limits. Use one agent per block, one agent voicing all the skills, and no parallel test suites: perf checks fail under load, so judge them only on an idle machine. Stop after any block if usage is above 80%; each block ships on its own.
+
+**Block 0: check what's already in (about 10 min).** Was D0 (designed pickers) merged? If its agent finished on 2026-11-09 it should be. If not, finish it first. Pull main, run `web/test.sh` once on an idle machine and note the perf numbers.
+
+**Block 1: green suite (N1).** Apply `brain/WIP/perf-fix-wip.patch` (on 66d5095 or later; resolve if it drifted) and bisect if it isn't enough. Done when `web/test.sh` is fully green twice in a row. Ship a PR, merge, publish the APK.
+
+**Block 2: data you can trust (N4 + D8 + N3).**
+- N4: a backup carries each shared volume's room and key, so Restore re-joins it. Add the "keep backups private" line.
+- D8: a "Last backup …" line, and a toast that's honest about what was saved.
+- N3: the APK save survives Android killing the app (temp file in cacheDir).
+Done when data-io.js has new checks for all three and CI is green.
+
+**Block 3: dates (N5).** "Today / Yesterday / Pick a date" on the expense form, plus a History "Set date" mode for several selected rows. That fixes the owner's imported Bebetime data, which has every date set to today. Done when e2e covers multi-row set date and the date never changes money.
+
+**Block 4: faster repeat entry (D1 + D7).** The last 3 descriptions as buttons (filling category and split), a "Last time ₱…" hint, and a one-tap payer using the D0 control. The extra centavo goes to the payer and the preview shows it (money-parity signs off, including the Kotlin check). Done when a repeat meal takes 4 taps or fewer in the scenario test.
+
+**Block 5: if there's budget left (X2, then X1).** Month headings in History, then the At-a-glance panel using the owner's chosen stacked-strip layout. The mock was local to the 2026-11-09 session; redraw it from the X1 spec.
+
+**End of every block:** PR → CI green → merge → verify the release says "built from <merge sha>" → send the APK. It installs as an update (fixed key). Update the "Session handoff" entry in the Team log.
+
+**Owner to-dos (no code):** the N2 two-phone sync check (Pages link on the iPhone and the APK on Android: add, go offline, reconnect), and fixing the Bebetime dates after Block 3.
