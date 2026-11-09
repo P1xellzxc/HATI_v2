@@ -1083,6 +1083,199 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await rm.close();
    const errs=[...A.e,...B.e,...C.e]; ok(errs.length===0,'no page errors in the live sync scenario '+JSON.stringify(errs));
    for (const x of [A,B,C]) await x.c.close(); }
+ // LP (owner: "long press volume at the home page to edit, delete or archive"; hati-design, hati-motion, hati-a11y,
+ // hati-sync, hati-copy): hold a hub card 450 ms for its options sheet (also right-click, Shift+F10, the menu key and a
+ // real "Options for …" button); Edit (name, type, currency, members), Archive (per phone, a closed shelf, read-only),
+ // Delete (per phone, a tombstone, Undo). And CAT: 12 expense categories, old ids kept, unknown ids are Other.
+ { const mk=async (o={},sync=false)=>{ const c=await b.newContext({...devices['iPhone 13'],...o}); if (!sync) await c.addInitScript(noSync);
+     await c.addInitScript(()=>{ window.__buzz=[]; navigator.vibrate=ms=>{ window.__buzz.push(ms); return true; }; });
+     const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{ if (m.type()==='error' && !/Failed to load resource|ERR_INTERNET_DISCONNECTED|WebSocket/.test(m.text())) e.push(m.text()); });
+     await pg.goto(URL); return {c,pg,e}; };
+   const twoVols=pg=>pg.evaluate(()=>{ const x=exampleVolume(); x.title='Bali'; x.members.push({id:'zed',name:'Zed'}); S.volumes.unshift(x); save(); render(); return x.id; });
+   const sheetState=pg=>pg.evaluate(()=>({view:ui.view,open:sheetOpen(),title:sheetOpen()&&$('#sheetTitle').textContent,acts:[...document.querySelectorAll('#sheetForm [data-act]')].map(x=>x.textContent.trim())}));
+   // a real touch through CDP: finger down, hold, (move), up
+   const touchHold=async (pg,sel,ms,move=0)=>{ const cdp=await pg.context().newCDPSession(pg); const r=await pg.locator(sel).first().boundingBox(), x=r.x+r.width*0.6, y=r.y+r.height/2;
+     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});
+     if (move) { await pg.waitForTimeout(100); await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y+move}]}); }
+     await pg.waitForTimeout(ms); const mid=await sheetState(pg); await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]}); await pg.waitForTimeout(250); return mid; };
+   const P=await mk(), pg=P.pg; const baliId=await twoVols(pg);
+   // LP-1 hold: the sheet opens at ~450 ms (not before), with a buzz; releasing never opens the volume
+   const early=await touchHold(pg,'.vol',200);
+   ok(!early.open && (await sheetState(pg)).view==='volume' && !(await sheetState(pg)).open,'LP-1: a 200 ms touch is a tap, not a hold (opens the volume, no sheet) '+JSON.stringify(early));
+   await pg.evaluate(()=>{ ui.view='hub'; go('hub',{replace:true}); });
+   const mid=await touchHold(pg,'.vol',650), after=await sheetState(pg);
+   ok(mid.open && mid.title==='Bali' && JSON.stringify(mid.acts)==='["Edit volume","Archive","Delete volume","Cancel"]','LP-1: holding a hub card ~450 ms opens its sheet: Edit volume, Archive, Delete volume, Cancel '+JSON.stringify(mid));
+   ok(after.view==='hub' && after.open && await pg.evaluate(()=>location.hash)==='','LP-1: lifting the finger after the hold does not open the volume or close the sheet '+JSON.stringify(after));
+   ok(JSON.stringify(await pg.evaluate(()=>__buzz))==='[12]','LP-1: the hold buzzes once (navigator.vibrate 12 ms)');
+   await pg.keyboard.press('Escape');
+   // LP-2 a moving finger cancels; a tap opens
+   const moved=await touchHold(pg,'.vol',600,40);
+   ok(!moved.open && !(await sheetState(pg)).open,'LP-2: moving the finger 40px cancels the hold (no sheet) '+JSON.stringify(moved));
+   await pg.evaluate(()=>go('hub',{replace:true}));
+   await pg.locator('.vol').first().tap(); await pg.waitForFunction(()=>ui.view==='volume',null,{timeout:2000}).catch(()=>{});
+   ok(await pg.evaluate(()=>ui.view==='volume' && vol().title==='Bali' && !sheetOpen()),'LP-2: a plain tap still opens the volume');
+   await toHub(pg);
+   // LP-3 ink fill while holding (mouse hold): a wash grows from the left over 450 ms, linear; gone on release
+   await pg.locator('.vol').first().hover(); await pg.mouse.down(); await pg.waitForTimeout(120);
+   const ink=await pg.evaluate(()=>{ const c=$('.vol'); const a=c.getAnimations({subtree:true}).filter(a=>a.animationName==='hold-ink'); return {cls:c.classList.contains('holding'),n:a.length,d:a[0]&&a[0].effect.getTiming().duration,ease:a[0]&&a[0].effect.getTiming().easing,pseudo:a[0]&&a[0].effect.pseudoElement,tf:getComputedStyle(c,'::before').transform}; });
+   await pg.mouse.up(); await pg.waitForTimeout(50);
+   const gone=await pg.evaluate(()=>({cls:!!document.querySelector('.vol.holding'),open:sheetOpen(),view:ui.view}));
+   ok(ink.cls && ink.n===1 && ink.d===450 && ink.pseudo==='::before' && ink.tf!=='none','LP-3: holding inks the card from the left (::before, scaleX, 450 ms) '+JSON.stringify(ink));
+   ok(!gone.cls && !gone.open && gone.view==='volume','LP-3: letting go at 120 ms drops the ink and is a plain tap '+JSON.stringify(gone));
+   await toHub(pg);
+   // LP-4 the same sheet without a hold: right-click, Shift+F10, the menu key, the Options button (keyboard and screen reader)
+   await pg.locator('.vol').first().click({button:'right'});
+   ok((await sheetState(pg)).title==='Bali' && (await sheetState(pg)).view==='hub','LP-4: right-click opens the sheet');
+   await pg.keyboard.press('Escape');
+   ok(await pg.evaluate(()=>document.activeElement===$('.vol')),'LP-4: closing it returns focus to the card');
+   await pg.keyboard.press('Shift+F10'); ok((await sheetState(pg)).title==='Bali','LP-4: Shift+F10 on the focused card opens the sheet');
+   await pg.keyboard.press('Escape'); await pg.keyboard.press('ContextMenu'); ok((await sheetState(pg)).title==='Bali','LP-4: the context-menu key opens the sheet');
+   await pg.keyboard.press('Escape');
+   const ax=await pg.evaluate(()=>{ const c=$('.vol'), d=document.getElementById(c.getAttribute('aria-describedby')); return {keys:c.getAttribute('aria-keyshortcuts'),desc:d&&d.textContent}; });
+   ok(ax.keys==='Shift+F10' && /Press and hold, right-click or press Shift\+F10 for Edit, Archive and Delete/.test(ax.desc),'LP-4: the card describes its options and announces Shift+F10 '+JSON.stringify(ax));
+   const opt=pg.getByRole('button',{name:'Options for Bali'});
+   ok(await opt.count()===1 && await opt.getAttribute('aria-haspopup')==='dialog','LP-4: screen readers get a real "Options for Bali" button (aria-haspopup=dialog)');
+   await pg.keyboard.press('Tab');
+   const ob=await pg.evaluate(()=>{ const a=document.activeElement, r=a.getBoundingClientRect(), c=$('.vol').getBoundingClientRect(); return {lbl:a.getAttribute('aria-label'),w:r.width,h:r.height,inCard:r.right<=c.right+1&&r.top>=c.top-1}; });
+   ok(ob.lbl==='Options for Bali' && ob.w>=44 && ob.h>=44 && ob.inCard,'LP-4: Tab from the card lands on the Options button, shown 44px on the card '+JSON.stringify(ob));
+   await pg.keyboard.press('Enter'); ok((await sheetState(pg)).title==='Bali','LP-4: Enter on it opens the sheet');
+   await pg.keyboard.press('Escape');
+   const hid=await pg.evaluate(()=>{ const f=document.activeElement===$('.vol-more'); $('.vol').focus(); const r=$('.vol-more').getBoundingClientRect(); return {back:f,w:r.width,h:r.height}; });
+   ok(hid.back && hid.w<=1 && hid.h<=1,'LP-4: closing returns focus to the Options button, which is hidden from sight when not focused '+JSON.stringify(hid));
+   // LP-5 Edit: name, type, currency, members (rename, add, remove only an unused one)
+   await pg.locator('.vol').first().click({button:'right'}); await pg.locator('[data-act=editVol]').click();
+   const rows=await pg.evaluate(()=>[...document.querySelectorAll('#sheetForm .mem-row')].map(r=>({n:r.querySelector('[data-mem]').value,x:!!r.querySelector('[data-drop]')})));
+   ok(JSON.stringify(rows)==='[{"n":"Alex","x":false},{"n":"Mira","x":false},{"n":"Rio","x":false},{"n":"Zed","x":true}]','LP-5: Edit lists every member; only Zed (no expenses, not you) can be removed '+JSON.stringify(rows));
+   await pg.fill('#s-title','Bali 2026'); await pg.selectOption('#s-type','event'); await pg.selectOption('#s-cur','€');
+   await pg.locator('#sheetForm [data-mem]').nth(1).fill('Mira K'); await pg.locator('[data-drop]').click(); await pg.fill('#s-others','Noor, Ola');
+   ok(await pg.evaluate(()=>$('.mem-row.drop [data-mem]').disabled && $('[data-drop]').getAttribute('aria-label')==='Keep Zed'),'LP-5: × marks Zed for removal (struck, "Keep Zed" undoes it)');
+   await pg.fill('#s-others','Mira K'); await pg.locator('#sheetForm button.primary').click();
+   ok(/Mira K is already in this volume/.test(await pg.locator('#sheetMsg').innerText()) && await pg.evaluate(()=>S.volumes[0].title==='Bali'),'LP-5: a duplicate name is refused and nothing changes');
+   await pg.fill('#s-others','Noor, Ola'); await pg.locator('#sheetForm button.primary').click(); await pg.waitForTimeout(100);
+   const ed=await pg.evaluate(id=>{ const v=S.volumes.find(x=>x.id===id); return {t:v.title,ty:v.type,c:v.currency,m:v.members.map(m=>m.name),gone:v.deleted.includes('zed'),valid:validVolume(v),sum:Object.values(balances(v)).reduce((a,b)=>a+b,0)}; },baliId);
+   ok(ed.t==='Bali 2026' && ed.ty==='event' && ed.c==='€' && JSON.stringify(ed.m)==='["Alex","Mira K","Rio","Noor","Ola"]' && ed.gone && ed.valid && ed.sum===0,'LP-5: Save renames the volume and Mira, sets type and currency, removes Zed (tombstoned), adds Noor and Ola; balances still sum to 0 '+JSON.stringify(ed));
+   await pg.reload(); ok(await pg.evaluate(id=>{ const v=S.volumes.find(x=>x.id===id); return v.title==='Bali 2026' && v.members.length===5; },baliId),'LP-5: the edit survives a reload');
+   // LP-6 Archive: a closed "Archived (1)" shelf at the bottom, read-only page, survives reload
+   await pg.locator('.vol',{hasText:'Bali 2026'}).click({button:'right'}); await pg.locator('#sheetForm [data-act=archive]').click();
+   const sh=await pg.evaluate(()=>({live:[...document.querySelectorAll('#app > .stack .vol')].map(x=>x.querySelector('.vol-name').textContent),box:!!$('#archBox'),open:$('#archBox')&&$('#archBox').open,sum:$('#archBox summary').textContent,last:$('#archBox')===$('#archBox').parentElement.querySelector('details:last-of-type'),focus:document.activeElement===$('#archBox summary'),toast:$('.toast').textContent}));
+   ok(JSON.stringify(sh.live)==='["Tokyo Trip (example)"]' && sh.box && !sh.open && sh.sum==='Archived (1)' && sh.focus && /Bali 2026 archived/.test(sh.toast),'LP-6: Archive moves it to a closed "Archived (1)" shelf at the bottom, focus on the shelf '+JSON.stringify(sh));
+   await pg.reload();
+   ok(await pg.evaluate(id=>!!S.volumes.find(x=>x.id===id).archived && $('#archBox summary').textContent==='Archived (1)',baliId),'LP-6: archived survives a reload');
+   await pg.locator('#archBox summary').click(); await pg.locator('.vol.arch').click(); await pg.waitForFunction(()=>ui.view==='volume');
+   const ro=await pg.evaluate(()=>({add:!!$('[data-act=addExpense]'),settle:!!$('[data-act=settle]'),share:!!$('#app [data-act=share]'),rows:document.querySelectorAll('#app .tx').length,btnRows:document.querySelectorAll('#app button.tx').length,chips:document.querySelectorAll('#app button.chip').length,note:($('.arch-note')||{}).textContent,un:!!$('.arch-note [data-act=unarchive]')}));
+   ok(!ro.add && !ro.settle && !ro.share && ro.rows>0 && ro.btnRows===0 && ro.chips===0 && /Archived\. Read-only on this phone\./.test(ro.note) && ro.un,'LP-6: an archived volume opens read-only (no Add, Settle, Share; rows and members are not buttons; Unarchive there) '+JSON.stringify(ro));
+   await pg.evaluate(()=>{ location.hash='#v-'+ui.volId+'-new'; }); await pg.waitForTimeout(150);
+   ok(await pg.evaluate(()=>ui.view)!=='expense','LP-6: the new-expense address of an archived volume does not open the form');
+   await toHub(pg); if (!(await pg.evaluate(()=>$('#archBox').open))) await pg.locator('#archBox summary').click();
+   await pg.locator('.vol.arch').click({button:'right'});
+   ok(JSON.stringify((await sheetState(pg)).acts)==='["Open","Unarchive","Delete volume","Cancel"]','LP-6: an archived card\'s sheet offers Open, Unarchive, Delete volume');
+   await pg.locator('#sheetForm [data-act=unarchive]').click();
+   ok(await pg.evaluate(id=>!S.volumes.find(x=>x.id===id).archived && !$('#archBox') && document.activeElement===$(`.vol[data-id="${id}"]`),baliId),'LP-6: Unarchive puts it back with the others and focuses it');
+   // LP-7 archive is this phone's: kept by backup/restore and mergeVolumes, never sent in a share code or sync payload
+   await pg.evaluate(id=>{ S.volumes.find(x=>x.id===id).archived=Date.now(); save(); render(); },baliId);
+   const backup=await pg.evaluate(()=>JSON.stringify({app:'hati2-mock',kind:'backup',v:1,volumes:S.volumes}));
+   const mg=await pg.evaluate(id=>{ const v=S.volumes.find(x=>x.id===id), plain={...v}; delete plain.archived;
+     return {keep:!!mergeVolumes(v,plain).vol.archived, notTaken:!mergeVolumes(plain,v).vol.archived, payload:!/archived/.test(payload(v)), code:!/archived/.test(shareCodeOf(v)), canon:canon(v)===canon(plain)}; },baliId);
+   ok(mg.keep && mg.notTaken && mg.payload && mg.code && mg.canon,'LP-7: mergeVolumes keeps the local archived and never takes it from the other copy; sync payload, share code and canon leave it out '+JSON.stringify(mg));
+   const R=await mk(); await R.pg.evaluate(()=>{ S.volumes=[]; save(); render(); });
+   await R.pg.evaluate(()=>importSheet({restore:true})); await R.pg.fill('#s-paste',backup); await R.pg.locator('#s-go').click(); await R.pg.waitForTimeout(600); await R.pg.locator('#s-go').click();
+   await R.pg.waitForFunction(()=>!sheetOpen(),null,{timeout:3000}).catch(()=>{});
+   ok(await R.pg.evaluate(id=>!!(S.volumes.find(x=>x.id===id)||{}).archived && $('#archBox summary').textContent==='Archived (1)',baliId),'LP-7: a backup restored on a fresh phone keeps the volume archived');
+   await R.c.close();
+   await pg.evaluate(id=>{ delete S.volumes.find(x=>x.id===id).archived; save(); render(); },baliId);
+   // LP-8 Delete: confirm in the house voice, Undo for 6 s, a tombstone that a reload or a backup doesn't undo
+   const before=await pg.evaluate(()=>S.volumes.map(v=>v.id).join());
+   await pg.locator('.vol',{hasText:'Bali 2026'}).click({button:'right'}); await pg.locator('#sheetForm [data-act=delVol]').click();
+   const cf=await pg.evaluate(()=>({h:$('#sheetTitle').textContent,p:$('#sheetForm p').textContent,b:$('#sheetForm button.danger').textContent}));
+   ok(cf.h==='Delete volume?' && cf.p==='Bali 2026 and all its expenses and payments will be removed from this phone. Anyone you shared it with keeps their copy.' && cf.b==='Delete','LP-8: Delete asks first, plainly '+JSON.stringify(cf));
+   await pg.locator('#sheetForm button.danger').click();
+   const dl=await pg.evaluate(id=>({there:S.volumes.some(v=>v.id===id),gone:S.gone.includes(id),stored:JSON.parse(localStorage.getItem('hati2.mock.v1')).gone.includes(id),toast:$('.toast').textContent,undo:!!$('.toast button.undo'),hidden:$('.toast').getAttribute('aria-hidden')}),baliId);
+   ok(!dl.there && dl.gone && dl.stored && dl.toast==='Volume deletedUndo' && dl.undo && dl.hidden===null,'LP-8: Delete removes it, stores a tombstone, and the toast offers a real Undo button '+JSON.stringify(dl));
+   await pg.locator('.toast button.undo').click();
+   ok(await pg.evaluate(([b,id])=>S.volumes.map(v=>v.id).join()===b && !S.gone.includes(id) && document.activeElement===$(`.vol[data-id="${id}"]`),[before,baliId]),'LP-8: Undo puts it back in the same place, drops the tombstone, focuses it');
+   await pg.locator('.vol',{hasText:'Bali 2026'}).click({button:'right'}); await pg.locator('#sheetForm [data-act=delVol]').click(); await pg.locator('#sheetForm button.danger').click();
+   await pg.waitForTimeout(6600);
+   ok(await pg.locator('.toast').count()===0,'LP-8: the Undo toast is gone after about 6 s');
+   await pg.reload(); ok(await pg.evaluate(id=>!S.volumes.some(v=>v.id===id) && S.gone.includes(id),baliId),'LP-8: after a reload it stays deleted (tombstone kept)');
+   await pg.evaluate(()=>importSheet({restore:true})); await pg.fill('#s-paste',backup); await pg.locator('#s-go').click(); await pg.waitForTimeout(300);
+   const rt1=await pg.locator('#s-sum').innerText();
+   ok(/1 volume you deleted on this phone stays deleted/.test(rt1) && /merges 1 volume/i.test(rt1),'LP-8: restoring a backup that has it says it stays deleted: "'+rt1+'"');
+   await pg.waitForTimeout(500); await pg.locator('#s-go').click(); await pg.waitForFunction(()=>!sheetOpen(),null,{timeout:3000}).catch(()=>{});
+   ok(await pg.evaluate(id=>!S.volumes.some(v=>v.id===id),baliId),'LP-8: and the restore does not bring it back');
+   ok(await pg.evaluate(()=>{ const v=exampleVolume(), raw=JSON.parse(localStorage.getItem('hati2.mock.v1')); raw.volumes.push({...v,id:raw.gone[0]}); return normalize(raw).volumes.every(x=>!raw.gone.includes(x.id)); }),'LP-8: a stored copy of a deleted volume (another tab, an old write) is dropped on load');
+   // LP-9 reduced motion: no ink fill, the hold still works
+   { const Q=await mk({reducedMotion:'reduce'}); await Q.pg.locator('.vol').first().hover(); await Q.pg.mouse.down(); await Q.pg.waitForTimeout(150);
+     const rm=await Q.pg.evaluate(()=>({cls:$('.vol').classList.contains('holding'),an:document.getAnimations().length}));
+     await Q.pg.waitForTimeout(450); const op=await sheetState(Q.pg); await Q.pg.mouse.up(); await Q.pg.waitForTimeout(200);
+     ok(!rm.cls && rm.an===0 && op.open && (await sheetState(Q.pg)).view==='hub','LP-9: reduced motion: no ink fill or animation, the hold still opens the sheet '+JSON.stringify(rm));
+     ok(Q.e.length===0,'LP-9: no page errors '+JSON.stringify(Q.e)); await Q.c.close(); }
+   ok(P.e.length===0,'LP: no page errors '+JSON.stringify(P.e)); await P.c.close();
+   // LP-10 two phones (mocked sync server): archive is per phone and sends nothing; delete leaves the room, nothing comes back; Undo rejoins
+   { const A=await mk({...devices['Pixel 7']},true), B=await mk({},true);
+     const addExp=async (pg,desc,amt)=>{ await pg.getByRole('button',{name:/Add expense/}).click(); await pg.fill('#f-amount',amt); await pg.fill('#f-desc',desc); await pg.locator('#expForm button[type=submit]').click(); await pg.waitForFunction(()=>ui.view==='volume' && !!$('.hero')); };
+     await A.pg.locator('[data-act=newVolume]').click(); await A.pg.fill('#s-title','Lake'); await A.pg.fill('#s-me','Ana'); await A.pg.fill('#s-others','Ben'); await A.pg.locator('#sheetForm button.primary').click();
+     await addExp(A.pg,'Cabin','200');
+     await A.pg.locator('.acts [data-act=share]').click(); await A.pg.waitForSelector('#s-link',{state:'attached'});
+     const link=await A.pg.locator('#s-link').inputValue(), room=link.split('#join=')[1].split('.')[0]; await A.pg.keyboard.press('Escape');
+     await B.pg.goto(link); await B.pg.waitForSelector('#s-who'); await B.pg.selectOption('#s-who',{label:'Ben'}); await B.pg.getByRole('button',{name:'Join'}).click();
+     await B.pg.waitForFunction(()=>$('#syncTag') && $('#syncTag').textContent==='Synced',null,{timeout:5000}).catch(()=>{});
+     const lakeId=await A.pg.evaluate(()=>ui.volId); await toHub(A.pg); await A.pg.waitForTimeout(400);
+     const puts0=mock.puts.length;
+     await A.pg.locator('.vol',{hasText:'Lake'}).click({button:'right'}); await A.pg.locator('#sheetForm [data-act=archive]').click(); await A.pg.waitForTimeout(800);
+     ok(mock.puts.length===puts0 && await A.pg.evaluate(id=>!!S.volumes.find(v=>v.id===id).archived,lakeId) && await B.pg.evaluate(()=>!vol().archived),'LP-10: archiving on one phone sends nothing and the other phone keeps it unarchived (per-phone)');
+     await addExp(B.pg,'Boat','60');
+     const got=await A.pg.waitForFunction(id=>{ const v=S.volumes.find(x=>x.id===id); return v && v.expenses.some(e=>e.desc==='Boat'); },lakeId,{timeout:5000}).then(()=>true,()=>false);
+     ok(got && await A.pg.evaluate(id=>!!S.volumes.find(v=>v.id===id).archived,lakeId),'LP-10: an archived volume still receives live changes and stays archived');
+     const blob=mroom(room).blob, plain=await A.pg.evaluate(async([r,k,bl])=>JSON.stringify(await unseal(r,k,bl)),[room,link.split('.').pop(),blob]);
+     ok(!/archived/.test(plain),'LP-10: the encrypted copy on the server has no archived flag');
+     if (!(await A.pg.evaluate(()=>$('#archBox').open))) await A.pg.locator('#archBox summary').click();
+     await A.pg.locator('.vol.arch').click({button:'right'}); await A.pg.locator('#sheetForm [data-act=delVol]').click(); await A.pg.locator('#sheetForm button.danger').click();
+     ok(await A.pg.evaluate(id=>!SY[id] && !JSON.parse(localStorage.getItem('hati2.sync.v1')||'{}')[id] && S.gone.includes(id),lakeId),'LP-10: deleting leaves the sync room on this phone (tombstone kept)');
+     await A.pg.locator('.toast button.undo').click(); await A.pg.waitForTimeout(300);
+     ok(await A.pg.evaluate(([id,r])=>!!S.volumes.find(v=>v.id===id) && SY[id] && SY[id].room===r,[lakeId,room]),'LP-10: Undo brings the volume back into the same room');
+     await addExp(B.pg,'Fuel stop','15');
+     const back=await A.pg.waitForFunction(id=>{ const v=S.volumes.find(x=>x.id===id); return v && v.expenses.some(e=>e.desc==='Fuel stop'); },lakeId,{timeout:5000}).then(()=>true,()=>false);
+     ok(back,'LP-10: after Undo, live changes arrive again');
+     await A.pg.evaluate(()=>{ if (!$('#archBox').open) $('#archBox summary').click(); });
+     await A.pg.locator('.vol.arch').click({button:'right'}); await A.pg.locator('#sheetForm [data-act=delVol]').click(); await A.pg.locator('#sheetForm button.danger').click(); await A.pg.waitForTimeout(6600);
+     await addExp(B.pg,'Ice cream','4'); await A.pg.waitForTimeout(1500);
+     ok(await A.pg.evaluate(id=>!S.volumes.some(v=>v.id===id),lakeId) && await A.pg.evaluate(()=>!document.body.innerText.includes('Lake')),'LP-10: once deleted, a live change from the other phone does not bring it back');
+     await A.pg.reload(); await A.pg.waitForTimeout(800);
+     ok(await A.pg.evaluate(id=>!S.volumes.some(v=>v.id===id),lakeId) && await B.pg.evaluate(()=>vol().expenses.length===4),'LP-10: nor does a reload; the other phone keeps the volume with all 4 expenses');
+     const bc=[...A.e,...B.e]; ok(bc.length===0,'LP-10: no page errors '+JSON.stringify(bc)); await A.c.close(); await B.c.close(); }
+ }
+ // CAT (hati-design + hati-copy): 12 categories for trips and households, one tap, readable at 320, old ids kept
+ { const c=await b.newContext({...devices['iPhone 13']}); await c.addInitScript(noSync); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())});
+   await pg.goto(URL);
+   const cats=await pg.evaluate(()=>({ids:CATEGORIES.map(c=>c[0]),labels:CATEGORIES.map(c=>c[1]),icons:CATEGORIES.map(c=>CAT_ICON[c[0]])}));
+   ok(JSON.stringify(cats.labels)==='["Eating out","Groceries","Drinks","Transport","Fuel","Stay & rent","Fun","Shopping","Bills","Health","Gifts","Other"]','CAT: the 12 categories '+cats.labels.join(', '));
+   ok(['food','transport','entertainment','utilities','shopping','other'].every(id=>cats.ids.includes(id)),'CAT: the six original ids are still categories (old data, links, older phones)');
+   ok(cats.icons.every(s=>/^<svg viewBox="0 0 24 24"><path d="[^"]+"\/>/.test(s)) && new Set(cats.icons).size===12,'CAT: every category has its own 24px ink-line icon');
+   const un=await pg.evaluate(()=>{ const v=exampleVolume(); v.expenses[0].category='pets'; v.expenses[1].category='groceries'; const cl=cleanVolume(v); S.volumes.unshift(cl); save(); ui.volId=cl.id; go('volume');
+     return {pets:cl.expenses[0].category,gro:cl.expenses[1].category,bars:[...document.querySelectorAll('.bars .row span')].map(x=>x.textContent),icon:CAT_ICON.other.includes(document.querySelector('.tx[data-id="'+cl.expenses[0].id+'"] .tx-ic path').getAttribute('d'))}; });
+   ok(un.pets==='other' && un.gro==='groceries' && un.icon && un.bars.includes('Other') && un.bars.includes('Groceries') && new Set(un.bars).size===un.bars.length,'CAT: an unknown id reads as Other (icon and summary), a new id is kept; the summary has one row per category '+JSON.stringify(un));
+   const mg=await pg.evaluate(()=>{ const v=S.volumes[0], o=JSON.parse(JSON.stringify(v)); v.expenses[1].upd=5; o.expenses[1].upd=5; o.expenses[1].category='other';
+     const a=mergeVolumes(v,o).vol.expenses[1].category; o.expenses[1].upd=6; const b=mergeVolumes(v,o).vol.expenses[1].category; return [a,b]; });
+   ok(mg[0]==='groceries' && mg[1]==='other','CAT: an older phone sending a new category back as Other (same edit time) does not overwrite it; a newer edit does '+JSON.stringify(mg));
+   for (const w of [320,360,390]) for (const mode of ['light','dark']) {
+     await pg.setViewportSize({width:w,height:780});
+     const r=await pg.evaluate(m=>{ S.settings.mode=m; applyTheme(); ui.volId=S.volumes[0].id; ui.view='volume'; openExpense(null); const g=$('.cats'), cs=[...g.querySelectorAll('.cat')];
+       return {cols:getComputedStyle(g).gridTemplateColumns.split(' ').length,h:Math.round(g.getBoundingClientRect().height),cut:cs.filter(x=>x.scrollWidth>x.clientWidth+1||x.scrollHeight>x.clientHeight+1).map(x=>x.textContent),minH:Math.min(...cs.map(x=>x.getBoundingClientRect().height)),minW:Math.min(...cs.map(x=>x.getBoundingClientRect().width)),font:parseFloat(getComputedStyle(cs[0]).fontSize),pageX:document.documentElement.scrollWidth<=innerWidth}; },mode);
+     ok(r.cols===(w<350?3:4) && r.cut.length===0 && r.minH>=44 && r.minW>=44 && r.font>=12.5 && r.h<=(w<350?280:220) && r.pageX,`CAT: ${w}px ${mode}: ${r.cols} across, all 12 readable (≥12.5px, nothing cut), targets ≥44px, grid ${r.h}px tall, no sideways scroll `+JSON.stringify(r));
+   }
+   await pg.setViewportSize({width:390,height:844});
+   await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); });
+   await pg.getByRole('button',{name:/Add expense/}).click();
+   ok(await pg.locator('.cat[aria-pressed=true]').innerText()==='Eating out','CAT: a volume with no saved expense starts on Eating out');
+   await pg.fill('#f-amount','12'); await pg.fill('#f-desc','Milk'); await pg.locator('.cat',{hasText:'Groceries'}).click();
+   ok(await pg.locator('.cat[aria-pressed=true]').innerText()==='Groceries','CAT: one tap picks a category');
+   await pg.locator('#expForm button[type=submit]').click(); await pg.waitForFunction(()=>ui.view==='volume');
+   await pg.getByRole('button',{name:/Add expense/}).click();
+   ok(await pg.locator('.cat[aria-pressed=true]').innerText()==='Groceries','CAT: the next new expense in this volume starts on the last category used (Groceries)');
+   await pg.reload(); ok(await pg.locator('.cat[aria-pressed=true]').innerText()==='Groceries','CAT: remembered after a reload');
+   await pg.evaluate(()=>{ sessionStorage.clear(); ui.volId=S.volumes[1].id; go('volume'); openExpense(null); });
+   ok(await pg.locator('.cat[aria-pressed=true]').innerText()==='Eating out','CAT: another volume keeps its own (Eating out)');
+   ok(e.length===0,'CAT: no page errors '+JSON.stringify(e)); await c.close(); }
  // M (hati-motion, owner: "go all out with the animation, but make it still fast and optimized"): manga motion on every
  // change, all inside the timing tokens, transform/opacity/clip-path only, nothing at all under reduced motion, taps never
  // wait, rapid navigation ends in the right state, and a 4x-throttled CPU keeps long tasks out of the animation.
