@@ -40,6 +40,11 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
  // Cut a context off the network (and the mock server), or bring it back.
  const setNet=async(c,on)=>{ if (on) mock.down.delete(c); else { mock.down.add(c); for (const s of mock.socks.values()) for (const ws of s) if (ws.__c===c) ws.close({code:1011}); } await c.setOffline(!on); };
  const ok=(c,msg)=>{console.log((c?'PASS ':'FAIL ')+msg); if(!c) process.exitCode=1;};
+ // There is no bottom bar: the hub is reached with the top bar's Back (or Escape for a sheet), Settings with the hub's gear.
+ const toHub=async pg=>{ for (let i=0;i<8;i++) { const s=await pg.evaluate(()=>({v:ui.view,sh:sheetOpen()}));
+     if (s.sh) { await pg.keyboard.press('Escape'); continue; } if (s.v==='hub') return;
+     await pg.locator('#app .topbar [data-act=back]').click(); await pg.waitForFunction(v=>ui.view!==v,s.v,{timeout:2000}).catch(()=>{}); } };
+ const toSettings=async pg=>{ await toHub(pg); await pg.locator('#app .topbar [data-act=settings]').click(); };
  const ctx=await b.newContext({...devices['iPhone 13']});
  const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
  await p.goto(URL);
@@ -53,7 +58,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
  ok(/^v-[a-z0-9]+$/.test((await p.evaluate(()=>location.hash)).slice(1)),'volume has its own URL hash');
  await p.reload(); ok(await p.evaluate(()=>ui.view)==='volume','reload keeps you on the volume page');
  // back button stays in the app
- await p.locator('#nav [data-act=home]').click(); await p.locator('.vol').first().click();
+ await toHub(p); await p.locator('.vol').first().click();
  await p.goBack(); ok(await p.evaluate(()=>ui.view)==='hub' && p.url().startsWith(URL),'browser Back returns to the hub inside the app');
  await p.goForward(); ok(await p.evaluate(()=>ui.view)==='volume','browser Forward returns to the volume');
  // exact split + comma decimal
@@ -99,7 +104,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
  // share & import as copy; XSS code rejected
  await p.locator('[data-act=volMenu]').click(); await p.locator('.sheet [data-act=share]').click();
  const code=await p.locator('#s-code').inputValue(); await p.locator('[data-act=closeSheet]').first().click();
- await p.locator('#nav [data-act=home]').click(); await p.getByRole('button',{name:'Import'}).click();
+ await toHub(p); await p.getByRole('button',{name:'Import'}).click();
  const evil=JSON.parse(code); evil.volume.id='q"><img src=x onerror=window.__x=1>'; evil.volume.members[1].id='a"><b>';
  await p.fill('#s-paste',JSON.stringify(evil)); await p.locator('#s-go').click();
  ok((await p.locator('#sheetMsg').innerText()).length>0 && !(await p.evaluate(()=>window.__x)),'malicious share code is rejected');
@@ -109,7 +114,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
  ok(await p.evaluate(()=>{const v=S.volumes.find(x=>x.id===ui.volId);return nameOf(v,v.meId)})==='Mira','importer is Mira in the copy');
  await p.reload(); ok(await p.locator('h1').count()===1,'data survives reload');
  // themes
- await p.locator('#nav [data-act=settings]').click(); await p.locator('[data-pal=persimmon]').click(); await p.locator('[data-set=mode][data-val=dark]').click();
+ await toSettings(p); await p.locator('[data-pal=persimmon]').click(); await p.locator('[data-set=mode][data-val=dark]').click();
  ok(await p.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--acc-d').trim())==='#FFB31A','Persimmon dark accent applied');
  ok(await p.evaluate(()=>document.activeElement && document.activeElement.dataset.val)==='dark','focus stays on the toggle after switching');
  await p.keyboard.press('Shift+Tab'); 
@@ -121,8 +126,8 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
  ok(true,'checked 390/360/320 for horizontal scroll');
  await p.setViewportSize({width:390,height:844});
  await p.evaluate(()=>{ui.volId=S.volumes[0].id; go('volume');}); await p.screenshot({path:process.argv[2]+'/after-dark.png'});
- await p.locator('#nav [data-act=settings]').click(); await p.locator('[data-pal=lagoon]').click(); await p.locator('[data-set=mode][data-val=light]').click();
- await p.locator('#nav [data-act=home]').click(); await p.screenshot({path:process.argv[2]+'/after-light-hub.png'});
+ await toSettings(p); await p.locator('[data-pal=lagoon]').click(); await p.locator('[data-set=mode][data-val=light]').click();
+ await toHub(p); await p.screenshot({path:process.argv[2]+'/after-light-hub.png'});
  await p.locator('.vol').first().click(); await p.getByRole('button',{name:/Add expense/}).click(); await p.locator('[data-split="exact"]').click();
  await p.screenshot({path:process.argv[2]+'/after-light-form.png'});
  // inputs are 16px (no iOS zoom)
@@ -164,11 +169,11 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await d.evaluate(()=>{ navigator.share=()=>Promise.reject(new DOMException('cancel','AbortError')); });
    await d.getByRole('button',{name:'Send invite'}).click(); await d.waitForTimeout(100);
    ok(await d.evaluate(()=>window.__copied===0 && !$('#sheetMsg').textContent),'cancelling the share sheet is silent and does not copy');
-   await d.locator('[data-act=closeSheet]').click(); await d.locator('#nav [data-act=home]').click(); await d.getByRole('button',{name:'Import'}).click();
+   await d.locator('[data-act=closeSheet]').click(); await toHub(d); await d.getByRole('button',{name:'Import'}).click();
    const ph=await d.locator('#s-paste').getAttribute('placeholder'); ok(!/[{}"]/.test(ph),'import placeholder has no JSON: '+ph);
    ok(await d.getByText('Open file').isVisible(),'file import is a labeled button, not a bare file input');
    await d.locator('[data-act=closeSheet]').click();
-   await d.locator('#nav [data-act=settings]').click();
+   await toSettings(d);
    ok(await d.evaluate(()=>document.scrollingElement.scrollHeight)<=1300,'settings is at most 1300px tall at 360 (got '+await d.evaluate(()=>document.scrollingElement.scrollHeight)+')');
    const names=await d.evaluate(()=>PALETTES.map(x=>x.name)); let allSel=true;
    for (const n of names) { await d.getByRole('radio',{name:new RegExp(n,'i')}).click(); if(await d.getByRole('radio',{name:new RegExp(n,'i')}).getAttribute('aria-checked')!=='true') allSel=false; }
@@ -207,9 +212,49 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(/tap Import/.test(await pg.locator('#s-help').innerText()) && /\.$/.test(await pg.locator('#s-sum').innerText()),'after Check code the help line says Import and the summary ends with a full stop: '+await pg.locator('#s-sum').innerText());
    await c.close(); }
 
+ // NB: no bottom bar (owner, 2026-11-09). Settings is the gear in the hub's top bar; Back returns to the hub.
+ { const c=await b.newContext({...devices['iPhone 13']}); await c.addInitScript(noSync); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())});
+   await pg.goto(URL);
+   ok(await pg.evaluate(()=>!document.querySelector('#nav, nav, .nav') && ![...document.body.querySelectorAll('*')].some(n=>{ const s=getComputedStyle(n); if (!/fixed|sticky/.test(s.position) || n.closest('.toast')) return false; const r=n.getBoundingClientRect(); return r.height>0 && r.bottom>=innerHeight-1 && r.top>innerHeight/2; })),'NB: there is no #nav and no bar fixed to the bottom of the screen');
+   const gear=await pg.evaluate(()=>{ const g=$('#app .topbar [data-act=settings]'); if (!g) return null; const r=g.getBoundingClientRect(), t=g.closest('.topbar').getBoundingClientRect(); return {cls:g.className,label:g.getAttribute('aria-label'),w:r.width,h:r.height,last:g===g.parentElement.lastElementChild,right:Math.round(t.right-r.right),mid:Math.abs((r.top+r.bottom)/2-(t.top+t.bottom)/2)}; });
+   ok(gear && gear.cls==='ico' && gear.label==='Settings' && gear.w>=44 && gear.h>=44 && gear.last && gear.right<=17 && gear.mid<=1.5,'NB: the hub top bar ends with a clay .ico gear labelled "Settings", 44px+, top-right '+JSON.stringify(gear));
+   const t0=await pg.evaluate(()=>history.length);
+   await pg.locator('#app .topbar [data-act=settings]').click();
+   await pg.waitForFunction(()=>$('#app').dataset.turn==='fwd',null,{timeout:2000}).catch(()=>{});
+   const s1=await pg.evaluate(()=>({view:ui.view,h1:$('#app h1').textContent,hash:location.hash,turn:$('#app').dataset.turn,back:!!$('#app .topbar [data-act=back]'),focus:document.activeElement===$('#app h1')}));
+   ok(s1.view==='settings' && s1.h1==='Settings' && s1.hash==='#prefs' && s1.turn==='fwd' && s1.back && s1.focus,'NB: one tap on the gear opens Settings (#prefs, wipe goes left, title focused, Back in its top bar) '+JSON.stringify(s1));
+   await pg.locator('#app .topbar [data-act=back]').click(); await pg.waitForFunction(()=>ui.view==='hub',null,{timeout:2000}).catch(()=>{});
+   await pg.waitForFunction(()=>$('#app').dataset.turn==='back',null,{timeout:2000}).catch(()=>{});
+   const s2=await pg.evaluate(()=>({view:ui.view,hash:location.hash,turn:$('#app').dataset.turn}));
+   ok(s2.view==='hub' && s2.hash==='' && s2.turn==='back' && await pg.evaluate(()=>history.length)===t0+1,'NB: Settings Back returns to the hub (wipe goes right, no extra history entry) '+JSON.stringify(s2));
+   await pg.locator('#app .topbar [data-act=settings]').click(); await pg.goBack(); await pg.waitForFunction(()=>ui.view==='hub',null,{timeout:2000}).catch(()=>{});
+   ok(await pg.evaluate(()=>ui.view)==='hub' && pg.url().startsWith(URL),'NB: Android/browser Back from Settings returns to the hub inside the app');
+   await pg.locator('.vol').first().click();
+   ok(await pg.evaluate(()=>ui.view==='volume' && !$('#app [data-act=settings]')),'NB: a volume has no Settings button (hub only; Back then the gear)');
+   await pg.goto(URL+'#prefs'); await pg.reload();
+   ok(await pg.evaluate(()=>ui.view==='settings' && $('#app h1').textContent==='Settings'),'NB: the #prefs deep link opens Settings');
+   await pg.locator('#app .topbar [data-act=back]').click(); await pg.waitForFunction(()=>ui.view==='hub',null,{timeout:2000}).catch(()=>{});
+   ok(await pg.evaluate(()=>ui.view==='hub' && location.hash==='') && pg.url().startsWith(URL),'NB: Back from a #prefs deep link lands on the hub, still in the app');
+   // content reaches the bottom: no dead strip under it (only #app's 24px + safe-area padding)
+   await pg.evaluate(()=>{ for (let i=0;i<6;i++) { const v=JSON.parse(JSON.stringify(S.volumes[0])); v.id='nb'+i; v.title='Trip '+i; v.created=(S.volumes[0].created||0)+i+1; S.volumes.push(v); } save(); });
+   const padRule=await pg.evaluate(()=>[...document.styleSheets].flatMap(s=>[...s.cssRules]).filter(r=>r.selectorText==='#app').map(r=>(/padding-block:[^;]*/.exec(r.cssText)||[''])[0]).join(' '));
+   ok(/safe-area-inset-bottom/.test(padRule) && /24px/.test(padRule),'NB: #app keeps only 24px plus the bottom safe area under the content: '+padRule);
+   const strips=[];
+   for (const w of [320,360,390]) for (const mode of ['light','dark']) { await pg.setViewportSize({width:w,height:640});
+     for (const view of ['hub','settings']) {
+       const m=await pg.evaluate(([mode,view])=>{ S.settings.mode=mode; applyTheme(); go(view); window.scrollTo(0,document.scrollingElement.scrollHeight);
+         const bottom=Math.max(...[...$('#app').children].map(n=>n.getBoundingClientRect().bottom)), at=document.elementFromPoint(innerWidth/2,innerHeight-3);
+         const gw=$('#app .topbar [data-act=settings]'), h1=$('#app h1');
+         return {gap:Math.round(innerHeight-bottom),at:at?(at===document.documentElement||at===document.body||!!at.closest('#app')):true,sw:document.scrollingElement.scrollWidth<=innerWidth,
+           gear:gw?gw.getBoundingClientRect().right<=innerWidth-15:true,h1:h1.scrollWidth<=h1.clientWidth+1}; },[mode,view]);
+       if (m.gap<8 || m.gap>40 || !m.at || !m.sw || !m.gear || !m.h1) strips.push(`${w}/${mode}/${view} ${JSON.stringify(m)}`); } }
+   ok(strips.length===0,'NB: at 320/360/390, light and dark, hub and Settings scroll down to content 8-40px from the bottom edge, nothing fixed there, gear and title fit '+JSON.stringify(strips.slice(0,3)));
+   ok(e.length===0,'NB: no console errors '+e.slice(0,2).join(' | '));
+   await c.close(); }
+
  // R1-1/R1-2/R1-3 (code): merge on import, member edit, native share, backup
  { const fresh=async()=>{ const c=await b.newContext({...devices['iPhone 13'],acceptDownloads:true}); await c.addInitScript(noSync); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.goto(URL); return {c,pg,e}; };
-   const home=async pg=>{ if(await pg.evaluate(()=>sheetOpen())) await pg.keyboard.press('Escape'); await pg.locator('#nav [data-act=home]').click(); };
+   const home=async pg=>{ if(await pg.evaluate(()=>sheetOpen())) await pg.keyboard.press('Escape'); await toHub(pg); };
    const openVol=async (pg,title)=>{ await home(pg); await pg.locator('.vol',{hasText:title}).first().click(); };
    const shareCode=async (pg,title)=>{ await openVol(pg,title); await pg.locator('[data-act=volMenu]').click(); await pg.locator('.sheet [data-act=share]').click(); const c=await pg.locator('#s-code').inputValue(); await pg.keyboard.press('Escape'); return c; };
    const check=async (pg,text)=>{ await home(pg); await pg.getByRole('button',{name:'Import'}).click(); await pg.fill('#s-paste',text); await pg.locator('#s-go').click(); };
@@ -311,12 +356,12 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    const D=await fresh(); await check(D.pg,sent); await D.pg.selectOption('#s-who',{label:'Alex'}); await doImport(D.pg);
    ok(await D.pg.evaluate(id=>ui.volId===id,volId) && await zs(D.pg),'the link passed to navigator.share, pasted into Import on another phone, imports '+JSON.stringify([String(sent).slice(0,60),await D.pg.evaluate(()=>[ui.view,ui.volId,$('#sheetMsg')&&$('#sheetMsg').textContent])]));
    // backup: download, restore on a fresh phone and onto a phone that already has one volume
-   await home(A.pg); await A.pg.locator('#nav [data-act=settings]').click();
+   await toSettings(A.pg);
    const [dl]=await Promise.all([A.pg.waitForEvent('download'),A.pg.locator('[data-act=backup]').click()]);
    ok(/^hati2-backup-\d{4}-\d{2}-\d{2}\.json$/.test(dl.suggestedFilename()),'Save backup downloads '+dl.suggestedFilename());
    const file=await dl.path(); const nA=await A.pg.evaluate(()=>S.volumes.length);
    const E=await fresh(); await E.pg.evaluate(()=>{S.volumes=[];save();}); await E.pg.reload();
-   await home(E.pg); await E.pg.locator('#nav [data-act=settings]').click(); await E.pg.locator('[data-act=restore]').click(); await E.pg.setInputFiles('#s-file',file); await E.pg.waitForTimeout(100); await E.pg.locator('#s-go').click();
+   await toSettings(E.pg); await E.pg.locator('[data-act=restore]').click(); await E.pg.setInputFiles('#s-file',file); await E.pg.waitForTimeout(100); await E.pg.locator('#s-go').click();
    ok(new RegExp('Restores '+nA+' volume').test(await E.pg.locator('#s-sum').innerText()),'backup summary: '+await E.pg.locator('#s-sum').innerText());
    await doImport(E.pg);
    ok(await E.pg.evaluate(()=>S.volumes.length)===nA && await zs(E.pg) && await E.pg.evaluate(id=>S.volumes.some(v=>v.id===id&&nameOf(v,v.meId)==='Alex'),volId),'backup restores every volume on a fresh phone, each with its own member, zero-sum');
@@ -449,11 +494,11 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    const c=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780}}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())});
    await pg.goto(URL);
    const ids=await pg.evaluate(()=>PALETTES.map(x=>x.id)); const bad=[];
-   const CLAY_SET='.btn:not(.quiet):not(.text), .ico, .cat, .seg button, .vol, button.chip:not(.add), .nav [aria-current]';
+   const CLAY_SET='.btn:not(.quiet):not(.text), .ico, .cat, .seg button, .vol, button.chip:not(.add)';
    for (const id of ids) for (const mode of ['light','dark']) {
      const set=async v=>pg.evaluate(([id,mode,v])=>{ S.settings.palette=id; S.settings.mode=mode; applyTheme(); dropSheet&&dropSheet(); if(v==='expense'){ ui.volId=S.volumes[0].id; ui.view='volume'; openExpense(null); } else { if(v==='volume') ui.volId=S.volumes[0].id; go(v); } },[id,mode,v]);
      const want=async(sel,clay,tag)=>{ const s=await st(pg,sel); if(!s) { bad.push(`${id}/${mode} ${tag||sel}: missing`); return; } if(clay? !isClay(s) : (/inset/.test(s.boxShadow)||s.borderTopLeftRadius!==(tag==='sheet'?'6px':'3px'))) bad.push(`${id}/${mode} ${tag||sel}: ${s.borderTopWidth} r${s.borderTopLeftRadius} ${s.boxShadow}`); };
-     await set('hub'); await want('.vol',true); await want('.nav [aria-current]',true);
+     await set('hub'); await want('.vol',true); await want('.topbar [data-act=settings]',true,'hub gear');
      await set('volume'); await want('.btn.primary',true); await want('.ico',true); await want('button.chip:not(.add)',true); await want('.ledger',false); await want('.hero',false);
      await want('.chip.add',false,'chip.add (flat, 3px)');
      await set('expense'); await want('.cat[aria-pressed="false"]',true); await want('.cat[aria-pressed="true"]',true); await want('.input',false);
@@ -1117,8 +1162,8 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await pg.locator('[data-act=settle]').click(); await pg.keyboard.press('Escape'); await pg.locator('[data-act=volMenu]').click(); await pg.keyboard.press('Escape');
    await pg.locator('[data-act=history]').first().click(); await pg.locator('[data-act=back]').click();
    await pg.waitForTimeout(500);
-   const fin=await pg.evaluate(()=>({view:ui.view,route:parseHash().view,h1:$('#app h1').textContent,title:vol()&&vol().title,ghosts:document.querySelectorAll('.ghost').length+Object.keys(ghosts).length,sheet:sheetOpen(),inert:$('#app').inert,nav:$('#nav [aria-current]').textContent,hist:depth()}));
-   ok(fin.view==='volume' && fin.route==='volume' && fin.h1===fin.title && fin.ghosts===0 && !fin.sheet && !fin.inert && fin.nav==='Volumes','M: after rapid taps, Back and Forward the app ends on the right screen with no ghost or sheet left '+JSON.stringify(fin));
+   const fin=await pg.evaluate(()=>({view:ui.view,route:parseHash().view,h1:$('#app h1').textContent,title:vol()&&vol().title,ghosts:document.querySelectorAll('.ghost').length+Object.keys(ghosts).length,sheet:sheetOpen(),inert:$('#app').inert,nav:!!document.querySelector('#nav, nav, .nav'),hist:depth()}));
+   ok(fin.view==='volume' && fin.route==='volume' && fin.h1===fin.title && fin.ghosts===0 && !fin.sheet && !fin.inert && !fin.nav,'M: after rapid taps, Back and Forward the app ends on the right screen with no ghost or sheet left '+JSON.stringify(fin));
    // an interrupted sheet: close and open another at once; one sheet, focus in it, nothing left behind
    await pg.evaluate(()=>{ settleSheet(null); closeSheet(); volMenuSheet(); }); await pg.waitForTimeout(400);
    const sh=await pg.evaluate(()=>({n:$('#layer').children.length,title:$('#sheetTitle').textContent,focus:$('#sheetForm').contains(document.activeElement),ghosts:document.querySelectorAll('.ghost').length}));
