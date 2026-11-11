@@ -64,3 +64,6 @@ Given a new expense in "Bebetime" and receipt text copied from a photo (iPhone L
 
 ## 20. Undo a wrong delete or edit (D2)
 Given "Bebetime" with "House of Bagnet" ₱334.13 and a ₱500.00 payment to Ivy. When You delete House of Bagnet by mistake and tap Undo on the toast (or Tab to it and press Enter). Then it is back with the same amount, payer, split, date and category (under a new id, so Ivy's phone, which already has the delete, takes it back too), and balances are as before to the cent. The same Undo follows "Expense updated", "Payment recorded" and "Payment deleted"; "Undone." confirms. Budget: 1 tap. Check: e2e "D2 …".
+
+## 21. Yesterday's GCash payment (D3)
+Given "Bebetime" where You owe Ivy. When You tap Settle up, tap Yesterday under Date, type "GCash" in How (optional) and tap Record payment. Then the payment is saved with yesterday's date and `how: "GCash"`, History shows "Payment · via GCash" and "Yesterday", editing it opens on that date and how, and the balances are the same as without a how. The how survives a reload, a backup, a share code and a merge with a phone on an older version (which drops it without harm). Budget: 4 taps (Settle up, Yesterday, How, Record payment). Check: e2e "D3 …".

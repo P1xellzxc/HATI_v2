@@ -1875,5 +1875,46 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(await content()===c0,'D2: and it survives a reload');
    ok(errs.length===0,'D2: no page errors '+JSON.stringify(errs)); await c.close(); }
 
+ // D3 payments as they happened: a date (Today / Yesterday) and an optional "How" on the settle sheet; `how` survives
+ // cleanVolume, mergeVolumes (also against an older phone that drops it) and validVolume, and never touches the money.
+ { const {c,pg,errs}=await bebe('iPhone 13');
+   await pg.locator('.vol').first().click(); await pg.waitForSelector('[data-act=settle]'); await pg.waitForTimeout(400);
+   let taps=0; await pg.locator('[data-act=settle]').first().click(); taps++; await pg.waitForSelector('#s-date');
+   const f0=await pg.evaluate(()=>({d:$('#s-date').value,type:$('#s-date').type,q:[...document.querySelectorAll('#sheetForm [data-day]')].map(b=>b.textContent+':'+b.getAttribute('aria-pressed')+':'+(b.getBoundingClientRect().height>=44)),
+     how:{label:document.querySelector('label[for=s-via]').textContent,ph:$('#s-via').placeholder,max:$('#s-via').maxLength,fs:getComputedStyle($('#s-via')).fontSize},dfs:getComputedStyle($('#s-date')).fontSize}));
+   ok(f0.d===dayAgo(0) && f0.type==='date' && f0.q.join()==='Today:true:true,Yesterday:false:true' && f0.dfs==='16px','D3: the settle sheet has a native date field set to today, with Today (pressed) and Yesterday '+JSON.stringify(f0));
+   ok(f0.how.label==='How (optional)' && f0.how.ph==='GCash, cash' && f0.how.max===40 && f0.how.fs==='16px','D3: "How (optional)", placeholder "GCash, cash", up to 40 characters, 16px '+JSON.stringify(f0.how));
+   await pg.getByRole('button',{name:'Yesterday',exact:true}).click(); taps++;
+   await pg.locator('#s-via').fill('GCash'); taps++;
+   await pg.locator('#sheetForm button.primary').click(); taps++; await pg.waitForTimeout(400);
+   const p1=await pg.evaluate(()=>{ const v=S.volumes[0]; return v.settlements.find(s=>s.id!=='p1'); });
+   ok(p1 && p1.date===dayAgo(1) && p1.how==='GCash' && taps<=4,'D3 scenario: yesterday\'s GCash payment is recorded with its date and how, in '+taps+' taps '+JSON.stringify(p1));
+   await pg.locator('[data-act=history]').first().click(); await pg.waitForSelector('.ledger.hist'); await pg.waitForTimeout(400);
+   const row=await pg.evaluate(id=>{ const r=document.querySelector(`.ledger.hist .tx[data-id="${id}"]`); return r&&{m:r.querySelector('.tx-m').textContent,d:r.querySelector('.date').textContent}; },p1.id);
+   ok(row && row.m==='Payment · via GCash' && row.d==='Yesterday','D3: History shows "via GCash" and the date '+JSON.stringify(row));
+   // edit: the sheet opens on the payment's own date and how; clearing How removes it, the date stays
+   await pg.locator(`.ledger.hist .tx[data-id="${p1.id}"]`).click(); await pg.waitForSelector('#s-via');
+   const e0=await pg.evaluate(()=>({d:$('#s-date').value,h:$('#s-via').value}));
+   await pg.locator('#s-via').fill(''); await pg.locator('#sheetForm button.primary').click(); await pg.waitForTimeout(400);
+   const e1=await pg.evaluate(id=>S.volumes[0].settlements.find(s=>s.id===id),p1.id);
+   ok(e0.d===dayAgo(1) && e0.h==='GCash' && e1.date===dayAgo(1) && !('how' in e1),'D3: editing keeps the date and an emptied How is removed '+JSON.stringify([e0,e1]));
+   // the data rules, with the real functions
+   const dr=await pg.evaluate(()=>{ const v=S.volumes[0], s=v.settlements[0]; s.how='GCash'; s.upd=5; const b0=JSON.stringify(balances(v));
+     const cl=cleanVolume(JSON.parse(JSON.stringify(v))), long=cleanVolume({...v,settlements:[{...s,how:'x'.repeat(41)}]}), bad=cleanVolume({...v,settlements:[{...s,how:42}]});
+     const older={...JSON.parse(JSON.stringify(v)),settlements:v.settlements.map(({how,...r})=>r)}; // a phone that doesn't know `how`, same upd
+     const m1=mergeVolumes(v,older), m2=mergeVolumes(older,v), newer={...older,settlements:older.settlements.map(r=>({...r,upd:9}))}, m3=mergeVolumes(v,newer);
+     const noHow={...v,settlements:v.settlements.map(({how,...r})=>r)};
+     return {valid:validVolume(v),clean:cl.settlements[0].how,long:'how' in long.settlements[0],bad:'how' in bad.settlements[0],
+       m1:m1.vol.settlements[0].how,m2:m2.vol.settlements[0].how,m3:'how' in m3.vol.settlements[0],
+       money:JSON.stringify(balances(noHow))===b0 && JSON.stringify(debts(noHow))===JSON.stringify(debts(v)),code:JSON.parse(shareCodeOf(v)).volume.settlements[0].how,canon:canon(v)!==canon(noHow)}; });
+   ok(dr.valid && dr.clean==='GCash' && !dr.long && !dr.bad,'D3: validVolume accepts a payment with how; cleanVolume keeps it, drops one over 40 characters or not text '+JSON.stringify(dr));
+   ok(dr.m1==='GCash' && dr.m2==='GCash' && !dr.m3,'D3: mergeVolumes keeps how when an older phone sends the payment back without it at the same upd, and takes a newer edit '+JSON.stringify(dr));
+   ok(dr.money && dr.code==='GCash' && dr.canon,'D3: how never changes balances or debts, travels in share codes and backups, and counts as a change for sync '+JSON.stringify(dr));
+   await pg.evaluate(()=>{ S.volumes[0].settlements[0].how='<img src=x onerror="window.__h=1">'; commit(); render(); });
+   await pg.reload(); await pg.waitForSelector('.ledger.hist');
+   const hx=await pg.evaluate(()=>({h:window.__h,t:document.querySelector('.ledger.hist .tx[data-act=editSettle] .tx-m').textContent,kept:S.volumes[0].settlements[0].how}));
+   ok(hx.h===undefined && /via <img/.test(hx.t) && /^<img/.test(hx.kept),'D3: how survives a reload and shows as text '+JSON.stringify(hx));
+   ok(errs.length===0,'D3: no page errors '+JSON.stringify(errs)); await c.close(); }
+
  await b.close();
 })();

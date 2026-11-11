@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-YGYM3OWUlaeO9Mb5tj9ll0NyEHPHpbTJiGU3OGLcxxQ='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://hati-sync.gerymefernando.workers.dev wss://hati-sync.gerymefernando.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-L6LfncHHXs2dQ1XRIvq9uVVNecQamIdXVUC5jXFxpBM='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://hati-sync.gerymefernando.workers.dev wss://hati-sync.gerymefernando.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>HATI²</title>
@@ -1052,7 +1052,7 @@ function debtRow(v, d, tag = "div", extra = "", tail = "") {
 function itemRow(v, it) {
   if (it.k === "e") return expenseRow(v, it.x);
   const s = it.x;
-  return `${txOpen(v, "editSettle", s.id)}<span class="tx-ic" aria-hidden="true">${CAT_ICON.settle}</span><span class="grow"><b class="tx-t">${esc(meName(v, s.from))} paid ${esc(meObj(v, s.to))}</b><span class="muted small tx-m">Payment</span></span><span class="tx-r"><span class="tx-a num">${esc(fmt(s.amount, v.currency))}</span><span class="muted small date">${esc(niceDate(s.date))}</span></span>${txClose(v)}`;
+  return `${txOpen(v, "editSettle", s.id)}<span class="tx-ic" aria-hidden="true">${CAT_ICON.settle}</span><span class="grow"><b class="tx-t">${esc(meName(v, s.from))} paid ${esc(meObj(v, s.to))}</b><span class="muted small tx-m">Payment${s.how ? ` · via ${esc(s.how)}` : ""}</span></span><span class="tx-r"><span class="tx-a num">${esc(fmt(s.amount, v.currency))}</span><span class="muted small date">${esc(niceDate(s.date))}</span></span>${txClose(v)}`;
 }
 function expenseRow(v, e) {
   const c = catOf(e.category), mineShare = e.splits[v.meId] || 0;
@@ -1625,12 +1625,14 @@ function settleSheet(existing) {
     return;
   }
   const s = existing || ds[0] || { from: v.meId, to: (v.members.find(m => m.id !== v.meId) || {}).id };
-  const people = v.members.map(m => [m.id, meName(v, m.id)]);
+  const people = v.members.map(m => [m.id, meName(v, m.id)]), day0 = existing ? existing.date : today();
   const sugg = !existing && ds.length > 1 ? `<div class="legend">Suggested payments</div><div class="ledger">${ds.map((d, i) => debtRow(v, d, "button", `type="button" data-sugg="${i}" aria-pressed="${i === 0}"`, CHECK)).join("")}</div>` : "";
   sheet(`<h2>${existing ? "Edit payment" : "Settle up"}</h2><div class="stack">${sugg}
     <div class="field">${pickField("s-from", "From", people, s.from)}</div>
     <div class="field">${pickField("s-to", "To", people, s.to)}</div>
     <div class="field"><label for="s-amt">Amount (${esc(v.currency)})</label><input id="s-amt" class="input num" inputmode="decimal" placeholder="0.00" autocomplete="off" value="${s.amount ? (s.amount / 100).toFixed(2) : ""}"></div>
+    <div class="field"><label for="s-date">Date</label><input id="s-date" type="date" class="input" value="${esc(day0)}">${quickDays(day0)}</div>
+    <div class="field"><label for="s-via">How (optional)</label><input id="s-via" class="input" maxlength="40" placeholder="GCash, cash" autocomplete="off" value="${esc((existing && existing.how) || "")}"></div>
     <div class="msg" id="sheetMsg" role="alert"></div>
     ${sheetButtons("Record payment")}
     ${existing ? `<button type="button" class="btn danger block" data-act="deleteSettle" data-id="${esc(existing.id)}">Delete payment</button>` : ""}</div>`,
@@ -1641,9 +1643,12 @@ function settleSheet(existing) {
       if (!(amt > 0)) return sheetMsg("Enter an amount greater than zero.");
       if (amt > MAX_CENTS) return sheetMsg("That amount is too large.");
       // D2: Undo puts the payment back as it was, or takes a new one away (tombstoned), as a normal write
+      // D3: the day it was paid (Today by default) and how, e.g. GCash; "how" is optional and never touches the money
+      const date = $("#s-date").value || today(), how = $("#s-via").value.trim().slice(0, 40);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return sheetMsg("Pick a date.");
       const now = Date.now(), step = { list: "settlements", id: existing ? existing.id : uid(), was: existing ? { ...existing } : null, upd: now };
-      if (existing) Object.assign(existing, { from, to, amount: amt, upd: now });
-      else v.settlements.push({ id: step.id, from, to, amount: amt, date: today(), upd: now });
+      const rec = { id: step.id, from, to, amount: amt, date, upd: now, ...(how ? { how } : {}) };
+      if (existing) { delete existing.how; Object.assign(existing, rec); } else v.settlements.push(rec);
       if (!commit()) return; FX.settled = v.id; closeSheet(); render(); toast("Payment recorded", { undo: () => undoSteps(v.id, [step]), ms: 6000 });
     });
   if (!sugg) return;
@@ -2230,7 +2235,8 @@ function cleanVolume(x) {
       splitType: ["equal", "exact", "percent", "shares"].includes(e.splitType) ? e.splitType : "exact",
       splits: { ...e.splits }, inputs: Object.fromEntries(Object.entries(e.inputs && typeof e.inputs === "object" ? e.inputs : {}).filter(([k, v]) => x.members.some(m => m.id === k) && typeof v === "string" && v.length <= 20)),
       note: typeof e.note === "string" ? e.note : "", upd: updOf(e.upd) })),
-    settlements: x.settlements.map(t => ({ id: t.id, from: t.from, to: t.to, amount: t.amount, date: t.date, upd: updOf(t.upd) })),
+    // `how` (D3, optional, up to 40 characters) goes last: an older phone drops it, and mergeVolumes compares in this key order
+    settlements: x.settlements.map(t => ({ id: t.id, from: t.from, to: t.to, amount: t.amount, date: t.date, upd: updOf(t.upd), ...(typeof t.how === "string" && t.how.trim() && t.how.length <= 40 ? { how: t.how.trim() } : {}) })),
     deleted: [...new Set((x.deleted || []).filter(i => okId(i)))]
   };
 }
@@ -2257,7 +2263,9 @@ function mergeVolumes(localRaw, incomingRaw) {
   const added = { expense: 0, payment: 0, member: 0 }, updated = { ...added, details: 0 }, removed = { ...added };
   // A phone on an older version reads a category it doesn't know as Other and may send it back with the same edit
   // time; a real change of category always has a newer one, so that copy doesn't overwrite the category here.
-  const same = (x, mine) => sameEntry(x, mine) || (x.upd === mine.upd && x.category === "other" && !!mine.category && mine.category !== "other" && sameEntry({ ...x, category: mine.category }, mine));
+  // Likewise a payment's `how` (D3): an older phone sends it back without one at the same edit time.
+  const same = (x, mine) => sameEntry(x, mine) || (x.upd === mine.upd && x.category === "other" && !!mine.category && mine.category !== "other" && sameEntry({ ...x, category: mine.category }, mine)) ||
+    (x.upd === mine.upd && x.how === undefined && mine.how !== undefined && sameEntry({ ...x, how: mine.how }, mine));
   const union = (a, b, isGone, kind) => {
     const out = new Map(a.map(x => [x.id, x]));
     for (const x of b) {
