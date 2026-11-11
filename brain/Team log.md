@@ -1259,3 +1259,12 @@ Skill verdicts before coding (one agent voicing the skills, owner's "Fix that"):
 2. **Security:** a threat model plus an adversarial audit. Cover XSS through every innerHTML path (including `<hati-pick>` and the suggestion chips); hostile codes, links, backups and sync blobs (prototype pollution, size, depth); crypto (IV, AAD room binding, key storage, fragment stripping, referrer); a strict CSP meta (connect-src self + hati-sync workers.dev https/wss); service worker scope; WebView (bridge origin, allowBackup with sync keys, cleartext, intent input); and the Worker (no deploy without telling the owner).
 3. **Features:** in order N1 perf (brain/WIP patch) → N5 dates (Today/Yesterday, multi-row Set date) → D9 paste-a-receipt → D2 undo everywhere → D3 payment date and "How" → N4+D8 backups re-join sync.
 Merge and ship an APK after each track that's green; it installs as an update. The owner's usage limits are tight: one agent per track, and no parallel test suites when judging perf.
+
+### Manga 3D glass sample · hati-design with slop, a11y, lazy-check, ponytail (2026-11-11)
+- Owner asked to see a "manga 3D glass" design. Mocks only (local, git-excluded): `mockups/glass/` (glass.html + 6 PNGs: current / manga acetate / frosted, light and dark, hub + volume at 390).
+- **hati-design:** glass can only be manga as a printed cel: tinted fill, 2px ink edge, dots printed on it, depth by stacked offset cels, an ink-drawn bevel; never by blur.
+- **hati-slop-rubric:** acetate scores 0 on the glass tell only on floating layers; acetate on scrolling cards is outside the allowed rule (scores 1); frosted blur is tell #1 (scores 2).
+- **hati-a11y:** measured lowest text contrast (pixels behind text): current 4.83 light / 5.67 dark; acetate 4.83 / 5.18 (needs a darker `--cel-sub`: stock `--sub` fell to 3.86 on the tinted cel); frosted 3.89 / 3.39 on glass, 1.87 on the page art. Frosted fails.
+- **hati-lazy-check:** acetate cards still read as one card to tap; the back cel adds noise but not confusion. Frosted makes the screen busier than the money.
+- **hati-ponytail:** scroll paint (14-card hub, trace): compositor ~75 ms current, ~109 ms acetate, ~1,380 ms frosted. Frosted is a no; acetate is affordable.
+- Verdict: keep direction A for cards (settled 2026-11-11). If the owner wants glass, the acetate header (a floating layer) is the only form the rules already allow; acetate cards would need the owner to overrule the 2026-11-11 decision.
