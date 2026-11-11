@@ -1214,3 +1214,16 @@ Every decision goes to the skill whose specialty it is. That skill decides, logs
 - Settled: amount never auto-filled from a suggestion (money-parity over lazy-check; hint is one tap); payer not remembered (couple alternates; X4 one-tap switch instead); buttons, not `<datalist>` (ios + a11y); `by` is a label, not proof (code-audit accepted); haptics cut (no `navigator.vibrate` on iOS).
 - Next round: unchanged Now (A = N1–N3, B = N4–N5 + D8). Then @hati-code D1 + D7 with @hati-money-parity fuzz first; @hati-scenarios add the four new budgets to `web/tests/scenarios.md` before D1 is built.
 - Disagree: none open.
+
+### D0 designed pickers · hati-code with hati-design, hati-a11y, hati-lazy-check, hati-ios, hati-motion, hati-slop-rubric, hati-pixel-perfectionist, hati-copy, hati-ponytail (2026-11-09)
+Skill verdicts before coding (one agent voicing the skills, owner's "Fix that"):
+- **hati-design:** reuse the existing clay `.seg` for rows (selected = inverted `--sel-bg`, as Split) and a clay `.btn` with a drawn ink caret for the list button; the list is a flat `.ledger` inside the standard `.sheet`; no new tokens.
+- **hati-code:** one custom element `<hati-pick>` keeps the `<select>` contract (`el.value` get/set, `input`+`change` bubble), so `#f-paid`, `#s-from/#s-to`, `#s-type`, `#s-cur`, `#s-who`, `#s-mode` and every save path stay unchanged; one helper `pickField()`.
+- **hati-a11y:** rows are `radiogroup` (named by the label via `aria-labelledby`) + `radio`/`aria-checked`, roving tabindex, arrows/Home/End move the choice; list = button `aria-haspopup=listbox` → `dialog` + `listbox`/`option`/`aria-selected`, focus on the chosen option, Esc closes and returns focus, page and sheet behind are `inert`.
+- **hati-lazy-check:** payer is 1 tap for 2–4 members (was 2 with the dropdown); B joins a shared volume in 2 taps (was 3); over 4 options or words that don't fit stay 2 taps.
+- **hati-ios:** no new inputs (buttons only), so no focus zoom; the list is a `.sheet` (safe-area padding, `--vvh` max height) and doesn't depend on WebKit's select popover.
+- **hati-motion:** the list reuses `sheet-up` (`--dur-in`, `--ease-out`), nothing under reduced motion; choosing a segment has no animation (the inverted fill is the feedback); no new durations.
+- **hati-slop-rubric:** no pills, no glow, no new card; rows are the same clay as Split and the categories: 0 on every tell.
+- **hati-pixel-perfectionist:** rows never wrap; a row whose words would be cut is measured (`scrollWidth > clientWidth`) and becomes the button, so nothing is clipped at 320; Paid by moves to its own full-width row over Date (equal edges).
+- **hati-copy:** "What to do" options shortened to Merge | Replace | Keep both (the summary line under it already says what each does); placeholder stays "Choose your name"; picker list titles reuse the field label.
+- **hati-ponytail:** keep it to one element + one sheet function; no registry, no resize re-fit (a row only ever falls back, re-fit on show for the hidden member row).

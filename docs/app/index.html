@@ -134,7 +134,7 @@ html { height: 100%; background: var(--bg); }
 body { min-height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.45 var(--font-body); -webkit-tap-highlight-color: transparent; }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--sbar); }
-button, input, select, textarea { font: inherit; color: inherit; }
+button, input, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; box-shadow: 0 0 0 6px var(--accent); }
 h1, h2 { text-wrap: balance; }
@@ -311,12 +311,11 @@ button.tx:active, button.debt:active { background: var(--sunk); }
 .field > label, .legend { font-size: .85rem; font-weight: 700; color: var(--fg); }
 fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 legend { padding: 0; margin-bottom: 6px; }
-.input, select.input, textarea.input { width: 100%; height: calc(1.5em + 24px); padding: 10px 12px; border-radius: var(--r); font-size: 16px; border: 2px solid var(--line); background: var(--field); outline: none; -webkit-appearance: none; appearance: none; }
+.input, textarea.input { width: 100%; height: calc(1.5em + 24px); padding: 10px 12px; border-radius: var(--r); font-size: 16px; border: 2px solid var(--line); background: var(--field); outline: none; -webkit-appearance: none; appearance: none; }
 textarea.input { height: auto; }
 .input:focus { border-color: var(--rule); }
 .input[aria-invalid="true"] { border-color: var(--err); }
 .input:disabled { background: var(--sunk); color: var(--sub); }
-select.input { background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%); background-position: calc(100% - 18px) 52%, calc(100% - 13px) 52%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 34px; }
 .amount-box { padding: 12px 14px; background: var(--hero); border: 2px solid var(--rule); border-radius: var(--r); }
 .amount-box:focus-within { outline: 3px solid var(--fg); outline-offset: 2px; }
 .amount-box .row { gap: 6px; }
@@ -326,11 +325,25 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 .seg button { flex: 1 1 auto; min-height: 44px; border: none; background: var(--panel); padding: 8px 4px; font-size: .9rem; font-weight: 700; color: var(--fg); box-shadow: inset 2px 2px 3px var(--clay-hi), inset -3px -3px 4px var(--clay-lo); }
 .seg button + button { border-left: 2px solid var(--rule); }
 /* Selected segment is pushed in: inverted fill, inner shade only (no inner light) */
-.seg button[aria-pressed="true"], .seg button:active { box-shadow: inset 3px 3px 5px var(--clay-lo); }
-.seg button[aria-pressed="true"] { background: var(--sel-bg); color: var(--sel-fg); box-shadow: inset 3px 3px 5px var(--clay-sel); }
+.seg button:is([aria-pressed="true"], [aria-checked="true"]), .seg button:active { box-shadow: inset 3px 3px 5px var(--clay-lo); }
+.seg button:is([aria-pressed="true"], [aria-checked="true"]) { background: var(--sel-bg); color: var(--sel-fg); box-shadow: inset 3px 3px 5px var(--clay-sel); }
 .seg button:focus-visible { outline: 3px solid currentColor; outline-offset: -7px; box-shadow: inset 3px 3px 5px var(--clay-lo); }
-.seg button[aria-pressed="true"]:focus-visible { box-shadow: inset 3px 3px 5px var(--clay-sel); }
+.seg button:is([aria-pressed="true"], [aria-checked="true"]):focus-visible { box-shadow: inset 3px 3px 5px var(--clay-sel); }
 @media (min-width: 350px) { .seg:has(> :nth-child(3)) { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; } }
+/* Designed pickers (D0, <hati-pick>): a picker row never wraps; segments size to their words, and a row whose words
+   don't fit becomes the clay button that opens an ink sheet list (HatiPick.fit). */
+hati-pick { display: block; min-width: 0; }
+.seg.pk, .seg.pk:has(> :nth-child(3)) { display: flex; flex-wrap: nowrap; }
+.seg.pk > button { min-width: 0; padding: 8px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.btn.pick-btn { width: 100%; justify-content: space-between; text-align: left; font-size: 1rem; }
+.pick-btn .pv { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick-btn::after { content: ""; flex: none; width: 0; height: 0; border-top: 6px solid currentColor; border-inline: 5px solid transparent; }
+.pk-scrim { z-index: 25; }
+.pko { min-height: 48px; font-size: 1rem; justify-content: space-between; }
+.pko[aria-selected="true"] { font-weight: 700; }
+.pko[aria-selected="false"] .ck { visibility: hidden; }
+.pko:active { background: var(--sunk); }
+.pko:focus-visible { outline-offset: -5px; box-shadow: none; }
 /* 12 categories: 4 across from 360 px (3 rows), 3 across on a 320 px phone (4 rows); one tap, no scrolling inside */
 .cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; }
 .cat { border: 2px solid var(--rule); background: var(--panel); padding: 8px 4px; min-height: 58px; font-size: .8rem; line-height: 1.15; font-weight: 600; display: grid; justify-items: center; align-content: center; gap: 4px; text-align: center; }
@@ -794,6 +807,83 @@ function memberChip(v, m, c) {
 const txOpen = (v, act, id) => v.archived ? `<div class="tx" data-id="${esc(id)}">` : `<button class="tx" data-act="${act}" data-id="${esc(id)}">`;
 const txClose = v => v.archived ? "</div>" : "</button>";
 const CHECK = `<span class="ck" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>`;
+
+// ── Designed pickers (D0) ─────────────────────────────────
+// <hati-pick> replaces the phone's native dropdown with the app's own control and keeps its contract: el.value reads and sets
+// the choice, and a choice fires input + change on it (bubbling). Up to 4 short options are a clay segmented row
+// (radiogroup, roving tabindex: one tap, arrows move the choice); more options, or words that don't fit the row on this
+// screen (fit()), are a clay button showing the choice that opens an ink sheet list (listbox: a tap or Enter picks and
+// closes, Esc closes, focus returns to the button). With a placeholder nothing is chosen until the user picks;
+// without one an unknown value falls back to the first option, as the dropdown did.
+function pickField(id, label, opts, value, ph = "") {
+  const val = opts.some(o => o[0] === value) ? value : ph ? "" : (opts[0] || [""])[0];
+  const seg = opts.length <= 4 && opts.every(o => o[1].length <= 16);
+  return `<span class="legend" id="${id}-l">${esc(label)}</span><hati-pick id="${id}" value="${esc(val)}" data-mode="${seg ? "seg" : "list"}" data-ph="${esc(ph)}" data-opts="${esc(JSON.stringify(opts))}">${seg ? pickSegHtml(id, opts, val) : pickBtnHtml(id, opts, val, ph)}</hati-pick>`;
+}
+function pickSegHtml(id, opts, val) {
+  const any = opts.some(o => o[0] === val);
+  return `<div class="seg pk" role="radiogroup" aria-labelledby="${id}-l">${opts.map((o, i) => `<button type="button" role="radio" aria-checked="${o[0] === val}" tabindex="${o[0] === val || (!any && !i) ? 0 : -1}" data-pv="${esc(o[0])}">${esc(o[1])}</button>`).join("")}</div>`;
+}
+function pickBtnHtml(id, opts, val, ph) {
+  const o = opts.find(x => x[0] === val);
+  return `<button type="button" class="btn pick-btn" aria-haspopup="listbox" aria-labelledby="${id}-l ${id}-v"><span class="pv${o ? "" : " muted"}" id="${id}-v">${esc(o ? o[1] : ph)}</span></button>`;
+}
+class HatiPick extends HTMLElement {
+  get opts() { try { return JSON.parse(this.dataset.opts || "[]"); } catch (e) { return []; } }
+  get value() { return this.getAttribute("value") || ""; }
+  set value(v) { this.setAttribute("value", v == null ? "" : String(v)); this.paint(); }
+  paint() {
+    const v = this.value, o = this.opts;
+    if (this.dataset.mode === "seg") {
+      const any = o.some(x => x[0] === v);
+      this.querySelectorAll("[data-pv]").forEach((b, i) => { b.setAttribute("aria-checked", String(b.dataset.pv === v)); b.tabIndex = b.dataset.pv === v || (!any && !i) ? 0 : -1; });
+    } else this.innerHTML = pickBtnHtml(this.id, o, v, this.dataset.ph);
+  }
+  choose(v) {
+    if (v === this.value) return;
+    this.value = v;
+    this.dispatchEvent(new Event("input", { bubbles: true })); this.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  // A row whose words are cut (or would wrap) on this screen becomes the button + sheet list. Hidden rows measure 0
+  // and stay; whoever shows one calls fit() again.
+  fit() {
+    if (this.dataset.mode !== "seg" || ![...this.querySelectorAll("[data-pv]")].some(b => b.scrollWidth > b.clientWidth + 1)) return;
+    const had = this.contains(document.activeElement);
+    this.dataset.mode = "list"; this.paint();
+    if (had) this.querySelector("button").focus();
+  }
+  connectedCallback() { if (this.dataset.mode === "seg") queueMicrotask(() => { if (this.isConnected) this.fit(); }); }
+}
+customElements.define("hati-pick", HatiPick);
+// The ink sheet list, over whatever is open (the page or a sheet, both inert meanwhile).
+function pickSheet(p) {
+  const o = p.opts, v = p.value, lab = document.getElementById(p.id + "-l");
+  const wrap = document.createElement("div"); wrap.className = "scrim pk-scrim"; wrap.id = "pickLayer";
+  wrap.innerHTML = `<div class="sheet pk-sheet" role="dialog" aria-modal="true" aria-labelledby="pkTitle"><h2 id="pkTitle">${esc(lab ? lab.textContent : "")}</h2><div class="ledger" role="listbox" aria-labelledby="pkTitle">${o.map(x => `<button type="button" class="debt pko" role="option" aria-selected="${x[0] === v}" tabindex="-1" data-pv="${esc(x[0])}"><span>${esc(x[1])}</span>${CHECK}</button>`).join("")}</div></div>`;
+  $("#app").inert = true; $("#layer").inert = true;
+  document.body.appendChild(wrap);
+  const rows = [...wrap.querySelectorAll("[role=option]")], first = rows.find(b => b.dataset.pv === v) || rows[0];
+  if (first) { first.tabIndex = 0; first.focus(); }
+  const close = wrap.close = pick => {
+    if (!wrap.isConnected) return;
+    wrap.remove(); $("#layer").inert = false; $("#app").inert = sheetOpen();
+    if (pick != null) p.choose(pick);
+    const b = p.querySelector("button"); if (b) b.focus();
+  };
+  wrap.addEventListener("click", ev => {
+    ev.stopPropagation();
+    const b = ev.target.closest("[role=option]"); if (b) close(b.dataset.pv); else if (ev.target === wrap) close(null);
+  });
+  wrap.addEventListener("keydown", ev => {
+    ev.stopPropagation();
+    if (ev.key === "Escape") { ev.preventDefault(); close(null); return; }
+    const i = rows.indexOf(document.activeElement), n = rows.length;
+    const j = { ArrowDown: i + 1, ArrowUp: i - 1, Home: 0, End: n - 1 }[ev.key];
+    if (j === undefined || !n) return;
+    ev.preventDefault(); const t = rows[Math.max(0, Math.min(n - 1, j))];
+    rows.forEach(r => r.tabIndex = r === t ? 0 : -1); t.focus();
+  });
+}
 function debtRow(v, d, tag = "div", extra = "", tail = "") {
   return `<${tag} class="debt" ${extra}>${avatar(v, d.from)}<span class="grow small who"><b class="nm">${esc(meName(v, d.from))}</b> <span>${pays(v, d.from)}</span> <b class="nm">${esc(meObj(v, d.to))}</b></span><b class="num">${esc(fmt(d.amount, v.currency))}</b>${tail}</${tag}>`;
 }
@@ -895,10 +985,8 @@ const views = {
       <div class="amount-box"><label for="f-amount" class="legend">Amount</label>
         <div class="row"><span class="cur" aria-hidden="true">${esc(v.currency)}</span><input id="f-amount" inputmode="decimal" autocomplete="off" placeholder="0.00" value="${esc(f.amount)}"></div></div>
       <div class="field"><label for="f-desc">Description</label><input id="f-desc" class="input" maxlength="100" placeholder="Ramen dinner" autocomplete="off" value="${esc(f.desc)}" aria-describedby="descMsg"><div class="msg" id="descMsg"></div></div>
-      <div class="btns">
-        <div class="field"><label for="f-paid">Paid by</label><select id="f-paid" class="input">${v.members.map(m => `<option value="${esc(m.id)}" ${m.id === f.paidBy ? "selected" : ""}>${esc(meName(v, m.id))}</option>`).join("")}</select></div>
-        <div class="field"><label for="f-date">Date</label><input id="f-date" type="date" class="input" value="${esc(f.date)}"></div>
-      </div>
+      <div class="field">${pickField("f-paid", "Paid by", v.members.map(m => [m.id, meName(v, m.id)]), f.paidBy)}</div>
+      <div class="field"><label for="f-date">Date</label><input id="f-date" type="date" class="input" value="${esc(f.date)}"></div>
       <fieldset><legend class="legend">Category</legend><div class="cats">${CATEGORIES.map(c => `<button type="button" class="cat" data-cat="${c[0]}" aria-pressed="${c[0] === f.category}"><span aria-hidden="true">${CAT_ICON[c[0]]}</span>${c[1]}</button>`).join("")}</div></fieldset>
       <fieldset><legend class="legend">Split</legend><div class="seg">${[["equal", "Equal"], ["exact", "Exact"], ["percent", "Percent"], ["shares", "Shares"]].map(s => `<button type="button" data-split="${s[0]}" aria-pressed="${s[0] === f.splitType}">${s[1]}</button>`).join("")}</div></fieldset>
       <div class="ledger" id="splitRows">${v.members.map(m => splitRow(v, m)).join("")}</div>
@@ -1053,10 +1141,8 @@ const sheetButtons = (label, cls = "primary") => `<div class="btns"><button type
 function volumeSheet(v) {
   sheet(`<h2>${v ? "Edit volume" : "New volume"}</h2><div class="stack">
     <div class="field"><label for="s-title">Name</label><input id="s-title" class="input" maxlength="40" placeholder="Bali trip" autocomplete="off" value="${v ? esc(v.title) : ""}"></div>
-    <div class="btns">
-      <div class="field"><label for="s-type">Type</label><select id="s-type" class="input">${TYPES.map(t => `<option value="${t[0]}" ${v && v.type === t[0] ? "selected" : ""}>${t[1]}</option>`).join("")}</select></div>
-      <div class="field"><label for="s-cur">Currency</label><select id="s-cur" class="input">${CURRENCIES.map(c => `<option ${(v ? v.currency : lastCurrency()) === c ? "selected" : ""}>${c}</option>`).join("")}</select></div>
-    </div>
+    <div class="field">${pickField("s-type", "Type", TYPES, v && v.type)}</div>
+    <div class="field">${pickField("s-cur", "Currency", CURRENCIES.map(c => [c, c]), v ? v.currency : lastCurrency())}</div>
     ${v ? memberFields(v) : `<div class="field"><label for="s-me">Your name in this volume</label><input id="s-me" class="input" maxlength="40" placeholder="So others know who you are" autocomplete="off"></div>
     <div class="field"><label for="s-others">Who else is in? (optional)</label><input id="s-others" class="input" maxlength="2000" placeholder="Mira, Rio" autocomplete="off"></div>`}
     <div class="msg" id="sheetMsg" role="alert"></div>
@@ -1265,11 +1351,11 @@ function settleSheet(existing) {
     return;
   }
   const s = existing || ds[0] || { from: v.meId, to: (v.members.find(m => m.id !== v.meId) || {}).id };
-  const opt = sel => v.members.map(m => `<option value="${esc(m.id)}" ${m.id === sel ? "selected" : ""}>${esc(meName(v, m.id))}</option>`).join("");
+  const people = v.members.map(m => [m.id, meName(v, m.id)]);
   const sugg = !existing && ds.length > 1 ? `<div class="legend">Suggested payments</div><div class="ledger">${ds.map((d, i) => debtRow(v, d, "button", `type="button" data-sugg="${i}" aria-pressed="${i === 0}"`, CHECK)).join("")}</div>` : "";
   sheet(`<h2>${existing ? "Edit payment" : "Settle up"}</h2><div class="stack">${sugg}
-    <div class="btns"><div class="field"><label for="s-from">From</label><select id="s-from" class="input">${opt(s.from)}</select></div>
-    <div class="field"><label for="s-to">To</label><select id="s-to" class="input">${opt(s.to)}</select></div></div>
+    <div class="field">${pickField("s-from", "From", people, s.from)}</div>
+    <div class="field">${pickField("s-to", "To", people, s.to)}</div>
     <div class="field"><label for="s-amt">Amount (${esc(v.currency)})</label><input id="s-amt" class="input num" inputmode="decimal" placeholder="0.00" autocomplete="off" value="${s.amount ? (s.amount / 100).toFixed(2) : ""}"></div>
     <div class="msg" id="sheetMsg" role="alert"></div>
     ${sheetButtons("Record payment")}
@@ -1988,7 +2074,7 @@ function fillPick(pick, x) {
   const local = S.volumes.find(v => v.id === x.id);
   // With a copy already here, the picker starts on who you are in that copy; a new one starts on no one.
   const meNow = local && local.meId;
-  const who = `<div class="field" id="s-whobox"${local ? " hidden" : ""}><label for="s-who">Which member are you?</label><select id="s-who" class="input">${local ? "" : `<option value="" selected disabled>Choose your name</option>`}${x.members.map(m => `<option value="${esc(m.id)}" ${m.id === meNow ? "selected" : ""}>${esc(m.name)}</option>`).join("")}</select></div>`;
+  const who = `<div class="field" id="s-whobox"${local ? " hidden" : ""}>${pickField("s-who", "Which member are you?", x.members.map(m => [m.id, m.name]), meNow, local ? "" : "Choose your name")}</div>`;
   if (!local) { pick.innerHTML = who; return; }
   const r = mergeVolumes(local, x), loss = replaceLoss(local, x);
   const lostParts = [loss.entries && plural(loss.entries, "entry", "entries"), loss.members && plural(loss.members, "member")].filter(Boolean).join(" and ");
@@ -1999,8 +2085,8 @@ function fillPick(pick, x) {
   };
   const say = mode => `You already have ${local.title}. ${sums[mode]}`;
   pick.innerHTML = `<p class="share-sum small" id="s-sum" role="status">${esc(say("merge"))}</p>
-    <div class="field"><label for="s-mode">What to do</label><select id="s-mode" class="input"><option value="merge">Merge with my copy</option><option value="replace">Replace my copy with this one</option><option value="copy">Keep both</option></select></div>` + who;
-  $("#s-mode").addEventListener("change", ev => { $("#s-whobox").hidden = ev.target.value === "merge"; $("#s-sum").textContent = say(ev.target.value); });
+    <div class="field">${pickField("s-mode", "What to do", [["merge", "Merge"], ["replace", "Replace"], ["copy", "Keep both"]], "merge")}</div>` + who;
+  $("#s-mode").addEventListener("change", ev => { $("#s-whobox").hidden = ev.target.value === "merge"; $("#s-sum").textContent = say(ev.target.value); $("#s-who").fit(); });
 }
 // Imports p.volume (already through validVolume) the way the picker in the open sheet says, then opens it.
 // p.room (a live invite, or a code from a shared volume) links the volume to its sync room; "Keep both" makes a
@@ -2211,6 +2297,7 @@ function focusTitle() { const h = $("#app h1"); if (h) h.focus({ preventScroll: 
 addEventListener("popstate", () => {
   if (skipPop && !location.hash.startsWith("#join=")) { skipPop = false; return; } // startJoin's own step back
   if (joinFromHash()) return;
+  if ($("#pickLayer")) { $("#pickLayer").close(null); setUrl(false); return; } // Back closes a picker list first
   if (sheetOpen()) { dropSheet(); setUrl(false); return; }
   const box = viewBox(), from = ui.view;
   applyRoute(); turn(from, ui.view, box); render(); window.scrollTo(0, 0); focusTitle();
@@ -2296,6 +2383,8 @@ document.addEventListener("touchstart", () => {}, { passive: true });
 document.addEventListener("click", async ev => {
   if (ev.target.classList && ev.target.classList.contains("scrim")) return closeSheet();
   const drop = ev.target.closest && ev.target.closest("#sheetForm [data-drop]"); if (drop) return toggleDrop(drop);
+  const pv = ev.target.closest && ev.target.closest("hati-pick [data-pv]"); if (pv) return pv.closest("hati-pick").choose(pv.dataset.pv);
+  const pb = ev.target.closest && ev.target.closest("hati-pick .pick-btn"); if (pb) return pickSheet(pb.closest("hati-pick"));
   const el = ev.target.closest("[data-act],[data-pal],[data-set]"); if (!el) return;
   if (el.dataset.pal) return selectPalette(el.dataset.pal);
   if (el.dataset.set) {
@@ -2359,6 +2448,14 @@ document.addEventListener("click", async ev => {
 document.addEventListener("keydown", ev => {
   if (ev.key === "Escape" && sheetOpen()) { closeSheet(); return; }
   eatClick = false;
+  // A picker row is a radio group: arrows (and Home/End) move the choice and the focus together, wrapping around.
+  const rb = ev.target.closest && ev.target.closest("hati-pick [role=radio]");
+  if (rb && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Home", "End"].includes(ev.key)) {
+    ev.preventDefault();
+    const all = [...rb.parentNode.children], i = all.indexOf(rb), n = all.length;
+    const t = all[ev.key === "Home" ? 0 : ev.key === "End" ? n - 1 : (i + (ev.key === "ArrowDown" || ev.key === "ArrowRight" ? 1 : -1) + n) % n];
+    rb.closest("hati-pick").choose(t.dataset.pv); t.focus(); return;
+  }
   const card = (ev.key === "ContextMenu" || (ev.shiftKey && ev.key === "F10")) && ev.target.closest && ev.target.closest("#app .vol[data-id]");
   if (card) { ev.preventDefault(); if (!sheetOpen()) volActsSheet(card.dataset.id, card); return; }
   const p = ev.target.closest && ev.target.closest("[data-pal]");
@@ -2373,6 +2470,7 @@ addEventListener("storage", ev => {
   if (ev.key !== KEY || ev.newValue === null) return;
   const fresh = load(); if (!fresh) return;
   S = fresh; applyTheme();
+  if ($("#pickLayer")) $("#pickLayer").close(null);
   if (sheetOpen()) { dropSheet(); toast("Updated from another tab"); }
   if (ui.view === "expense") { goneElsewhere(); return; }
   if (!vol() && ui.view !== "hub" && ui.view !== "settings") ui.view = "hub";
