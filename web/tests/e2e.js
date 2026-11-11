@@ -1570,6 +1570,20 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      ok(R.e.length===0,'M: no page errors under reduced motion '+JSON.stringify(R.e));
      await R.c.close(); }
 
+   // N1: the ink-in marks only the first 12 rows of each list (a class on the rows, not an attribute selector on #app that
+   // restyles every element), and history rows after the 32nd are only laid out near the screen (content-visibility)
+   { const N=await mk({viewport:{width:390,height:844}}); const q=N.pg; await seed(q);
+     await q.locator('.vol').first().click(); await q.waitForTimeout(350); await q.locator('[data-act=history]').first().click();
+     await q.waitForFunction(()=>document.querySelector('#app .ink'),null,{timeout:2000}).catch(()=>{});
+     const r=await q.evaluate(()=>{ const rows=[...document.querySelectorAll('#app .ledger > *')];
+       return {rows:rows.length,ink:document.querySelectorAll('#app .ink').length,inkRows:rows.filter(x=>x.classList.contains('ink')).length,cv32:getComputedStyle(rows[31]).contentVisibility,cv33:getComputedStyle(rows[32]).contentVisibility,
+         rule:[...document.styleSheets].flatMap(s=>[...s.cssRules]).some(function f(x){ return (x.selectorText||'').includes('data-turn') || [...(x.cssRules||[])].some(f); })}; });
+     ok(r.rows>40 && r.inkRows===12 && r.ink<=13 && r.cv32==='visible' && r.cv33==='auto' && !r.rule,'N1: a screen change inks only the first 12 history rows (class, no #app[data-turn] rule), rows after the 32nd use content-visibility '+JSON.stringify(r));
+     await q.locator('[data-act=back]').click(); await q.waitForTimeout(40);
+     const bk=await q.evaluate(()=>({l:document.querySelectorAll('#app .ink.ink-l').length,all:document.querySelectorAll('#app .ink').length}));
+     ok(bk.l>0 && bk.l===bk.all,'N1: Back inks from the left (.ink-l on every inked row) '+JSON.stringify(bk));
+     ok(N.e.length===0,'N1: no page errors '+JSON.stringify(N.e)); await N.c.close(); }
+
    // Performance at 4x CPU throttle (CDP Emulation.setCPUThrottlingRate): a screen change into a 100-row list, a sheet
    // and a Back, 3 times each, with motion and with reduced motion as the baseline. Long tasks come from a
    // PerformanceObserver('longtask'), frame pacing from requestAnimationFrame over the 400 ms after the first frame.
