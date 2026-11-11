@@ -1813,5 +1813,67 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(parseFloat(fs)>=16,'D9: the amount input stays at least 16px '+fs);
    ok(errs.length===0,'D9: no page errors '+JSON.stringify(errs)); await c.close(); }
 
+ // D2 Undo on edits and deletes of expenses and payments: a real Undo button in the toast, the money back to the cent,
+ // and sync-safe (a normal write with a fresh upd; a deleted entry returns under a new id, which the other phone's
+ // copy, still holding the tombstone, takes in a real mergeVolumes).
+ { const {c,pg,errs}=await bebe();
+   // content fingerprint without ids and upd (a deleted entry comes back under a new id), plus the balances
+   const content=()=>pg.evaluate(()=>{ const v=S.volumes.find(x=>x.id==='bebe'), strip=({id,upd,...r})=>JSON.stringify(r); return JSON.stringify({e:v.expenses.map(strip).sort(),s:v.settlements.map(strip).sort(),b:balances(v)}); });
+   const toastOf=()=>pg.evaluate(()=>{ const t=document.querySelector('.toast'), u=t&&t.querySelector('.undo'); return t?{t:t.firstChild.textContent,undo:!!u,tag:u&&u.tagName,type:u&&u.type,hidden:t.getAttribute('aria-hidden'),st:$('#status').textContent}:null; });
+   const settle=()=>pg.waitForTimeout(400);
+   await pg.locator('.vol').first().click(); await pg.waitForSelector('[data-act=history]'); await settle();
+   await pg.locator('[data-act=history]').first().click(); await pg.waitForSelector('.ledger.hist'); await settle();
+   const c0=await content();
+   // 1. edit an expense, then Undo
+   const g0=await pg.evaluate(()=>({...S.volumes[0].expenses.find(e=>e.id==='g')}));
+   await pg.locator('.ledger.hist .tx[data-id="g"]').click(); await pg.waitForSelector('#expForm'); await settle();
+   await pg.locator('#f-amount').fill('450.00'); await pg.locator('#f-desc').fill('Jollibee Bonifacio');
+   await pg.locator('#expForm button[type=submit]').click(); await pg.waitForSelector('.ledger.hist'); await settle();
+   const t1=await toastOf();
+   ok(t1 && t1.t==='Expense updated' && t1.undo && t1.tag==='BUTTON' && t1.type==='button' && t1.hidden===null,'D2: saving an edit shows "Expense updated" with a real Undo button '+JSON.stringify(t1));
+   const u1=await pg.evaluate(()=>S.volumes[0].expenses.find(e=>e.id==='g').upd);
+   await pg.locator('.toast .undo').click(); await pg.waitForTimeout(80);
+   const g1=await pg.evaluate(()=>({...S.volumes[0].expenses.find(e=>e.id==='g')}));
+   ok(JSON.stringify({...g1,upd:0})===JSON.stringify({...g0,upd:0}) && g1.upd>u1,'D2: Undo of an edit puts every field back, with a fresh upd '+JSON.stringify(g1));
+   ok(await content()===c0,'D2: after Undo of the edit, amounts, splits and balances are as before');
+   // 2. delete an expense, then Undo from the keyboard; the other phone (still on the tombstone) takes it back
+   await pg.locator('.ledger.hist .tx[data-id="b"]').click(); await pg.waitForSelector('#expForm'); await settle();
+   await pg.locator('[data-act=deleteExpense]').click(); await pg.waitForSelector('#sheetForm'); await pg.locator('#sheetForm button.danger').click();
+   await pg.waitForSelector('.ledger.hist'); await settle();
+   const t2=await toastOf(), other=await pg.evaluate(()=>JSON.stringify(S.volumes[0]));
+   ok(t2 && t2.t==='Expense deleted' && t2.undo && /Expense deleted/.test(t2.st),'D2: deleting an expense shows "Expense deleted" with Undo, announced in #status '+JSON.stringify(t2));
+   await pg.locator('.toast .undo').focus(); await pg.keyboard.press('Enter'); await pg.waitForTimeout(80);
+   const b1=await pg.evaluate(()=>{ const v=S.volumes[0], e=v.expenses.find(x=>x.desc==='House of Bagnet'); return {id:e&&e.id,amount:e&&e.amount,gone:v.deleted.includes('b'),row:!!document.querySelector(`.ledger.hist .tx[data-id="${e&&e.id}"]`),toast:(document.querySelector('.toast')||{}).textContent}; });
+   ok(b1.id && b1.id!=='b' && b1.amount===33413 && b1.gone && b1.row && /Undone/.test(b1.toast||''),'D2: Undo (keyboard) brings the deleted expense back under a new id, the old id stays deleted '+JSON.stringify(b1));
+   ok(await content()===c0,'D2: after Undo of the delete, the money is as before to the cent');
+   const mg=await pg.evaluate(o=>{ const v=S.volumes[0], a=mergeVolumes(JSON.parse(o),v), back=mergeVolumes(v,JSON.parse(o));
+     return {a:a.vol&&a.vol.expenses.some(e=>e.desc==='House of Bagnet'),b:back.vol&&back.vol.expenses.some(e=>e.desc==='House of Bagnet'),sum:a.vol&&JSON.stringify(balances(a.vol))===JSON.stringify(balances(v))}; },other);
+   ok(mg.a && mg.b && mg.sum,'D2: sync-safe: the other phone\'s copy (with the tombstone) merges the restored expense in, both ways '+JSON.stringify(mg));
+   // 3. record a new payment, then Undo
+   await pg.locator('#app .topbar [data-act=back]').click(); await pg.waitForSelector('[data-act=settle]'); await settle();
+   await pg.locator('[data-act=settle]').first().click(); await pg.waitForSelector('#sheetForm'); await pg.locator('#s-amt').fill('100.00');
+   await pg.locator('#sheetForm button.primary').click(); await settle();
+   const t3=await toastOf(), n3=await pg.evaluate(()=>S.volumes[0].settlements.length);
+   await pg.locator('.toast .undo').click(); await pg.waitForTimeout(80);
+   const p3=await pg.evaluate(()=>({n:S.volumes[0].settlements.length,del:S.volumes[0].deleted.length}));
+   ok(t3 && t3.t==='Payment recorded' && t3.undo && n3===2 && p3.n===1,'D2: Undo of a new payment takes it away (and tombstones it) '+JSON.stringify([t3,n3,p3]));
+   ok(await content()===c0,'D2: after Undo of the payment, balances are as before');
+   // 4. edit a payment, then Undo; 5. delete it, then Undo
+   await pg.locator('[data-act=history]').first().click(); await pg.waitForSelector('.ledger.hist'); await settle();
+   await pg.locator('.ledger.hist .tx[data-id="p1"]').click(); await pg.waitForSelector('#sheetForm'); await pg.locator('#s-amt').fill('321.00');
+   await pg.locator('#sheetForm button.primary').click(); await settle();
+   await pg.locator('.toast .undo').click(); await pg.waitForTimeout(80);
+   const p4=await pg.evaluate(()=>S.volumes[0].settlements.find(s=>s.id==='p1'));
+   ok(p4 && p4.amount===50000 && p4.upd>1,'D2: Undo of a payment edit puts the old amount back with a fresh upd '+JSON.stringify(p4));
+   await settle(); await pg.locator('.ledger.hist .tx[data-id="p1"]').click(); await pg.waitForSelector('#sheetForm');
+   await pg.locator('[data-act=deleteSettle]').click(); await pg.waitForSelector('#sheetForm button.danger'); await pg.locator('#sheetForm button.danger').click(); await settle();
+   const t5=await toastOf(); await pg.locator('.toast .undo').click(); await pg.waitForTimeout(80);
+   const p5=await pg.evaluate(()=>{ const v=S.volumes[0]; return {n:v.settlements.length,id:v.settlements[0]&&v.settlements[0].id,amt:v.settlements[0]&&v.settlements[0].amount,gone:v.deleted.includes('p1')}; });
+   ok(t5 && t5.t==='Payment deleted' && t5.undo && p5.n===1 && p5.id!=='p1' && p5.amt===50000 && p5.gone,'D2: Undo of a payment delete brings it back under a new id '+JSON.stringify([t5,p5]));
+   ok(await content()===c0,'D2: after all the undos the volume\'s money is byte-identical to the start');
+   await pg.reload(); await pg.waitForSelector('.ledger.hist');
+   ok(await content()===c0,'D2: and it survives a reload');
+   ok(errs.length===0,'D2: no page errors '+JSON.stringify(errs)); await c.close(); }
+
  await b.close();
 })();

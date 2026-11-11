@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-yKM/8YEFXsmjzefJXLLahsrkCtdScD824rev1VtovlI='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://hati-sync.gerymefernando.workers.dev wss://hati-sync.gerymefernando.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-YGYM3OWUlaeO9Mb5tj9ll0NyEHPHpbTJiGU3OGLcxxQ='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://hati-sync.gerymefernando.workers.dev wss://hati-sync.gerymefernando.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>HATI²</title>
@@ -1323,11 +1323,14 @@ function submitExpense() {
   if (r.error) { refreshSplitPreview(); $("#formMsg").scrollIntoView({ block: "center" }); return; }
   const inputs = f.splitType === "equal" || f.splitType === "exact" ? {} : Object.fromEntries(Object.entries(f.inputs).filter(([k]) => has(r.splits, k)));
   const rec = { id: f.id || uid(), desc: f.desc.trim(), amount: r.amount, paidBy: f.paidBy, category: f.category, date: f.date || today(), splitType: f.splitType, splits: r.splits, inputs, note: f.note.trim(), upd: Date.now() };
-  const i = v.expenses.findIndex(e => e.id === rec.id);
+  const i = v.expenses.findIndex(e => e.id === rec.id), was = i >= 0 ? v.expenses[i] : null;
   if (i >= 0) v.expenses[i] = rec; else v.expenses.push(rec);
   if (!commit()) return;
   if (i < 0) rememberCat(v.id, rec.category);
-  clearDraft(); leave(); toast(i >= 0 ? "Expense updated" : "Expense saved");
+  clearDraft(); leave();
+  // D2: Undo writes the old fields back with a fresh upd (undoSteps)
+  if (was) toast("Expense updated", { undo: () => undoSteps(v.id, [{ list: "expenses", id: rec.id, was, upd: rec.upd }]), ms: 6000 });
+  else toast("Expense saved");
 }
 // A new expense starts on the category last used for a new one in this volume (on this phone; a convenience, not data).
 const LAST_CAT = "hati2.lastCat";
@@ -1637,9 +1640,11 @@ function settleSheet(existing) {
       if (isNaN(amt)) return sheetMsg("Use numbers like 12.50 (up to 2 decimals).");
       if (!(amt > 0)) return sheetMsg("Enter an amount greater than zero.");
       if (amt > MAX_CENTS) return sheetMsg("That amount is too large.");
-      if (existing) Object.assign(existing, { from, to, amount: amt, upd: Date.now() });
-      else v.settlements.push({ id: uid(), from, to, amount: amt, date: today(), upd: Date.now() });
-      if (!commit()) return; FX.settled = v.id; closeSheet(); render(); toast("Payment recorded");
+      // D2: Undo puts the payment back as it was, or takes a new one away (tombstoned), as a normal write
+      const now = Date.now(), step = { list: "settlements", id: existing ? existing.id : uid(), was: existing ? { ...existing } : null, upd: now };
+      if (existing) Object.assign(existing, { from, to, amount: amt, upd: now });
+      else v.settlements.push({ id: step.id, from, to, amount: amt, date: today(), upd: now });
+      if (!commit()) return; FX.settled = v.id; closeSheet(); render(); toast("Payment recorded", { undo: () => undoSteps(v.id, [step]), ms: 6000 });
     });
   if (!sugg) return;
   // The chosen suggestion is the row the form still matches; editing From/To/Amount away from every row clears it.
@@ -2735,10 +2740,10 @@ document.addEventListener("click", async ev => {
     case "addMember": if (sheetOpen()) dropSheet(); memberSheet(); break;
     case "addExpense": openExpense(null); break;
     case "editExpense": openExpense(v.expenses.find(e => e.id === el.dataset.id)); break;
-    case "deleteExpense": confirmSheet("Delete expense?", `${ui.form.desc || "This expense"} will be removed and balances recalculated.`, "Delete", () => { v.expenses = v.expenses.filter(e => e.id !== ui.form.id); tombstone(v, ui.form.id); if (!commit()) return; leave(); toast("Expense deleted"); }); break;
+    case "deleteExpense": confirmSheet("Delete expense?", `${ui.form.desc || "This expense"} will be removed and balances recalculated.`, "Delete", () => { const was = v.expenses.find(e => e.id === ui.form.id); v.expenses = v.expenses.filter(e => e.id !== ui.form.id); tombstone(v, ui.form.id); if (!commit()) return; leave(); toast("Expense deleted", was ? { undo: () => undoSteps(v.id, [{ list: "expenses", id: was.id, was, upd: 0 }]), ms: 6000 } : {}); }); break;
     case "settle": settleSheet(null); break;
     case "editSettle": settleSheet(v.settlements.find(s => s.id === el.dataset.id)); break;
-    case "deleteSettle": { const id = el.dataset.id; confirmSheet("Delete payment?", "This payment will be removed and balances recalculated.", "Delete", () => { v.settlements = v.settlements.filter(s => s.id !== id); tombstone(v, id); if (!commit()) return; closeSheet(); render(); toast("Payment deleted"); }); break; }
+    case "deleteSettle": { const id = el.dataset.id; confirmSheet("Delete payment?", "This payment will be removed and balances recalculated.", "Delete", () => { const was = v.settlements.find(s => s.id === id); v.settlements = v.settlements.filter(s => s.id !== id); tombstone(v, id); if (!commit()) return; closeSheet(); render(); toast("Payment deleted", was ? { undo: () => undoSteps(v.id, [{ list: "settlements", id, was, upd: 0 }]), ms: 6000 } : {}); }); break; }
     case "editMember": { const m = v.members.find(x => x.id === el.dataset.id); if (m) editMemberSheet(m); break; }
     case "removeMember": removeMember(el.dataset.id); break;
     case "backup": await downloadBackup(); break;
