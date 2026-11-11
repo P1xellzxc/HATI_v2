@@ -1773,5 +1773,45 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(fit.fs==='16px' && fit.w && fit.btn>=44,'N5: the Set date bar has a 16px date input, 44px buttons, no sideways scroll '+JSON.stringify(fit));
    ok(errs.length===0,'N5: no page errors '+JSON.stringify(errs)); await c.close(); }
 
+ // D9 paste a receipt into the amount: desktop, Android and iPhone emulation. The paste is a real ClipboardEvent with
+ // clipboardData (what Live Text / Google Lens text gives the page); a plain number is left to the field.
+ const paste=(pg,sel,text)=>pg.evaluate(([sel,text])=>{ const el=document.querySelector(sel); el.focus(); const dt=new DataTransfer(); dt.setData('text/plain',text);
+   const go=el.dispatchEvent(new ClipboardEvent('paste',{clipboardData:dt,bubbles:true,cancelable:true}));
+   return {native:go,amount:el.value,form:ui.form.amount,desc:document.getElementById('f-desc').value,msg:document.getElementById('pasteMsg').textContent,live:document.getElementById('pasteMsg').getAttribute('aria-live'),
+     chips:[...document.querySelectorAll('#pasteSug button')].map(b=>({t:b.textContent,type:b.type,h:Math.round(b.getBoundingClientRect().height)}))}; },[sel,text]);
+ const JOLLIBEE=['JOLLIBEE FOODS CORPORATION','SM North EDSA','1 Chickenjoy   99.00','2 Jolly Spaghetti   120.00','1 Yumburger   115.13','TOTAL   334.13','CASH   500.00','CHANGE   165.87','VAT 12%   35.80'].join('\n');
+ for (const dev of ['Desktop Chrome','Pixel 7','iPhone 13']) { const {c,pg,errs}=await bebe(dev);
+   await pg.locator('.vol').first().click(); await pg.waitForSelector('[data-act=addExpense]'); await pg.waitForTimeout(350);
+   await pg.locator('[data-act=addExpense]').click(); await pg.waitForSelector('#expForm'); await pg.waitForTimeout(350);
+   const r1=await paste(pg,'#f-amount',JOLLIBEE);
+   ok(!r1.native && r1.amount==='334.13' && r1.form==='334.13' && r1.msg==='From paste: TOTAL ₱334.13' && r1.live==='polite','D9 ('+dev+'): pasting a receipt fills the amount from the TOTAL line, not CASH or CHANGE, and says so '+JSON.stringify(r1));
+   ok(r1.desc==='JOLLIBEE FOODS CORPORATION','D9 ('+dev+'): an empty description takes the first text line '+r1.desc);
+   if (dev!=='Pixel 7') { ok(errs.length===0,'D9 ('+dev+'): no page errors '+JSON.stringify(errs)); await c.close(); continue; }
+   // the description is kept once it has words; ambiguous text gives chips (real buttons) and fills nothing until one is tapped
+   await pg.locator('#f-desc').fill('Snacks'); await pg.locator('#f-amount').fill('');
+   const r2=await paste(pg,'#f-amount',['Chickenjoy','Spaghetti','219.00','115.13','334.13'].join('\n'));
+   ok(r2.amount==='' && r2.desc==='Snacks' && r2.chips.map(x=>x.t).join()==='₱334.13,₱219.00,₱115.13' && r2.chips.every(x=>x.type==='button' && x.h>=44) && /total/i.test(r2.msg),'D9: unclear text shows up to 3 amounts as 44px buttons, largest first, and keeps the description '+JSON.stringify(r2));
+   await pg.locator('#pasteSug button').nth(1).focus(); await pg.keyboard.press('Enter');
+   const r3=await pg.evaluate(()=>({a:document.getElementById('f-amount').value,f:ui.form.amount,msg:document.getElementById('pasteMsg').textContent,chips:document.querySelectorAll('#pasteSug button').length,sum:document.getElementById('splitSum').textContent}));
+   ok(r3.a==='219.00' && r3.f==='219.00' && r3.msg==='From paste: ₱219.00' && r3.chips===0 && /219\.00/.test(r3.sum),'D9: a chip (by keyboard) fills the amount and the split '+JSON.stringify(r3));
+   // garbage: the message, and nothing changes
+   const r4=await paste(pg,'#f-amount','Thanks for dining with us!\nSee you again 11/09/2026 12:41');
+   ok(!r4.native && r4.amount==='219.00' && r4.desc==='Snacks' && r4.msg==='No amount found in what you pasted.','D9: text with no amount says so and changes nothing '+JSON.stringify(r4));
+   // a plain number is the field's own paste (not intercepted)
+   const r5=await paste(pg,'#f-amount','1,674.72'); const r5b=await paste(pg,'#f-amount','412');
+   ok(r5.native && r5b.native,'D9: a plain number paste is left to the field '+JSON.stringify([r5.native,r5b.native]));
+   const r6=await paste(pg,'#f-amount','₱1,674.72'); const r7=await paste(pg,'#f-amount','₱2,000,000,000.00');
+   ok(r6.amount==='1674.72' && r7.amount==='1674.72' && r7.msg==='That amount is too large.','D9: "₱1,674.72" fills 1674.72; an amount over the limit is refused '+JSON.stringify([r6.amount,r7.msg]));
+   const big='x'.repeat(50000)+'\nTOTAL 99.00', t0=Date.now(); const r8=await paste(pg,'#f-amount',big);
+   ok(r8.msg==='No amount found in what you pasted.' && Date.now()-t0<2000,'D9: a huge paste is read only up to 20k characters '+r8.msg);
+   const r9=await paste(pg,'#f-amount','<img src=x onerror="window.__x=1">TOTAL ₱88.00');
+   const x=await pg.evaluate(()=>window.__x);
+   ok(r9.amount==='88.00' && x===undefined,'D9: pasted HTML is read as text '+JSON.stringify(r9));
+   await pg.locator('#f-amount').fill('50.00'); const r10=await pg.evaluate(()=>document.getElementById('pasteMsg').textContent);
+   ok(r10==='','D9: typing in the amount clears the paste line');
+   const fs=await pg.evaluate(()=>getComputedStyle(document.getElementById('f-amount')).fontSize);
+   ok(parseFloat(fs)>=16,'D9: the amount input stays at least 16px '+fs);
+   ok(errs.length===0,'D9: no page errors '+JSON.stringify(errs)); await c.close(); }
+
  await b.close();
 })();
