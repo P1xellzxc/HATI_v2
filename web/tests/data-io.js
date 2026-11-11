@@ -35,6 +35,13 @@ const TMP=fs.mkdtempSync(path.join(os.tmpdir(),'hati-dio-'));
  // A phone that can't reach the sync server, quietly: for backups, codes and snapshot links.
  const noSync=()=>{ const f=window.fetch; window.fetch=function(u){ return String(u&&u.url||u).startsWith('https://hati-sync.')?Promise.reject(new TypeError('Failed to fetch')):f.apply(this,arguments); }; window.WebSocket=undefined; };
  const ok=(c,msg)=>{console.log((c?'PASS ':'FAIL ')+msg); if(!c) process.exitCode=1;};
+ // Drive a designed picker (D0, <hati-pick>) as a user: tap the segment, or the button and then the sheet option.
+ // want: a value, {label} or {index} (the index of the option; a placeholder is not an option).
+ const pick=async(pg,id,want)=>{ const el=pg.locator('#'+id);
+   const name=await el.evaluate((e,w)=>{ const os=e.opts, i=typeof w==='string'?os.findIndex(x=>x[0]===w):w.label!=null?os.findIndex(x=>x[1]===w.label):w.index; return os[i]?os[i][1]:null; },want);
+   if (name==null) throw new Error('no option '+JSON.stringify(want)+' in #'+id);
+   if (await el.getAttribute('data-mode')==='seg') return el.getByRole('radio',{name,exact:true}).click();
+   await el.locator('.pick-btn').click(); await pg.locator('#pickLayer').getByRole('option',{name,exact:true}).click(); };
  const errs=[];
  // Platforms. desktop: real download + file chooser. android: the APK's bridge (saveFile/share), no navigator.share.
  // iphone: iPhone UA with navigator.share/canShare for files; the file handed to the share sheet is kept in __shared.
@@ -80,7 +87,7 @@ const TMP=fs.mkdtempSync(path.join(os.tmpdir(),'hati-dio-'));
 const stored=pg=>pg.evaluate(()=>JSON.stringify(normalize(JSON.parse(localStorage.getItem('hati2.mock.v1')))));
  const toastText=pg=>pg.evaluate(()=>[...document.querySelectorAll('.toast')].map(n=>n.textContent).join('|'));
  const clearToasts=pg=>pg.evaluate(()=>document.querySelectorAll('.toast').forEach(n=>n.remove()));
- const settings=async pg=>{ await pg.evaluate(()=>{ if (sheetOpen()) closeSheet(); go('hub'); }); await pg.locator('#app .topbar [data-act=settings]').click(); };
+ const settings=async pg=>{ await pg.evaluate(()=>{ if (sheetOpen()) closeSheet(); if (ui.view!=='hub') go('hub'); }); await pg.locator('#app .topbar [data-act=settings]').click(); }; // no bottom bar since 2026-11-09: the gear is in the hub's top bar
  // Save backup the way each platform does it; returns the file's name, type and text.
  const saveBackup=async P=>{ await settings(P.pg); await clearToasts(P.pg);
    if (P.kind==='desktop') { const [dl]=await Promise.all([P.pg.waitForEvent('download'),P.pg.locator('[data-act=backup]').click()]);
@@ -187,7 +194,7 @@ const stored=pg=>pg.evaluate(()=>JSON.stringify(normalize(JSON.parse(localStorag
    await P.pg.locator('#s-codebox summary').click(); await P.pg.locator('#s-codebox [data-act=copyCode]').click();
    const code=await P.pg.evaluate(()=>navigator.clipboard.readText());
    const Q=await phone('android',{store:EMPTY}); await Q.pg.locator('[data-act=import]').first().click(); await Q.pg.fill('#s-paste','Here you go: '+code+' thanks!'); await Q.pg.locator('#s-go').click();
-   await Q.pg.waitForTimeout(550); await Q.pg.selectOption('#s-who',{label:'Zoë B'}); await Q.pg.locator('#s-go').click(); await Q.pg.waitForTimeout(100); await Q.pg.reload();
+   await Q.pg.waitForTimeout(550); await pick(Q.pg,'s-who',{label:'Zoë B'}); await Q.pg.locator('#s-go').click(); await Q.pg.waitForTimeout(100); await Q.pg.reload();
    const got=await Q.pg.evaluate(()=>JSON.stringify(cleanVolume(S.volumes[0])));
    const norm=s=>{ const v=JSON.parse(s); delete v.meId; return JSON.stringify(v); };
    ok(norm(got)===norm(before),'share code pasted with chat text around it brings the volume over losslessly');
@@ -213,7 +220,7 @@ const stored=pg=>pg.evaluate(()=>JSON.stringify(normalize(JSON.parse(localStorag
    const link=await P.pg.evaluate(()=>shareLink);
    ok(link.includes('#join=') && !(await P.pg.locator('svg.qr').count()),`a ${n}-byte volume still goes as a link (${link.length} chars), with no QR`);
    const Q=await phone('iphone',{store:EMPTY}); await Q.pg.goto(link); await Q.pg.waitForSelector('#s-who',{timeout:20000});
-   await Q.pg.selectOption('#s-who',{index:1}); await Q.pg.locator('#sheetForm .btns .primary').click(); await Q.pg.waitForTimeout(150); await Q.pg.reload();
+   await pick(Q.pg,'s-who',{index:0}); await Q.pg.locator('#sheetForm .btns .primary').click(); await Q.pg.waitForTimeout(150); await Q.pg.reload();
    const got=await Q.pg.evaluate(()=>JSON.stringify(cleanVolume(S.volumes[0])));
    const norm=s=>{ const v=JSON.parse(s); delete v.meId; delete v.created; return JSON.stringify(v); };
    ok(norm(got)===norm(before),'snapshot link at the 512 KB limit joins on iPhone with every entry intact');
@@ -226,7 +233,7 @@ const stored=pg=>pg.evaluate(()=>JSON.stringify(normalize(JSON.parse(localStorag
    const f=await saveBackup(A); // made before the volume was shared
    await A.pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); }); await A.pg.locator('[data-act=volMenu]').click(); await A.pg.locator('.sheet [data-act=share]').click();
    await A.pg.waitForFunction(()=>/^.*#join=[\w-]+\.[\w-]+$/.test(shareLink),null,{timeout:10000}); const link=await A.pg.evaluate(()=>shareLink);
-   await B.pg.goto(link); await B.pg.waitForSelector('#s-who',{timeout:10000}); await B.pg.selectOption('#s-who',{index:3}); await B.pg.locator('#sheetForm .btns .primary').click(); await B.pg.waitForTimeout(400);
+   await B.pg.goto(link); await B.pg.waitForSelector('#s-who',{timeout:10000}); await pick(B.pg,'s-who',{index:2}); await B.pg.locator('#sheetForm .btns .primary').click(); await B.pg.waitForTimeout(400);
    const sy=pg=>pg.evaluate(()=>localStorage.getItem('hati2.sync.v1'));
    const syA=JSON.parse(await sy(A.pg)), syB=JSON.parse(await sy(B.pg)), vid=Object.keys(syA)[0];
    ok(vid && syB[vid] && syB[vid].room===syA[vid].room && syB[vid].key===syA[vid].key,'live invite: the joined phone holds the same room and key');
