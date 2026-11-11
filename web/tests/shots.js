@@ -29,6 +29,16 @@ const VIEWS = {
   'volume-offline': p => p.evaluate(async () => { ui.volId = S.volumes[0].id; go('volume'); await shareSheet(); dropSheet(); setSync(ui.volId, 'off'); SY[ui.volId].dirty = true; go('volume'); }),
   'settings-data': p => p.evaluate(() => { go('settings'); window.scrollTo(0, document.body.scrollHeight); }),
   'state-empty': p => p.evaluate(() => { S.volumes = []; save(); go('hub'); }),
+  'hub-archived': p => p.evaluate(() => { const v = exampleVolume(); v.id = 'arch1'; v.title = 'Tokyo 2025'; v.created = 0; v.archived = Date.now(); S.volumes.push(v); ui.archOpen = true; save(); go('hub'); window.scrollTo(0, document.body.scrollHeight); }),
+  'volume-archived': p => p.evaluate(() => { S.volumes[0].archived = Date.now(); save(); ui.volId = S.volumes[0].id; go('volume'); }),
+  'volume-settled': p => p.evaluate(() => { const v = S.volumes[0]; debts(v).forEach((d, i) => v.settlements.push({ id: 'st' + i, from: d.from, to: d.to, amount: d.amount, date: today(), upd: Date.now() })); save(); ui.volId = v.id; go('volume'); }),
+  'volume-empty': p => p.evaluate(() => { S.volumes.unshift({ id: 'new1', title: 'Flat 4B', type: 'home', currency: '$', meId: 'me1', created: Date.now(), members: [{ id: 'me1', name: 'Ana' }, { id: 'm2', name: 'Rio' }], expenses: [], settlements: [] }); save(); ui.volId = 'new1'; go('volume'); }),
+  'history-empty': p => p.evaluate(() => { S.volumes.unshift({ id: 'new1', title: 'Flat 4B', type: 'home', currency: '$', meId: 'me1', created: Date.now(), members: [{ id: 'me1', name: 'Ana' }, { id: 'm2', name: 'Rio' }], expenses: [], settlements: [] }); save(); ui.volId = 'new1'; go('history'); }),
+  'sheet-edit-volume': p => p.evaluate(() => { ui.volId = S.volumes[0].id; go('volume'); volumeSheet(S.volumes[0]); }),
+  'sheet-long-press': p => p.evaluate(() => { go('hub'); volActsSheet(S.volumes[0].id); }),
+  'sheet-picker': p => p.evaluate(() => { go('hub'); volumeSheet(null); }).then(() => p.click('#s-cur button')),
+  'sheet-restore': p => p.evaluate(() => { go('settings'); importSheet({ restore: true }); }),
+  'toast': p => p.evaluate(() => { ui.volId = S.volumes[0].id; go('volume'); toast('Expense saved', { undo: () => {}, ms: 60000 }); }),
   'state-one-member': p => p.evaluate(() => { const id = 'solo' + 1; S.volumes.unshift({ id: 'solo1', title: 'Solo test', type: 'other', currency: '$', meId: 'me1', created: 1, members: [{ id: 'me1', name: 'Me' }], expenses: [], settlements: [] }); save(); ui.volId = 'solo1'; go('volume'); }),
   'state-long-text': p => p.evaluate(() => {
     const v = exampleVolume(); v.title = 'Bartholomew and friends: summer road trip 2026'.slice(0, 40);
