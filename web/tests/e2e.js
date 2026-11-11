@@ -602,7 +602,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
        go('hub'); out.vol=off($('.vol')); out.gear=off($('.topbar [data-act=settings]')); const vi=getComputedStyle($('.vol-info'));
        out.strip=[(vi.backgroundImage.match(/radial-gradient/g)||[]).length, /repeat-x/.test(vi.backgroundRepeat)&&/repeat-y/.test(vi.backgroundRepeat), /linear-gradient/.test(vi.backgroundImage)];
        const tb=getComputedStyle($('.topbar')), ta=getComputedStyle($('.topbar'),'::after');
-       out.head=[tb.borderBottomWidth, getComputedStyle($('.vol')).borderTopWidth, ta.content, ta.height, ta.position, /radial-gradient/.test(ta.backgroundImage), ta.backgroundColor===getComputedStyle(document.body).backgroundColor, tb.boxShadow, tb.filter, tb.backdropFilter];
+       out.head=[tb.borderBottomWidth, getComputedStyle($('.vol')).borderTopWidth, ta.content, ta.height, ta.position, /radial-gradient/.test(ta.backgroundImage), /(\/ 0\.[0-9]+\)|rgba\([^)]*, 0\.[0-9]+\))/.test(tb.backgroundColor), tb.boxShadow, tb.filter, tb.backdropFilter];
        ui.volId=S.volumes[0].id; go('volume');
        out.btn=off($('.btn.primary')); out.ico=off($('.topbar .ico')); out.chip=off($('button.chip:not(.add)')); out.ledger=off($('#app .ledger'));
        const h=$('.hero'), hs=getComputedStyle(h), ha=getComputedStyle(h,'::after');
@@ -620,10 +620,10 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      if (r.heavy) why.push(`${r.heavy} text runs reach the heavy end`);
      if (r.strip[0]!==4||!r.strip[1]||r.strip[2]) why.push('card strip '+JSON.stringify(r.strip));
      if (why.length) bad.push(`${id}/${mode}: ${why.join(', ')}`);
-     const T=r.head; if (T[0]!=='3px'||T[1]!=='2px'||T[2]!=='""'||T[3]!=='8px'||T[4]!=='absolute'||!T[5]||!T[6]||T[7]!=='none'||T[8]!=='none'||T[9]!=='none') band.push(`${id}/${mode} ${JSON.stringify(T)}`);
+     const T=r.head; if (T[0]!=='2px'||T[1]!=='2px'||T[2]!=='""'||T[3]!=='10px'||T[4]!=='absolute'||!T[5]||!T[6]||!/0px 3px 0px/.test(T[7])||/\d+px \d+px [1-9]/.test(T[7].replace(/inset[^,]*/g,''))||T[8]!=='none'||T[9]!=='none') band.push(`${id}/${mode} ${JSON.stringify(T)}`);
      if (r.rows||r.filters) flat.push(`${id}/${mode} rows with blur ${r.rows}, filters ${r.filters}`); }
    ok(bad.length===0,'DEPTH: offsets by rank — controls 3px (gear, primary, icon, chip, category, segmented), cards and page panels 5px (volume card, ledger, panel), hero 8px dotted slab (pseudo-element, 8px margin under it, 9-column dot ramp, no gradient fade or mask), heavy ramp end free of text, card shade is an L (right and bottom), all 0-blur, 13 palettes x light/dark '+JSON.stringify(bad.slice(0,3)));
-   ok(band.length===0,'DEPTH: header band present in both themes — 3px ink edge (cards 2px), an 8px opaque screentone band under it, no shadow, filter or blur, 13 palettes x light/dark '+JSON.stringify(band.slice(0,3)));
+   ok(band.length===0,'DEPTH: header is manga acetate in both themes — translucent cel (alpha < 1), 2px ink edge, a 3px 0-blur slab, a second dotted cel (10px) behind it, no filter or backdrop-filter, 13 palettes x light/dark '+JSON.stringify(band.slice(0,3)));
    ok(flat.length===0,'DEPTH: paint cost — no blurred box-shadow on ledgers or list rows and no filter/backdrop-filter anywhere in the volume page, 13 palettes x light/dark '+JSON.stringify(flat.slice(0,3)));
    // The header is static: scrolling a long history changes neither its edge, its band nor where they are drawn
    await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); const v=S.volumes[0], ids=v.members.map(m=>m.id); for (let i=0;i<40;i++) v.expenses.push({id:'dp'+i,desc:'Lunch '+i,amount:1000,paidBy:ids[0],category:'food',date:'2026-01-01',splitType:'equal',splits:splitEqual(1000,ids),inputs:{},note:'',upd:1}); ui.volId=v.id; go('history'); scrollTo(0,0); });
@@ -636,6 +636,44 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      const m=await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); const h=$('.hero').getBoundingClientRect(); return {sw:document.scrollingElement.scrollWidth,cw:document.scrollingElement.clientWidth,slabR:h.right+8,vw:innerWidth}; });
      ok(m.sw<=m.cw && m.slabR<=m.vw-8,`DEPTH: at ${w}px no sideways scroll and the hero slab ends ≥8px from the screen edge ${JSON.stringify(m)}`); }
    ok(e.length===0,'no page errors in DEPTH checks '+JSON.stringify(e));
+   await c.close(); }
+ // ALL-OUT (design, 2026-11-11): every card-like block on every view and sheet stands on a non-zero 0-blur ink offset;
+ // no filter, backdrop-filter or blurred outer shadow anywhere; the header cel is translucent and its grey words hold 4.5:1.
+ { const c=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780},deviceScaleFactor:1}); await c.addInitScript(noSync); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message));
+   await pg.goto(URL); const bad=[], blur=[], head=[];
+   const scenes=[['hub',()=>go('hub')],['volume',()=>{ ui.volId=S.volumes[0].id; go('volume'); }],['history',()=>{ ui.volId=S.volumes[0].id; go('history'); }],
+     ['expense',()=>{ ui.volId=S.volumes[0].id; ui.view='volume'; openExpense(null); }],['settings',()=>go('settings')],
+     ['empty volume',()=>{ S.volumes=S.volumes.filter(v=>v.id!=='ao1'); S.volumes.push({id:'ao1',title:'Flat',type:'home',currency:'$',meId:'a',created:Date.now(),members:[{id:'a',name:'Ana'},{id:'b',name:'Rio'}],expenses:[],settlements:[]}); ui.volId='ao1'; go('volume'); }],
+     ['settle sheet',()=>{ ui.volId=S.volumes[0].id; go('volume'); settleSheet(null); }],['edit volume sheet',()=>{ ui.volId=S.volumes[0].id; go('volume'); volumeSheet(S.volumes[0]); }],
+     ['toast',()=>{ go('hub'); toast('Expense saved'); }]];
+   for (const mode of ['light','dark']) for (const [name,open] of scenes) {
+     await pg.evaluate(([mode,name])=>{ S.settings.palette='classic'; S.settings.mode=mode; applyTheme(); dropSheet(); document.querySelectorAll('.toast').forEach(n=>n.remove()); },[mode,name]);
+     await pg.evaluate(`(${open.toString()})()`);
+     const r=await pg.evaluate(()=>{ const lay=s=>s==='none'?[]:s.split(/,(?![^(]*\))/).map(x=>x.trim()), num=l=>(l.replace(/(rgba?|color)\([^)]*\)/g,'').match(/-?[\d.]+px/g)||[]).map(parseFloat);
+       const cards=[...document.querySelectorAll('#app :is(.panel, .ledger, .vol, .amount-box), .sheet :is(.panel, .ledger, .share-sum), .toast')].filter(x=>x.getClientRects().length);
+       const flat=cards.filter(x=>{ const o=lay(getComputedStyle(x).boxShadow).filter(l=>!/inset/.test(l)).map(num); return !o.some(n=>(n[0]>0||n[1]>0)&&!n[2]); }).map(x=>x.className);
+       const blurred=[...document.querySelectorAll('*')].flatMap(x=>[null,'::before','::after'].map(pe=>{ const s=getComputedStyle(x,pe); const o=lay(s.boxShadow).filter(l=>!/inset/.test(l)).some(l=>num(l)[2]>0);
+         return s.filter!=='none'||s.backdropFilter!=='none'||o||(s.textShadow!=='none')?x.className+(pe||''):null; })).filter(Boolean);
+       return {n:cards.length,flat,blurred}; });
+     if (!r.n||r.flat.length) bad.push(`${mode}/${name}: ${r.n} cards, flat: ${r.flat.slice(0,3)}`);
+     if (r.blurred.length) blur.push(`${mode}/${name}: ${r.blurred.slice(0,3)}`); }
+   // header cel: translucent, its grey text 4.5:1 composited over the page and over ink scrolling under it, 13 plates x 2 themes
+   const ids=await pg.evaluate(()=>PALETTES.map(x=>x.id));
+   for (const id of ids) for (const mode of ['light','dark']) {
+     const r=await pg.evaluate(([id,mode])=>{ S.settings.palette=id; S.settings.mode=mode; applyTheme(); dropSheet(); go('settings');
+       const t=$('.topbar'); t.insertAdjacentHTML('beforeend','<span class="muted" id="__celsub">x</span>');
+       const P=c=>{ const n=(c.match(/[\d.]+/g)||[0,0,0]).map(Number); if (/^color\(srgb/.test(c)) { n[0]*=255; n[1]*=255; n[2]*=255; } if (n.length<4) n[3]=1; return n; };
+       const lin=v=>{ v/=255; return v<=0.03928?v/12.92:((v+0.055)/1.055)**2.4; }, L=([r,g,b])=>0.2126*lin(r)+0.7152*lin(g)+0.0722*lin(b);
+       const over=(a,u)=>[0,1,2].map(i=>a[i]*a[3]+u[i]*(1-a[3]));
+       const cel=P(getComputedStyle(t).backgroundColor), page=P(getComputedStyle(document.body).backgroundColor), ink=P(getComputedStyle(document.body).color);
+       const cr=(f,g)=>{ const x=L(f), y=L(g); return (Math.max(x,y)+0.05)/(Math.min(x,y)+0.05); };
+       const sub=P(getComputedStyle($('#__celsub')).color), h1=P(getComputedStyle($('.topbar h1')).color); $('#__celsub').remove();
+       return {a:cel[3],sub:Math.min(cr(sub,over(cel,page)),cr(sub,over(cel,ink))),h1:Math.min(cr(h1,over(cel,page)),cr(h1,over(cel,ink))),bf:getComputedStyle(t).backdropFilter}; },[id,mode]);
+     if (!(r.a>=0.85&&r.a<=0.92)||r.sub<4.5||r.h1<4.5||r.bf!=='none') head.push(`${id}/${mode} ${JSON.stringify(r)}`); }
+   ok(bad.length===0,'ALL-OUT: every card-like block (cards, panels, ledgers, amount box, sheet ledgers and summaries, toast) on 9 views and sheets has a non-zero 0-blur ink offset, light and dark '+JSON.stringify(bad.slice(0,3)));
+   ok(blur.length===0,'ALL-OUT: no filter, backdrop-filter, text-shadow or blurred outer shadow on any element or pseudo-element, 9 views and sheets, light and dark '+JSON.stringify(blur.slice(0,3)));
+   ok(head.length===0,'ALL-OUT: header acetate cel is 85-92% opaque with no backdrop-filter; its title and grey words hold 4.5:1 over the page and over ink under it, 13 palettes x light/dark '+JSON.stringify(head.slice(0,3)));
+   ok(e.length===0,'no page errors in ALL-OUT checks '+JSON.stringify(e));
    await c.close(); }
  // L3-dark (design): ink on night paper. Layer steps, chalk frames quieter than text, a chalk-ink offset slab (R2 revise), plate-tinted hero, selected
  // states mixed from chalk (never diluted accent), sheet lifts off a darker scrim, one dark source (no drift), status bar
