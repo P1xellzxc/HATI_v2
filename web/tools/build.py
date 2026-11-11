@@ -65,6 +65,21 @@ html=f'''<!doctype html>
 </body>
 </html>
 '''
+# Content-Security-Policy (security round, 2026-11-11). The one inline <script> runs by its sha256 hash, so no other
+# script (injected markup, inline handlers, eval, remote files) can run. Styles keep 'unsafe-inline': the templates
+# use style="" attributes and the motion ghosts use constructed sheets; CSS can't run code, and with img/font/connect
+# limited to this origin and the sync Worker it has no way to send anything out. The meta can't carry frame-ancestors.
+import base64, hashlib
+scripts=re.findall(r'<script>(.*?)</script>',html,re.S)
+assert len(scripts)==1 and '<script' not in html.replace('<script>','',1), 'one inline <script> expected in the built page'
+SYNC_HOST='hati-sync.gerymefernando.workers.dev'
+assert f'"https://{SYNC_HOST}"' in html, 'SYNC_BASE changed: update connect-src in build.py'
+sha="'sha256-"+base64.b64encode(hashlib.sha256(scripts[0].encode()).digest()).decode()+"'"
+csp=("default-src 'none'; script-src "+sha+"; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; "
+ f"connect-src 'self' https://{SYNC_HOST} wss://{SYNC_HOST}; manifest-src 'self'; worker-src 'self'; "
+ "base-uri 'none'; form-action 'none'; object-src 'none'")
+html=html.replace('<meta charset="utf-8">\n','<meta charset="utf-8">\n<meta http-equiv="Content-Security-Policy" content="'+csp+'">\n<meta name="referrer" content="no-referrer">\n',1)
+assert 'Content-Security-Policy' in html
 open(f'{R}/docs/app/index.html','w').write(html)
 open(f'{R}/docs/app/manifest.webmanifest','w').write(json.dumps({
  "id":"./","name":"HATI²","short_name":"HATI²","description":"Split group expenses offline.",
