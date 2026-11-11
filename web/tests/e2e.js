@@ -505,7 +505,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    const CLAY_SET='.btn:not(.quiet):not(.text), .ico, .cat, .seg button, .vol, button.chip:not(.add)';
    for (const id of ids) for (const mode of ['light','dark']) {
      const set=async v=>pg.evaluate(([id,mode,v])=>{ S.settings.palette=id; S.settings.mode=mode; applyTheme(); dropSheet&&dropSheet(); if(v==='expense'){ ui.volId=S.volumes[0].id; ui.view='volume'; openExpense(null); } else { if(v==='volume') ui.volId=S.volumes[0].id; go(v); } },[id,mode,v]);
-     const want=async(sel,clay,tag)=>{ const s=await st(pg,sel); if(!s) { bad.push(`${id}/${mode} ${tag||sel}: missing`); return; } if(clay? !isClay(s) : (/inset/.test(s.boxShadow)||s.borderTopLeftRadius!==(tag==='sheet'?'6px':'3px'))) bad.push(`${id}/${mode} ${tag||sel}: ${s.borderTopWidth} r${s.borderTopLeftRadius} ${s.boxShadow}`); };
+     const want=async(sel,clay,tag)=>{ const s=await st(pg,sel); if(!s) { bad.push(`${id}/${mode} ${tag||sel}: missing`); return; } if(clay? !isClay(s) : (layers(s.boxShadow).some(l=>/inset/.test(l)&&nums(l)[2]>0)||s.borderTopLeftRadius!==(tag==='sheet'?'6px':'3px'))) bad.push(`${id}/${mode} ${tag||sel}: ${s.borderTopWidth} r${s.borderTopLeftRadius} ${s.boxShadow}`); };
      await set('hub'); await want('.vol',true); await want('.topbar [data-act=settings]',true,'hub gear');
      await set('volume'); await want('.btn.primary',true); await want('.ico',true); await want('button.chip:not(.add)',true); await want('.ledger',false); await want('.hero',false);
      await want('.chip.add',false,'chip.add (flat, 3px)');
@@ -516,7 +516,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); volMenuSheet(); }); await want('.sheet',false,'sheet');
      const grad=await pg.evaluate(sel=>[...document.querySelectorAll(sel)].filter(x=>getComputedStyle(x).backgroundImage!=='none').map(x=>x.className),CLAY_SET); if(grad.length) bad.push(`${id}/${mode} gradient on clay: ${grad}`);
      await pg.evaluate(()=>dropSheet()); }
-   ok(bad.length===0,'clay: clay set has 2px ink, 6-10px corners, inset light/shade and a 0-blur offset; reading surfaces stay flat 3px; no gradients; .pal and .chip.add flat, in 13 palettes x light/dark '+JSON.stringify(bad.slice(0,4)));
+   ok(bad.length===0,'clay: clay set has 2px ink, 6-10px corners, inset light/shade and a 0-blur offset; reading surfaces stay 3px with no clay shading (frosted light lines are 0-blur); no gradients on clay; .pal and .chip.add flat, in 13 palettes x light/dark '+JSON.stringify(bad.slice(0,4)));
    // Disabled clay is flat
    await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); go('hub'); $('#app').insertAdjacentHTML('beforeend','<button class="btn primary" id="__dis" disabled>x</button>'); });
    ok((await st(pg,'#__dis')).boxShadow==='none','clay: a disabled .btn has no shadow at all');
@@ -526,7 +526,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    for (const [sel,view] of [['.btn.primary','volume'],['.vol','hub']]) {
      await pg.evaluate(v=>{ ui.volId=S.volumes[0].id; go(v); },view);
      const {rest,held}=await press(pg,sel); const m=/matrix\(1, 0, 0, 1, ([\d.]+), ([\d.]+)\)/.exec(held.transform)||[];
-     { const lift=nums(offLayer(rest.boxShadow))[0]; ok(+m[1]===lift && +m[2]===lift && lift===(sel===".vol"?5:3) && nums(offLayer(held.boxShadow)).slice(0,3).every(x=>x===0) && shade(held.boxShadow)>shade(rest.boxShadow),`clay: held ${sel} moves exactly onto its ${lift}px slab (controls 3, cards 5), loses its offset and its inner shade grows (${held.transform}; ${held.boxShadow})`); } }
+     { const lift=nums(offLayer(rest.boxShadow))[0]; ok(+m[1]===lift && +m[2]===lift && lift===3 && nums(offLayer(held.boxShadow)).slice(0,3).every(x=>x===0) && shade(held.boxShadow)>shade(rest.boxShadow),`clay: held ${sel} moves exactly onto its ${lift}px slab (controls 3, volume cards are inner cards: 3), loses its offset and its inner shade grows (${held.transform}; ${held.boxShadow})`); } }
    { const rc=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780},reducedMotion:'reduce'}); const R=await rc.newPage(); await R.goto(URL);
      for (const [sel,view] of [['.btn.primary','volume'],['.vol','hub']]) {
        await R.evaluate(v=>{ ui.volId=S.volumes[0].id; go(v); },view);
@@ -604,9 +604,10 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
        const tb=getComputedStyle($('.topbar')), ta=getComputedStyle($('.topbar'),'::after');
        out.head=[tb.borderBottomWidth, getComputedStyle($('.vol')).borderTopWidth, ta.content, ta.height, ta.position, /radial-gradient/.test(ta.backgroundImage), /(\/ 0\.[0-9]+\)|rgba\([^)]*, 0\.[0-9]+\))/.test(tb.backgroundColor), tb.boxShadow, tb.filter, tb.backdropFilter];
        ui.volId=S.volumes[0].id; go('volume');
-       out.btn=off($('.btn.primary')); out.ico=off($('.topbar .ico')); out.chip=off($('button.chip:not(.add)')); out.ledger=off($('#app .ledger'));
+       out.sect=off($('#app .sect')); out.btn=off($('.btn.primary')); out.ico=off($('.topbar .ico')); out.chip=off($('button.chip:not(.add)')); out.ledger=off($('#app .ledger'));
        const h=$('.hero'), hs=getComputedStyle(h), ha=getComputedStyle(h,'::after');
-       out.hero=[hs.boxShadow, hs.marginBottom, ha.top, ha.left, ha.right, ha.bottom, ha.borderTopWidth, /radial-gradient/.test(ha.backgroundImage), /8px/.test(ha.clipPath), (hs.backgroundImage.match(/radial-gradient/g)||[]).length, /linear-gradient|conic/.test(hs.backgroundImage), hs.maskImage||hs.webkitMaskImage];
+       const z=l=>(l.replace(/(rgba?|color)\([^)]*\)/g,'').match(/-?[\d.]+px/g)||[]).map(parseFloat);
+       out.hero=[lay(hs.boxShadow).every(l=>/inset/.test(l)&&z(l)[2]===0)?'none':hs.boxShadow, hs.marginBottom, ha.top, ha.left, ha.right, ha.bottom, ha.borderTopWidth, /radial-gradient/.test(ha.backgroundImage), /8px/.test(ha.clipPath), (hs.backgroundImage.match(/radial-gradient/g)||[]).length, (hs.backgroundImage.match(/linear-gradient/g)||[]).length>1||/conic/.test(hs.backgroundImage), hs.maskImage||hs.webkitMaskImage];
        // the heavy end of the ramp (the 5 columns with dots over 1.2px: the right 30px of the padding box) holds no text
        const hr=h.getBoundingClientRect(), heavyL=hr.right-2-30; out.heavy=[...h.querySelectorAll('*')].filter(x=>[...x.childNodes].some(n=>n.nodeType===3&&n.textContent.trim())).map(x=>{ const g=document.createRange(); g.selectNodeContents(x); return g.getBoundingClientRect().right; }).filter(x=>x>heavyL).length;
        out.rows=[...document.querySelectorAll('#app .ledger, #app .ledger > *, #app .tx, #app .debt')].reduce((a,x)=>a+blurs(x),0);
@@ -615,14 +616,15 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
        return out; },[id,mode]);
      const why=[];
      for (const k of ['gear','btn','ico','chip','cat','seg']) if (r[k]!=='3/3/0') why.push(`${k} ${r[k]}`);
-     for (const k of ['vol','ledger','panel']) if (r[k]!=='5/5/0') why.push(`${k} ${r[k]}`);
+     for (const k of ['vol','ledger','panel']) if (r[k]!=='3/3/0') why.push(`${k} ${r[k]}`);
+     if (r.sect!=='5/5/0') why.push(`sect ${r.sect}`);
      const H=r.hero; if (H[0]!=='none'||H[1]!=='8px'||H[2]!=='6px'||H[3]!=='6px'||H[4]!=='-10px'||H[5]!=='-10px'||H[6]!=='2px'||!H[7]||!H[8]||H[9]!==9||H[10]||(H[11]&&H[11]!=='none')) why.push('hero '+JSON.stringify(H));
      if (r.heavy) why.push(`${r.heavy} text runs reach the heavy end`);
      if (r.strip[0]!==4||!r.strip[1]||r.strip[2]) why.push('card strip '+JSON.stringify(r.strip));
      if (why.length) bad.push(`${id}/${mode}: ${why.join(', ')}`);
      const T=r.head; if (T[0]!=='2px'||T[1]!=='2px'||T[2]!=='""'||T[3]!=='10px'||T[4]!=='absolute'||!T[5]||!T[6]||!/0px 3px 0px/.test(T[7])||/\d+px \d+px [1-9]/.test(T[7].replace(/inset[^,]*/g,''))||T[8]!=='none'||T[9]!=='none') band.push(`${id}/${mode} ${JSON.stringify(T)}`);
      if (r.rows||r.filters) flat.push(`${id}/${mode} rows with blur ${r.rows}, filters ${r.filters}`); }
-   ok(bad.length===0,'DEPTH: offsets by rank — controls 3px (gear, primary, icon, chip, category, segmented), cards and page panels 5px (volume card, ledger, panel), hero 8px dotted slab (pseudo-element, 8px margin under it, 9-column dot ramp, no gradient fade or mask), heavy ramp end free of text, card shade is an L (right and bottom), all 0-blur, 13 palettes x light/dark '+JSON.stringify(bad.slice(0,3)));
+   ok(bad.length===0,'DEPTH: offsets by rank — controls 3px (gear, primary, icon, chip, category, segmented), section cards 5px, inner cards 3px (volume card, ledger, panel), hero 8px dotted slab (frosted: 0-blur light lines, one sheen) (pseudo-element, 8px margin under it, 9-column dot ramp, no gradient fade or mask), heavy ramp end free of text, card shade is an L (right and bottom), all 0-blur, 13 palettes x light/dark '+JSON.stringify(bad.slice(0,3)));
    ok(band.length===0,'DEPTH: header is manga acetate in both themes — translucent cel (alpha < 1), 2px ink edge, a 3px 0-blur slab, a second dotted cel (10px) behind it, no filter or backdrop-filter, 13 palettes x light/dark '+JSON.stringify(band.slice(0,3)));
    ok(flat.length===0,'DEPTH: paint cost — no blurred box-shadow on ledgers or list rows and no filter/backdrop-filter anywhere in the volume page, 13 palettes x light/dark '+JSON.stringify(flat.slice(0,3)));
    // The header is static: scrolling a long history changes neither its edge, its band nor where they are drawn
@@ -650,10 +652,11 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      await pg.evaluate(([mode,name])=>{ S.settings.palette='classic'; S.settings.mode=mode; applyTheme(); dropSheet(); document.querySelectorAll('.toast').forEach(n=>n.remove()); },[mode,name]);
      await pg.evaluate(`(${open.toString()})()`);
      const r=await pg.evaluate(()=>{ const lay=s=>s==='none'?[]:s.split(/,(?![^(]*\))/).map(x=>x.trim()), num=l=>(l.replace(/(rgba?|color)\([^)]*\)/g,'').match(/-?[\d.]+px/g)||[]).map(parseFloat);
-       const cards=[...document.querySelectorAll('#app :is(.panel, .ledger, .vol, .amount-box), .sheet :is(.panel, .ledger, .share-sum), .toast')].filter(x=>x.getClientRects().length);
+       const cards=[...document.querySelectorAll('#app :is(.sect, .panel, .ledger, .vol, .amount-box), .sheet :is(.panel, .ledger, .share-sum), .toast')].filter(x=>x.getClientRects().length);
        const flat=cards.filter(x=>{ const o=lay(getComputedStyle(x).boxShadow).filter(l=>!/inset/.test(l)).map(num); return !o.some(n=>(n[0]>0||n[1]>0)&&!n[2]); }).map(x=>x.className);
        const blurred=[...document.querySelectorAll('*')].flatMap(x=>[null,'::before','::after'].map(pe=>{ const s=getComputedStyle(x,pe); const o=lay(s.boxShadow).filter(l=>!/inset/.test(l)).some(l=>num(l)[2]>0);
-         return s.filter!=='none'||s.backdropFilter!=='none'||o||(s.textShadow!=='none')?x.className+(pe||''):null; })).filter(Boolean);
+         const dof=!pe&&x.id==='app'&&x.inert&&/^blur\(([0-2](\.\d+)?|3)px\)$/.test(s.filter);
+         return (s.filter!=='none'&&!dof)||s.backdropFilter!=='none'||o||(s.textShadow!=='none')?(x.id||x.className)+(pe||''):null; })).filter(Boolean);
        return {n:cards.length,flat,blurred}; });
      if (!r.n||r.flat.length) bad.push(`${mode}/${name}: ${r.n} cards, flat: ${r.flat.slice(0,3)}`);
      if (r.blurred.length) blur.push(`${mode}/${name}: ${r.blurred.slice(0,3)}`); }
@@ -1772,6 +1775,149 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    const fit=await pg.evaluate(()=>{ ui.sel=new Set(); render(); const i=document.getElementById('sd-date'), r=i.getBoundingClientRect(); return {fs:getComputedStyle(i).fontSize,w:document.documentElement.scrollWidth<=innerWidth,btn:Math.min(...[...document.querySelectorAll('.setdate .btn')].map(b=>b.getBoundingClientRect().height))}; });
    ok(fit.fs==='16px' && fit.w && fit.btn>=44,'N5: the Set date bar has a 16px date input, 44px buttons, no sideways scroll '+JSON.stringify(fit));
    ok(errs.length===0,'N5: no page errors '+JSON.stringify(errs)); await c.close(); }
+
+ // D9 paste a receipt into the amount: desktop, Android and iPhone emulation. The paste is a real ClipboardEvent with
+ // clipboardData (what Live Text / Google Lens text gives the page); a plain number is left to the field.
+ const paste=(pg,sel,text)=>pg.evaluate(([sel,text])=>{ const el=document.querySelector(sel); el.focus(); const dt=new DataTransfer(); dt.setData('text/plain',text);
+   const go=el.dispatchEvent(new ClipboardEvent('paste',{clipboardData:dt,bubbles:true,cancelable:true}));
+   return {native:go,amount:el.value,form:ui.form.amount,desc:document.getElementById('f-desc').value,msg:document.getElementById('pasteMsg').textContent,live:document.getElementById('pasteMsg').getAttribute('aria-live'),
+     chips:[...document.querySelectorAll('#pasteSug button')].map(b=>({t:b.textContent,type:b.type,h:Math.round(b.getBoundingClientRect().height)}))}; },[sel,text]);
+ const JOLLIBEE=['JOLLIBEE FOODS CORPORATION','SM North EDSA','1 Chickenjoy   99.00','2 Jolly Spaghetti   120.00','1 Yumburger   115.13','TOTAL   334.13','CASH   500.00','CHANGE   165.87','VAT 12%   35.80'].join('\n');
+ for (const dev of ['Desktop Chrome','Pixel 7','iPhone 13']) { const {c,pg,errs}=await bebe(dev);
+   await pg.locator('.vol').first().click(); await pg.waitForSelector('[data-act=addExpense]'); await pg.waitForTimeout(350);
+   await pg.locator('[data-act=addExpense]').click(); await pg.waitForSelector('#expForm'); await pg.waitForTimeout(350);
+   const r1=await paste(pg,'#f-amount',JOLLIBEE);
+   ok(!r1.native && r1.amount==='334.13' && r1.form==='334.13' && r1.msg==='From paste: TOTAL ₱334.13' && r1.live==='polite','D9 ('+dev+'): pasting a receipt fills the amount from the TOTAL line, not CASH or CHANGE, and says so '+JSON.stringify(r1));
+   ok(r1.desc==='JOLLIBEE FOODS CORPORATION','D9 ('+dev+'): an empty description takes the first text line '+r1.desc);
+   if (dev!=='Pixel 7') { ok(errs.length===0,'D9 ('+dev+'): no page errors '+JSON.stringify(errs)); await c.close(); continue; }
+   // the description is kept once it has words; ambiguous text gives chips (real buttons) and fills nothing until one is tapped
+   await pg.locator('#f-desc').fill('Snacks'); await pg.locator('#f-amount').fill('');
+   const r2=await paste(pg,'#f-amount',['Chickenjoy','Spaghetti','219.00','115.13','334.13'].join('\n'));
+   ok(r2.amount==='' && r2.desc==='Snacks' && r2.chips.map(x=>x.t).join()==='₱334.13,₱219.00,₱115.13' && r2.chips.every(x=>x.type==='button' && x.h>=44) && /total/i.test(r2.msg),'D9: unclear text shows up to 3 amounts as 44px buttons, largest first, and keeps the description '+JSON.stringify(r2));
+   await pg.locator('#pasteSug button').nth(1).focus(); await pg.keyboard.press('Enter');
+   const r3=await pg.evaluate(()=>({a:document.getElementById('f-amount').value,f:ui.form.amount,msg:document.getElementById('pasteMsg').textContent,chips:document.querySelectorAll('#pasteSug button').length,sum:document.getElementById('splitSum').textContent}));
+   ok(r3.a==='219.00' && r3.f==='219.00' && r3.msg==='From paste: ₱219.00' && r3.chips===0 && /219\.00/.test(r3.sum),'D9: a chip (by keyboard) fills the amount and the split '+JSON.stringify(r3));
+   // garbage: the message, and nothing changes
+   const r4=await paste(pg,'#f-amount','Thanks for dining with us!\nSee you again 11/09/2026 12:41');
+   ok(!r4.native && r4.amount==='219.00' && r4.desc==='Snacks' && r4.msg==='No amount found in what you pasted.','D9: text with no amount says so and changes nothing '+JSON.stringify(r4));
+   // a plain number is the field's own paste (not intercepted)
+   const r5=await paste(pg,'#f-amount','1,674.72'); const r5b=await paste(pg,'#f-amount','412');
+   ok(r5.native && r5b.native,'D9: a plain number paste is left to the field '+JSON.stringify([r5.native,r5b.native]));
+   const r6=await paste(pg,'#f-amount','₱1,674.72'); const r7=await paste(pg,'#f-amount','₱2,000,000,000.00');
+   ok(r6.amount==='1674.72' && r7.amount==='1674.72' && r7.msg==='That amount is too large.','D9: "₱1,674.72" fills 1674.72; an amount over the limit is refused '+JSON.stringify([r6.amount,r7.msg]));
+   const big='x'.repeat(50000)+'\nTOTAL 99.00', t0=Date.now(); const r8=await paste(pg,'#f-amount',big);
+   ok(r8.msg==='No amount found in what you pasted.' && Date.now()-t0<2000,'D9: a huge paste is read only up to 20k characters '+r8.msg);
+   const r9=await paste(pg,'#f-amount','<img src=x onerror="window.__x=1">TOTAL ₱88.00');
+   const x=await pg.evaluate(()=>window.__x);
+   ok(r9.amount==='88.00' && x===undefined,'D9: pasted HTML is read as text '+JSON.stringify(r9));
+   await pg.locator('#f-amount').fill('50.00'); const r10=await pg.evaluate(()=>document.getElementById('pasteMsg').textContent);
+   ok(r10==='','D9: typing in the amount clears the paste line');
+   const fs=await pg.evaluate(()=>getComputedStyle(document.getElementById('f-amount')).fontSize);
+   ok(parseFloat(fs)>=16,'D9: the amount input stays at least 16px '+fs);
+   ok(errs.length===0,'D9: no page errors '+JSON.stringify(errs)); await c.close(); }
+
+ // D2 Undo on edits and deletes of expenses and payments: a real Undo button in the toast, the money back to the cent,
+ // and sync-safe (a normal write with a fresh upd; a deleted entry returns under a new id, which the other phone's
+ // copy, still holding the tombstone, takes in a real mergeVolumes).
+ { const {c,pg,errs}=await bebe();
+   // content fingerprint without ids and upd (a deleted entry comes back under a new id), plus the balances
+   const content=()=>pg.evaluate(()=>{ const v=S.volumes.find(x=>x.id==='bebe'), strip=({id,upd,...r})=>JSON.stringify(r); return JSON.stringify({e:v.expenses.map(strip).sort(),s:v.settlements.map(strip).sort(),b:balances(v)}); });
+   const toastOf=()=>pg.evaluate(()=>{ const t=document.querySelector('.toast'), u=t&&t.querySelector('.undo'); return t?{t:t.firstChild.textContent,undo:!!u,tag:u&&u.tagName,type:u&&u.type,hidden:t.getAttribute('aria-hidden'),st:$('#status').textContent}:null; });
+   const settle=()=>pg.waitForTimeout(400);
+   await pg.locator('.vol').first().click(); await pg.waitForSelector('[data-act=history]'); await settle();
+   await pg.locator('[data-act=history]').first().click(); await pg.waitForSelector('.ledger.hist'); await settle();
+   const c0=await content();
+   // 1. edit an expense, then Undo
+   const g0=await pg.evaluate(()=>({...S.volumes[0].expenses.find(e=>e.id==='g')}));
+   await pg.locator('.ledger.hist .tx[data-id="g"]').click(); await pg.waitForSelector('#expForm'); await settle();
+   await pg.locator('#f-amount').fill('450.00'); await pg.locator('#f-desc').fill('Jollibee Bonifacio');
+   await pg.locator('#expForm button[type=submit]').click(); await pg.waitForSelector('.ledger.hist'); await settle();
+   const t1=await toastOf();
+   ok(t1 && t1.t==='Expense updated' && t1.undo && t1.tag==='BUTTON' && t1.type==='button' && t1.hidden===null,'D2: saving an edit shows "Expense updated" with a real Undo button '+JSON.stringify(t1));
+   const u1=await pg.evaluate(()=>S.volumes[0].expenses.find(e=>e.id==='g').upd);
+   await pg.locator('.toast .undo').click(); await pg.waitForTimeout(80);
+   const g1=await pg.evaluate(()=>({...S.volumes[0].expenses.find(e=>e.id==='g')}));
+   ok(JSON.stringify({...g1,upd:0})===JSON.stringify({...g0,upd:0}) && g1.upd>u1,'D2: Undo of an edit puts every field back, with a fresh upd '+JSON.stringify(g1));
+   ok(await content()===c0,'D2: after Undo of the edit, amounts, splits and balances are as before');
+   // 2. delete an expense, then Undo from the keyboard; the other phone (still on the tombstone) takes it back
+   await pg.locator('.ledger.hist .tx[data-id="b"]').click(); await pg.waitForSelector('#expForm'); await settle();
+   await pg.locator('[data-act=deleteExpense]').click(); await pg.waitForSelector('#sheetForm'); await pg.locator('#sheetForm button.danger').click();
+   await pg.waitForSelector('.ledger.hist'); await settle();
+   const t2=await toastOf(), other=await pg.evaluate(()=>JSON.stringify(S.volumes[0]));
+   ok(t2 && t2.t==='Expense deleted' && t2.undo && /Expense deleted/.test(t2.st),'D2: deleting an expense shows "Expense deleted" with Undo, announced in #status '+JSON.stringify(t2));
+   await pg.locator('.toast .undo').focus(); await pg.keyboard.press('Enter'); await pg.waitForTimeout(80);
+   const b1=await pg.evaluate(()=>{ const v=S.volumes[0], e=v.expenses.find(x=>x.desc==='House of Bagnet'); return {id:e&&e.id,amount:e&&e.amount,gone:v.deleted.includes('b'),row:!!document.querySelector(`.ledger.hist .tx[data-id="${e&&e.id}"]`),toast:(document.querySelector('.toast')||{}).textContent}; });
+   ok(b1.id && b1.id!=='b' && b1.amount===33413 && b1.gone && b1.row && /Undone/.test(b1.toast||''),'D2: Undo (keyboard) brings the deleted expense back under a new id, the old id stays deleted '+JSON.stringify(b1));
+   ok(await content()===c0,'D2: after Undo of the delete, the money is as before to the cent');
+   const mg=await pg.evaluate(o=>{ const v=S.volumes[0], a=mergeVolumes(JSON.parse(o),v), back=mergeVolumes(v,JSON.parse(o));
+     return {a:a.vol&&a.vol.expenses.some(e=>e.desc==='House of Bagnet'),b:back.vol&&back.vol.expenses.some(e=>e.desc==='House of Bagnet'),sum:a.vol&&JSON.stringify(balances(a.vol))===JSON.stringify(balances(v))}; },other);
+   ok(mg.a && mg.b && mg.sum,'D2: sync-safe: the other phone\'s copy (with the tombstone) merges the restored expense in, both ways '+JSON.stringify(mg));
+   // 3. record a new payment, then Undo
+   await pg.locator('#app .topbar [data-act=back]').click(); await pg.waitForSelector('[data-act=settle]'); await settle();
+   await pg.locator('[data-act=settle]').first().click(); await pg.waitForSelector('#sheetForm'); await pg.locator('#s-amt').fill('100.00');
+   await pg.locator('#sheetForm button.primary').click(); await settle();
+   const t3=await toastOf(), n3=await pg.evaluate(()=>S.volumes[0].settlements.length);
+   await pg.locator('.toast .undo').click(); await pg.waitForTimeout(80);
+   const p3=await pg.evaluate(()=>({n:S.volumes[0].settlements.length,del:S.volumes[0].deleted.length}));
+   ok(t3 && t3.t==='Payment recorded' && t3.undo && n3===2 && p3.n===1,'D2: Undo of a new payment takes it away (and tombstones it) '+JSON.stringify([t3,n3,p3]));
+   ok(await content()===c0,'D2: after Undo of the payment, balances are as before');
+   // 4. edit a payment, then Undo; 5. delete it, then Undo
+   await pg.locator('[data-act=history]').first().click(); await pg.waitForSelector('.ledger.hist'); await settle();
+   await pg.locator('.ledger.hist .tx[data-id="p1"]').click(); await pg.waitForSelector('#sheetForm'); await pg.locator('#s-amt').fill('321.00');
+   await pg.locator('#sheetForm button.primary').click(); await settle();
+   await pg.locator('.toast .undo').click(); await pg.waitForTimeout(80);
+   const p4=await pg.evaluate(()=>S.volumes[0].settlements.find(s=>s.id==='p1'));
+   ok(p4 && p4.amount===50000 && p4.upd>1,'D2: Undo of a payment edit puts the old amount back with a fresh upd '+JSON.stringify(p4));
+   await settle(); await pg.locator('.ledger.hist .tx[data-id="p1"]').click(); await pg.waitForSelector('#sheetForm');
+   await pg.locator('[data-act=deleteSettle]').click(); await pg.waitForSelector('#sheetForm button.danger'); await pg.locator('#sheetForm button.danger').click(); await settle();
+   const t5=await toastOf(); await pg.locator('.toast .undo').click(); await pg.waitForTimeout(80);
+   const p5=await pg.evaluate(()=>{ const v=S.volumes[0]; return {n:v.settlements.length,id:v.settlements[0]&&v.settlements[0].id,amt:v.settlements[0]&&v.settlements[0].amount,gone:v.deleted.includes('p1')}; });
+   ok(t5 && t5.t==='Payment deleted' && t5.undo && p5.n===1 && p5.id!=='p1' && p5.amt===50000 && p5.gone,'D2: Undo of a payment delete brings it back under a new id '+JSON.stringify([t5,p5]));
+   ok(await content()===c0,'D2: after all the undos the volume\'s money is byte-identical to the start');
+   await pg.reload(); await pg.waitForSelector('.ledger.hist');
+   ok(await content()===c0,'D2: and it survives a reload');
+   ok(errs.length===0,'D2: no page errors '+JSON.stringify(errs)); await c.close(); }
+
+ // D3 payments as they happened: a date (Today / Yesterday) and an optional "How" on the settle sheet; `how` survives
+ // cleanVolume, mergeVolumes (also against an older phone that drops it) and validVolume, and never touches the money.
+ { const {c,pg,errs}=await bebe('iPhone 13');
+   await pg.locator('.vol').first().click(); await pg.waitForSelector('[data-act=settle]'); await pg.waitForTimeout(400);
+   let taps=0; await pg.locator('[data-act=settle]').first().click(); taps++; await pg.waitForSelector('#s-date');
+   const f0=await pg.evaluate(()=>({d:$('#s-date').value,type:$('#s-date').type,q:[...document.querySelectorAll('#sheetForm [data-day]')].map(b=>b.textContent+':'+b.getAttribute('aria-pressed')+':'+(b.getBoundingClientRect().height>=44)),
+     how:{label:document.querySelector('label[for=s-via]').textContent,ph:$('#s-via').placeholder,max:$('#s-via').maxLength,fs:getComputedStyle($('#s-via')).fontSize},dfs:getComputedStyle($('#s-date')).fontSize}));
+   ok(f0.d===dayAgo(0) && f0.type==='date' && f0.q.join()==='Today:true:true,Yesterday:false:true' && f0.dfs==='16px','D3: the settle sheet has a native date field set to today, with Today (pressed) and Yesterday '+JSON.stringify(f0));
+   ok(f0.how.label==='How (optional)' && f0.how.ph==='GCash, cash' && f0.how.max===40 && f0.how.fs==='16px','D3: "How (optional)", placeholder "GCash, cash", up to 40 characters, 16px '+JSON.stringify(f0.how));
+   await pg.getByRole('button',{name:'Yesterday',exact:true}).click(); taps++;
+   await pg.locator('#s-via').fill('GCash'); taps++;
+   await pg.locator('#sheetForm button.primary').click(); taps++; await pg.waitForTimeout(400);
+   const p1=await pg.evaluate(()=>{ const v=S.volumes[0]; return v.settlements.find(s=>s.id!=='p1'); });
+   ok(p1 && p1.date===dayAgo(1) && p1.how==='GCash' && taps<=4,'D3 scenario: yesterday\'s GCash payment is recorded with its date and how, in '+taps+' taps '+JSON.stringify(p1));
+   await pg.locator('[data-act=history]').first().click(); await pg.waitForSelector('.ledger.hist'); await pg.waitForTimeout(400);
+   const row=await pg.evaluate(id=>{ const r=document.querySelector(`.ledger.hist .tx[data-id="${id}"]`); return r&&{m:r.querySelector('.tx-m').textContent,d:r.querySelector('.date').textContent}; },p1.id);
+   ok(row && row.m==='Payment · via GCash' && row.d==='Yesterday','D3: History shows "via GCash" and the date '+JSON.stringify(row));
+   // edit: the sheet opens on the payment's own date and how; clearing How removes it, the date stays
+   await pg.locator(`.ledger.hist .tx[data-id="${p1.id}"]`).click(); await pg.waitForSelector('#s-via');
+   const e0=await pg.evaluate(()=>({d:$('#s-date').value,h:$('#s-via').value}));
+   await pg.locator('#s-via').fill(''); await pg.locator('#sheetForm button.primary').click(); await pg.waitForTimeout(400);
+   const e1=await pg.evaluate(id=>S.volumes[0].settlements.find(s=>s.id===id),p1.id);
+   ok(e0.d===dayAgo(1) && e0.h==='GCash' && e1.date===dayAgo(1) && !('how' in e1),'D3: editing keeps the date and an emptied How is removed '+JSON.stringify([e0,e1]));
+   // the data rules, with the real functions
+   const dr=await pg.evaluate(()=>{ const v=S.volumes[0], s=v.settlements[0]; s.how='GCash'; s.upd=5; const b0=JSON.stringify(balances(v));
+     const cl=cleanVolume(JSON.parse(JSON.stringify(v))), long=cleanVolume({...v,settlements:[{...s,how:'x'.repeat(41)}]}), bad=cleanVolume({...v,settlements:[{...s,how:42}]});
+     const older={...JSON.parse(JSON.stringify(v)),settlements:v.settlements.map(({how,...r})=>r)}; // a phone that doesn't know `how`, same upd
+     const m1=mergeVolumes(v,older), m2=mergeVolumes(older,v), newer={...older,settlements:older.settlements.map(r=>({...r,upd:9}))}, m3=mergeVolumes(v,newer);
+     const noHow={...v,settlements:v.settlements.map(({how,...r})=>r)};
+     return {valid:validVolume(v),clean:cl.settlements[0].how,long:'how' in long.settlements[0],bad:'how' in bad.settlements[0],
+       m1:m1.vol.settlements[0].how,m2:m2.vol.settlements[0].how,m3:'how' in m3.vol.settlements[0],
+       money:JSON.stringify(balances(noHow))===b0 && JSON.stringify(debts(noHow))===JSON.stringify(debts(v)),code:JSON.parse(shareCodeOf(v)).volume.settlements[0].how,canon:canon(v)!==canon(noHow)}; });
+   ok(dr.valid && dr.clean==='GCash' && !dr.long && !dr.bad,'D3: validVolume accepts a payment with how; cleanVolume keeps it, drops one over 40 characters or not text '+JSON.stringify(dr));
+   ok(dr.m1==='GCash' && dr.m2==='GCash' && !dr.m3,'D3: mergeVolumes keeps how when an older phone sends the payment back without it at the same upd, and takes a newer edit '+JSON.stringify(dr));
+   ok(dr.money && dr.code==='GCash' && dr.canon,'D3: how never changes balances or debts, travels in share codes and backups, and counts as a change for sync '+JSON.stringify(dr));
+   await pg.evaluate(()=>{ S.volumes[0].settlements[0].how='<img src=x onerror="window.__h=1">'; commit(); render(); });
+   await pg.reload(); await pg.waitForSelector('.ledger.hist');
+   const hx=await pg.evaluate(()=>({h:window.__h,t:document.querySelector('.ledger.hist .tx[data-act=editSettle] .tx-m').textContent,kept:S.volumes[0].settlements[0].how}));
+   ok(hx.h===undefined && /via <img/.test(hx.t) && /^<img/.test(hx.kept),'D3: how survives a reload and shows as text '+JSON.stringify(hx));
+   ok(errs.length===0,'D3: no page errors '+JSON.stringify(errs)); await c.close(); }
 
  await b.close();
 })();

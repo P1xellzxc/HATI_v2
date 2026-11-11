@@ -58,3 +58,12 @@ Given "Bebetime" (You and Ivy) where every imported expense is dated today. When
 
 ## 18. An expense from yesterday (N5)
 Given any volume. When You add an expense and tap Yesterday under Date. Then it is saved with yesterday's date. Budget: one tap after the amount. Check: e2e "N5 scenario: …".
+
+## 19. Paste a receipt total (D9)
+Given a new expense in "Bebetime" and receipt text copied from a photo (iPhone Live Text or Google Lens): "JOLLIBEE FOODS CORPORATION … TOTAL 334.13 / CASH 500.00 / CHANGE 165.87 / VAT 12% 35.80". When You paste it into the amount. Then the amount is 334.13 (the TOTAL line, never CASH or CHANGE), the empty description becomes "JOLLIBEE FOODS CORPORATION", and a quiet line says "From paste: TOTAL ₱334.13". Text with no total line and several amounts shows up to 3 of them as buttons ("Which one is the total?") and fills nothing until one is tapped; text with no amount says "No amount found in what you pasted." and changes nothing; a plain number pastes as before. Budget: 1 paste (0 extra taps; 1 tap when it has to ask). Check: e2e "D9 …" and the parser table `web/tests/receipt.js` (28 receipts).
+
+## 20. Undo a wrong delete or edit (D2)
+Given "Bebetime" with "House of Bagnet" ₱334.13 and a ₱500.00 payment to Ivy. When You delete House of Bagnet by mistake and tap Undo on the toast (or Tab to it and press Enter). Then it is back with the same amount, payer, split, date and category (under a new id, so Ivy's phone, which already has the delete, takes it back too), and balances are as before to the cent. The same Undo follows "Expense updated", "Payment recorded" and "Payment deleted"; "Undone." confirms. Budget: 1 tap. Check: e2e "D2 …".
+
+## 21. Yesterday's GCash payment (D3)
+Given "Bebetime" where You owe Ivy. When You tap Settle up, tap Yesterday under Date, type "GCash" in How (optional) and tap Record payment. Then the payment is saved with yesterday's date and `how: "GCash"`, History shows "Payment · via GCash" and "Yesterday", editing it opens on that date and how, and the balances are the same as without a how. The how survives a reload, a backup, a share code and a merge with a phone on an older version (which drops it without harm). Budget: 4 taps (Settle up, Yesterday, How, Record payment). Check: e2e "D3 …".

@@ -57,6 +57,11 @@ For your assignment, score every tell in the table below 0, 1 or 2 from fresh sc
 ## Decision on glass
 The owner approved exploring **manga acetate glass** within the rule above: translucent floating layers with screentone and ink edges only, never on scrolling content, never over gradient blobs. If the rubric or the lazy-user check flags it, revert it.
 
+## Owner overrides (2026-11-11)
+- **Frosted cards on plain paper are allowed.** These are a tinted glass body at about 90%, a sheen gradient kept inside the card, 0-blur light lines and a rim, the 2px ink edge and the hard rank offset. Still a tell (score 2): any `backdrop-filter`, blurred shadows, glow, or a busy background behind the glass.
+- **Cards in section cards are allowed** (one big section card per group, inner cards on it at the 3px rank). Divider strips (label, ink rule and screentone band) are allowed between groups. Still a tell: a card that holds a single control, or a strip with no group under it.
+- **Depth of field** behind an open layer (scale .97, dim, blur ≤3px applied once) is allowed. A blur on scrolling content is a tell.
+
 ## Decision on clay
 **Final (owner):** manga clay only. Pure claymorphism was rejected; any whole-UI clay is a tell.
 
