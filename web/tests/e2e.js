@@ -1658,5 +1658,82 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(ed==='','D1: editing an expense shows no suggestions and no "Last time"');
    ok(errs.length===0,'D1: no page errors '+JSON.stringify(errs)); await c.close(); }
 
+ // ── All-out round · features (N5, D9, D2, D3): a couple's household volume with imported "all today" data ──
+ const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+ const dayAgo=n=>{ const d=new Date(); d.setDate(d.getDate()-n); return iso(d); };
+ const bebe=async(dev='Pixel 7',sync=false)=>{ const c=await b.newContext({...devices[dev]}); if (!sync) await c.addInitScript(noSync); const pg=await c.newPage(); const errs=[]; pg.on('pageerror',x=>errs.push(x.message)); pg.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
+   await pg.goto(URL); await pg.waitForSelector('.vol');
+   await pg.evaluate(()=>{ const me='me', iv='ivy1', eq=a=>splitEqual(a,[me,iv]), t=today();
+     const E=(id,desc,amt,paid,cat,x={})=>({id,desc,amount:amt,paidBy:paid,category:cat,date:t,splitType:'equal',splits:eq(amt),inputs:{},note:'',upd:1,...x});
+     S.volumes=[{id:'bebe',title:'Bebetime',type:'household',currency:'₱',meId:me,created:1,members:[{id:me,name:'Gery'},{id:iv,name:'Ivy'}],settlements:[{id:'p1',from:me,to:iv,amount:50000,date:t,upd:1}],expenses:[
+       E('a','Chowking',31975,iv,'food'),E('b','House of Bagnet',33413,iv,'food'),E('c','Bus',43500,me,'transport'),E('d','Groceries',125050,me,'groceries'),
+       E('e','Rent share',1000000,me,'lodging',{splitType:'shares',splits:splitShares(1000000,{[me]:2,[iv]:1}),inputs:{[me]:'2',[iv]:'1'}}),
+       E('f','Meralco',254017,iv,'utilities'),E('g','Jollibee',41200,iv,'food'),E('h','Grab',24500,me,'transport')]}];
+     commit(); render(); });
+   return {c,pg,errs}; };
+ // money fingerprint: everything but date and upd, plus the balances
+ const money=pg=>pg.evaluate(()=>{ const v=S.volumes.find(x=>x.id==='bebe'); return JSON.stringify({e:v.expenses.map(({date,upd,...r})=>r),s:v.settlements.map(({date,upd,...r})=>r),b:balances(v)}); });
+
+ // N5 dates: Today / Yesterday next to the expense date, and "Set date" on several History rows at once
+ { const {c,pg,errs}=await bebe();
+   await pg.locator('.vol').first().click(); await pg.waitForSelector('[data-act=addExpense]'); await pg.waitForTimeout(350);
+   await pg.locator('[data-act=addExpense]').click(); await pg.waitForSelector('#expForm'); await pg.waitForTimeout(350);
+   const q0=await pg.evaluate(()=>[...document.querySelectorAll('#expForm [data-day]')].map(b=>({t:b.textContent.trim(),p:b.getAttribute('aria-pressed'),h:Math.round(b.getBoundingClientRect().height),type:b.type})));
+   ok(q0.length===2 && q0[0].t==='Today' && q0[0].p==='true' && q0[1].t==='Yesterday' && q0[1].p==='false' && q0.every(x=>x.h>=44 && x.type==='button'),'N5: the date has Today (pressed) and Yesterday buttons, 44 px tall '+JSON.stringify(q0));
+   await pg.locator('#f-amount').fill('180.00'); await pg.locator('#f-desc').fill('Taho');
+   await pg.getByRole('button',{name:'Yesterday',exact:true}).click();
+   const q1=await pg.evaluate(()=>({d:document.getElementById('f-date').value,f:ui.form.date,p:[...document.querySelectorAll('#expForm [data-day]')].map(b=>b.getAttribute('aria-pressed')).join()}));
+   ok(q1.d===dayAgo(1) && q1.f===dayAgo(1) && q1.p==='false,true','N5: one tap on Yesterday sets the date (field and form) '+JSON.stringify(q1));
+   await pg.locator('#f-date').fill(dayAgo(5)); const q2=await pg.evaluate(()=>[...document.querySelectorAll('#expForm [data-day]')].map(b=>b.getAttribute('aria-pressed')).join());
+   ok(q2==='false,false','N5: a picked date that is neither presses neither '+q2);
+   await pg.getByRole('button',{name:'Yesterday',exact:true}).click();
+   await pg.locator('#expForm button[type=submit]').click(); await pg.waitForSelector('[data-act=addExpense]');
+   const sv=await pg.evaluate(()=>{ const e=S.volumes[0].expenses.find(x=>x.desc==='Taho'); return e&&e.date; });
+   ok(sv===dayAgo(1),'N5 scenario: an expense dated Yesterday is saved with yesterday\'s date '+sv);
+   await pg.evaluate(()=>{ const v=S.volumes[0]; v.expenses=v.expenses.filter(x=>x.desc!=='Taho'); commit(); render(); });
+   // History: select 6 imported rows, give them one date
+   await pg.waitForTimeout(350); await pg.locator('[data-act=history]').first().click(); await pg.waitForSelector('.ledger.hist'); await pg.waitForTimeout(350);
+   const m0=await money(pg), upd0=await pg.evaluate(()=>Object.fromEntries(S.volumes[0].expenses.map(e=>[e.id,e.upd])));
+   await pg.getByRole('button',{name:'Set dates',exact:true}).click();
+   const sel0=await pg.evaluate(()=>({rows:[...document.querySelectorAll('.ledger.hist .tx')].map(r=>r.getAttribute('aria-pressed')),act:[...document.querySelectorAll('.ledger.hist .tx')].map(r=>r.dataset.act),focus:document.activeElement&&document.activeElement.id}));
+   ok(sel0.rows.length===9 && sel0.rows.every(x=>x==='false') && sel0.act.every(a=>a==='selRow'),'N5: Set dates turns every History row into a toggle (aria-pressed), nothing opens the form '+JSON.stringify(sel0));
+   const want=['a','b','c','d','f','g'];
+   for (const id of want) await pg.locator(`.ledger.hist .tx[data-id="${id}"]`).click();
+   const sel1=await pg.evaluate(()=>({n:[...document.querySelectorAll('.ledger.hist .tx[aria-pressed=true]')].map(r=>r.dataset.id).join(),count:document.getElementById('selCount').textContent,view:ui.view}));
+   ok(sel1.n==='a,b,c,d,f,g' && /^6 selected/.test(sel1.count) && sel1.view==='history','N5: tapping rows selects them and counts them '+JSON.stringify(sel1));
+   await pg.locator('.ledger.hist .tx[data-id="g"]').focus(); await pg.keyboard.press('Enter');
+   const kb=await pg.evaluate(()=>({p:document.querySelector('.ledger.hist .tx[data-id="g"]').getAttribute('aria-pressed'),st:$('#status').textContent}));
+   await pg.keyboard.press('Space'); await pg.waitForTimeout(60);
+   const kb2=await pg.evaluate(()=>({p:document.querySelector('.ledger.hist .tx[data-id="g"]').getAttribute('aria-pressed'),st:$('#status').textContent}));
+   ok(kb.p==='false' && kb2.p==='true' && /6 selected/.test(kb2.st),'N5: rows toggle from the keyboard and the count is announced in #status '+JSON.stringify([kb,kb2]));
+   await pg.locator('#selApply').click(); const e0=await pg.evaluate(()=>document.getElementById('selMsg').textContent);
+   ok(e0==='Pick a date first.','N5: Set date without a date says so '+e0);
+   await pg.locator('#sd-date').fill('2026-10-15'); await pg.locator('#selApply').click(); await pg.waitForTimeout(100);
+   const after=await pg.evaluate(()=>{ const v=S.volumes[0]; return {d:Object.fromEntries(v.expenses.map(e=>[e.id,e.date])),u:Object.fromEntries(v.expenses.map(e=>[e.id,e.upd])),toast:(document.querySelector('.toast')||{}).textContent,undo:!!document.querySelector('.toast .undo'),sel:!!ui.sel,rows:document.querySelectorAll('.ledger.hist .tx[data-act=editExpense]').length}; });
+   const m1=await money(pg);
+   ok(want.every(id=>after.d[id]==='2026-10-15' && after.u[id]>upd0[id]) && after.d.e===dayAgo(0) && after.d.h===dayAgo(0) && after.u.e===upd0.e,'N5: Set date gives the 6 chosen expenses the new date and a fresh upd, the others are untouched '+JSON.stringify(after.d));
+   ok(m1===m0,'N5: amounts, splits, inputs and balances are byte-identical after Set date (money-parity)');
+   ok(/^Dates changed on 6 expenses\./.test(after.toast||'') && after.undo && !after.sel && after.rows===8,'N5: toast "Dates changed on 6 expenses." with Undo, and History is back to normal '+JSON.stringify(after));
+   await pg.reload(); await pg.waitForSelector('.ledger.hist');
+   const rl=await pg.evaluate(()=>S.volumes[0].expenses.filter(e=>e.date==='2026-10-15').length);
+   ok(rl===6,'N5: the new dates survive a reload '+rl);
+   // Undo restores the dates (as a normal write: a fresh upd again)
+   await pg.getByRole('button',{name:'Set dates',exact:true}).click();
+   await pg.locator('.ledger.hist .tx[data-id="e"]').click(); await pg.locator('.ledger.hist .tx[data-id="p1"]').click();
+   await pg.locator('#sd-date').fill('2026-10-20'); await pg.locator('#selApply').click(); await pg.waitForTimeout(100);
+   const t2=await pg.evaluate(()=>(document.querySelector('.toast')||{}).textContent);
+   const u2=await pg.evaluate(()=>S.volumes[0].expenses.find(e=>e.id==='e').upd);
+   await pg.locator('.toast .undo').click(); await pg.waitForTimeout(60);
+   const un=await pg.evaluate(()=>{ const v=S.volumes[0]; return {e:v.expenses.find(x=>x.id==='e'),p:v.settlements.find(x=>x.id==='p1'),toast:(document.querySelector('.toast')||{}).textContent}; });
+   ok(/^Dates changed on 1 expense and 1 payment\./.test(t2||'') && un.e.date===dayAgo(0) && un.p.date===dayAgo(0) && un.e.upd>u2 && /Undone/.test(un.toast||''),'N5: Undo puts the old dates back with a fresh upd (payments too) '+JSON.stringify({t2,e:un.e.date,p:un.p.date,toast:un.toast}));
+   ok(await money(pg)===m0,'N5: Undo leaves the money byte-identical');
+   // Cancel leaves everything as it was
+   await pg.getByRole('button',{name:'Set dates',exact:true}).click(); await pg.locator('.ledger.hist .tx[data-id="a"]').click();
+   await pg.locator('#selCancel').click(); const cn=await pg.evaluate(()=>({sel:!!ui.sel,acts:[...new Set([...document.querySelectorAll('.ledger.hist .tx')].map(r=>r.dataset.act))].join(),d:S.volumes[0].expenses.find(e=>e.id==='a').date}));
+   ok(!cn.sel && cn.acts==='editExpense,editSettle' && cn.d==='2026-10-15','N5: Cancel leaves select mode and changes nothing '+JSON.stringify(cn));
+   const fit=await pg.evaluate(()=>{ ui.sel=new Set(); render(); const i=document.getElementById('sd-date'), r=i.getBoundingClientRect(); return {fs:getComputedStyle(i).fontSize,w:document.documentElement.scrollWidth<=innerWidth,btn:Math.min(...[...document.querySelectorAll('.setdate .btn')].map(b=>b.getBoundingClientRect().height))}; });
+   ok(fit.fs==='16px' && fit.w && fit.btn>=44,'N5: the Set date bar has a 16px date input, 44px buttons, no sideways scroll '+JSON.stringify(fit));
+   ok(errs.length===0,'N5: no page errors '+JSON.stringify(errs)); await c.close(); }
+
  await b.close();
 })();

@@ -57,5 +57,11 @@ Given a couple volume (You, Ivy) on a 320 px phone in either theme. When You add
 ## 16. The same meal again (repeat entry)
 Given "Bebe" (You and Ivy) with past expenses "Chowking" (twice, Ivy paid, Eating out, split equally) and others. When You add Chowking again, ₱412.00, paid by Ivy. Then the description suggestion fills description, category and split in one tap, the amount is typed (or filled by tapping "Last time ₱352.35", never on its own), and the new expense splits ₱206.00 each. Budget: 4 taps (Add expense, the Chowking suggestion, Ivy, Save). e2e: "D1 scenario 16".
 
+## 17. Fix the dates of imported expenses (N5)
+Given "Bebetime" (You and Ivy) where every imported expense is dated today. When You open History, tap Set dates, tap 6 rows, pick Oct 15 and tap Set date. Then those 6 expenses show Oct 15 after a reload, the rest keep their date, amounts, splits and balances are byte-identical, and the toast "Dates changed on 6 expenses." offers Undo. Budget: 1 + 6 + 2 (date) + 1 = 10 taps, no expense form opened. Check: e2e "N5: …".
+
+## 18. An expense from yesterday (N5)
+Given any volume. When You add an expense and tap Yesterday under Date. Then it is saved with yesterday's date. Budget: one tap after the amount. Check: e2e "N5 scenario: …".
+
 
 Run by [[hati-scenarios]]. Back to [[HATI Brain]]

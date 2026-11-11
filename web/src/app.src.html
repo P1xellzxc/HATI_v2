@@ -271,6 +271,14 @@ button.chip:active { background: var(--sunk); }
 .chips.sug .chip svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 #lastAmt:not(:empty) { margin-top: 8px; }
 #lastAmt .chip { padding: 4px 12px; background: var(--panel); }
+/* N5: Today / Yesterday under a date field, pressed = the day it holds (the same inverted fill as the other toggles) */
+.qd { margin-top: 8px; }
+.qd .chip { padding: 4px 14px; }
+.qd .chip[aria-pressed="true"] { background: var(--sel-bg); color: var(--sel-fg); }
+/* N5 Set dates: a chosen row gets an ink bar at its left edge and an inverted icon tile (not color alone) */
+.hist.selecting .tx[aria-pressed="true"] { background: var(--sunk); box-shadow: inset 4px 0 0 var(--fg); }
+.hist.selecting .tx[aria-pressed="true"] .tx-ic { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.setdate { position: sticky; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 5; margin-top: 12px; }
 .btn:disabled { opacity: .55; --clay: 0 0 #0000; box-shadow: none; cursor: not-allowed; }
 .btn:disabled:active { transform: none; }
 .av { width: 30px; height: 30px; border-radius: var(--r); display: grid; place-items: center; font-size: .75rem; font-weight: 700; color: var(--on-accent); border: 1.5px solid var(--rule); flex-shrink: 0; }
@@ -735,6 +743,12 @@ function niceDate(d) {
 }
 // Made once (see MONEY): the same text toLocaleDateString("en-US", these options) gives.
 const DAY = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }), DAY_Y = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
+const dayAgo = n => { const d = new Date(); d.setDate(d.getDate() - n); return isoLocal(d); };
+// Today / Yesterday under a date field (N5): real buttons, pressed while the field holds that day. The click handler
+// sets the field and fires input + change, so each form keeps its own wiring.
+const quickDays = val => `<div class="chips qd" role="group" aria-label="Quick dates">${[[0, "Today"], [1, "Yesterday"]].map(([n, t]) => `<button type="button" class="chip" data-day="${n}" aria-pressed="${val === dayAgo(n)}">${t}</button>`).join("")}</div>`;
+function paintDays(input) { const f = input.closest(".field"); if (f) f.querySelectorAll("[data-day]").forEach(b => b.setAttribute("aria-pressed", String(input.value === dayAgo(+b.dataset.day)))); }
+const announce = t => { const live = $("#status"); live.textContent = ""; setTimeout(() => { live.textContent = t; }, 30); };
 
 // ── Theme ─────────────────────────────────────────────────
 const hostTheme = document.documentElement.getAttribute("data-theme");
@@ -811,7 +825,9 @@ function memberChip(v, m, c) {
   return `<button type="button" class="chip" data-act="editMember" data-id="${esc(m.id)}" aria-label="${esc(`${meName(v, m.id)}, ${say}, edit`)}">${avatar(v, m.id)}${esc(meName(v, m.id))}<span class="muted num small" aria-hidden="true">${esc(show)}</span></button>`;
 }
 // An archived volume is read-only on this phone: its rows are plain lines, not buttons.
-const txOpen = (v, act, id) => v.archived ? `<div class="tx" data-id="${esc(id)}">` : `<button class="tx" data-act="${act}" data-id="${esc(id)}">`;
+const txOpen = (v, act, id) => v.archived ? `<div class="tx" data-id="${esc(id)}">`
+  : ui.sel && ui.view === "history" ? `<button class="tx" data-act="selRow" data-id="${esc(id)}" aria-pressed="${ui.sel.has(id)}">`
+  : `<button class="tx" data-act="${act}" data-id="${esc(id)}">`;
 const txClose = v => v.archived ? "</div>" : "</button>";
 const CHECK = `<span class="ck" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>`;
 
@@ -976,11 +992,19 @@ const views = {
 
   history() {
     const v = vol(); if (!v) { ui.view = "hub"; return views.hub(); }
-    const items = timeline(v), shown = items.slice(0, ui.histLimit);
+    if (ui.sel && (v.archived || ui.selVol !== v.id)) ui.sel = null;
+    const items = timeline(v), shown = items.slice(0, ui.histLimit), sel = ui.sel;
+    // N5 "Set dates": the rows become toggles (txOpen) and a bar gives the chosen ones one date
+    const meta = sel ? "Tap the ones to change, then pick a date." : `${plural(v.expenses.length, "expense")} and ${plural(v.settlements.length, "payment")}. ${v.archived ? "Archived: read-only." : "Tap one to edit it."}`;
     return topbar("History", { back: true, right: `<span class="muted sub ellip">${esc(v.title)}</span>` }) +
-      `<p class="muted small" style="margin:0 0 8px">${plural(v.expenses.length, "expense")} and ${plural(v.settlements.length, "payment")}. ${v.archived ? "Archived: read-only." : "Tap one to edit it."}</p>` +
-      (shown.length ? `<div class="ledger hist">${shown.map(it => itemRow(v, it)).join("")}</div>` : emptyCard("(・_・;)", "Nothing recorded yet.")) +
-      (items.length > shown.length ? `<button class="btn block" data-act="more" style="margin-top:12px">Show ${Math.min(100, items.length - shown.length)} more</button>` : "");
+      `<div class="row between" style="margin:0 0 8px;gap:8px"><p class="muted small" style="margin:0">${meta}</p>${!sel && !v.archived && items.length ? `<button class="btn quiet" data-act="selStart">Set dates</button>` : ""}</div>` +
+      (shown.length ? `<div class="ledger hist${sel ? " selecting" : ""}">${shown.map(it => itemRow(v, it)).join("")}</div>` : emptyCard("(・_・;)", "Nothing recorded yet.")) +
+      (items.length > shown.length ? `<button class="btn block" data-act="more" style="margin-top:12px">Show ${Math.min(100, items.length - shown.length)} more</button>` : "") +
+      (sel ? `<div class="panel pad stack setdate" role="group" aria-label="Set date">
+        <p class="small" id="selCount" style="margin:0"><b>${sel.size} selected</b></p>
+        <div class="field"><label for="sd-date">New date</label><input id="sd-date" type="date" class="input">${quickDays("")}</div>
+        <div class="msg" id="selMsg" role="alert"></div>
+        <div class="btns"><button type="button" class="btn quiet" id="selCancel" data-act="selCancel">Cancel</button><button type="button" class="btn primary" id="selApply" data-act="selApply">Set date</button></div></div>` : "");
   },
 
   expense() {
@@ -993,7 +1017,7 @@ const views = {
         <div class="row"><span class="cur" aria-hidden="true">${esc(v.currency)}</span><input id="f-amount" inputmode="decimal" autocomplete="off" placeholder="0.00" value="${esc(f.amount)}"></div><div id="lastAmt"></div></div>
       <div class="field"><label for="f-desc">Description</label><input id="f-desc" class="input" maxlength="100" placeholder="Ramen dinner" autocomplete="off" value="${esc(f.desc)}" aria-describedby="descMsg"><div class="msg" id="descMsg"></div><div class="chips sug" id="descSug" role="group" aria-label="Used before in this volume"></div></div>
       <div class="field">${pickField("f-paid", "Paid by", v.members.map(m => [m.id, meName(v, m.id)]), f.paidBy)}</div>
-      <div class="field"><label for="f-date">Date</label><input id="f-date" type="date" class="input" value="${esc(f.date)}"></div>
+      <div class="field"><label for="f-date">Date</label><input id="f-date" type="date" class="input" value="${esc(f.date)}">${quickDays(f.date)}</div>
       <fieldset><legend class="legend">Category</legend><div class="cats">${CATEGORIES.map(c => `<button type="button" class="cat" data-cat="${c[0]}" aria-pressed="${c[0] === f.category}"><span aria-hidden="true">${CAT_ICON[c[0]]}</span>${c[1]}</button>`).join("")}</div></fieldset>
       <fieldset><legend class="legend">Split</legend><div class="seg">${[["equal", "Equal"], ["exact", "Exact"], ["percent", "Percent"], ["shares", "Shares"]].map(s => `<button type="button" data-split="${s[0]}" aria-pressed="${s[0] === f.splitType}">${s[1]}</button>`).join("")}</div></fieldset>
       <div class="ledger" id="splitRows">${v.members.map(m => splitRow(v, m)).join("")}</div>
@@ -1156,6 +1180,45 @@ function lastCat(volId) {
 }
 function rememberCat(volId, c) {
   try { const m = JSON.parse(localStorage.getItem(LAST_CAT) || "{}") || {}; m[volId] = c; localStorage.setItem(LAST_CAT, JSON.stringify(m)); } catch (e) {}
+}
+
+// ── Set dates (N5): give several History rows one date. Only `date` and `upd` change, never money. ──
+function selToggle(el) {
+  const id = el.dataset.id, on = !ui.sel.has(id);
+  if (on) ui.sel.add(id); else ui.sel.delete(id);
+  el.setAttribute("aria-pressed", String(on));
+  const t = `${ui.sel.size} selected`; $("#selCount").innerHTML = `<b>${t}</b>`; $("#selMsg").textContent = ""; announce(t);
+}
+function applyDates() {
+  const v = vol(), d = $("#sd-date").value, msg = t => { $("#selMsg").textContent = t; };
+  if (!ui.sel.size) return msg("Tap the expenses to change first.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return msg("Pick a date first.");
+  const now = Date.now(), steps = [], n = { e: 0, s: 0 };
+  for (const [list, k] of [["expenses", "e"], ["settlements", "s"]]) v[list].forEach(x => {
+    if (!ui.sel.has(x.id) || x.date === d) return;
+    steps.push({ list, id: x.id, was: { ...x }, upd: now }); x.date = d; x.upd = now; n[k]++;
+  });
+  if (!steps.length) return msg("They already have that date.");
+  if (!commit()) return;
+  ui.sel = null; render(); focusTitle();
+  toast(`Dates changed on ${[n.e && plural(n.e, "expense"), n.s && plural(n.s, "payment")].filter(Boolean).join(" and ")}.`, { undo: () => undoSteps(v.id, steps), ms: 6000 });
+}
+// ── Undo (N5, D2): put entries back as they were, as a normal write with a fresh `upd`, so every phone takes it. ──
+// steps: { list: "expenses" | "settlements", id, was: the record before (null: it was new), upd: what we wrote (0: deleted) }.
+// An entry changed since (another phone, another tab) is left alone. A deleted one comes back under a new id: its
+// tombstone wins every merge, so with the old id the other phone would delete it again.
+function undoSteps(volId, steps) {
+  const v = volById(volId); if (!v) return;
+  const now = Date.now(); let n = 0;
+  for (const s of steps) {
+    const L = v[s.list], i = L.findIndex(x => x.id === s.id);
+    if (!s.upd) { if (i < 0 && s.was) { L.push({ ...s.was, id: uid(), upd: now }); n++; } }
+    else if (i >= 0 && L[i].upd === s.upd) { if (s.was) L[i] = { ...s.was, upd: now }; else { L.splice(i, 1); tombstone(v, s.id); } n++; }
+  }
+  if (!n) return toast("It was changed since, so nothing was undone.");
+  if (!commit()) return;
+  if (ui.volId === volId && (ui.view === "volume" || ui.view === "history") && !sheetOpen()) { render(); focusTitle(); }
+  toast("Undone.");
 }
 
 // The volume or the expense being edited was deleted in another tab (on Android the browser tab and the
@@ -2361,6 +2424,7 @@ const INK_ROWS = ":is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *,
 function render() {
   const app = $("#app"), dir = enterDir, n = ++renders;
   delete app.dataset.turn; enterDir = "";
+  if (ui.view !== "history") ui.sel = null;
   // A screen change inks its lists in from the next frame (before it is drawn): set here, focusTitle()'s forced layout
   // would also have to style every row cover inside the tap's own task. Only the rows that ink in are touched.
   if (dir) requestAnimationFrame(() => {
@@ -2450,6 +2514,8 @@ document.addEventListener("click", async ev => {
   const drop = ev.target.closest && ev.target.closest("#sheetForm [data-drop]"); if (drop) return toggleDrop(drop);
   const pv = ev.target.closest && ev.target.closest("hati-pick [data-pv]"); if (pv) return pv.closest("hati-pick").choose(pv.dataset.pv);
   const pb = ev.target.closest && ev.target.closest("hati-pick .pick-btn"); if (pb) return pickSheet(pb.closest("hati-pick"));
+  const qd = ev.target.closest && ev.target.closest(".field [data-day]");
+  if (qd) { const i = qd.closest(".field").querySelector("input[type=date]"); if (!i) return; i.value = dayAgo(+qd.dataset.day); ["input", "change"].forEach(t => i.dispatchEvent(new Event(t, { bubbles: true }))); return; }
   const el = ev.target.closest("[data-act],[data-pal],[data-set]"); if (!el) return;
   if (el.dataset.pal) return selectPalette(el.dataset.pal);
   if (el.dataset.set) {
@@ -2459,7 +2525,7 @@ document.addEventListener("click", async ev => {
   }
   const a = el.dataset.act, v = vol();
   // An archived volume is read-only: nothing that would change it runs (its screen doesn't offer these either).
-  if (v && v.archived && ui.view !== "hub" && ["addExpense", "editExpense", "settle", "editSettle", "editMember", "removeMember", "addMember", "editVolume", "share", "deleteExpense", "deleteSettle"].includes(a)) return;
+  if (v && v.archived && ui.view !== "hub" && ["addExpense", "editExpense", "settle", "editSettle", "editMember", "removeMember", "addMember", "editVolume", "share", "deleteExpense", "deleteSettle", "selStart", "selRow", "selApply"].includes(a)) return;
   switch (a) {
     case "volActs": volActsSheet(el.dataset.id, el); break;
     case "editVol": { const x = volById(el.dataset.id); if (x && !x.archived) volumeSheet(x); break; }
@@ -2480,6 +2546,10 @@ document.addEventListener("click", async ev => {
     case "dismissRecovered": recovered = false; render(); break;
     case "dismissIosHint": try { localStorage.setItem(IOS_HINT, "1"); } catch (e) {} el.closest("#iosHint").remove(); break;
     case "more": ui.histLimit += 100; render(); break;
+    case "selStart": ui.sel = new Set(); ui.selVol = v.id; render(); { const r = $("#app .ledger.hist .tx"); if (r) r.focus(); } announce("Tap the ones to change, then pick a date."); break;
+    case "selRow": if (ui.sel) selToggle(el); break;
+    case "selCancel": ui.sel = null; render(); { const b = $("#app [data-act=selStart]"); if (b) b.focus(); } break;
+    case "selApply": if (ui.sel) applyDates(); break;
     case "sendCode": {
       const send = sendFn(); if (!send) { await copyShareCode(); break; }
       try { await send({ title: `HATI² · ${v.title}`, text: $("#s-code").value }); }
@@ -2510,6 +2580,7 @@ document.addEventListener("click", async ev => {
     case "reset": confirmSheet("Erase all data?", "Every volume on this device will be deleted. Copies shared to other phones are not affected.", "Erase", () => { S.volumes = []; if (!commit()) return; go("hub", { replace: true }); toast("All data erased"); }); break;
   }
 });
+document.addEventListener("input", ev => { if (ev.target.type === "date") paintDays(ev.target); });
 document.addEventListener("keydown", ev => {
   if (ev.key === "Escape" && sheetOpen()) { closeSheet(); return; }
   eatClick = false;
