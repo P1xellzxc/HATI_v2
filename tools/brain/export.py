@@ -30,7 +30,7 @@ def section(text, start, stop_prefix="\n## "):
     j = text.find(stop_prefix, i + len(start))
     return text[i:j if j > 0 else None]
 
-LIVE = {"Team log.md"}  # live files edited by the team; never regenerated
+LIVE = {"Team log.md", "Roadmap.md"}  # live files edited by the team; never regenerated
 OUT.mkdir(exist_ok=True)
 for f in list(OUT.rglob("*.md")):
     if f.relative_to(OUT).as_posix() not in LIVE:
@@ -136,6 +136,7 @@ Everything the HATI² team knows and has decided, as linked notes. This vault is
 - [[Decisions]]: settled decisions and which skill owns each kind
 - [[Team loop]]: plan → do → audit → revise
 - [[Team log]]: per-round handoffs between roles
+- [[Roadmap]]: what to build next (Now / Next / Later), from the 2026-11-09 all-skills discussion
 
 ## Team
 - [[Skills index]] ({len(SKILLS)} skills)

@@ -56,6 +56,10 @@
   --clay-sel: var(--clay-lo); /* shade inside the selected (inverted) .seg segment */
   /* Roles that dark mode sets apart; in light they equal what was there before */
   --off: var(--rule);            /* hard offset shadow */
+  /* Depth by rank (owner, direction A "layered"): a hard 0-blur ink slab whose distance says how raised a thing is.
+     Pressable controls 3px, cards and page panels 5px, the balance panel 8px (a dotted slab). A press lands on the slab. */
+  --off-ctl: 3px; --off-card: 5px; --off-hero: 8px;
+  --shade: color-mix(in srgb, var(--rule) 45%, var(--panel)); /* opaque dots of the card's shaded far edges */
   --sel-bg: var(--fg); --sel-fg: var(--bg); /* selected (inverted) segment */
   --sel-edge: var(--fg); /* inner ink edge on the selected .cat: in light the pastel alone is hue-only (1.29:1 in Fern) */
   --scrim: rgba(10, 10, 14, 0.5); --sheet: var(--bg); --field: var(--panel);
@@ -86,9 +90,10 @@
   --hero: color-mix(in srgb, var(--accent) 11%, var(--panel));
   --sel-bg: var(--fg); --sel-fg: var(--bg); /* chalk on night: the same inversion as light, no accent so no mud */
   --sel-edge: transparent; /* dark: the full pastel on night already stands 5.8:1 apart */
+  --shade: color-mix(in srgb, var(--rule) 50%, var(--panel));
   --chip: var(--food-l); /* the plate's pastel at full strength (never diluted into the night, which turns it brown) */
   --tone: color-mix(in srgb, var(--fg) 16%, transparent);
-  --pos: #BBF7D0; --neg: #FBCFE8; --err: #F2B8B5; --nav: var(--bg); --sbar: var(--bg);
+  --pos: #BBF7D0; --neg: #FBCFE8; --err: #F2B8B5; --nav: var(--panel); --sbar: var(--bg);
   --scrim: rgba(0, 0, 0, 0.7); --sheet: var(--panel); --field: var(--sunk);
   --clay-hi: color-mix(in srgb, var(--fg) 10%, transparent); --clay-lo: color-mix(in srgb, #000 45%, transparent);
   --clay-sel: color-mix(in srgb, var(--bg) 10%, transparent);
@@ -113,9 +118,10 @@
   --hero: color-mix(in srgb, var(--accent) 11%, var(--panel));
   --sel-bg: var(--fg); --sel-fg: var(--bg); /* chalk on night: the same inversion as light, no accent so no mud */
   --sel-edge: transparent; /* dark: the full pastel on night already stands 5.8:1 apart */
+  --shade: color-mix(in srgb, var(--rule) 50%, var(--panel));
   --chip: var(--food-l); /* the plate's pastel at full strength (never diluted into the night, which turns it brown) */
   --tone: color-mix(in srgb, var(--fg) 16%, transparent);
-  --pos: #BBF7D0; --neg: #FBCFE8; --err: #F2B8B5; --nav: var(--bg); --sbar: var(--bg);
+  --pos: #BBF7D0; --neg: #FBCFE8; --err: #F2B8B5; --nav: var(--panel); --sbar: var(--bg);
   --scrim: rgba(0, 0, 0, 0.7); --sheet: var(--panel); --field: var(--sunk);
   --clay-hi: color-mix(in srgb, var(--fg) 10%, transparent); --clay-lo: color-mix(in srgb, #000 45%, transparent);
   --clay-sel: color-mix(in srgb, var(--bg) 10%, transparent);
@@ -134,7 +140,7 @@ html { height: 100%; background: var(--bg); }
 body { min-height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.45 var(--font-body); -webkit-tap-highlight-color: transparent; }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--sbar); }
-button, input, select, textarea { font: inherit; color: inherit; }
+button, input, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; box-shadow: 0 0 0 6px var(--accent); }
 h1, h2 { text-wrap: balance; }
@@ -151,10 +157,15 @@ h1, h2 { text-wrap: balance; }
 .topbar {
   position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
   display: flex; align-items: center; gap: 10px; min-height: 70px;
-  margin: 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px))) 14px;
+  margin: 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px))) 16px;
   padding: 10px max(16px, env(safe-area-inset-left, 0px));
-  background: var(--nav); border-bottom: 2px solid var(--rule);
+  background: var(--nav); border-bottom: 3px solid var(--rule);
 }
+/* The header is a raised printed panel: a heavier ink edge than any card (3px) and an 8px screentone band under it, its
+   cast shade on the page (heavy dots by the edge, a lighter offset row below). Opaque and drawn once, so nothing changes while the page scrolls under it. */
+.topbar::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 8px; margin-top: 3px; pointer-events: none;
+  background: radial-gradient(circle, var(--rule) 1.3px, transparent 1.7px) 0 0 / 4px 4px repeat-x,
+    radial-gradient(circle, var(--rule) .8px, transparent 1.2px) 2px 4px / 4px 4px repeat-x, var(--bg); }
 .topbar h1 { flex: 1; min-width: 0; margin: 0; font: 400 1.35rem/1.1 var(--font-disp); letter-spacing: .02em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
 .topbar h1:focus, .topbar h1:focus-visible { outline: none; box-shadow: none; }
 .topbar .sub { font-size: .85rem; max-width: 40%; }
@@ -169,6 +180,8 @@ h1, h2 { text-wrap: balance; }
 .stack { display: flex; flex-direction: column; gap: 12px; }
 section { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
 .panel { background: var(--panel); border: 2px solid var(--rule); border-radius: var(--r); }
+/* Page panels and ledgers are cards: a 5px slab, never clay shading (reading surfaces stay flat paper). Inside a sheet they stay flat. */
+#app :is(.panel, .ledger) { box-shadow: var(--off-card) var(--off-card) 0 var(--off); }
 .pad { padding: 14px; }
 .label { margin: 18px 0 2px; font: 400 1.05rem/1.2 var(--font-disp); letter-spacing: .02em; color: var(--fg); }
 section > .label, section > .row > .label { margin-top: 6px; }
@@ -187,11 +200,11 @@ section > .label, section > .row > .label { margin-top: 6px; }
    inner shade bottom-right, the 2px ink outline and the hard 0-blur ink offset. Pressed: the offset drops to 0, the shade
    grows and the body moves 3px (the move is dropped under reduced motion, the shading stays). Reading surfaces stay flat 3px. */
 .btn, .ico, .cat, .vol, button.chip:not(.add) {
-  --c-x: 3px; --c-in: 0px; --c-off: var(--off); --c-hi: var(--clay-hi); --c-lo: var(--clay-lo);
+  --c-lift: var(--off-ctl); --c-x: var(--c-lift); --c-in: 0px; --c-off: var(--off); --c-hi: var(--clay-hi); --c-lo: var(--clay-lo);
   --clay: inset 2px 2px 3px var(--c-hi), inset -3px -3px 4px var(--c-lo), inset var(--c-in) var(--c-in) calc(2 * var(--c-in)) var(--c-lo), var(--c-x) var(--c-x) 0 var(--c-off);
   border-radius: var(--clay-r); box-shadow: var(--clay); transition: transform .08s, box-shadow .08s;
 }
-.btn:active, .ico:active, .cat:active, .vol:active, button.chip:not(.add):active { --c-x: 0px; --c-in: 3px; transform: translate(3px, 3px); }
+.btn:active, .ico:active, .cat:active, .vol:active, button.chip:not(.add):active { --c-x: 0px; --c-in: 3px; transform: translate(var(--c-lift), var(--c-lift)); }
 .cat[aria-pressed="true"] { --c-x: 0px; --c-in: 3px; box-shadow: inset 0 0 0 2px var(--sel-edge), var(--clay); }
 .btn {
   min-height: 44px; border: 2px solid var(--rule);
@@ -211,11 +224,16 @@ section > .label, section > .row > .label { margin-top: 6px; }
 @media (max-width: 360px) { .btns:not(.pair) { grid-template-columns: 1fr; } }
 
 /* Hub: volumes as numbered spines */
-.vol { display: grid; grid-template-columns: 64px 1fr; text-align: left; padding: 0; width: 100%; overflow: hidden; background: var(--panel); border: 2px solid var(--rule); }
+.vol { --c-lift: var(--off-card); display: grid; grid-template-columns: 64px 1fr; text-align: left; padding: 0; width: 100%; overflow: hidden; background: var(--panel); border: 2px solid var(--rule); }
 .spine { box-shadow: inset 2px 2px 3px var(--clay-hi), inset -3px -3px 4px var(--clay-lo); background: var(--accent); color: var(--on-accent); border-right: 2px solid var(--rule); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 10px 4px; }
 .spine span { font-size: .68rem; font-weight: 700; letter-spacing: .12em; }
 .spine b { font: 400 1.6rem/1 var(--font-disp); }
 .vol-info { padding: 12px 14px; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+/* Shade on the card's far edges (light from the top left): two rows of dots along the right and the bottom, an L with
+   no ruled edge, so it reads as the shaded side of a raised card, not as a scrollbar. Opaque dots: the corner overlap is invisible. */
+.vol-info { --d: radial-gradient(circle, var(--shade) 1px, transparent 1.4px);
+  background: var(--d) right 0 bottom 0 / 4px 4px repeat-y, var(--d) right 4px bottom 0 / 4px 4px repeat-y,
+    var(--d) right 0 bottom 0 / 4px 4px repeat-x, var(--d) right 0 bottom 4px / 4px 4px repeat-x; }
 .vol-name { font: 400 1.1rem/1.2 var(--font-disp); letter-spacing: .02em; overflow-wrap: anywhere; }
 /* Card meta wraps between its parts (never inside "¥48,000.00 spent"), so nothing on the first screen is cut off */
 .vol-meta > span { white-space: nowrap; }
@@ -250,8 +268,24 @@ section > .label, section > .row > .label { margin-top: 6px; }
 .mem-row .ico[aria-pressed="true"] { --c-x: 0px; --c-in: 3px; background: var(--sunk); }
 
 /* Volume: balance panel with screentone */
-.hero { position: relative; overflow: hidden; padding: 16px 16px 14px; background: var(--hero); border: 2px solid var(--rule); border-radius: var(--r); box-shadow: 4px 4px 0 var(--off); }
-.hero::after { content: ""; position: absolute; right: -10px; top: -10px; width: 46%; height: 140%; background: radial-gradient(circle, var(--tone) 1.3px, transparent 1.6px) 0 0 / 7px 7px; transform: rotate(8deg); pointer-events: none; -webkit-mask-image: linear-gradient(to left, #000 30%, transparent); mask-image: linear-gradient(to left, #000 30%, transparent); }
+/* The top rank: an 8px dotted slab (::after, clipped to the L that shows beside and under the panel) and a screentone
+   ramp, fine dots to heavy ones toward the right edge, one column of dots per layer (no mask, no fade). Nine columns, 54px:
+   the panel's right padding is 32px, so text only ever meets the light columns (dots ≤1.05px), never the heavy 30px. */
+.hero { position: relative; padding: 16px 32px 14px 16px; border: 2px solid var(--rule); border-radius: var(--r); --t: var(--tone);
+  background:
+    radial-gradient(circle, var(--t) 2.4px, transparent 2.8px) right 0 top 0 / 6px 6px repeat-y,
+    radial-gradient(circle, var(--t) 2.1px, transparent 2.5px) right 6px top 0 / 6px 6px repeat-y,
+    radial-gradient(circle, var(--t) 1.8px, transparent 2.2px) right 12px top 0 / 6px 6px repeat-y,
+    radial-gradient(circle, var(--t) 1.5px, transparent 1.9px) right 18px top 0 / 6px 6px repeat-y,
+    radial-gradient(circle, var(--t) 1.25px, transparent 1.65px) right 24px top 0 / 6px 6px repeat-y,
+    radial-gradient(circle, var(--t) 1.05px, transparent 1.45px) right 30px top 0 / 6px 6px repeat-y,
+    radial-gradient(circle, var(--t) .9px, transparent 1.3px) right 36px top 0 / 6px 6px repeat-y,
+    radial-gradient(circle, var(--t) .75px, transparent 1.15px) right 42px top 0 / 6px 6px repeat-y,
+    radial-gradient(circle, var(--t) .6px, transparent 1px) right 48px top 0 / 6px 6px repeat-y,
+    var(--hero); }
+.hero::after { content: ""; position: absolute; top: calc(var(--off-hero) - 2px); left: calc(var(--off-hero) - 2px); right: calc(-2px - var(--off-hero)); bottom: calc(-2px - var(--off-hero)); pointer-events: none;
+  border: 2px solid var(--rule); border-radius: var(--r); background: radial-gradient(circle, var(--rule) 1.1px, transparent 1.5px) 0 0 / 4px 4px, var(--bg);
+  clip-path: polygon(calc(100% - var(--off-hero)) 0, 100% 0, 100% 100%, 0 100%, 0 calc(100% - var(--off-hero)), calc(100% - var(--off-hero)) calc(100% - var(--off-hero))); }
 .hero > * { position: relative; }
 .hero .k { font-weight: 700; font-size: .95rem; }
 .hero .amt { font: 400 clamp(1.9rem, 10vw, 2.6rem)/1.1 var(--font-disp); letter-spacing: .01em; margin: 2px 0 6px; }
@@ -260,7 +294,8 @@ section > .label, section > .row > .label { margin-top: 6px; }
 .amt .fig { display: inline-block; } /* the figure moves on its own when the balance rolls; the line keeps its box */
 .hero .meta { font-size: .85rem; color: color-mix(in srgb, var(--fg) 72%, var(--hero)); }
 @media (max-width: 379px) { .hero .vno { display: none; } }
-.hero .mine { margin: 8px 0 0; padding: 8px 0 0; border-top: 1.5px solid var(--rule); display: flex; flex-direction: column; gap: 4px; font-size: .92rem; list-style: none; }
+/* The rule over "Pay …" is drawn in the text ink: in dark the 62% chalk frame was 3.8-4.4:1 on the hero; ink is 4.5+ in every plate */
+.hero .mine { margin: 8px 0 0; padding: 8px 0 0; border-top: 2px solid var(--fg); display: flex; flex-direction: column; gap: 4px; font-size: .92rem; list-style: none; }
 .amt.pos, .k.pos { color: var(--pos); } .amt.neg, .k.neg { color: var(--neg); }
 /* Live sync status: one small ink line in the hero. The square is a stamp: filled = synced, open = waiting, red = stuck. */
 .hero .sync { display: flex; align-items: center; gap: 7px; margin: 10px 0 0; font-size: .8rem; font-weight: 600; color: color-mix(in srgb, var(--fg) 72%, var(--hero)); }
@@ -275,6 +310,11 @@ section > .label, section > .row > .label { margin-top: 6px; }
 button.chip { min-height: 44px; text-align: left; }
 button.chip:not(.add) { border: 2px solid var(--rule); }
 button.chip:active { background: var(--sunk); }
+.chips.sug:not(:empty) { margin-top: 8px; }
+.chips.sug .chip { padding: 4px 12px 4px 8px; max-width: 100%; }
+.chips.sug .chip svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+#lastAmt:not(:empty) { margin-top: 8px; }
+#lastAmt .chip { padding: 4px 12px; background: var(--panel); }
 .btn:disabled { opacity: .55; --clay: 0 0 #0000; box-shadow: none; cursor: not-allowed; }
 .btn:disabled:active { transform: none; }
 .av { width: 30px; height: 30px; border-radius: var(--r); display: grid; place-items: center; font-size: .75rem; font-weight: 700; color: var(--on-accent); border: 1.5px solid var(--rule); flex-shrink: 0; }
@@ -311,12 +351,11 @@ button.tx:active, button.debt:active { background: var(--sunk); }
 .field > label, .legend { font-size: .85rem; font-weight: 700; color: var(--fg); }
 fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 legend { padding: 0; margin-bottom: 6px; }
-.input, select.input, textarea.input { width: 100%; height: calc(1.5em + 24px); padding: 10px 12px; border-radius: var(--r); font-size: 16px; border: 2px solid var(--line); background: var(--field); outline: none; -webkit-appearance: none; appearance: none; }
+.input, textarea.input { width: 100%; height: calc(1.5em + 24px); padding: 10px 12px; border-radius: var(--r); font-size: 16px; border: 2px solid var(--line); background: var(--field); outline: none; -webkit-appearance: none; appearance: none; }
 textarea.input { height: auto; }
 .input:focus { border-color: var(--rule); }
 .input[aria-invalid="true"] { border-color: var(--err); }
 .input:disabled { background: var(--sunk); color: var(--sub); }
-select.input { background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%); background-position: calc(100% - 18px) 52%, calc(100% - 13px) 52%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 34px; }
 .amount-box { padding: 12px 14px; background: var(--hero); border: 2px solid var(--rule); border-radius: var(--r); }
 .amount-box:focus-within { outline: 3px solid var(--fg); outline-offset: 2px; }
 .amount-box .row { gap: 6px; }
@@ -326,11 +365,25 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
 .seg button { flex: 1 1 auto; min-height: 44px; border: none; background: var(--panel); padding: 8px 4px; font-size: .9rem; font-weight: 700; color: var(--fg); box-shadow: inset 2px 2px 3px var(--clay-hi), inset -3px -3px 4px var(--clay-lo); }
 .seg button + button { border-left: 2px solid var(--rule); }
 /* Selected segment is pushed in: inverted fill, inner shade only (no inner light) */
-.seg button[aria-pressed="true"], .seg button:active { box-shadow: inset 3px 3px 5px var(--clay-lo); }
-.seg button[aria-pressed="true"] { background: var(--sel-bg); color: var(--sel-fg); box-shadow: inset 3px 3px 5px var(--clay-sel); }
+.seg button:is([aria-pressed="true"], [aria-checked="true"]), .seg button:active { box-shadow: inset 3px 3px 5px var(--clay-lo); }
+.seg button:is([aria-pressed="true"], [aria-checked="true"]) { background: var(--sel-bg); color: var(--sel-fg); box-shadow: inset 3px 3px 5px var(--clay-sel); }
 .seg button:focus-visible { outline: 3px solid currentColor; outline-offset: -7px; box-shadow: inset 3px 3px 5px var(--clay-lo); }
-.seg button[aria-pressed="true"]:focus-visible { box-shadow: inset 3px 3px 5px var(--clay-sel); }
+.seg button:is([aria-pressed="true"], [aria-checked="true"]):focus-visible { box-shadow: inset 3px 3px 5px var(--clay-sel); }
 @media (min-width: 350px) { .seg:has(> :nth-child(3)) { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; } }
+/* Designed pickers (D0, <hati-pick>): a picker row never wraps; segments size to their words, and a row whose words
+   don't fit becomes the clay button that opens an ink sheet list (HatiPick.fit). */
+hati-pick { display: block; min-width: 0; }
+.seg.pk, .seg.pk:has(> :nth-child(3)) { display: flex; flex-wrap: nowrap; }
+.seg.pk > button { min-width: 0; padding: 8px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.btn.pick-btn { width: 100%; justify-content: space-between; text-align: left; font-size: 1rem; }
+.pick-btn .pv { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick-btn::after { content: ""; flex: none; width: 0; height: 0; border-top: 6px solid currentColor; border-inline: 5px solid transparent; }
+.pk-scrim { z-index: 25; }
+.pko { min-height: 48px; font-size: 1rem; justify-content: space-between; }
+.pko[aria-selected="true"] { font-weight: 700; }
+.pko[aria-selected="false"] .ck { visibility: hidden; }
+.pko:active { background: var(--sunk); }
+.pko:focus-visible { outline-offset: -5px; box-shadow: none; }
 /* 12 categories: 4 across from 360 px (3 rows), 3 across on a 320 px phone (4 rows); one tap, no scrolling inside */
 .cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; }
 .cat { border: 2px solid var(--rule); background: var(--panel); padding: 8px 4px; min-height: 58px; font-size: .8rem; line-height: 1.15; font-weight: 600; display: grid; justify-items: center; align-content: center; gap: 4px; text-align: center; }
@@ -417,7 +470,7 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
      No transform transition on the way down (it would hide the squash); the release eases back over 160 ms. */
   .btn, .ico, .cat, .vol, button.chip:not(.add) { transition: transform var(--dur-out) var(--ease-out); }
   :is(.btn:not(.quiet):not(.text):not(:disabled), .ico, .cat, .vol, button.chip:not(.add)):active { transition: none; animation: squash var(--dur-press) var(--ease-out); }
-  @keyframes squash { 0% { transform: none; } 55% { transform: translate(2px, 2px) scale(1.03, .94); } 100% { transform: translate(3px, 3px); } }
+  @keyframes squash { 0% { transform: none; } 55% { transform: translate(calc(var(--c-lift) * .67), calc(var(--c-lift) * .67)) scale(1.03, .94); } 100% { transform: translate(var(--c-lift), var(--c-lift)); } }
 
   /* Lists ink in on a screen change (#app[data-turn]): the frame is drawn first, then a paper cover with an ink edge is
      wiped off the row (scaleX on a pseudo-element: compositor only, the row's box and taps never change) */
@@ -794,6 +847,83 @@ function memberChip(v, m, c) {
 const txOpen = (v, act, id) => v.archived ? `<div class="tx" data-id="${esc(id)}">` : `<button class="tx" data-act="${act}" data-id="${esc(id)}">`;
 const txClose = v => v.archived ? "</div>" : "</button>";
 const CHECK = `<span class="ck" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>`;
+
+// ── Designed pickers (D0) ─────────────────────────────────
+// <hati-pick> replaces the phone's native dropdown with the app's own control and keeps its contract: el.value reads and sets
+// the choice, and a choice fires input + change on it (bubbling). Up to 4 short options are a clay segmented row
+// (radiogroup, roving tabindex: one tap, arrows move the choice); more options, or words that don't fit the row on this
+// screen (fit()), are a clay button showing the choice that opens an ink sheet list (listbox: a tap or Enter picks and
+// closes, Esc closes, focus returns to the button). With a placeholder nothing is chosen until the user picks;
+// without one an unknown value falls back to the first option, as the dropdown did.
+function pickField(id, label, opts, value, ph = "") {
+  const val = opts.some(o => o[0] === value) ? value : ph ? "" : (opts[0] || [""])[0];
+  const seg = opts.length <= 4 && opts.every(o => o[1].length <= 16);
+  return `<span class="legend" id="${id}-l">${esc(label)}</span><hati-pick id="${id}" value="${esc(val)}" data-mode="${seg ? "seg" : "list"}" data-ph="${esc(ph)}" data-opts="${esc(JSON.stringify(opts))}">${seg ? pickSegHtml(id, opts, val) : pickBtnHtml(id, opts, val, ph)}</hati-pick>`;
+}
+function pickSegHtml(id, opts, val) {
+  const any = opts.some(o => o[0] === val);
+  return `<div class="seg pk" role="radiogroup" aria-labelledby="${id}-l">${opts.map((o, i) => `<button type="button" role="radio" aria-checked="${o[0] === val}" tabindex="${o[0] === val || (!any && !i) ? 0 : -1}" data-pv="${esc(o[0])}">${esc(o[1])}</button>`).join("")}</div>`;
+}
+function pickBtnHtml(id, opts, val, ph) {
+  const o = opts.find(x => x[0] === val);
+  return `<button type="button" class="btn pick-btn" aria-haspopup="listbox" aria-labelledby="${id}-l ${id}-v"><span class="pv${o ? "" : " muted"}" id="${id}-v">${esc(o ? o[1] : ph)}</span></button>`;
+}
+class HatiPick extends HTMLElement {
+  get opts() { try { return JSON.parse(this.dataset.opts || "[]"); } catch (e) { return []; } }
+  get value() { return this.getAttribute("value") || ""; }
+  set value(v) { this.setAttribute("value", v == null ? "" : String(v)); this.paint(); }
+  paint() {
+    const v = this.value, o = this.opts;
+    if (this.dataset.mode === "seg") {
+      const any = o.some(x => x[0] === v);
+      this.querySelectorAll("[data-pv]").forEach((b, i) => { b.setAttribute("aria-checked", String(b.dataset.pv === v)); b.tabIndex = b.dataset.pv === v || (!any && !i) ? 0 : -1; });
+    } else this.innerHTML = pickBtnHtml(this.id, o, v, this.dataset.ph);
+  }
+  choose(v) {
+    if (v === this.value) return;
+    this.value = v;
+    this.dispatchEvent(new Event("input", { bubbles: true })); this.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  // A row whose words are cut (or would wrap) on this screen becomes the button + sheet list. Hidden rows measure 0
+  // and stay; whoever shows one calls fit() again.
+  fit() {
+    if (this.dataset.mode !== "seg" || ![...this.querySelectorAll("[data-pv]")].some(b => b.scrollWidth > b.clientWidth + 1)) return;
+    const had = this.contains(document.activeElement);
+    this.dataset.mode = "list"; this.paint();
+    if (had) this.querySelector("button").focus();
+  }
+  connectedCallback() { if (this.dataset.mode === "seg") queueMicrotask(() => { if (this.isConnected) this.fit(); }); }
+}
+customElements.define("hati-pick", HatiPick);
+// The ink sheet list, over whatever is open (the page or a sheet, both inert meanwhile).
+function pickSheet(p) {
+  const o = p.opts, v = p.value, lab = document.getElementById(p.id + "-l");
+  const wrap = document.createElement("div"); wrap.className = "scrim pk-scrim"; wrap.id = "pickLayer";
+  wrap.innerHTML = `<div class="sheet pk-sheet" role="dialog" aria-modal="true" aria-labelledby="pkTitle"><h2 id="pkTitle">${esc(lab ? lab.textContent : "")}</h2><div class="ledger" role="listbox" aria-labelledby="pkTitle">${o.map(x => `<button type="button" class="debt pko" role="option" aria-selected="${x[0] === v}" tabindex="-1" data-pv="${esc(x[0])}"><span>${esc(x[1])}</span>${CHECK}</button>`).join("")}</div></div>`;
+  $("#app").inert = true; $("#layer").inert = true;
+  document.body.appendChild(wrap);
+  const rows = [...wrap.querySelectorAll("[role=option]")], first = rows.find(b => b.dataset.pv === v) || rows[0];
+  if (first) { first.tabIndex = 0; first.focus(); }
+  const close = wrap.close = pick => {
+    if (!wrap.isConnected) return;
+    wrap.remove(); $("#layer").inert = false; $("#app").inert = sheetOpen();
+    if (pick != null) p.choose(pick);
+    const b = p.querySelector("button"); if (b) b.focus();
+  };
+  wrap.addEventListener("click", ev => {
+    ev.stopPropagation();
+    const b = ev.target.closest("[role=option]"); if (b) close(b.dataset.pv); else if (ev.target === wrap) close(null);
+  });
+  wrap.addEventListener("keydown", ev => {
+    ev.stopPropagation();
+    if (ev.key === "Escape") { ev.preventDefault(); close(null); return; }
+    const i = rows.indexOf(document.activeElement), n = rows.length;
+    const j = { ArrowDown: i + 1, ArrowUp: i - 1, Home: 0, End: n - 1 }[ev.key];
+    if (j === undefined || !n) return;
+    ev.preventDefault(); const t = rows[Math.max(0, Math.min(n - 1, j))];
+    rows.forEach(r => r.tabIndex = r === t ? 0 : -1); t.focus();
+  });
+}
 function debtRow(v, d, tag = "div", extra = "", tail = "") {
   return `<${tag} class="debt" ${extra}>${avatar(v, d.from)}<span class="grow small who"><b class="nm">${esc(meName(v, d.from))}</b> <span>${pays(v, d.from)}</span> <b class="nm">${esc(meObj(v, d.to))}</b></span><b class="num">${esc(fmt(d.amount, v.currency))}</b>${tail}</${tag}>`;
 }
@@ -851,7 +981,7 @@ const views = {
     const hist = items.length ? `<button class="ico" data-act="history" aria-label="History">${I.clock}</button>` : "";
     return topbar(v.title, { back: true, right: `${hist}<button class="ico" data-act="volMenu" aria-label="Volume options">${I.dots}</button>` }) +
       `<div class="stack">
-      <section class="hero${done ? " done" : ""}" aria-label="Your balance" style="margin:0">
+      <section class="hero${done ? " done" : ""}" aria-label="Your balance" style="margin:0 0 8px">
         <div class="meta"><span class="vno">Vol. ${volNo(v)} · </span>${t[1]} · ${plural(v.members.length, "member")} · <span class="money">${esc(fmt(tot, v.currency))} spent</span></div>
         <div class="k ${cls}${done && settled ? " stamped" : ""}">${settled ? "You're all settled" : mine > 0 ? "You are owed" : "You owe"}</div>
         ${settled ? "" : `<div class="amt num ${cls} ${amtSize(fig)}${roll}"${roll ? ` data-was="${esc(was.t)}"` : ""}><span class="fig">${esc(fig)}</span></div>`}
@@ -893,12 +1023,10 @@ const views = {
     return topbar(f.id ? "Edit expense" : "New expense", { back: true, right: `<span class="muted sub ellip">${esc(v.title)}</span>` }) +
       `<form id="expForm" class="stack" novalidate>
       <div class="amount-box"><label for="f-amount" class="legend">Amount</label>
-        <div class="row"><span class="cur" aria-hidden="true">${esc(v.currency)}</span><input id="f-amount" inputmode="decimal" autocomplete="off" placeholder="0.00" value="${esc(f.amount)}"></div></div>
-      <div class="field"><label for="f-desc">Description</label><input id="f-desc" class="input" maxlength="100" placeholder="Ramen dinner" autocomplete="off" value="${esc(f.desc)}" aria-describedby="descMsg"><div class="msg" id="descMsg"></div></div>
-      <div class="btns">
-        <div class="field"><label for="f-paid">Paid by</label><select id="f-paid" class="input">${v.members.map(m => `<option value="${esc(m.id)}" ${m.id === f.paidBy ? "selected" : ""}>${esc(meName(v, m.id))}</option>`).join("")}</select></div>
-        <div class="field"><label for="f-date">Date</label><input id="f-date" type="date" class="input" value="${esc(f.date)}"></div>
-      </div>
+        <div class="row"><span class="cur" aria-hidden="true">${esc(v.currency)}</span><input id="f-amount" inputmode="decimal" autocomplete="off" placeholder="0.00" value="${esc(f.amount)}"></div><div id="lastAmt"></div></div>
+      <div class="field"><label for="f-desc">Description</label><input id="f-desc" class="input" maxlength="100" placeholder="Ramen dinner" autocomplete="off" value="${esc(f.desc)}" aria-describedby="descMsg"><div class="msg" id="descMsg"></div><div class="chips sug" id="descSug" role="group" aria-label="Used before in this volume"></div></div>
+      <div class="field">${pickField("f-paid", "Paid by", v.members.map(m => [m.id, meName(v, m.id)]), f.paidBy)}</div>
+      <div class="field"><label for="f-date">Date</label><input id="f-date" type="date" class="input" value="${esc(f.date)}"></div>
       <fieldset><legend class="legend">Category</legend><div class="cats">${CATEGORIES.map(c => `<button type="button" class="cat" data-cat="${c[0]}" aria-pressed="${c[0] === f.category}"><span aria-hidden="true">${CAT_ICON[c[0]]}</span>${c[1]}</button>`).join("")}</div></fieldset>
       <fieldset><legend class="legend">Split</legend><div class="seg">${[["equal", "Equal"], ["exact", "Exact"], ["percent", "Percent"], ["shares", "Shares"]].map(s => `<button type="button" data-split="${s[0]}" aria-pressed="${s[0] === f.splitType}">${s[1]}</button>`).join("")}</div></fieldset>
       <div class="ledger" id="splitRows">${v.members.map(m => splitRow(v, m)).join("")}</div>
@@ -988,6 +1116,50 @@ function draftFor(id) {
   v.members.forEach(m => { if (!has(d.form.include, m.id)) d.form.include[m.id] = false; });
   return d.form;
 }
+// ── Repeat entry (D1): a new expense learns from this volume's past ones ──
+// Nothing is stored for this: the suggestions are read from the expenses themselves, on this phone.
+function pastExpenses(v, q) {
+  const by = new Map();
+  v.expenses.forEach((e, i) => {
+    const k = String(e.desc || "").trim().toLowerCase(); if (!k) return;
+    const x = by.get(k) || { n: 0, e: null, key: "" }, key = `${e.date || ""}|${String(e.upd || 0).padStart(15, "0")}|${String(i).padStart(6, "0")}`;
+    x.n++; if (key > x.key) { x.key = key; x.e = e; } // the latest one is the model
+    by.set(k, x);
+  });
+  q = String(q || "").trim().toLowerCase();
+  return [...by.entries()].filter(([k]) => !q || k.includes(q)).map(([k, x]) => ({ k, ...x }))
+    .sort((a, b) => b.n - a.n || (a.key < b.key ? 1 : -1));
+}
+function refreshSuggest() {
+  const f = ui.form, v = vol(), box = $("#descSug"), last = $("#lastAmt");
+  if (!box || !last || !v) return;
+  if (f.id) { box.innerHTML = last.innerHTML = ""; return; } // editing: the expense is what it is
+  const typed = f.desc.trim().toLowerCase(), all = pastExpenses(v, typed);
+  const exact = all.find(x => x.k === typed);
+  // while the description is one already used, there is nothing left to suggest: offer its amount instead
+  ui.sug = exact ? [] : all.slice(0, 3);
+  box.innerHTML = ui.sug.map((x, i) => `<button type="button" class="chip" data-sug="${i}"><span aria-hidden="true">${CAT_ICON[catOf(x.e.category)[0]]}</span><span class="ellip">${esc(x.e.desc)}</span></button>`).join("");
+  ui.lastAmt = exact && parseMoney(f.amount) !== exact.e.amount ? exact.e.amount : 0;
+  last.innerHTML = ui.lastAmt ? `<button type="button" class="chip" data-last><span class="muted">Last time</span> <span class="num">${fmt(ui.lastAmt, v.currency)}</span></button>` : "";
+}
+// Fill description, category and how it was split (never the amount: that takes its own tap on "Last time").
+function applyPast(e) {
+  const f = ui.form, v = vol(), form = $("#expForm");
+  f.desc = e.desc; f.category = catOf(e.category)[0];
+  const inc = v.members.filter(m => has(e.splits, m.id)).map(m => m.id), ids = inc.length ? inc : v.members.map(m => m.id);
+  f.include = Object.fromEntries(v.members.map(m => [m.id, ids.includes(m.id)]));
+  // weights carry over (percent, shares); exact amounts belong to that one bill, so it becomes an equal split of the same people
+  const weighted = (e.splitType === "percent" || e.splitType === "shares") && ids.every(id => has(e.inputs, id) && String(e.inputs[id]).trim());
+  f.splitType = weighted ? e.splitType : "equal";
+  f.inputs = weighted ? Object.fromEntries(ids.map(id => [id, String(e.inputs[id])])) : {};
+  const d = $("#f-desc"); d.value = f.desc; d.removeAttribute("aria-invalid"); $("#descMsg").textContent = "";
+  form.querySelectorAll("[data-cat]").forEach(b => b.setAttribute("aria-pressed", b.dataset.cat === f.category));
+  form.querySelectorAll("[data-split]").forEach(b => b.setAttribute("aria-pressed", b.dataset.split === f.splitType));
+  $("#splitRows").innerHTML = v.members.map(m => splitRow(v, m)).join("");
+  refreshSplitPreview(); refreshSuggest(); saveDraft();
+  const live = $("#status"); live.textContent = ""; setTimeout(() => { live.textContent = `Filled in from ${e.desc}. Enter the amount.`; }, 30);
+  const a = $("#f-amount"); if (!f.amount.trim()) a.focus();
+}
 function openExpense(e) {
   ui.from = ui.view === "history" ? "history" : "volume";
   ui.form = draftFor(e ? e.id : null) || formFrom(e);
@@ -1053,10 +1225,8 @@ const sheetButtons = (label, cls = "primary") => `<div class="btns"><button type
 function volumeSheet(v) {
   sheet(`<h2>${v ? "Edit volume" : "New volume"}</h2><div class="stack">
     <div class="field"><label for="s-title">Name</label><input id="s-title" class="input" maxlength="40" placeholder="Bali trip" autocomplete="off" value="${v ? esc(v.title) : ""}"></div>
-    <div class="btns">
-      <div class="field"><label for="s-type">Type</label><select id="s-type" class="input">${TYPES.map(t => `<option value="${t[0]}" ${v && v.type === t[0] ? "selected" : ""}>${t[1]}</option>`).join("")}</select></div>
-      <div class="field"><label for="s-cur">Currency</label><select id="s-cur" class="input">${CURRENCIES.map(c => `<option ${(v ? v.currency : lastCurrency()) === c ? "selected" : ""}>${c}</option>`).join("")}</select></div>
-    </div>
+    <div class="field">${pickField("s-type", "Type", TYPES, v && v.type)}</div>
+    <div class="field">${pickField("s-cur", "Currency", CURRENCIES.map(c => [c, c]), v ? v.currency : lastCurrency())}</div>
     ${v ? memberFields(v) : `<div class="field"><label for="s-me">Your name in this volume</label><input id="s-me" class="input" maxlength="40" placeholder="So others know who you are" autocomplete="off"></div>
     <div class="field"><label for="s-others">Who else is in? (optional)</label><input id="s-others" class="input" maxlength="2000" placeholder="Mira, Rio" autocomplete="off"></div>`}
     <div class="msg" id="sheetMsg" role="alert"></div>
@@ -1265,11 +1435,11 @@ function settleSheet(existing) {
     return;
   }
   const s = existing || ds[0] || { from: v.meId, to: (v.members.find(m => m.id !== v.meId) || {}).id };
-  const opt = sel => v.members.map(m => `<option value="${esc(m.id)}" ${m.id === sel ? "selected" : ""}>${esc(meName(v, m.id))}</option>`).join("");
+  const people = v.members.map(m => [m.id, meName(v, m.id)]);
   const sugg = !existing && ds.length > 1 ? `<div class="legend">Suggested payments</div><div class="ledger">${ds.map((d, i) => debtRow(v, d, "button", `type="button" data-sugg="${i}" aria-pressed="${i === 0}"`, CHECK)).join("")}</div>` : "";
   sheet(`<h2>${existing ? "Edit payment" : "Settle up"}</h2><div class="stack">${sugg}
-    <div class="btns"><div class="field"><label for="s-from">From</label><select id="s-from" class="input">${opt(s.from)}</select></div>
-    <div class="field"><label for="s-to">To</label><select id="s-to" class="input">${opt(s.to)}</select></div></div>
+    <div class="field">${pickField("s-from", "From", people, s.from)}</div>
+    <div class="field">${pickField("s-to", "To", people, s.to)}</div>
     <div class="field"><label for="s-amt">Amount (${esc(v.currency)})</label><input id="s-amt" class="input num" inputmode="decimal" placeholder="0.00" autocomplete="off" value="${s.amount ? (s.amount / 100).toFixed(2) : ""}"></div>
     <div class="msg" id="sheetMsg" role="alert"></div>
     ${sheetButtons("Record payment")}
@@ -1988,7 +2158,7 @@ function fillPick(pick, x) {
   const local = S.volumes.find(v => v.id === x.id);
   // With a copy already here, the picker starts on who you are in that copy; a new one starts on no one.
   const meNow = local && local.meId;
-  const who = `<div class="field" id="s-whobox"${local ? " hidden" : ""}><label for="s-who">Which member are you?</label><select id="s-who" class="input">${local ? "" : `<option value="" selected disabled>Choose your name</option>`}${x.members.map(m => `<option value="${esc(m.id)}" ${m.id === meNow ? "selected" : ""}>${esc(m.name)}</option>`).join("")}</select></div>`;
+  const who = `<div class="field" id="s-whobox"${local ? " hidden" : ""}>${pickField("s-who", "Which member are you?", x.members.map(m => [m.id, m.name]), meNow, local ? "" : "Choose your name")}</div>`;
   if (!local) { pick.innerHTML = who; return; }
   const r = mergeVolumes(local, x), loss = replaceLoss(local, x);
   const lostParts = [loss.entries && plural(loss.entries, "entry", "entries"), loss.members && plural(loss.members, "member")].filter(Boolean).join(" and ");
@@ -1999,8 +2169,8 @@ function fillPick(pick, x) {
   };
   const say = mode => `You already have ${local.title}. ${sums[mode]}`;
   pick.innerHTML = `<p class="share-sum small" id="s-sum" role="status">${esc(say("merge"))}</p>
-    <div class="field"><label for="s-mode">What to do</label><select id="s-mode" class="input"><option value="merge">Merge with my copy</option><option value="replace">Replace my copy with this one</option><option value="copy">Keep both</option></select></div>` + who;
-  $("#s-mode").addEventListener("change", ev => { $("#s-whobox").hidden = ev.target.value === "merge"; $("#s-sum").textContent = say(ev.target.value); });
+    <div class="field">${pickField("s-mode", "What to do", [["merge", "Merge"], ["replace", "Replace"], ["copy", "Keep both"]], "merge")}</div>` + who;
+  $("#s-mode").addEventListener("change", ev => { $("#s-whobox").hidden = ev.target.value === "merge"; $("#s-sum").textContent = say(ev.target.value); $("#s-who").fit(); });
 }
 // Imports p.volume (already through validVolume) the way the picker in the open sheet says, then opens it.
 // p.room (a live invite, or a code from a shared volume) links the volume to its sync room; "Keep both" makes a
@@ -2211,6 +2381,7 @@ function focusTitle() { const h = $("#app h1"); if (h) h.focus({ preventScroll: 
 addEventListener("popstate", () => {
   if (skipPop && !location.hash.startsWith("#join=")) { skipPop = false; return; } // startJoin's own step back
   if (joinFromHash()) return;
+  if ($("#pickLayer")) { $("#pickLayer").close(null); setUrl(false); return; } // Back closes a picker list first
   if (sheetOpen()) { dropSheet(); setUrl(false); return; }
   const box = viewBox(), from = ui.view;
   applyRoute(); turn(from, ui.view, box); render(); window.scrollTo(0, 0); focusTitle();
@@ -2253,6 +2424,7 @@ function bindExpenseForm() {
     if (t.id === "f-amount") f.amount = t.value;
     else if (t.id === "f-desc") { f.desc = t.value; if (t.value.trim()) { t.removeAttribute("aria-invalid"); $("#descMsg").textContent = ""; } }
     else if (t.id === "f-note") f.note = t.value;
+    if (t.id === "f-desc" || t.id === "f-amount") refreshSuggest();
     else if (t.id === "f-date") f.date = t.value;
     else if (t.dataset.in) f.inputs[t.dataset.in] = t.value;
     refreshSplitPreview(); saveDraft();
@@ -2270,7 +2442,12 @@ function bindExpenseForm() {
     refreshSplitPreview(); saveDraft();
   });
   form.addEventListener("click", ev => {
-    const c = ev.target.closest("[data-cat]"), s = ev.target.closest("[data-split]");
+    const c = ev.target.closest("[data-cat]"), s = ev.target.closest("[data-split]"), g = ev.target.closest("[data-sug]");
+    if (g && ui.sug && ui.sug[g.dataset.sug]) return applyPast(ui.sug[g.dataset.sug].e);
+    if (ev.target.closest("[data-last]") && ui.lastAmt) {
+      f.amount = (ui.lastAmt / 100).toFixed(2); $("#f-amount").value = f.amount;
+      refreshSplitPreview(); refreshSuggest(); saveDraft(); $("#f-amount").focus(); return;
+    }
     if (c) { f.category = c.dataset.cat; form.querySelectorAll("[data-cat]").forEach(b => b.setAttribute("aria-pressed", b === c)); saveDraft(); }
     if (s && f.splitType !== s.dataset.split) {
       f.splitType = s.dataset.split; f.inputs = {};
@@ -2284,7 +2461,7 @@ function bindExpenseForm() {
     }
   });
   form.addEventListener("submit", ev => { ev.preventDefault(); submitExpense(); });
-  refreshSplitPreview();
+  refreshSplitPreview(); refreshSuggest();
 }
 function selectPalette(id) {
   S.settings.palette = id; commit(); applyTheme(); render();
@@ -2296,6 +2473,8 @@ document.addEventListener("touchstart", () => {}, { passive: true });
 document.addEventListener("click", async ev => {
   if (ev.target.classList && ev.target.classList.contains("scrim")) return closeSheet();
   const drop = ev.target.closest && ev.target.closest("#sheetForm [data-drop]"); if (drop) return toggleDrop(drop);
+  const pv = ev.target.closest && ev.target.closest("hati-pick [data-pv]"); if (pv) return pv.closest("hati-pick").choose(pv.dataset.pv);
+  const pb = ev.target.closest && ev.target.closest("hati-pick .pick-btn"); if (pb) return pickSheet(pb.closest("hati-pick"));
   const el = ev.target.closest("[data-act],[data-pal],[data-set]"); if (!el) return;
   if (el.dataset.pal) return selectPalette(el.dataset.pal);
   if (el.dataset.set) {
@@ -2359,6 +2538,14 @@ document.addEventListener("click", async ev => {
 document.addEventListener("keydown", ev => {
   if (ev.key === "Escape" && sheetOpen()) { closeSheet(); return; }
   eatClick = false;
+  // A picker row is a radio group: arrows (and Home/End) move the choice and the focus together, wrapping around.
+  const rb = ev.target.closest && ev.target.closest("hati-pick [role=radio]");
+  if (rb && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Home", "End"].includes(ev.key)) {
+    ev.preventDefault();
+    const all = [...rb.parentNode.children], i = all.indexOf(rb), n = all.length;
+    const t = all[ev.key === "Home" ? 0 : ev.key === "End" ? n - 1 : (i + (ev.key === "ArrowDown" || ev.key === "ArrowRight" ? 1 : -1) + n) % n];
+    rb.closest("hati-pick").choose(t.dataset.pv); t.focus(); return;
+  }
   const card = (ev.key === "ContextMenu" || (ev.shiftKey && ev.key === "F10")) && ev.target.closest && ev.target.closest("#app .vol[data-id]");
   if (card) { ev.preventDefault(); if (!sheetOpen()) volActsSheet(card.dataset.id, card); return; }
   const p = ev.target.closest && ev.target.closest("[data-pal]");
@@ -2373,6 +2560,7 @@ addEventListener("storage", ev => {
   if (ev.key !== KEY || ev.newValue === null) return;
   const fresh = load(); if (!fresh) return;
   S = fresh; applyTheme();
+  if ($("#pickLayer")) $("#pickLayer").close(null);
   if (sheetOpen()) { dropSheet(); toast("Updated from another tab"); }
   if (ui.view === "expense") { goneElsewhere(); return; }
   if (!vol() && ui.view !== "hub" && ui.view !== "settings") ui.view = "hub";

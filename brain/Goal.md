@@ -22,7 +22,7 @@ An app Android and iOS users can install from a link and use for real group expe
 - Every interpolated value in a template goes through `esc()`. Imported share codes pass `validVolume()` then `cleanVolume()`.
 - Debt math mirrors `domain/usecase/CalculateDebtsUseCase.kt` (fewest payments and pairwise).
 - Data lives in `localStorage` key `hati2.mock.v1`; volumes move between phones by invite link/QR and live sync (see [[hati-sync]]); the share code stays as the offline fallback.
-- Design language: manga ink on paper (see `DESIGN.md` and `ui/components/MangaComponents.kt`): flat paper, 2px ink borders, 3px corners (8px `--clay-r` on manga clay controls only), hard offset shadow only on pressable things, which are manga clay (flat palette fill with inset light and shade, no gradients), ruled ledgers instead of one card per row, Wada palette accent used sparingly.
+- Design language: manga ink on paper (see `DESIGN.md` and `ui/components/MangaComponents.kt`): flat paper, 2px ink borders, 3px corners (8px `--clay-r` on manga clay controls only), depth by rank as hard 0-blur ink slabs (pressable controls 3px, cards and page panels 5px, the balance panel an 8px dotted slab with a dot ramp kept clear of text; the top bar a 3px ink edge over an 8px screentone band), clay only on pressable things (flat palette fill with inset light and shade, no gradients; a press lands exactly on its slab), ruled ledgers instead of one card per row, Wada palette accent used sparingly.
 
 
 See also [[Decisions]], [[Team loop]], [[HATI Brain]]

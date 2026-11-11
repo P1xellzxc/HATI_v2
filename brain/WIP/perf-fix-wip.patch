@@ -1,0 +1,264 @@
+diff --git a/docs/app/index.html b/docs/app/index.html
+index b6435fb..2e3e199 100644
+--- a/docs/app/index.html
++++ b/docs/app/index.html
+@@ -292,6 +292,10 @@ button.tx:active, button.debt:active { background: var(--sunk); }
+ /* History/recent rows, read like a ledger line: what + who paid on the left (wrapping, title up to 2 lines, full text on
+    the edit screen), amount over date in the right column. Icon, title and amount share line 1. */
+ .tx { align-items: flex-start; }
++/* A long history lays out and paints only the rows near the screen. The first 32 are always drawn: that reaches past
++   the browser's look-ahead margin, so the first frame of the wipe never has to lay out rows that just came into range.
++   A focused row is drawn whole so its focus ring isn't clipped. Rows keep their last measured height once seen. */
++.ledger.hist > :nth-child(n+33):not(:focus-within) { content-visibility: auto; contain-intrinsic-size: auto 64px; }
+ .tx-t { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+ .tx-m { display: block; overflow-wrap: anywhere; }
+ .tx-r { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; align-self: stretch; justify-content: space-between; }
+@@ -419,25 +423,27 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
+   :is(.btn:not(.quiet):not(.text):not(:disabled), .ico, .cat, .vol, button.chip:not(.add)):active { transition: none; animation: squash var(--dur-press) var(--ease-out); }
+   @keyframes squash { 0% { transform: none; } 55% { transform: translate(2px, 2px) scale(1.03, .94); } 100% { transform: translate(3px, 3px); } }
+ 
+-  /* Lists ink in on a screen change (#app[data-turn]): the frame is drawn first, then a paper cover with an ink edge is
+-     wiped off the row (scaleX on a pseudo-element: compositor only, the row's box and taps never change) */
++  /* Lists ink in on a screen change: the frame is drawn first, then a paper cover with an ink edge is wiped off the row
++     (scaleX on a pseudo-element: compositor only, the row's box and taps never change). render() marks the first 12 rows
++     of each list .ink (.ink-l: from the left, on Back) in that frame; a class on the rows themselves, not an attribute on
++     #app, so only those rows are restyled, not every element of the page (100 history rows used to be). */
+   /* Rows past the 12th are below the fold: they are simply there (no pseudo-element to style, nothing to wait for) */
+-  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(-n+12), .sheet .share-sum, .tx.ink-new { position: relative; }
+-  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(-n+12)::after, .sheet .share-sum::after, .tx.ink-new::after {
++  #app .ink, .sheet .share-sum, .tx.ink-new { position: relative; }
++  #app .ink::after, .sheet .share-sum::after, .tx.ink-new::after {
+     content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+     background: linear-gradient(to right, var(--fg) 0 3px, var(--cover, var(--panel)) 3px); transform-origin: right;
+     animation: ink-off var(--dur-in) var(--ease-out) both;
+   }
+   /* 30 ms apart, set on the pseudo-element only: a custom property on each row would be inherited by its whole subtree
+      and cost every row its shared style */
+-  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(2)::after { animation-delay: calc(1 * var(--stagger)); }
+-  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(3)::after { animation-delay: calc(2 * var(--stagger)); }
+-  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(4)::after { animation-delay: calc(3 * var(--stagger)); }
+-  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(5)::after { animation-delay: calc(4 * var(--stagger)); }
+-  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(6)::after { animation-delay: calc(5 * var(--stagger)); }
+-  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(n+7)::after { animation-delay: calc(6 * var(--stagger)); }
+-  #app[data-turn] :is(.stack > .dashed, .chips > .add)::after { --cover: var(--bg); }
+-  #app[data-turn="back"] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(-n+12)::after { background: linear-gradient(to left, var(--fg) 0 3px, var(--cover, var(--panel)) 3px); transform-origin: left; }
++  #app .ink:nth-child(2)::after { animation-delay: calc(1 * var(--stagger)); }
++  #app .ink:nth-child(3)::after { animation-delay: calc(2 * var(--stagger)); }
++  #app .ink:nth-child(4)::after { animation-delay: calc(3 * var(--stagger)); }
++  #app .ink:nth-child(5)::after { animation-delay: calc(4 * var(--stagger)); }
++  #app .ink:nth-child(6)::after { animation-delay: calc(5 * var(--stagger)); }
++  #app .ink:nth-child(n+7)::after { animation-delay: calc(6 * var(--stagger)); }
++  #app .ink:is(.stack > .dashed, .chips > .add)::after { --cover: var(--bg); }
++  #app .ink.ink-l::after { background: linear-gradient(to left, var(--fg) 0 3px, var(--cover, var(--panel)) 3px); transform-origin: left; }
+   @keyframes ink-off { to { transform: scaleX(0); } }
+   /* Press and hold a volume card: an ink wash fills it from the left over the hold (450 ms = HOLD_MS, linear: it is the
+      hold itself, so it tracks the finger like a progress bar, rule 14); lifting early drops it at once. */
+@@ -445,7 +451,7 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
+   .vol.holding::before { visibility: visible; animation: hold-ink 450ms linear forwards; }
+   @keyframes hold-ink { to { transform: scaleX(1); } }
+   /* Empty states: the kaomoji lands like a stamp */
+-  #app[data-turn] .empty .kao { animation: stamp var(--dur-in) var(--ease-out) 60ms both; }
++  #app .kao.ink-stamp { animation: stamp var(--dur-in) var(--ease-out) 60ms both; }
+   @keyframes stamp { from { opacity: 0; transform: scale(1.5) rotate(-8deg); } 40% { opacity: 1; } }
+   /* A live sync arrival: the new row is washed in the accent, then the wash is wiped off */
+   .tx.ink-new::after { --cover: var(--accent); animation-delay: 60ms; animation-duration: 260ms; animation-timing-function: var(--ease-in-out); }
+@@ -530,7 +536,10 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;"
+ const pad2 = n => String(n).padStart(2, "0");
+ const isoLocal = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+ const today = () => isoLocal(new Date());
+-const fmt = (c, cur) => (c < 0 ? "−" : "") + (cur || "") + (Math.abs(c) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
++// One formatter, made once: toLocaleString with options builds a new Intl formatter on every call (a 100-row history
++// spent most of its render there). Same locale and options, so the text is identical.
++const MONEY = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
++const fmt = (c, cur) => (c < 0 ? "−" : "") + (cur || "") + MONEY.format(Math.abs(c) / 100);
+ const amtSize = s => s.length > 17 ? "longer" : s.length > 12 ? "long" : "";
+ const signed = (c, cur) => (c > 0 ? "+" : "") + fmt(c, cur);
+ function parseMoney(s) {
+@@ -713,8 +722,10 @@ function niceDate(d) {
+   if (d === today()) return "Today";
+   if (d === isoLocal(new Date(Date.now() - 864e5))) return "Yesterday";
+   const [Y, M, D] = d.split("-").map(Number);
+-  return new Date(Y, M - 1, D).toLocaleDateString("en-US", { month: "short", day: "numeric", ...(Y !== new Date().getFullYear() ? { year: "numeric" } : {}) });
++  return (Y !== new Date().getFullYear() ? DAY_Y : DAY).format(new Date(Y, M - 1, D));
+ }
++// Made once (see MONEY): the same text toLocaleDateString("en-US", these options) gives.
++const DAY = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }), DAY_Y = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
+ 
+ // ── Theme ─────────────────────────────────────────────────
+ const hostTheme = document.documentElement.getAttribute("data-theme");
+@@ -882,7 +893,7 @@ const views = {
+     const items = timeline(v), shown = items.slice(0, ui.histLimit);
+     return topbar("History", { back: true, right: `<span class="muted sub ellip">${esc(v.title)}</span>` }) +
+       `<p class="muted small" style="margin:0 0 8px">${plural(v.expenses.length, "expense")} and ${plural(v.settlements.length, "payment")}. ${v.archived ? "Archived: read-only." : "Tap one to edit it."}</p>` +
+-      (shown.length ? `<div class="ledger">${shown.map(it => itemRow(v, it)).join("")}</div>` : emptyCard("(・_・;)", "Nothing recorded yet.")) +
++      (shown.length ? `<div class="ledger hist">${shown.map(it => itemRow(v, it)).join("")}</div>` : emptyCard("(・_・;)", "Nothing recorded yet.")) +
+       (items.length > shown.length ? `<button class="btn block" data-act="more" style="margin-top:12px">Show ${Math.min(100, items.length - shown.length)} more</button>` : "");
+   },
+ 
+@@ -2129,6 +2140,8 @@ function turn(from, to, box) {
+   // out when the user tapped, so these reads are free.
+   const below = [...app.querySelectorAll(":scope > *, .stack > *, .ledger > *")].filter(n => n.getBoundingClientRect().top > box.h);
+   main.append(...app.childNodes); below.forEach(n => n.remove());
++  // its rows already inked in: no covers to style in the ghost
++  main.querySelectorAll(".ink, .ink-stamp").forEach(n => n.classList.remove("ink", "ink-l", "ink-stamp"));
+   // Put on screen in the next frame, before it is drawn (the same frame as the new page, so nothing flashes): the
+   // tap's own task stays as short as without motion (focusTitle() forces a layout, and it must not lay out the ghost).
+   requestAnimationFrame(() => {
+@@ -2217,12 +2230,18 @@ addEventListener("popstate", () => {
+ });
+ 
+ let renders = 0;
++const INK_ROWS = ":is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(-n+12)";
+ function render() {
+   const app = $("#app"), dir = enterDir, n = ++renders;
+   delete app.dataset.turn; enterDir = "";
+   // A screen change inks its lists in from the next frame (before it is drawn): set here, focusTitle()'s forced layout
+-  // would also have to style every row cover inside the tap's own task.
+-  if (dir) requestAnimationFrame(() => { if (n === renders) app.dataset.turn = dir; });
++  // would also have to style every row cover inside the tap's own task. Only the rows that ink in are touched.
++  if (dir) requestAnimationFrame(() => {
++    if (n !== renders) return;
++    app.dataset.turn = dir;
++    app.querySelectorAll(INK_ROWS).forEach(r => r.classList.add(...(dir === "back" ? ["ink", "ink-l"] : ["ink"])));
++    app.querySelectorAll(".empty .kao").forEach(k => k.classList.add("ink-stamp"));
++  });
+   try { app.innerHTML = views[ui.view]() + banner(); }
+   catch (e) {
+     $("#app").innerHTML = topbar("HATI²") + `<div class="panel pad stack"><b>This screen couldn't be shown.</b><p class="muted small" style="margin:0">Your data is still on this device. Go back to your volumes; if this keeps happening, erase the damaged volume in Settings.</p><button class="btn primary" data-act="home">Back to volumes</button></div>`;
+diff --git a/docs/app/sw.js b/docs/app/sw.js
+index 96169fd..82d27ab 100644
+--- a/docs/app/sw.js
++++ b/docs/app/sw.js
+@@ -1,4 +1,4 @@
+-const CACHE = "hati2-3266f20492";
++const CACHE = "hati2-26d8ba8ca8";
+ const ASSETS = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png",
+   "fonts/black-han-sans-latin.woff2", "fonts/dm-sans-latin.woff2"];
+ self.addEventListener("install", e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())));
+diff --git a/web/src/app.src.html b/web/src/app.src.html
+index a562907..5c38ac6 100644
+--- a/web/src/app.src.html
++++ b/web/src/app.src.html
+@@ -249,6 +249,10 @@ button.tx:active, button.debt:active { background: var(--sunk); }
+ /* History/recent rows, read like a ledger line: what + who paid on the left (wrapping, title up to 2 lines, full text on
+    the edit screen), amount over date in the right column. Icon, title and amount share line 1. */
+ .tx { align-items: flex-start; }
++/* A long history lays out and paints only the rows near the screen. The first 32 are always drawn: that reaches past
++   the browser's look-ahead margin, so the first frame of the wipe never has to lay out rows that just came into range.
++   A focused row is drawn whole so its focus ring isn't clipped. Rows keep their last measured height once seen. */
++.ledger.hist > :nth-child(n+33):not(:focus-within) { content-visibility: auto; contain-intrinsic-size: auto 64px; }
+ .tx-t { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+ .tx-m { display: block; overflow-wrap: anywhere; }
+ .tx-r { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; align-self: stretch; justify-content: space-between; }
+@@ -376,25 +380,27 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
+   :is(.btn:not(.quiet):not(.text):not(:disabled), .ico, .cat, .vol, button.chip:not(.add)):active { transition: none; animation: squash var(--dur-press) var(--ease-out); }
+   @keyframes squash { 0% { transform: none; } 55% { transform: translate(2px, 2px) scale(1.03, .94); } 100% { transform: translate(3px, 3px); } }
+ 
+-  /* Lists ink in on a screen change (#app[data-turn]): the frame is drawn first, then a paper cover with an ink edge is
+-     wiped off the row (scaleX on a pseudo-element: compositor only, the row's box and taps never change) */
++  /* Lists ink in on a screen change: the frame is drawn first, then a paper cover with an ink edge is wiped off the row
++     (scaleX on a pseudo-element: compositor only, the row's box and taps never change). render() marks the first 12 rows
++     of each list .ink (.ink-l: from the left, on Back) in that frame; a class on the rows themselves, not an attribute on
++     #app, so only those rows are restyled, not every element of the page (100 history rows used to be). */
+   /* Rows past the 12th are below the fold: they are simply there (no pseudo-element to style, nothing to wait for) */
+-  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(-n+12), .sheet .share-sum, .tx.ink-new { position: relative; }
+-  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(-n+12)::after, .sheet .share-sum::after, .tx.ink-new::after {
++  #app .ink, .sheet .share-sum, .tx.ink-new { position: relative; }
++  #app .ink::after, .sheet .share-sum::after, .tx.ink-new::after {
+     content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+     background: linear-gradient(to right, var(--fg) 0 3px, var(--cover, var(--panel)) 3px); transform-origin: right;
+     animation: ink-off var(--dur-in) var(--ease-out) both;
+   }
+   /* 30 ms apart, set on the pseudo-element only: a custom property on each row would be inherited by its whole subtree
+      and cost every row its shared style */
+-  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(2)::after { animation-delay: calc(1 * var(--stagger)); }
+-  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(3)::after { animation-delay: calc(2 * var(--stagger)); }
+-  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(4)::after { animation-delay: calc(3 * var(--stagger)); }
+-  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(5)::after { animation-delay: calc(4 * var(--stagger)); }
+-  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(6)::after { animation-delay: calc(5 * var(--stagger)); }
+-  #app[data-turn] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(n+7)::after { animation-delay: calc(6 * var(--stagger)); }
+-  #app[data-turn] :is(.stack > .dashed, .chips > .add)::after { --cover: var(--bg); }
+-  #app[data-turn="back"] :is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(-n+12)::after { background: linear-gradient(to left, var(--fg) 0 3px, var(--cover, var(--panel)) 3px); transform-origin: left; }
++  #app .ink:nth-child(2)::after { animation-delay: calc(1 * var(--stagger)); }
++  #app .ink:nth-child(3)::after { animation-delay: calc(2 * var(--stagger)); }
++  #app .ink:nth-child(4)::after { animation-delay: calc(3 * var(--stagger)); }
++  #app .ink:nth-child(5)::after { animation-delay: calc(4 * var(--stagger)); }
++  #app .ink:nth-child(6)::after { animation-delay: calc(5 * var(--stagger)); }
++  #app .ink:nth-child(n+7)::after { animation-delay: calc(6 * var(--stagger)); }
++  #app .ink:is(.stack > .dashed, .chips > .add)::after { --cover: var(--bg); }
++  #app .ink.ink-l::after { background: linear-gradient(to left, var(--fg) 0 3px, var(--cover, var(--panel)) 3px); transform-origin: left; }
+   @keyframes ink-off { to { transform: scaleX(0); } }
+   /* Press and hold a volume card: an ink wash fills it from the left over the hold (450 ms = HOLD_MS, linear: it is the
+      hold itself, so it tracks the finger like a progress bar, rule 14); lifting early drops it at once. */
+@@ -402,7 +408,7 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, current
+   .vol.holding::before { visibility: visible; animation: hold-ink 450ms linear forwards; }
+   @keyframes hold-ink { to { transform: scaleX(1); } }
+   /* Empty states: the kaomoji lands like a stamp */
+-  #app[data-turn] .empty .kao { animation: stamp var(--dur-in) var(--ease-out) 60ms both; }
++  #app .kao.ink-stamp { animation: stamp var(--dur-in) var(--ease-out) 60ms both; }
+   @keyframes stamp { from { opacity: 0; transform: scale(1.5) rotate(-8deg); } 40% { opacity: 1; } }
+   /* A live sync arrival: the new row is washed in the accent, then the wash is wiped off */
+   .tx.ink-new::after { --cover: var(--accent); animation-delay: 60ms; animation-duration: 260ms; animation-timing-function: var(--ease-in-out); }
+@@ -487,7 +493,10 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;"
+ const pad2 = n => String(n).padStart(2, "0");
+ const isoLocal = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+ const today = () => isoLocal(new Date());
+-const fmt = (c, cur) => (c < 0 ? "−" : "") + (cur || "") + (Math.abs(c) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
++// One formatter, made once: toLocaleString with options builds a new Intl formatter on every call (a 100-row history
++// spent most of its render there). Same locale and options, so the text is identical.
++const MONEY = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
++const fmt = (c, cur) => (c < 0 ? "−" : "") + (cur || "") + MONEY.format(Math.abs(c) / 100);
+ const amtSize = s => s.length > 17 ? "longer" : s.length > 12 ? "long" : "";
+ const signed = (c, cur) => (c > 0 ? "+" : "") + fmt(c, cur);
+ function parseMoney(s) {
+@@ -670,8 +679,10 @@ function niceDate(d) {
+   if (d === today()) return "Today";
+   if (d === isoLocal(new Date(Date.now() - 864e5))) return "Yesterday";
+   const [Y, M, D] = d.split("-").map(Number);
+-  return new Date(Y, M - 1, D).toLocaleDateString("en-US", { month: "short", day: "numeric", ...(Y !== new Date().getFullYear() ? { year: "numeric" } : {}) });
++  return (Y !== new Date().getFullYear() ? DAY_Y : DAY).format(new Date(Y, M - 1, D));
+ }
++// Made once (see MONEY): the same text toLocaleDateString("en-US", these options) gives.
++const DAY = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }), DAY_Y = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
+ 
+ // ── Theme ─────────────────────────────────────────────────
+ const hostTheme = document.documentElement.getAttribute("data-theme");
+@@ -839,7 +850,7 @@ const views = {
+     const items = timeline(v), shown = items.slice(0, ui.histLimit);
+     return topbar("History", { back: true, right: `<span class="muted sub ellip">${esc(v.title)}</span>` }) +
+       `<p class="muted small" style="margin:0 0 8px">${plural(v.expenses.length, "expense")} and ${plural(v.settlements.length, "payment")}. ${v.archived ? "Archived: read-only." : "Tap one to edit it."}</p>` +
+-      (shown.length ? `<div class="ledger">${shown.map(it => itemRow(v, it)).join("")}</div>` : emptyCard("(・_・;)", "Nothing recorded yet.")) +
++      (shown.length ? `<div class="ledger hist">${shown.map(it => itemRow(v, it)).join("")}</div>` : emptyCard("(・_・;)", "Nothing recorded yet.")) +
+       (items.length > shown.length ? `<button class="btn block" data-act="more" style="margin-top:12px">Show ${Math.min(100, items.length - shown.length)} more</button>` : "");
+   },
+ 
+@@ -2086,6 +2097,8 @@ function turn(from, to, box) {
+   // out when the user tapped, so these reads are free.
+   const below = [...app.querySelectorAll(":scope > *, .stack > *, .ledger > *")].filter(n => n.getBoundingClientRect().top > box.h);
+   main.append(...app.childNodes); below.forEach(n => n.remove());
++  // its rows already inked in: no covers to style in the ghost
++  main.querySelectorAll(".ink, .ink-stamp").forEach(n => n.classList.remove("ink", "ink-l", "ink-stamp"));
+   // Put on screen in the next frame, before it is drawn (the same frame as the new page, so nothing flashes): the
+   // tap's own task stays as short as without motion (focusTitle() forces a layout, and it must not lay out the ghost).
+   requestAnimationFrame(() => {
+@@ -2174,12 +2187,18 @@ addEventListener("popstate", () => {
+ });
+ 
+ let renders = 0;
++const INK_ROWS = ":is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(-n+12)";
+ function render() {
+   const app = $("#app"), dir = enterDir, n = ++renders;
+   delete app.dataset.turn; enterDir = "";
+   // A screen change inks its lists in from the next frame (before it is drawn): set here, focusTitle()'s forced layout
+-  // would also have to style every row cover inside the tap's own task.
+-  if (dir) requestAnimationFrame(() => { if (n === renders) app.dataset.turn = dir; });
++  // would also have to style every row cover inside the tap's own task. Only the rows that ink in are touched.
++  if (dir) requestAnimationFrame(() => {
++    if (n !== renders) return;
++    app.dataset.turn = dir;
++    app.querySelectorAll(INK_ROWS).forEach(r => r.classList.add(...(dir === "back" ? ["ink", "ink-l"] : ["ink"])));
++    app.querySelectorAll(".empty .kao").forEach(k => k.classList.add("ink-stamp"));
++  });
+   try { app.innerHTML = views[ui.view]() + banner(); }
+   catch (e) {
+     $("#app").innerHTML = topbar("HATI²") + `<div class="panel pad stack"><b>This screen couldn't be shown.</b><p class="muted small" style="margin:0">Your data is still on this device. Go back to your volumes; if this keeps happening, erase the damaged volume in Settings.</p><button class="btn primary" data-act="home">Back to volumes</button></div>`;

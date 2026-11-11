@@ -40,6 +40,14 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
  // Cut a context off the network (and the mock server), or bring it back.
  const setNet=async(c,on)=>{ if (on) mock.down.delete(c); else { mock.down.add(c); for (const s of mock.socks.values()) for (const ws of s) if (ws.__c===c) ws.close({code:1011}); } await c.setOffline(!on); };
  const ok=(c,msg)=>{console.log((c?'PASS ':'FAIL ')+msg); if(!c) process.exitCode=1;};
+ // Drive a designed picker (D0, <hati-pick>) the way a user does: tap the segment, or tap the button and then the option
+ // in the ink sheet list. want: a value, {label} or {index}. Returns the taps it took.
+ const pick=async(pg,id,want)=>{ const el=pg.locator('#'+id);
+   const name=await el.evaluate((e,w)=>{ const os=e.opts, i=typeof w==='string'?os.findIndex(x=>x[0]===w):w.label!=null?os.findIndex(x=>x[1]===w.label):w.index; return os[i]?os[i][1]:null; },want);
+   if (name==null) throw new Error('no option '+JSON.stringify(want)+' in #'+id);
+   if (await el.getAttribute('data-mode')==='seg') { await el.getByRole('radio',{name,exact:true}).click(); return 1; }
+   await el.locator('.pick-btn').click(); await pg.locator('#pickLayer').getByRole('option',{name,exact:true}).click(); return 2; };
+ const pickVal=(pg,id)=>pg.locator('#'+id).evaluate(e=>e.value);
  // There is no bottom bar: the hub is reached with the top bar's Back (or Escape for a sheet), Settings with the hub's gear.
  const toHub=async pg=>{ for (let i=0;i<8;i++) { const s=await pg.evaluate(()=>({v:ui.view,sh:sheetOpen()}));
      if (s.sh) { await pg.keyboard.press('Escape'); continue; } if (s.v==='hub') return;
@@ -109,7 +117,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
  await p.fill('#s-paste',JSON.stringify(evil)); await p.locator('#s-go').click();
  ok((await p.locator('#sheetMsg').innerText()).length>0 && !(await p.evaluate(()=>window.__x)),'malicious share code is rejected');
  await p.fill('#s-paste',code); await p.locator('#s-go').click();
- await p.selectOption('#s-mode','copy'); await p.selectOption('#s-who',{label:'Mira'}); await p.waitForTimeout(600); await p.locator('#s-go').click();
+ await pick(p,'s-mode','copy'); await pick(p,'s-who',{label:'Mira'}); await p.waitForTimeout(600); await p.locator('#s-go').click();
  ok(await p.evaluate(()=>S.volumes.length)===2,'share code imported as a second copy');
  ok(await p.evaluate(()=>{const v=S.volumes.find(x=>x.id===ui.volId);return nameOf(v,v.meId)})==='Mira','importer is Mira in the copy');
  await p.reload(); ok(await p.locator('h1').count()===1,'data survives reload');
@@ -270,7 +278,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    // A adds Zed, then shares the volume with B (B imports as Mira)
    await A.pg.locator('.vol').first().click(); await A.pg.locator('.chip.add').click(); await A.pg.fill('#s-name','Zed'); await A.pg.locator('#sheetForm button.primary').click();
    const codeA0=await shareCode(A.pg,'Tokyo');
-   await check(B.pg,codeA0); await B.pg.selectOption('#s-who',{label:'Mira'}); await doImport(B.pg);
+   await check(B.pg,codeA0); await pick(B.pg,'s-who',{label:'Mira'}); await doImport(B.pg);
    const volId=await A.pg.evaluate(()=>vol().id);
    ok(await B.pg.evaluate(id=>ui.volId===id && nameOf(vol(),vol().meId)==='Mira',volId),'B holds A\'s volume as Mira');
    // diverge: A edits Shinkansen, then B edits it later; A edits the hotel while B deletes it; B deletes Ramen and the payment; A removes Zed while B uses Zed
@@ -289,7 +297,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    const codeB=await shareCode(B.pg,'Tokyo');
    const meA=await A.pg.evaluate(()=>vol().meId);
    await check(A.pg,codeB);
-   ok(await A.pg.locator('#s-mode').inputValue()==='merge' && !(await A.pg.locator('#s-who').isVisible()),'existing volume: Merge is the default and the member picker is hidden');
+   ok(await pickVal(A.pg,'s-mode')==='merge' && !(await A.pg.locator('#s-who').isVisible()),'existing volume: Merge is the default and the member picker is hidden');
    const sum=await A.pg.locator('#s-sum').innerText(); ok(/ Adds \d+ (expense|payment|member)s?.*\. Updates .*\. Removes .*\.$/.test(sum) && !/·/.test(sum),'merge summary names what it adds, updates and removes: '+sum);
    await doImport(A.pg);
    let d=await descs(A.pg);
@@ -323,7 +331,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    // old-format code (no upd, no deleted) and chat text around the code
    const C=await fresh(); const old=JSON.parse(codeA0); delete old.volume.deleted; delete old.volume.upd; old.volume.members.forEach(m=>delete m.upd); old.volume.expenses.forEach(e=>delete e.upd); old.volume.settlements.forEach(s=>delete s.upd);
    await check(C.pg,'here you go: '+JSON.stringify(old)+' thanks!'); ok(await C.pg.locator('#s-who').isVisible(),'code pasted with chat text around it is accepted');
-   await C.pg.selectOption('#s-who',{label:'Rio'}); await doImport(C.pg);
+   await pick(C.pg,'s-who',{label:'Rio'}); await doImport(C.pg);
    ok(await C.pg.evaluate(id=>ui.volId===id && validVolume(vol()),volId) && await zs(C.pg),'old-format code without upd/deleted imports');
    // R1-2: rename and remove members
    await openVol(A.pg,'Tokyo');
@@ -353,7 +361,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await openVol(B.pg,'Tokyo'); await B.pg.evaluate(()=>{ window.__shared=null; navigator.share=d=>{window.__shared=d; return Promise.resolve();}; });
    await B.pg.locator('[data-act=volMenu]').click(); await B.pg.locator('.sheet [data-act=share]').click(); await B.pg.getByRole('button',{name:'Send invite'}).click(); await B.pg.waitForTimeout(100);
    const sent=await B.pg.evaluate(()=>window.__shared && window.__shared.url); await B.pg.keyboard.press('Escape');
-   const D=await fresh(); await check(D.pg,sent); await D.pg.selectOption('#s-who',{label:'Alex'}); await doImport(D.pg);
+   const D=await fresh(); await check(D.pg,sent); await pick(D.pg,'s-who',{label:'Alex'}); await doImport(D.pg);
    ok(await D.pg.evaluate(id=>ui.volId===id,volId) && await zs(D.pg),'the link passed to navigator.share, pasted into Import on another phone, imports '+JSON.stringify([String(sent).slice(0,60),await D.pg.evaluate(()=>[ui.view,ui.volId,$('#sheetMsg')&&$('#sheetMsg').textContent])]));
    // backup: download, restore on a fresh phone and onto a phone that already has one volume
    await toSettings(A.pg);
@@ -414,11 +422,11 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      await D.pg.evaluate(()=>{ const v=S.volumes[0]; v.meId=v.members[1].id; v.expenses.push({id:'onlyHere',desc:'OnlyHere',amount:500,paidBy:v.meId,splits:{[v.meId]:500},inputs:{},splitType:'exact',category:'food',date:today(),upd:Date.now()}); save(); render(); });
      await importCode(D.pg,code);
      const sum=()=>D.pg.locator('#s-sum').innerText();
-     await D.pg.selectOption('#s-mode','replace'); const rs=await sum();
+     await pick(D.pg,'s-mode','replace'); const rs=await sum();
      ok(/1 entry only on this phone will be lost\./.test(rs),'Replace selected: summary counts what will be lost ('+rs+')');
-     await D.pg.selectOption('#s-mode','copy'); ok(/Adds a second copy\./.test(await sum()),'Keep both selected: summary says it adds a second copy');
-     await D.pg.selectOption('#s-mode','merge'); ok(/Your copy already has everything|Adds|Updates|Removes/.test(await sum()) && !/lost/.test(await sum()),'Merge selected: summary is the merge result again');
-     await D.pg.selectOption('#s-mode','replace'); await doImport(D.pg);
+     await pick(D.pg,'s-mode','copy'); ok(/Adds a second copy\./.test(await sum()),'Keep both selected: summary says it adds a second copy');
+     await pick(D.pg,'s-mode','merge'); ok(/Your copy already has everything|Adds|Updates|Removes/.test(await sum()) && !/lost/.test(await sum()),'Merge selected: summary is the merge result again');
+     await pick(D.pg,'s-mode','replace'); await doImport(D.pg);
      ok(await D.pg.evaluate(()=>{ const v=S.volumes[0]; return v.meId===v.members[1].id && !v.expenses.some(e=>e.id==='onlyHere'); }),'Replace without touching the picker keeps you as the same member (second member stays Mira)'); }
    // N2: a flood of incoming tombstones never evicts local ones
    { const E=await fresh(); all.push(E);
@@ -468,11 +476,11 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    { const R=await fresh(); all.push(R);
      const code=await R.pg.evaluate(()=>JSON.stringify({app:'hati2-mock',v:1,volume:S.volumes[0]}));
      await R.pg.evaluate(()=>{ const v=S.volumes[0]; v.expenses[0].desc='LOCAL EDIT'; v.expenses[0].upd=Date.now()+5; v.members.push({id:'onlyhere1',name:'OnlyHere',upd:Date.now()}); save(); render(); });
-     await importCode(R.pg,code); await R.pg.selectOption('#s-mode','replace'); const rs=await R.pg.locator('#s-sum').innerText();
+     await importCode(R.pg,code); await pick(R.pg,'s-mode','replace'); const rs=await R.pg.locator('#s-sum').innerText();
      ok(/1 entry and 1 member only on this phone will be lost\./.test(rs),'Replace: a newer local edit and a member only on this phone are counted as lost ('+rs+')');
      await R.pg.evaluate(()=>{ dropSheet(); const v=S.volumes[0]; v.members=v.members.filter(m=>m.id!=='onlyhere1'); save(); });
      const code2=await R.pg.evaluate(()=>{ const v=S.volumes[0]; const c=JSON.parse(JSON.stringify(v)); v.title='Renamed here'; v.upd=Date.now()+10; save(); render(); return JSON.stringify({app:'hati2-mock',v:1,volume:c}); });
-     await importCode(R.pg,code2); await R.pg.selectOption('#s-mode','replace'); const rs2=await R.pg.locator('#s-sum').innerText();
+     await importCode(R.pg,code2); await pick(R.pg,'s-mode','replace'); const rs2=await R.pg.locator('#s-sum').innerText();
      ok(/Edits made only on this phone will be lost\./.test(rs2),'Replace: a newer local rename is not reported as nothing lost ('+rs2+')');
      await R.pg.evaluate(()=>dropSheet()); }
    // Ponytail R2: a stored volume that fails validation is copied to hati2.corrupt.* before the next save can erase it
@@ -518,7 +526,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    for (const [sel,view] of [['.btn.primary','volume'],['.vol','hub']]) {
      await pg.evaluate(v=>{ ui.volId=S.volumes[0].id; go(v); },view);
      const {rest,held}=await press(pg,sel); const m=/matrix\(1, 0, 0, 1, ([\d.]+), ([\d.]+)\)/.exec(held.transform)||[];
-     ok(+m[1]>=2 && +m[1]<=3 && nums(offLayer(held.boxShadow)).slice(0,3).every(x=>x===0) && shade(held.boxShadow)>shade(rest.boxShadow),`clay: held ${sel} moves 2-3px, loses its offset and its inner shade grows (${held.transform}; ${held.boxShadow})`); }
+     { const lift=nums(offLayer(rest.boxShadow))[0]; ok(+m[1]===lift && +m[2]===lift && lift===(sel===".vol"?5:3) && nums(offLayer(held.boxShadow)).slice(0,3).every(x=>x===0) && shade(held.boxShadow)>shade(rest.boxShadow),`clay: held ${sel} moves exactly onto its ${lift}px slab (controls 3, cards 5), loses its offset and its inner shade grows (${held.transform}; ${held.boxShadow})`); } }
    { const rc=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780},reducedMotion:'reduce'}); const R=await rc.newPage(); await R.goto(URL);
      for (const [sel,view] of [['.btn.primary','volume'],['.vol','hub']]) {
        await R.evaluate(v=>{ ui.volId=S.volumes[0].id; go(v); },view);
@@ -580,6 +588,55 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      ok(t.lines===1 && t.gloss,`R2-4: hub tagline is one line at ${w} and "New volume" still says what a volume is ${JSON.stringify(t)}`); }
    ok(e.length===0,'no page errors in R2-4 checks '+JSON.stringify(e));
    await c.close(); }
+ // DEPTH (owner 2026-11-09, direction A "layered"): hard 0-blur ink slabs by rank (controls 3px, cards and page panels 5px,
+ // the hero an 8px dotted slab), a dotted L shade on the card's far edges, a stepped dot ramp on the hero only, and a header
+ // with a 3px ink edge and an 8px screentone band that stays the same while the page scrolls. 13 palettes x light/dark.
+ { const c=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780},deviceScaleFactor:1}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())});
+   await pg.goto(URL);
+   const ids=await pg.evaluate(()=>PALETTES.map(x=>x.id)); const bad=[], band=[], flat=[];
+   for (const id of ids) for (const mode of ['light','dark']) {
+     const r=await pg.evaluate(([id,mode])=>{ S.settings.palette=id; S.settings.mode=mode; applyTheme(); dropSheet(); const out={};
+       const lay=s=>s==='none'?[]:s.split(/,(?![^(]*\))/).map(x=>x.trim());
+       const off=el=>{ const l=lay(getComputedStyle(el).boxShadow).find(x=>!/inset/.test(x)); if(!l) return null; const n=(l.replace(/(rgba?|color)\([^)]*\)/g,'').match(/-?[\d.]+px/g)||[]).map(parseFloat); return n.slice(0,3).join('/'); };
+       const blurs=el=>lay(getComputedStyle(el).boxShadow).filter(x=>!/inset/.test(x)).map(l=>(l.replace(/(rgba?|color)\([^)]*\)/g,'').match(/-?[\d.]+px/g)||[]).map(parseFloat)[2]).filter(x=>x>0).length;
+       go('hub'); out.vol=off($('.vol')); out.gear=off($('.topbar [data-act=settings]')); const vi=getComputedStyle($('.vol-info'));
+       out.strip=[(vi.backgroundImage.match(/radial-gradient/g)||[]).length, /repeat-x/.test(vi.backgroundRepeat)&&/repeat-y/.test(vi.backgroundRepeat), /linear-gradient/.test(vi.backgroundImage)];
+       const tb=getComputedStyle($('.topbar')), ta=getComputedStyle($('.topbar'),'::after');
+       out.head=[tb.borderBottomWidth, getComputedStyle($('.vol')).borderTopWidth, ta.content, ta.height, ta.position, /radial-gradient/.test(ta.backgroundImage), ta.backgroundColor===getComputedStyle(document.body).backgroundColor, tb.boxShadow, tb.filter, tb.backdropFilter];
+       ui.volId=S.volumes[0].id; go('volume');
+       out.btn=off($('.btn.primary')); out.ico=off($('.topbar .ico')); out.chip=off($('button.chip:not(.add)')); out.ledger=off($('#app .ledger'));
+       const h=$('.hero'), hs=getComputedStyle(h), ha=getComputedStyle(h,'::after');
+       out.hero=[hs.boxShadow, hs.marginBottom, ha.top, ha.left, ha.right, ha.bottom, ha.borderTopWidth, /radial-gradient/.test(ha.backgroundImage), /8px/.test(ha.clipPath), (hs.backgroundImage.match(/radial-gradient/g)||[]).length, /linear-gradient|conic/.test(hs.backgroundImage), hs.maskImage||hs.webkitMaskImage];
+       // the heavy end of the ramp (the 5 columns with dots over 1.2px: the right 30px of the padding box) holds no text
+       const hr=h.getBoundingClientRect(), heavyL=hr.right-2-30; out.heavy=[...h.querySelectorAll('*')].filter(x=>[...x.childNodes].some(n=>n.nodeType===3&&n.textContent.trim())).map(x=>{ const g=document.createRange(); g.selectNodeContents(x); return g.getBoundingClientRect().right; }).filter(x=>x>heavyL).length;
+       out.rows=[...document.querySelectorAll('#app .ledger, #app .ledger > *, #app .tx, #app .debt')].reduce((a,x)=>a+blurs(x),0);
+       out.filters=[...document.querySelectorAll('#app *')].filter(x=>{ const s=getComputedStyle(x); return s.filter!=='none'||s.backdropFilter!=='none'; }).length;
+       go('settings'); out.panel=off($('#app .panel')); ui.volId=S.volumes[0].id; ui.view='volume'; openExpense(null); out.cat=off($('.cat[aria-pressed="false"]')); out.seg=off($('.seg')); dropSheet();
+       return out; },[id,mode]);
+     const why=[];
+     for (const k of ['gear','btn','ico','chip','cat','seg']) if (r[k]!=='3/3/0') why.push(`${k} ${r[k]}`);
+     for (const k of ['vol','ledger','panel']) if (r[k]!=='5/5/0') why.push(`${k} ${r[k]}`);
+     const H=r.hero; if (H[0]!=='none'||H[1]!=='8px'||H[2]!=='6px'||H[3]!=='6px'||H[4]!=='-10px'||H[5]!=='-10px'||H[6]!=='2px'||!H[7]||!H[8]||H[9]!==9||H[10]||(H[11]&&H[11]!=='none')) why.push('hero '+JSON.stringify(H));
+     if (r.heavy) why.push(`${r.heavy} text runs reach the heavy end`);
+     if (r.strip[0]!==4||!r.strip[1]||r.strip[2]) why.push('card strip '+JSON.stringify(r.strip));
+     if (why.length) bad.push(`${id}/${mode}: ${why.join(', ')}`);
+     const T=r.head; if (T[0]!=='3px'||T[1]!=='2px'||T[2]!=='""'||T[3]!=='8px'||T[4]!=='absolute'||!T[5]||!T[6]||T[7]!=='none'||T[8]!=='none'||T[9]!=='none') band.push(`${id}/${mode} ${JSON.stringify(T)}`);
+     if (r.rows||r.filters) flat.push(`${id}/${mode} rows with blur ${r.rows}, filters ${r.filters}`); }
+   ok(bad.length===0,'DEPTH: offsets by rank — controls 3px (gear, primary, icon, chip, category, segmented), cards and page panels 5px (volume card, ledger, panel), hero 8px dotted slab (pseudo-element, 8px margin under it, 9-column dot ramp, no gradient fade or mask), heavy ramp end free of text, card shade is an L (right and bottom), all 0-blur, 13 palettes x light/dark '+JSON.stringify(bad.slice(0,3)));
+   ok(band.length===0,'DEPTH: header band present in both themes — 3px ink edge (cards 2px), an 8px opaque screentone band under it, no shadow, filter or blur, 13 palettes x light/dark '+JSON.stringify(band.slice(0,3)));
+   ok(flat.length===0,'DEPTH: paint cost — no blurred box-shadow on ledgers or list rows and no filter/backdrop-filter anywhere in the volume page, 13 palettes x light/dark '+JSON.stringify(flat.slice(0,3)));
+   // The header is static: scrolling a long history changes neither its edge, its band nor where they are drawn
+   await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); const v=S.volumes[0], ids=v.members.map(m=>m.id); for (let i=0;i<40;i++) v.expenses.push({id:'dp'+i,desc:'Lunch '+i,amount:1000,paidBy:ids[0],category:'food',date:'2026-01-01',splitType:'equal',splits:splitEqual(1000,ids),inputs:{},note:'',upd:1}); ui.volId=v.id; go('history'); scrollTo(0,0); });
+   const hs=async()=>pg.evaluate(()=>{ const t=$('.topbar'), s=getComputedStyle(t), a=getComputedStyle(t,'::after'); return JSON.stringify([Math.round(t.getBoundingClientRect().top),Math.round(t.getBoundingClientRect().bottom),s.borderBottom,s.boxShadow,s.background,a.background,a.height,a.top,a.opacity]); });
+   const top0=await hs(); await pg.mouse.move(180,500); await pg.mouse.wheel(0,900); await pg.waitForTimeout(300); const sy=await pg.evaluate(()=>scrollY); const top1=await hs();
+   ok(sy>300 && top0===top1,`DEPTH: the header and its band look and sit the same after scrolling ${sy}px (no scroll-linked shadow) ${top0===top1?'':top0+' vs '+top1}`);
+   await pg.evaluate(()=>{ S.volumes[0].expenses=S.volumes[0].expenses.filter(x=>!/^dp/.test(x.id)); scrollTo(0,0); });
+   // Slabs stay on the screen at phone widths: nothing scrolls sideways and the hero's slab ends inside the gutter
+   for (const w of [320,360,390]) { await pg.setViewportSize({width:w,height:780});
+     const m=await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); const h=$('.hero').getBoundingClientRect(); return {sw:document.scrollingElement.scrollWidth,cw:document.scrollingElement.clientWidth,slabR:h.right+8,vw:innerWidth}; });
+     ok(m.sw<=m.cw && m.slabR<=m.vw-8,`DEPTH: at ${w}px no sideways scroll and the hero slab ends ≥8px from the screen edge ${JSON.stringify(m)}`); }
+   ok(e.length===0,'no page errors in DEPTH checks '+JSON.stringify(e));
+   await c.close(); }
  // L3-dark (design): ink on night paper. Layer steps, chalk frames quieter than text, a chalk-ink offset slab (R2 revise), plate-tinted hero, selected
  // states mixed from chalk (never diluted accent), sheet lifts off a darker scrim, one dark source (no drift), status bar
  // colour = night paper, focus ring and toasts in dark. All measured from computed colours in 13 palettes.
@@ -621,8 +678,8 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(bad.length===0,'L3-dark: night paper layers (panel/bg ≥1.25, line & rule/panel ≥3, frames quieter than text, offset slab ≥3 vs night and hero, ≤ rule), hero ≥1.15 with text ≥4.5, screentone 1.3–1.6, selected seg/cat ≥3 vs unselected (WCAG 1.4.11) with text ≥4.5, field/sheet ≥1.15, sheet/scrim ≥1.3, focus ring ≥3, theme-color = night paper, 13 palettes '+JSON.stringify(bad.slice(0,3)));
    ok(drift.length===0,'L3-dark: OS dark and the Dark setting give identical tokens and .pal tiles in 13 palettes (one dark source) '+JSON.stringify(drift.slice(0,3)));
    // light keeps the old scrim and sheet, offsets stay ink
-   const lt=await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); settleSheet(null); const r=[getComputedStyle($('.scrim')).backgroundColor,getComputedStyle($('.sheet')).backgroundColor,getComputedStyle(document.body).backgroundColor,getComputedStyle($('.hero')).boxShadow,document.querySelector('meta[name=theme-color]').content]; dropSheet(); return r; });
-   ok(lt[0]==='rgba(10, 10, 14, 0.5)' && lt[1]===lt[2] && /rgb\(0, 0, 0\) 4px 4px 0px/.test(lt[3]) && lt[4]==='#FFFFFF','L3-dark: light scrim, sheet, hero offset and theme-color unchanged '+JSON.stringify(lt));
+   const lt=await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); settleSheet(null); const r=[getComputedStyle($('.scrim')).backgroundColor,getComputedStyle($('.sheet')).backgroundColor,getComputedStyle(document.body).backgroundColor,getComputedStyle($('.hero')).boxShadow+' / '+getComputedStyle($('.hero'),'::after').right,document.querySelector('meta[name=theme-color]').content]; dropSheet(); return r; });
+   ok(lt[0]==='rgba(10, 10, 14, 0.5)' && lt[1]===lt[2] && lt[3]==='none / -10px' && lt[4]==='#FFFFFF','L3-dark: light scrim, sheet, hero 8px slab (a pseudo-element, no shadow) and theme-color '+JSON.stringify(lt));
    // toasts in dark wrap at 320/360/390 (merge summary and SAVE_GONE), offset stays the accent
    const tb=[];
    for (const w of [320,360,390]) { await pg.setViewportSize({width:w,height:780});
@@ -769,18 +826,18 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(link===URL+'#join='+pay && /^[A-Za-z0-9_-]+$/.test(pay) && link.length<1000,`invite link is <page>#join=<base64url>, ${link.length} chars for the example volume`);
    // cold start on a phone that doesn't have the volume
    const B=await fresh(devices['Pixel 7'],{url:link}); all.push(B); await B.pg.waitForSelector('#s-who');
-   const j=await B.pg.evaluate(()=>({h:$('#sheetTitle').textContent,sum:$('#sheetForm .share-sum').innerText,opts:[...$('#s-who').options].map(o=>o.textContent),sel:$('#s-who').value,isNew:!!$('#s-new'),hash:location.hash,n:S.volumes.length}));
+   const j=await B.pg.evaluate(()=>({h:$('#sheetTitle').textContent,sum:$('#sheetForm .share-sum').innerText,opts:$('#s-who').opts.map(o=>o[1]),sel:$('#s-who').value,isNew:!!$('#s-new'),hash:location.hash,n:S.volumes.length}));
    ok(j.h==='Join volume' && /Tokyo Trip \(example\)/.test(j.sum) && /3 members/.test(j.sum) && ['Alex','Mira','Rio'].every(n=>j.opts.includes(n)) && j.sel==='' && j.isNew,'cold link: "Join volume" shows Tokyo Trip (example), 3 members, "New volume" and a picker that starts on no one '+JSON.stringify(j));
    ok(!/join/.test(j.hash) && j.n===1,'the invite leaves the address bar as soon as it is read, nothing saved yet '+JSON.stringify([j.hash,j.n]));
    await B.pg.getByRole('button',{name:'Join'}).click(); ok(/Choose which member/.test(await msgOf(B.pg)),'Join without picking a name asks who you are');
-   await B.pg.selectOption('#s-who',{label:'Mira'}); await B.pg.getByRole('button',{name:'Join'}).click();
+   await pick(B.pg,'s-who',{label:'Mira'}); await B.pg.getByRole('button',{name:'Join'}).click();
    const r=await B.pg.evaluate(id=>{ const v=vol(); return {view:ui.view,ok:ui.volId===id,me:nameOf(v,v.meId),hash:location.hash,zero:Object.values(balances(v)).reduce((a,b)=>a+b,0),you:/You/.test($('#app').innerText)}; },exId);
    ok(r.view==='volume' && r.ok && r.me==='Mira' && !/join/.test(r.hash) && r.zero===0,'Join as Mira opens the volume from Mira\'s side; no #join in the URL; zero-sum '+JSON.stringify(r));
    await B.pg.goBack(); await B.pg.waitForTimeout(200);
    ok(!(await B.pg.evaluate(()=>sheetOpen())) && await B.pg.evaluate(()=>ui.view)==='hub','Back after Join goes to the volumes, the join sheet does not come back');
    // the same link on a phone that has the volume (running page: a fragment change): merge, no picker, keeps you
    await B.pg.goto(link); await B.pg.waitForSelector('#s-mode');
-   ok(await B.pg.locator('#s-mode').inputValue()==='merge' && !(await B.pg.locator('#s-who').isVisible()) && !(await B.pg.locator('#s-new').count()) && /You already have Tokyo/.test(await B.pg.locator('#s-sum').innerText()),'link for a volume already here: merge sheet, no picker, says you already have it');
+   ok(await pickVal(B.pg,'s-mode')==='merge' && !(await B.pg.locator('#s-who').isVisible()) && !(await B.pg.locator('#s-new').count()) && /You already have Tokyo/.test(await B.pg.locator('#s-sum').innerText()),'link for a volume already here: merge sheet, no picker, says you already have it');
    await B.pg.locator('#sheetForm button.primary').click();
    ok(await B.pg.evaluate(id=>S.volumes.filter(x=>x.id===id).length===1 && nameOf(vol(),vol().meId)==='Mira',exId),'merging the same link adds no copy and keeps Mira as you');
    // a running page whose hash is set to the link (APK onNewIntent, address bar)
@@ -874,10 +931,10 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    const linkA=await sendInvite(A.pg); await A.pg.keyboard.press('Escape');
    // B opens the link: pick (2 taps) + Join (1 tap)
    let taps=0; await B.pg.goto(linkA); await B.pg.waitForSelector('#s-who');
-   const opts=await B.pg.evaluate(()=>[...$('#s-who').options].map(o=>o.textContent));
+   const opts=await B.pg.evaluate(()=>$('#s-who').opts.map(o=>o[1]));
    ok(opts.includes('Ana') && !opts.includes('Me'),'B\'s picker names the sender (Ana), not "Me" '+JSON.stringify(opts));
-   await B.pg.selectOption('#s-who',{label:'Ben'}); taps+=2; await B.pg.getByRole('button',{name:'Join'}).click(); taps+=1;
-   ok(taps<=3 && await B.pg.evaluate(()=>ui.view==='volume' && vol().title==='Flat' && nameOf(vol(),vol().meId)==='Ben'),`B joins Flat as Ben in ${taps} taps (opening the link counts 0)`);
+   taps+=await pick(B.pg,'s-who',{label:'Ben'}); await B.pg.getByRole('button',{name:'Join'}).click(); taps+=1;
+   ok(taps<=2 && await B.pg.evaluate(()=>ui.view==='volume' && vol().title==='Flat' && nameOf(vol(),vol().meId)==='Ben'),`B joins Flat as Ben in ${taps} taps (opening the link counts 0)`);
    await addExp(B.pg,'Groceries','40');
    await B.pg.locator('[data-act=share]').first().click(); const linkB=await sendInvite(B.pg); await B.pg.keyboard.press('Escape');
    // A opens B's link: merge
@@ -938,19 +995,18 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
  { const e=[]; const bad=[];
    for (const w of [360,390]) { const c=await b.newContext({viewport:{width:w,height:780},deviceScaleFactor:2,isMobile:true,hasTouch:true}); const pg=await c.newPage(); pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.goto(URL);
      await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); }); await pg.getByRole('button',{name:/Add expense/}).click();
-     const at16=await pg.evaluate(()=>{ const r=id=>document.getElementById(id).getBoundingClientRect(); const p=r('f-paid'), d=r('f-date'); return {ph:p.height,dh:d.height,pt:p.top,dt:d.top,pb:p.bottom,db:d.bottom,pl:p.left,dl:d.left}; });
-     // side by side: equal bottoms; stacked (the .btns row wraps at 360): equal left edges
-     const row=Math.abs(at16.pt-at16.dt)<0.5;
-     if (!(at16.ph===48 && at16.dh===48 && (row ? Math.abs(at16.pb-at16.db)<0.5 : Math.abs(at16.pl-at16.dl)<0.5))) bad.push({w,at16});
+     // Paid by (a designed picker since D0) sits on its own row over Date: ≥44px, same left and right edges as Date
+     const at16=await pg.evaluate(()=>{ const r=id=>document.getElementById(id).getBoundingClientRect(); const p=r('f-paid'), d=r('f-date'); return {ph:p.height,dh:d.height,pl:p.left,dl:d.left,pr:p.right,dr:d.right}; });
+     if (!(at16.ph>=44 && at16.dh===48 && Math.abs(at16.pl-at16.dl)<0.5 && Math.abs(at16.pr-at16.dr)<0.5)) bad.push({w,at16});
      const fit=async ids=>pg.evaluate(ids=>{ const probe=document.createElement('span'); probe.textContent='Ágy'; return ids.map(id=>{ const el=document.getElementById(id), cs=getComputedStyle(el);
        let lh=parseFloat(cs.lineHeight); if (isNaN(lh)) { probe.style.font=cs.font; probe.style.lineHeight='normal'; probe.style.display='inline-block'; document.body.appendChild(probe); lh=probe.getBoundingClientRect().height; probe.remove(); }
        return {id,fs:cs.fontSize,room:el.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom),lh}; }); },ids);
      await pg.addStyleTag({content:'.input{font-size:32px!important}'});
-     for (const f of await fit(['f-desc','f-paid','f-date'])) if (!(f.fs==='32px' && f.room>=f.lh-0.5)) bad.push({w,...f});
+     for (const f of await fit(['f-desc','f-date'])) if (!(f.fs==='32px' && f.room>=f.lh-0.5)) bad.push({w,...f});
      await pg.keyboard.press('Escape'); await pg.waitForTimeout(50); await pg.evaluate(()=>{ dropSheet(); settleSheet(); });
-     for (const f of await fit(['s-from','s-to','s-amt'])) if (!(f.fs==='32px' && f.room>=f.lh-0.5)) bad.push({w,...f});
+     for (const f of await fit(['s-amt'])) if (!(f.fs==='32px' && f.room>=f.lh-0.5)) bad.push({w,...f});
      await c.close(); }
-   ok(bad.length===0,'R2-1: with injected 32px text, #f-desc/#f-paid/#f-date/#s-from/#s-to/#s-amt keep a full line of room; at 16px Paid by and Date are 48px and line up (equal bottoms side by side, equal left edges when stacked; 360, 390) '+JSON.stringify(bad.slice(0,3)));
+   ok(bad.length===0,'R2-1: with injected 32px text, #f-desc/#f-date/#s-amt keep a full line of room; at 16px Date is 48px and the Paid by picker (≥44px) lines up with it (360, 390) '+JSON.stringify(bad.slice(0,3)));
    ok(e.length===0,'no page errors in R2-1 checks '+JSON.stringify(e)); }
  // R2-4 (code wiring, design look): the settle sheet marks the suggestion the form holds; editing away from every row clears it
  { const c=await b.newContext({...devices['Pixel 7']}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.goto(URL);
@@ -994,7 +1050,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(await tag(A.pg)==='Synced' && await A.pg.evaluate(()=>$('#syncTag').dataset.s)==='ok','S6-1: the hero says "Synced"');
    // B (iPhone) opens the link cold, picks Ben, joins
    await B.pg.goto(link); await B.pg.waitForSelector('#s-who');
-   await B.pg.selectOption('#s-who',{label:'Ben'}); await B.pg.getByRole('button',{name:'Join'}).click();
+   await pick(B.pg,'s-who',{label:'Ben'}); await B.pg.getByRole('button',{name:'Join'}).click();
    ok(await B.pg.evaluate(()=>ui.view==='volume' && vol().title==='Beach' && nameOf(vol(),vol().meId)==='Ben' && !/join/.test(location.hash)) && JSON.stringify(await descs(B.pg))==='["Rent"]','S6-2: B joins Beach as Ben from the live link; Rent is there');
    ok(await B.pg.evaluate(r=>JSON.parse(localStorage.getItem('hati2.sync.v1'))[ui.volId].room===r,room),'S6-2: B keeps the room with the volume');
    await B.pg.waitForFunction(()=>$('#syncTag') && $('#syncTag').textContent==='Synced');
@@ -1075,7 +1131,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await B.pg.fill('#s-amt','1.00'); await B.pg.getByRole('button',{name:'Record payment'}).click();
    ok(held && await has(B.pg,'Fuel',5000) && await B.pg.evaluate(()=>vol().settlements.some(s=>s.amount===100)) && await has(A.pg,'Fuel') && await A.pg.waitForFunction(()=>vol().settlements.some(s=>s.amount===100),null,{timeout:5000}).then(()=>true,()=>false),'S6-10: a change that arrives while Settle up is open waits; after Record payment both the payment and Fuel are on both phones');
    // Reduced motion: the status line does not animate
-   const rm=await b.newContext({...devices['iPhone 13'],reducedMotion:'reduce'}); const R=await rm.newPage(); await R.goto(link); await R.waitForSelector('#s-who'); await R.selectOption('#s-who',{label:'Ana'}); await R.getByRole('button',{name:'Join'}).click();
+   const rm=await b.newContext({...devices['iPhone 13'],reducedMotion:'reduce'}); const R=await rm.newPage(); await R.goto(link); await R.waitForSelector('#s-who'); await pick(R,'s-who',{label:'Ana'}); await R.getByRole('button',{name:'Join'}).click();
    await R.waitForFunction(()=>$('#syncTag') && $('#syncTag').textContent==='Synced',null,{timeout:5000}).catch(()=>{});
    const mo=await R.evaluate(()=>{ const t=$('#syncTag'); t.dataset.s=''; paintSync(ui.volId); const n=document.getAnimations().filter(a=>t.contains(a.effect.target)).length; return n; });
    const mn=await A.pg.evaluate(()=>{ const t=$('#syncTag'); t.dataset.s=''; paintSync(ui.volId); const as=document.getAnimations().filter(a=>t.contains(a.effect.target)); return as.map(a=>a.effect.getTiming().duration); });
@@ -1146,7 +1202,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await pg.locator('.vol').first().click({button:'right'}); await pg.locator('[data-act=editVol]').click();
    const rows=await pg.evaluate(()=>[...document.querySelectorAll('#sheetForm .mem-row')].map(r=>({n:r.querySelector('[data-mem]').value,x:!!r.querySelector('[data-drop]')})));
    ok(JSON.stringify(rows)==='[{"n":"Alex","x":false},{"n":"Mira","x":false},{"n":"Rio","x":false},{"n":"Zed","x":true}]','LP-5: Edit lists every member; only Zed (no expenses, not you) can be removed '+JSON.stringify(rows));
-   await pg.fill('#s-title','Bali 2026'); await pg.selectOption('#s-type','event'); await pg.selectOption('#s-cur','€');
+   await pg.fill('#s-title','Bali 2026'); await pick(pg,'s-type','event'); await pick(pg,'s-cur','€');
    await pg.locator('#sheetForm [data-mem]').nth(1).fill('Mira K'); await pg.locator('[data-drop]').click(); await pg.fill('#s-others','Noor, Ola');
    ok(await pg.evaluate(()=>$('.mem-row.drop [data-mem]').disabled && $('[data-drop]').getAttribute('aria-label')==='Keep Zed'),'LP-5: × marks Zed for removal (struck, "Keep Zed" undoes it)');
    await pg.fill('#s-others','Mira K'); await pg.locator('#sheetForm button.primary').click();
@@ -1217,7 +1273,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      await addExp(A.pg,'Cabin','200');
      await A.pg.locator('.acts [data-act=share]').click(); await A.pg.waitForSelector('#s-link',{state:'attached'});
      const link=await A.pg.locator('#s-link').inputValue(), room=link.split('#join=')[1].split('.')[0]; await A.pg.keyboard.press('Escape');
-     await B.pg.goto(link); await B.pg.waitForSelector('#s-who'); await B.pg.selectOption('#s-who',{label:'Ben'}); await B.pg.getByRole('button',{name:'Join'}).click();
+     await B.pg.goto(link); await B.pg.waitForSelector('#s-who'); await pick(B.pg,'s-who',{label:'Ben'}); await B.pg.getByRole('button',{name:'Join'}).click();
      await B.pg.waitForFunction(()=>$('#syncTag') && $('#syncTag').textContent==='Synced',null,{timeout:5000}).catch(()=>{});
      const lakeId=await A.pg.evaluate(()=>ui.volId); await toHub(A.pg); await A.pg.waitForTimeout(400);
      const puts0=mock.puts.length;
@@ -1244,6 +1300,137 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      ok(await A.pg.evaluate(id=>!S.volumes.some(v=>v.id===id),lakeId) && await B.pg.evaluate(()=>vol().expenses.length===4),'LP-10: nor does a reload; the other phone keeps the volume with all 4 expenses');
      const bc=[...A.e,...B.e]; ok(bc.length===0,'LP-10: no page errors '+JSON.stringify(bc)); await A.c.close(); await B.c.close(); }
  }
+ // D0 (owner: pickers use the app's design; hati-design, hati-code, hati-a11y, hati-lazy-check, hati-ios, hati-motion):
+ // the 7 native <select>s are <hati-pick>: a clay segmented row for up to 4 short options, else a clay button that opens
+ // an ink sheet list. Same ids, same values saved.
+ { const e=[]; const mk=async(o={})=>{ const c=await b.newContext({...devices['iPhone 13'],...o}); await c.addInitScript(noSync); const pg=await c.newPage(); pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())}); await pg.goto(URL); return {c,pg}; };
+   const {c,pg}=await mk();
+   // D0-1: no <select> in the shipped page, and none rendered by any screen or sheet that had one
+   const src=await pg.evaluate(()=>fetch(location.href,{cache:'no-store'}).then(r=>r.text()));
+   const seen=await pg.evaluate(()=>{ const n=[]; const v=S.volumes[0]; ui.volId=v.id; go('volume'); openExpense(null); n.push(document.querySelectorAll('select').length);
+     go('volume'); volumeSheet(null); n.push(document.querySelectorAll('select').length); dropSheet(); volumeSheet(v); n.push(document.querySelectorAll('select').length); dropSheet(); settleSheet(null); n.push(document.querySelectorAll('select').length); dropSheet();
+     sheet('<h2>Import</h2><div id="s-pick"></div>'); fillPick($('#s-pick'),JSON.parse(JSON.stringify(v))); n.push(document.querySelectorAll('select, hati-pick#s-mode').length); dropSheet(); return n; });
+   ok(!/<select[\s>]/i.test(src) && seen.slice(0,4).every(x=>x===0) && seen[4]===1,'D0-1: no <select> in the page; expense, volume, settle and import sheets render none '+JSON.stringify(seen));
+   // D0-2: a payer is one tap for 2–4 members (segmented row); 5 members get the button + sheet list
+   const one=[];
+   for (const names of [['Ivy'],['Ivy','Bo'],['Ivy','Bo','Cy']]) {
+     await pg.evaluate(ns=>{ const me=uid(); const v={id:uid(),title:'Pay '+ns.length,type:'household',currency:'₱',meId:me,created:Date.now(),members:[{id:me,name:'Al'},...ns.map(n=>({id:uid(),name:n}))],expenses:[],settlements:[]}; S.volumes.unshift(v); save(); ui.volId=v.id; go('volume'); openExpense(null); },names);
+     await pg.waitForTimeout(80);
+     const mode=await pg.locator('#f-paid').getAttribute('data-mode');
+     await pg.fill('#f-amount','12.50'); await pg.fill('#f-desc','Taxi');
+     const taps=await pick(pg,'f-paid',{label:'Ivy'});
+     const pressed=await pg.evaluate(()=>[...document.querySelectorAll('#f-paid [role=radio]')].map(r=>r.textContent+':'+r.getAttribute('aria-checked')).join(','));
+     await pg.getByRole('button',{name:'Save expense'}).click(); await pg.waitForTimeout(80);
+     const saved=await pg.evaluate(()=>{ const v=vol(), x=v.expenses[0]; return x && nameOf(v,x.paidBy); });
+     one.push({n:names.length+1,mode,taps,pressed,saved}); }
+   ok(one.every(r=>r.mode==='seg' && r.taps===1 && r.saved==='Ivy' && /Ivy:true/.test(r.pressed) && /You:false/.test(r.pressed)),'D0-2: Paid by is a segmented row and Ivy is one tap in volumes of 2, 3 and 4 members; the expense saves paidBy = Ivy '+JSON.stringify(one));
+   await pg.evaluate(()=>{ const me=uid(); const v={id:uid(),title:'Big',type:'other',currency:'$',meId:me,created:Date.now(),members:[{id:me,name:'Al'},...['Ivy','Bo','Cy','Di','Ed'].map(n=>({id:uid(),name:n}))],expenses:[],settlements:[]}; S.volumes.unshift(v); save(); ui.volId=v.id; go('volume'); openExpense(null); });
+   await pg.waitForTimeout(80);
+   const big={mode:await pg.locator('#f-paid').getAttribute('data-mode'),btn:await pg.getByRole('button',{name:'Paid by You'}).count()};
+   await pg.fill('#f-amount','30'); await pg.fill('#f-desc','Pizza'); const bt=await pick(pg,'f-paid',{label:'Ed'}); await pg.getByRole('button',{name:'Save expense'}).click(); await pg.waitForTimeout(80);
+   const bs=await pg.evaluate(()=>nameOf(vol(),vol().expenses[0].paidBy));
+   ok(big.mode==='list' && big.btn===1 && bt===2 && bs==='Ed','D0-2: 6 members (over 4): Paid by is a button named "Paid by You" that opens the sheet list; Ed in 2 taps, saved '+JSON.stringify([big,bt,bs]));
+   // D0-3: keyboard and screen reader. Row: radiogroup named by its label, radios with aria-checked, one tab stop,
+   // arrows move the choice (wrapping), Home/End. Sheet list: button "Currency ¥" (haspopup listbox), Enter opens a dialog
+   // with a listbox named Currency, focus on the chosen option, arrows move focus only, Esc closes and returns focus,
+   // Enter picks and closes; the sheet under it stays open.
+   await pg.evaluate(()=>{ ui.volId=S.volumes.find(v=>/example/.test(v.title)).id; go('volume'); openExpense(null); }); await pg.waitForTimeout(80);
+   const rg=pg.getByRole('radiogroup',{name:'Paid by'});
+   const sem=await pg.evaluate(()=>{ const r=[...document.querySelectorAll('#f-paid [role=radio]')]; return {n:r.length,stops:r.filter(x=>x.tabIndex===0).map(x=>x.textContent),checked:r.filter(x=>x.getAttribute('aria-checked')==='true').map(x=>x.textContent)}; });
+   await rg.getByRole('radio',{name:'You'}).focus(); await pg.keyboard.press('ArrowRight');
+   const k1=await pg.evaluate(()=>({f:document.activeElement.textContent,v:nameOf(vol(),$('#f-paid').value),form:nameOf(vol(),ui.form.paidBy)}));
+   await pg.keyboard.press('ArrowLeft'); await pg.keyboard.press('ArrowLeft'); const k2=await pg.evaluate(()=>document.activeElement.textContent+':'+document.activeElement.getAttribute('aria-checked'));
+   await pg.keyboard.press('Home'); const k3=await pg.evaluate(()=>document.activeElement.textContent);
+   await pg.keyboard.press('End'); const k4=await pg.evaluate(()=>document.activeElement.textContent+':'+[...document.querySelectorAll('#f-paid [role=radio]')].filter(x=>x.tabIndex===0).length);
+   ok(await rg.count()===1 && sem.n===3 && sem.stops.join()==='You' && sem.checked.join()==='You' && k1.f==='Mira' && k1.v==='Mira' && k1.form==='Mira' && k2==='Rio:true' && k3==='You' && k4==='Rio:1','D0-3: Paid by is a radiogroup "Paid by" with one tab stop on the checked radio; arrows move focus and choice (wrapping), Home/End '+JSON.stringify([sem,k1,k2,k3,k4]));
+   await pg.evaluate(()=>{ go('volume'); volumeSheet(vol()); }); await pg.waitForTimeout(250);
+   const cb=pg.getByRole('button',{name:'Currency ¥'});
+   const pop=await cb.getAttribute('aria-haspopup'); await cb.focus(); await pg.keyboard.press('Enter'); await pg.waitForTimeout(250);
+   const dlg=pg.getByRole('dialog',{name:'Currency'}), lb=dlg.getByRole('listbox',{name:'Currency'});
+   const s1=await pg.evaluate(()=>({f:document.activeElement.getAttribute('role')+':'+document.activeElement.textContent+':'+document.activeElement.getAttribute('aria-selected'),n:document.querySelectorAll('#pickLayer [role=option]').length,inert:$('#app').inert&&$('#layer').inert}));
+   const s1v=await lb.count();
+   await pg.keyboard.press('ArrowDown'); const s2=await pg.evaluate(()=>document.activeElement.textContent+':'+$('#s-cur').value);
+   await pg.keyboard.press('Escape'); await pg.waitForTimeout(80);
+   const s3=await pg.evaluate(()=>({gone:!$('#pickLayer'),sheet:sheetOpen(),focus:document.activeElement.classList.contains('pick-btn')&&!!document.activeElement.closest('#s-cur'),v:$('#s-cur').value,layer:$('#layer').inert}));
+   await pg.keyboard.press('Enter'); await pg.waitForTimeout(250); await pg.keyboard.press('End'); await pg.keyboard.press('Enter'); await pg.waitForTimeout(80);
+   const s4=await pg.evaluate(()=>({gone:!$('#pickLayer'),v:$('#s-cur').value,label:document.activeElement.textContent,focus:!!document.activeElement.closest('#s-cur')}));
+   await pg.locator('#s-cur .pick-btn').click(); await pg.waitForTimeout(250); { const top=await pg.evaluate(()=>$('#pickLayer .sheet').getBoundingClientRect().top); await pg.mouse.click(12,top-12); } await pg.waitForTimeout(80);
+   const s5=await pg.evaluate(()=>({gone:!$('#pickLayer'),sheet:sheetOpen(),v:$('#s-cur').value}));
+   // Back (Android) closes only the list: the page under it stays
+   await pg.keyboard.press('Escape'); await pg.waitForTimeout(80);
+   await pg.evaluate(()=>{ ui.volId=S.volumes.find(v=>v.title==='Big').id; go('volume'); openExpense(null); }); await pg.waitForTimeout(150);
+   await pg.locator('#f-paid .pick-btn').click(); await pg.waitForTimeout(250); await pg.goBack(); await pg.waitForTimeout(150);
+   const bk=await pg.evaluate(()=>({gone:!$('#pickLayer'),view:ui.view,inert:$('#app').inert}));
+   ok(bk.gone && bk.view==='expense' && !bk.inert,'D0-3: Back with the Paid by list open closes the list and stays on the expense form '+JSON.stringify(bk));
+   await pg.evaluate(()=>{ ui.volId=S.volumes.find(v=>/example/.test(v.title)).id; go('volume'); volumeSheet(vol()); }); await pg.waitForTimeout(250);
+   ok(pop==='listbox' && s1v===1 && s1.f==='option:¥:true' && s1.n===10 && s1.inert && s2==='Rp:¥' && s3.gone && s3.sheet && s3.focus && s3.v==='¥' && !s3.layer && s4.gone && s4.v==='RM' && s4.label==='RM' && s4.focus && s5.gone && s5.sheet && s5.v==='RM','D0-3: Currency: button with a listbox popup; Enter opens a dialog + listbox "Currency" focused on ¥; arrows move focus only; Esc closes it (not the volume sheet) and returns focus; End + Enter picks RM; a tap outside closes it '+JSON.stringify([pop,s1,s2,s3,s4,s5]));
+   await pg.keyboard.press('Escape'); await pg.waitForTimeout(80);
+   // D0-4: values saved are the same as before: volume type/currency, settle from/to (and a suggestion moves the pickers),
+   // the import mode and "Choose your name" forcing a choice
+   await pg.evaluate(()=>{ go('hub'); volumeSheet(null); }); await pg.waitForTimeout(250);
+   await pg.fill('#s-title','Picker trip'); await pick(pg,'s-type','event'); await pick(pg,'s-cur','€'); await pg.fill('#s-me','Al'); await pg.fill('#s-others','Ivy, Bo');
+   await pg.getByRole('button',{name:'Create'}).click(); await pg.waitForTimeout(150);
+   const nv=await pg.evaluate(()=>({t:vol().type,c:vol().currency,n:vol().members.length}));
+   await pg.evaluate(()=>settleSheet(null)); await pg.waitForTimeout(250);
+   await pick(pg,'s-from',{label:'Ivy'}); await pick(pg,'s-to',{label:'Bo'}); await pg.fill('#s-amt','7.25'); await pg.getByRole('button',{name:'Record payment'}).click(); await pg.waitForTimeout(150);
+   const st=await pg.evaluate(()=>{ const v=vol(), s=v.settlements[0]; return s && [nameOf(v,s.from),nameOf(v,s.to),s.amount].join(); });
+   await pg.evaluate(()=>{ const v=vol(), [a,i,o]=v.members.map(m=>m.id); v.settlements=[]; v.expenses.push({id:'d0x',desc:'Two debts',amount:9000,paidBy:a,category:'food',date:'2026-10-01',splitType:'equal',splits:{[a]:3000,[i]:3000,[o]:3000},inputs:{},note:'',upd:Date.now()}); save(); render(); settleSheet(null); });
+   await pg.waitForTimeout(250); await pg.locator('#sheetForm [data-sugg="1"]').click();
+   const sg=await pg.evaluate(()=>{ const d=debts(vol())[1], ck=id=>[...document.querySelectorAll('#'+id+' [role=radio]')].filter(r=>r.getAttribute('aria-checked')==='true').map(r=>r.dataset.pv).join(); return {ok:$('#s-from').value===d.from && $('#s-to').value===d.to && ck('s-from')===d.from && ck('s-to')===d.to}; });
+   await pg.keyboard.press('Escape'); await pg.waitForTimeout(80);
+   const im=await pg.evaluate(async()=>{ const v=vol(), x=JSON.parse(JSON.stringify(v)); sheet('<h2>Import</h2><div id="s-pick"></div>'); fillPick($('#s-pick'),x);
+     const r={mode:$('#s-mode').value,whoHidden:$('#s-whobox').hidden,labels:$('#s-mode').opts.map(o=>o[1]).join('|'),modeKind:$('#s-mode').dataset.mode}; return r; });
+   await pick(pg,'s-mode','replace'); const im2=await pg.evaluate(()=>({whoHidden:$('#s-whobox').hidden,who:nameOf(vol(),$('#s-who').value),sum:$('#s-sum').textContent}));
+   await pg.keyboard.press('Escape'); await pg.waitForTimeout(80);
+   const im3=await pg.evaluate(()=>{ const x=JSON.parse(JSON.stringify(vol())); x.id=uid(); sheet('<h2>Join</h2><div id="s-pick"></div>'); fillPick($('#s-pick'),x); const p=$('#s-who'); return {v:p.value,checked:p.querySelectorAll('[aria-checked=true]').length,ph:p.dataset.ph,stop:[...p.querySelectorAll('[role=radio]')].filter(r=>r.tabIndex===0).length}; });
+   await pg.keyboard.press('Escape'); await pg.waitForTimeout(80);
+   ok(nv.t==='event' && nv.c==='€' && nv.n===3,'D0-4: New volume with Type Event and Currency € (picked) saves type "event", currency "€" '+JSON.stringify(nv));
+   ok(st==='Ivy,Bo,725','D0-4: Settle up From Ivy To Bo 7.25 saves from/to ids and 725 cents '+st);
+   ok(sg.ok,'D0-4: tapping a suggested payment moves the From and To pickers to it (value and checked radio)');
+   ok(im.mode==='merge' && im.whoHidden && im.labels==='Merge|Replace|Keep both' && im.modeKind==='seg' && !im2.whoHidden && im2.who==='Al' && /Replaces your copy/.test(im2.sum),'D0-4: import of a volume already here: "What to do" is Merge | Replace | Keep both, Merge by default with the member picker hidden; Replace shows it on who you are '+JSON.stringify([im,im2]));
+   ok(im3.v==='' && im3.checked===0 && im3.ph==='Choose your name' && im3.stop===1,'D0-4: a new volume\'s "Which member are you?" starts on no one (one tab stop, nothing checked) '+JSON.stringify(im3));
+   await c.close();
+   // D0-5: every picker in light and dark at 320/360/390: no sideways scroll, ≥44px targets, nothing cut, the row is a
+   // row (no wrap) or became the button; picker text ≥4.5:1 (the list too). Contrast in all 13 palettes at 360.
+   const geo=[], low=[];
+   const probe=()=>{ const parse=c=>{ const m=c.match(/[\d.]+/g); if (!m) return [0,0,0,0]; const n=m.map(Number); if (/^color\(srgb/.test(c)) { n[0]*=255; n[1]*=255; n[2]*=255; } return n; };
+     const lin=v=>{ v/=255; return v<=0.03928?v/12.92:((v+0.055)/1.055)**2.4; }, L=([r,g,b])=>0.2126*lin(r)+0.7152*lin(g)+0.0722*lin(b);
+     const bgOf=el=>{ for (let e=el;e;e=e.parentElement) { const c=parse(getComputedStyle(e).backgroundColor); if (c.length<4||c[3]>0.95) return c; } return parse(getComputedStyle(document.body).backgroundColor); };
+     const out={over:document.scrollingElement.scrollWidth>innerWidth,picks:[],low:[]};
+     const con=el=>{ const a=L(parse(getComputedStyle(el).color)), c2=L(bgOf(el)); return (Math.max(a,c2)+0.05)/(Math.min(a,c2)+0.05); };
+     document.querySelectorAll('hati-pick, #pickLayer').forEach(p=>{ if (!p.getClientRects().length) return;
+       const t=[...p.querySelectorAll('[role=radio], .pick-btn, [role=option]')];
+       const r=p.getBoundingClientRect(); out.picks.push({id:p.id||'list',mode:p.dataset.mode||'list',inView:r.left>=0&&r.right<=innerWidth,small:t.filter(x=>x.getBoundingClientRect().height<44||x.getBoundingClientRect().width<44).length,cut:t.filter(x=>x.matches('[role=radio]')&&x.scrollWidth>x.clientWidth+1).length,rows:new Set(t.filter(x=>x.matches('[role=radio]')).map(x=>Math.round(x.getBoundingClientRect().top))).size});
+       for (const x of t) { const el=x.querySelector('.pv')||x.querySelector('span:not(.ck)')||x; const k=con(el); if (k<4.5) out.low.push({id:p.id||'list',t:x.textContent.trim(),k:+k.toFixed(2)}); } });
+     return out; };
+   const screens=[['expense',()=>{ dropSheet(); ui.volId=S.volumes[0].id; go('volume'); openExpense(null); }],['volume sheet',()=>{ dropSheet(); go('volume'); volumeSheet(vol()); }],['settle',()=>{ dropSheet(); settleSheet(null); }],
+     ['import',()=>{ dropSheet(); const x=JSON.parse(JSON.stringify(vol())); sheet('<h2>Import</h2><div id="s-pick"></div>'); fillPick($('#s-pick'),x); $('#s-mode').choose('replace'); }],
+     ['join',()=>{ dropSheet(); const x=JSON.parse(JSON.stringify(vol())); x.id=uid(); x.members.push({id:'d0long',name:'Maximiliana Wolfeschlegel'}); sheet('<h2>Join</h2><div id="s-pick"></div>'); fillPick($('#s-pick'),x); }]];
+   for (const w of [320,360,390]) for (const mode of ['light','dark']) {
+     const {c:c2,pg:q}=await mk({viewport:{width:w,height:740}});
+     for (const [name,fn] of screens) {
+       await q.evaluate(([m,f])=>{ S.settings.mode=m; applyTheme(); (0,eval)('('+f+')')(); },[mode,fn.toString()]); await q.waitForTimeout(60);
+       const r=await q.evaluate(probe); geo.push({w,mode,name,...r}); low.push(...r.low.map(x=>({w,mode,name,...x})));
+       const btn=await q.$('hati-pick[data-mode=list] .pick-btn'); if (btn) { await btn.click(); await q.waitForTimeout(250); const r2=await q.evaluate(probe); geo.push({w,mode,name:name+' list',...r2}); low.push(...r2.low.map(x=>({w,mode,name:name+' list',...x}))); await q.keyboard.press('Escape'); } }
+     await c2.close(); }
+   const badGeo=geo.filter(g=>g.over||g.picks.some(p=>!p.inView||p.small||p.cut||p.rows>1));
+   ok(badGeo.length===0 && geo.length>=30,'D0-5: all 7 pickers (and the sheet list) at 320/360/390, light and dark: no sideways scroll, in view, targets ≥44px, no cut labels, rows never wrap '+JSON.stringify(badGeo.slice(0,2)));
+   ok(geo.filter(g=>g.w===320&&g.name==='volume sheet').every(g=>g.picks.find(p=>p.id==='s-type').mode==='list') && geo.filter(g=>g.w===390&&g.name==='volume sheet').every(g=>g.picks.find(p=>p.id==='s-type').mode==='seg') && geo.filter(g=>g.name==='join').every(g=>g.picks.find(p=>p.id==='s-who').mode==='list'),'D0-5: a row whose words do not fit becomes the button + list (Type at 320, a long member name), and stays a row where it fits (Type at 390)');
+   { const {c:c3,pg:q}=await mk({viewport:{width:360,height:740}}); const ids=await q.evaluate(()=>PALETTES.map(x=>x.id));
+     for (const id of ids) for (const mode of ['light','dark']) for (const [name,fn] of screens.slice(0,3)) {
+       await q.evaluate(([id,m,f])=>{ S.settings.palette=id; S.settings.mode=m; applyTheme(); (0,eval)('('+f+')')(); },[id,mode,fn.toString()]);
+       const r=await q.evaluate(probe); low.push(...r.low.map(x=>({id,mode,name,...x})));
+       const lb=await q.$('hati-pick[data-mode=list] .pick-btn'); if (!lb) continue;
+       await lb.click(); await q.waitForTimeout(220);
+       const r2=await q.evaluate(probe); low.push(...r2.low.map(x=>({id,mode,name:name+' list',...x}))); await q.keyboard.press('Escape'); }
+     await c3.close(); }
+   ok(low.length===0,'D0-5: picker text (rows, checked and not, buttons, placeholder, list) is ≥4.5:1 in all 13 palettes, light and dark '+JSON.stringify(low.slice(0,4)));
+   // Motion: the list comes up like a sheet (--dur-in, ease-out) and is instant under reduced motion
+   const mo=[]; for (const rm of ['no-preference','reduce']) { const {c:c4,pg:q}=await mk({reducedMotion:rm});
+     await q.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); volumeSheet(vol()); }); await q.waitForTimeout(300); await q.locator('#s-cur .pick-btn').click();
+     mo.push(await q.evaluate(()=>{ const cs=getComputedStyle($('#pickLayer .sheet')); return cs.animationName+' '+cs.animationDuration+' '+cs.animationTimingFunction; })); await c4.close(); }
+   ok(/^sheet-up 0\.2s cubic-bezier\(0\.2, 0\.8, 0\.2, 1\)$/.test(mo[0]) && /^none /.test(mo[1]),'D0-5: the sheet list rises in 200 ms ease-out, nothing under reduced motion '+JSON.stringify(mo));
+   ok(e.length===0,'D0: no page errors '+JSON.stringify(e)); }
  // CAT (hati-design + hati-copy): 12 categories for trips and households, one tap, readable at 320, old ids kept
  { const c=await b.newContext({...devices['iPhone 13']}); await c.addInitScript(noSync); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())});
    await pg.goto(URL);
@@ -1412,5 +1599,50 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
        console.log(`  perf 4x ${label}: input task ${inM} ms (reduced motion ${inB} ms), long tasks during the animation ${JSON.stringify(during)}, frame median ${med(m.map(r=>r.med))} ms, ${med(m.map(r=>r.fps))} fps, slow frames after the first ${m.map(r=>r.slow).join('/')}`);
        ok(worst<=50 && (inM<=50 || inM-inB<=15) && med(m.map(r=>r.med))<=17.5 && med(m.map(r=>r.slow))<=1,`M-perf 4x CPU: ${label}: no long task over 50 ms from the animation (input task ${inM} ms vs ${inB} ms without motion; during ${JSON.stringify(during)}), frames ${med(m.map(r=>r.med))} ms median, ${med(m.map(r=>r.fps))} fps`); } }
  }
+ // D1 Repeat entry: a new expense learns from this volume's past ones (description, category, split; the amount only on its own tap)
+ { const c=await b.newContext({...devices['Pixel 7']}); await c.addInitScript(noSync); const pg=await c.newPage(); const errs=[]; pg.on('pageerror',x=>errs.push(x.message)); pg.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
+   await pg.goto(URL); await pg.waitForSelector('.vol');
+   await pg.evaluate(()=>{ const me='me', iv='ivy1', eq=a=>splitEqual(a,[me,iv]);
+     const E=(id,desc,amt,paid,cat,date,x={})=>({id,desc,amount:amt,paidBy:paid,category:cat,date,splitType:'equal',splits:eq(amt),inputs:{},note:'',upd:1,...x});
+     S.volumes=[{id:'d1vol',title:'Bebe',type:'household',currency:'₱',meId:me,created:1,members:[{id:me,name:'Gery'},{id:iv,name:'Ivy'}],settlements:[],expenses:[
+       E('a','Chowking',31975,iv,'food','2026-10-01'),E('b','Chowking',35235,iv,'food','2026-10-09'),
+       E('c','House of Bagnet',33413,iv,'food','2026-10-03'),E('d','House of Bagnet',33413,iv,'food','2026-10-05'),E('d2','house of bagnet ',33413,iv,'food','2026-10-07'),
+       E('e','Bus',43500,me,'transport','2026-10-02'),
+       E('f','Rent share',1000000,me,'lodging','2026-10-04',{splitType:'shares',splits:splitShares(1000000,{[me]:2,[iv]:1}),inputs:{[me]:'2',[iv]:'1'}}),
+       E('g','Uncle John',60000,me,'food','2026-10-06')]}];
+     commit(); render(); });
+   await pg.locator('.vol').first().click(); await pg.waitForSelector('[data-act=addExpense]'); await pg.waitForTimeout(350);
+   const keys0=await pg.evaluate(()=>Object.keys(S.volumes[0].expenses[0]).sort().join());
+   await pg.locator('[data-act=addExpense]').click(); await pg.waitForSelector('#expForm'); await pg.waitForTimeout(350);                          // tap 1
+   const sug=()=>pg.evaluate(()=>[...document.querySelectorAll('#descSug [data-sug]')].map(b=>b.textContent.trim()));
+   const s0=await sug();
+   ok(JSON.stringify(s0)===JSON.stringify(['house of bagnet','Chowking','Uncle John']) && await pg.locator('#f-amount').inputValue()==='' && await pg.locator('#lastAmt').innerHTML()==='','D1: a new expense offers the 3 most used descriptions of this volume (latest spelling), most used first; the amount stays empty '+JSON.stringify(s0));
+   const box=await pg.evaluate(()=>{ const g=document.getElementById('descSug'), bs=[...g.querySelectorAll('button')]; return {role:g.getAttribute('role'),name:g.getAttribute('aria-label'),h:Math.min(...bs.map(x=>x.getBoundingClientRect().height)),fit:bs.every(x=>x.getBoundingClientRect().right<=innerWidth),tab:bs.every(x=>x.tabIndex===0)}; });
+   ok(box.role==='group' && !!box.name && box.h>=44 && box.fit && box.tab,'D1: the suggestions are real buttons in a named group, at least 44 px tall, inside the screen '+JSON.stringify(box));
+   await pg.locator('#f-desc').fill('cho'); const s1=await sug();
+   ok(JSON.stringify(s1)===JSON.stringify(['Chowking']),'D1: typing narrows the suggestions '+JSON.stringify(s1));
+   await pg.locator('#descSug [data-sug]').first().click();                                                                                          // tap 2
+   const a1=await pg.evaluate(()=>({desc:document.getElementById('f-desc').value,amt:document.getElementById('f-amount').value,cat:document.querySelector('.cat[aria-pressed=true]').dataset.cat,split:document.querySelector('[data-split][aria-pressed=true]').dataset.split,sug:document.querySelectorAll('#descSug [data-sug]').length,last:document.getElementById('lastAmt').textContent.trim(),focus:document.activeElement.id}));
+   ok(a1.desc==='Chowking' && a1.amt==='' && a1.cat==='food' && a1.split==='equal' && a1.sug===0 && /Last time\s*₱352\.35/.test(a1.last) && a1.focus==='f-amount','D1: one tap fills description, category and split, never the amount; "Last time" offers the latest amount and the amount field has focus '+JSON.stringify(a1));
+   await pg.locator('#lastAmt [data-last]').click();
+   const a2=await pg.evaluate(()=>({amt:document.getElementById('f-amount').value,last:document.getElementById('lastAmt').innerHTML}));
+   ok(a2.amt==='352.35' && a2.last==='','D1: the amount is filled only by tapping "Last time", and the hint then goes away '+JSON.stringify(a2));
+   await pg.locator('#f-amount').fill('412.00');
+   ok(/Last time/.test(await pg.locator('#lastAmt').textContent()),'D1: a different amount brings the "Last time" hint back');
+   await pick(pg,'f-paid',{label:'Ivy'});                                                                                                            // tap 3
+   await pg.locator('#expForm button[type=submit]').click(); await pg.waitForSelector('[data-act=addExpense]');                                       // tap 4
+   const saved=await pg.evaluate(()=>{ const v=S.volumes[0], e=v.expenses.find(x=>x.amount===41200); return e&&{desc:e.desc,paid:e.paidBy,cat:e.category,sum:Object.values(e.splits).reduce((a,x)=>a+x,0),keys:Object.keys(e).sort().join(),bal:Object.values(balances(v)).reduce((a,x)=>a+x,0)}; });
+   ok(saved && saved.desc==='Chowking' && saved.paid==='ivy1' && saved.cat==='food' && saved.sum===41200 && saved.keys===keys0 && saved.bal===0,'D1 scenario 16: "Chowking again, Ivy paid" in 4 taps (Add, suggestion, Ivy, Save) plus typing the amount; splits sum to the amount and no new field is stored '+JSON.stringify(saved));
+   await pg.waitForTimeout(350); await pg.locator('[data-act=addExpense]').click(); await pg.waitForSelector('#expForm'); await pg.waitForTimeout(350);
+   await pg.locator('#f-desc').fill('rent'); await pg.locator('#descSug [data-sug]').first().click(); await pg.locator('#f-amount').fill('900.00');
+   const sh=await pg.evaluate(()=>({split:document.querySelector('[data-split][aria-pressed=true]').dataset.split,ins:[...document.querySelectorAll('#splitRows [data-in]')].map(i=>i.value).join()}));
+   await pg.locator('#expForm button[type=submit]').click(); await pg.waitForSelector('[data-act=addExpense]');
+   const shs=await pg.evaluate(()=>{ const e=S.volumes[0].expenses.find(x=>x.amount===90000); return e&&{t:e.splitType,me:e.splits.me,iv:e.splits.ivy1,inputs:JSON.stringify(e.inputs)}; });
+   ok(sh.split==='shares' && sh.ins==='2,1' && shs && shs.t==='shares' && shs.me===60000 && shs.iv===30000,'D1: a shares split carries its weights over and splits the new amount exactly '+JSON.stringify([sh,shs]));
+   await pg.waitForTimeout(350); await pg.evaluate(()=>openExpense(S.volumes[0].expenses.find(x=>x.id==='a'))); await pg.waitForSelector('#expForm');
+   const ed=await pg.evaluate(()=>document.getElementById('descSug').innerHTML+document.getElementById('lastAmt').innerHTML);
+   ok(ed==='','D1: editing an expense shows no suggestions and no "Last time"');
+   ok(errs.length===0,'D1: no page errors '+JSON.stringify(errs)); await c.close(); }
+
  await b.close();
 })();
