@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-HChzU1rtjqNBOLd+2GkDrThmWym9/FyFSxAlAigzIcI='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://hati-sync.gerymefernando.workers.dev wss://hati-sync.gerymefernando.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-L6LfncHHXs2dQ1XRIvq9uVVNecQamIdXVUC5jXFxpBM='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://hati-sync.gerymefernando.workers.dev wss://hati-sync.gerymefernando.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>HATI²</title>
@@ -346,6 +346,11 @@ button.chip:active { background: var(--sunk); }
 .chips.sug .chip svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 #lastAmt:not(:empty) { margin-top: 8px; }
 #lastAmt .chip { padding: 4px 12px; background: var(--panel); }
+/* D9 paste a receipt: a quiet line and, when unclear, up to 3 amounts as the same clay chips */
+#pasteMsg { margin: 8px 0 0; font-weight: 600; }
+#pasteMsg:empty { display: none; }
+#pasteSug:not(:empty) { margin-top: 8px; }
+#pasteSug .chip { padding: 4px 14px; background: var(--panel); }
 /* N5: Today / Yesterday under a date field, pressed = the day it holds (the same inverted fill as the other toggles) */
 .qd { margin-top: 8px; }
 .qd .chip { padding: 4px 14px; }
@@ -660,6 +665,46 @@ function parseMoney(s) {
   if (!/^(\d+(\.\d{0,2})?|\.\d{1,2})$/.test(t)) return NaN;
   return Math.round(parseFloat(t) * 100);
 }
+// ── Paste a receipt (D9): text copied from a receipt photo (Live Text, Google Lens) → integer cents, never a float. ──
+// Pure; web/tests/receipt.js runs its table from the lines between the RECEIPT markers. Returns { cents, label, desc },
+// { candidates: [cents…] (up to 3, largest first), desc }, { big: true } for one amount over MAX_CENTS, or null.
+/*RECEIPT{*/
+const RC_CUR = /₱|\bPHP(?=\s*\d)|\bP(?=\d)/gi;
+const RC_NUM = /(?<![\d.,/:\-A-Za-z])(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{1,2}))?(?![\d%/:\-A-Za-z]|[.,]\d)/g;
+const RC_INCL = /\(?\s*(?:VAT[\s-]*INCL\w*\.?|INCL\w*\.?\s*(?:OF\s+)?VAT)\s*\)?/gi;
+const RC_TOTAL = /\b(GRAND\s*TOTAL|TOTAL\s*AMOUNT\s*DUE|TOTAL\s*AMOUNT|TOTAL\s*DUE|AMOUNT\s*DUE|TOTAL)\b/i;
+const RC_SKIP = /\b(CASH|CHANGE|VAT|VATABLE|SUB\s*-?\s*TOTAL|DISCOUNT|SERVICE\s*CHARGE|TENDERED|QTY|ITEMS?|PCS)\b/i;
+function receiptCents(raw) {
+  const lines = String(raw == null ? "" : raw).slice(0, 20000).replace(/<[^>]*>/g, " ").replace(/[\t\u00a0\u2000-\u200b\u202f\u3000]/g, " ")
+    .split(/\r\n|[\r\n\u2028\u2029]/).map(l => l.replace(/ +/g, " ").trim()).filter(Boolean);
+  // digit strings → cents: whole pesos × 100 + centavos, all integers (10 digits of pesos at most, so always exact)
+  const nums = l => [...l.replace(RC_CUR, " ").matchAll(RC_NUM)].flatMap(m => {
+    const i = m[1].replace(/,/g, ""); if (i.length > 10) return [];
+    const c = Number(i) * 100 + Number((m[2] || "").padEnd(2, "0"));
+    return c > 0 && c <= MAX_CENTS ? [{ c, dec: !!m[2] && m[2].length === 2 }] : [];
+  });
+  const desc = (lines.find(l => /[A-Za-z]{2}/.test(l) && !RC_TOTAL.test(l) && !RC_SKIP.test(l)) || "").slice(0, 100).trim();
+  if (lines.length === 1) { // one amount, with or without ₱ / PHP
+    const m = /^(?:₱|PHP|P)?\s*(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{1,2}))?$/i.exec(lines[0]);
+    if (m) { const i = m[1].replace(/,/g, ""), c = i.length > 10 ? Infinity : Number(i) * 100 + Number((m[2] || "").padEnd(2, "0")); return c > MAX_CENTS ? { big: true } : c > 0 ? { cents: c, label: "", desc: "" } : null; }
+  }
+  let best = null;
+  lines.forEach((l, i) => {
+    const u = l.replace(RC_INCL, " "), k = RC_TOTAL.exec(u);
+    if (!k || RC_SKIP.test(u)) return;
+    let n = nums(u.slice(k.index + k[0].length));
+    if (!n.length && /^[^A-Za-z]*\d[^A-Za-z]*$/.test((lines[i + 1] || "").replace(RC_CUR, ""))) n = nums(lines[i + 1]); // "TOTAL" and its amount on two lines
+    if (!n.length) return;
+    const label = k[1].toUpperCase().replace(/\s+/g, " "), rank = label === "TOTAL" ? 1 : label === "TOTAL AMOUNT" ? 2 : 3;
+    if (!best || rank >= best.rank) best = { rank, cents: n[n.length - 1].c, label };
+  });
+  if (best) return { cents: best.cents, label: best.label, desc };
+  const seen = [...new Set(lines.filter(l => !RC_SKIP.test(l.replace(RC_INCL, " "))).flatMap(nums).filter(x => x.dec).map(x => x.c))];
+  if (!seen.length) return null;
+  if (seen.length === 1) return { cents: seen[0], label: "", desc };
+  return { candidates: seen.sort((a, b) => b - a).slice(0, 3), desc };
+}
+/*}RECEIPT*/
 function parseWeight(s) {
   const t = String(s).trim().replace(",", ".");
   if (!/^\d{1,7}(\.\d+)?$/.test(t)) return NaN;
@@ -1007,7 +1052,7 @@ function debtRow(v, d, tag = "div", extra = "", tail = "") {
 function itemRow(v, it) {
   if (it.k === "e") return expenseRow(v, it.x);
   const s = it.x;
-  return `${txOpen(v, "editSettle", s.id)}<span class="tx-ic" aria-hidden="true">${CAT_ICON.settle}</span><span class="grow"><b class="tx-t">${esc(meName(v, s.from))} paid ${esc(meObj(v, s.to))}</b><span class="muted small tx-m">Payment</span></span><span class="tx-r"><span class="tx-a num">${esc(fmt(s.amount, v.currency))}</span><span class="muted small date">${esc(niceDate(s.date))}</span></span>${txClose(v)}`;
+  return `${txOpen(v, "editSettle", s.id)}<span class="tx-ic" aria-hidden="true">${CAT_ICON.settle}</span><span class="grow"><b class="tx-t">${esc(meName(v, s.from))} paid ${esc(meObj(v, s.to))}</b><span class="muted small tx-m">Payment${s.how ? ` · via ${esc(s.how)}` : ""}</span></span><span class="tx-r"><span class="tx-a num">${esc(fmt(s.amount, v.currency))}</span><span class="muted small date">${esc(niceDate(s.date))}</span></span>${txClose(v)}`;
 }
 function expenseRow(v, e) {
   const c = catOf(e.category), mineShare = e.splits[v.meId] || 0;
@@ -1108,7 +1153,8 @@ const views = {
     return topbar(f.id ? "Edit expense" : "New expense", { back: true, right: `<span class="muted sub ellip">${esc(v.title)}</span>` }) +
       `<form id="expForm" class="stack" novalidate>
       <div class="amount-box"><label for="f-amount" class="legend">Amount</label>
-        <div class="row"><span class="cur" aria-hidden="true">${esc(v.currency)}</span><input id="f-amount" inputmode="decimal" autocomplete="off" placeholder="0.00" value="${esc(f.amount)}"></div><div id="lastAmt"></div></div>
+        <div class="row"><span class="cur" aria-hidden="true">${esc(v.currency)}</span><input id="f-amount" inputmode="decimal" autocomplete="off" placeholder="0.00" value="${esc(f.amount)}"></div><div id="lastAmt"></div>
+        <p class="small" id="pasteMsg" aria-live="polite"></p><div class="chips" id="pasteSug" role="group" aria-label="Amounts in what you pasted"></div></div>
       <div class="field"><label for="f-desc">Description</label><input id="f-desc" class="input" maxlength="100" placeholder="Ramen dinner" autocomplete="off" value="${esc(f.desc)}" aria-describedby="descMsg"><div class="msg" id="descMsg"></div><div class="chips sug" id="descSug" role="group" aria-label="Used before in this volume"></div></div>
       <div class="field">${pickField("f-paid", "Paid by", v.members.map(m => [m.id, meName(v, m.id)]), f.paidBy)}</div>
       <div class="field"><label for="f-date">Date</label><input id="f-date" type="date" class="input" value="${esc(f.date)}">${quickDays(f.date)}</div>
@@ -1245,6 +1291,23 @@ function applyPast(e) {
   const live = $("#status"); live.textContent = ""; setTimeout(() => { live.textContent = `Filled in from ${e.desc}. Enter the amount.`; }, 30);
   const a = $("#f-amount"); if (!f.amount.trim()) a.focus();
 }
+// D9: what a paste found. Nothing changes when nothing was found; the description is filled only while it is empty.
+function pasteReceipt(text) {
+  const f = ui.form, v = vol(), r = receiptCents(text), msg = $("#pasteMsg"), box = $("#pasteSug");
+  box.innerHTML = ""; ui.pasteC = null;
+  if (!r || r.big) { msg.textContent = r ? "That amount is too large." : "No amount found in what you pasted."; return; }
+  if (r.desc && !f.desc.trim()) { f.desc = r.desc; const d = $("#f-desc"); d.value = f.desc; d.removeAttribute("aria-invalid"); $("#descMsg").textContent = ""; }
+  if (!r.candidates) return setPasted(r.cents, r.label);
+  ui.pasteC = r.candidates;
+  box.innerHTML = r.candidates.map((c, i) => `<button type="button" class="chip num" data-pc="${i}">${esc(fmt(c, v.currency))}</button>`).join("");
+  msg.textContent = "Which one is the total?"; refreshSuggest(); saveDraft();
+}
+function setPasted(c, label) {
+  const f = ui.form, v = vol();
+  f.amount = (c / 100).toFixed(2); $("#f-amount").value = f.amount; $("#pasteSug").innerHTML = ""; ui.pasteC = null;
+  $("#pasteMsg").textContent = `From paste: ${label ? label + " " : ""}${fmt(c, v.currency)}`;
+  refreshSplitPreview(); refreshSuggest(); saveDraft();
+}
 function openExpense(e) {
   ui.from = ui.view === "history" ? "history" : "volume";
   ui.form = draftFor(e ? e.id : null) || formFrom(e);
@@ -1260,11 +1323,14 @@ function submitExpense() {
   if (r.error) { refreshSplitPreview(); $("#formMsg").scrollIntoView({ block: "center" }); return; }
   const inputs = f.splitType === "equal" || f.splitType === "exact" ? {} : Object.fromEntries(Object.entries(f.inputs).filter(([k]) => has(r.splits, k)));
   const rec = { id: f.id || uid(), desc: f.desc.trim(), amount: r.amount, paidBy: f.paidBy, category: f.category, date: f.date || today(), splitType: f.splitType, splits: r.splits, inputs, note: f.note.trim(), upd: Date.now() };
-  const i = v.expenses.findIndex(e => e.id === rec.id);
+  const i = v.expenses.findIndex(e => e.id === rec.id), was = i >= 0 ? v.expenses[i] : null;
   if (i >= 0) v.expenses[i] = rec; else v.expenses.push(rec);
   if (!commit()) return;
   if (i < 0) rememberCat(v.id, rec.category);
-  clearDraft(); leave(); toast(i >= 0 ? "Expense updated" : "Expense saved");
+  clearDraft(); leave();
+  // D2: Undo writes the old fields back with a fresh upd (undoSteps)
+  if (was) toast("Expense updated", { undo: () => undoSteps(v.id, [{ list: "expenses", id: rec.id, was, upd: rec.upd }]), ms: 6000 });
+  else toast("Expense saved");
 }
 // A new expense starts on the category last used for a new one in this volume (on this phone; a convenience, not data).
 const LAST_CAT = "hati2.lastCat";
@@ -1559,12 +1625,14 @@ function settleSheet(existing) {
     return;
   }
   const s = existing || ds[0] || { from: v.meId, to: (v.members.find(m => m.id !== v.meId) || {}).id };
-  const people = v.members.map(m => [m.id, meName(v, m.id)]);
+  const people = v.members.map(m => [m.id, meName(v, m.id)]), day0 = existing ? existing.date : today();
   const sugg = !existing && ds.length > 1 ? `<div class="legend">Suggested payments</div><div class="ledger">${ds.map((d, i) => debtRow(v, d, "button", `type="button" data-sugg="${i}" aria-pressed="${i === 0}"`, CHECK)).join("")}</div>` : "";
   sheet(`<h2>${existing ? "Edit payment" : "Settle up"}</h2><div class="stack">${sugg}
     <div class="field">${pickField("s-from", "From", people, s.from)}</div>
     <div class="field">${pickField("s-to", "To", people, s.to)}</div>
     <div class="field"><label for="s-amt">Amount (${esc(v.currency)})</label><input id="s-amt" class="input num" inputmode="decimal" placeholder="0.00" autocomplete="off" value="${s.amount ? (s.amount / 100).toFixed(2) : ""}"></div>
+    <div class="field"><label for="s-date">Date</label><input id="s-date" type="date" class="input" value="${esc(day0)}">${quickDays(day0)}</div>
+    <div class="field"><label for="s-via">How (optional)</label><input id="s-via" class="input" maxlength="40" placeholder="GCash, cash" autocomplete="off" value="${esc((existing && existing.how) || "")}"></div>
     <div class="msg" id="sheetMsg" role="alert"></div>
     ${sheetButtons("Record payment")}
     ${existing ? `<button type="button" class="btn danger block" data-act="deleteSettle" data-id="${esc(existing.id)}">Delete payment</button>` : ""}</div>`,
@@ -1574,9 +1642,14 @@ function settleSheet(existing) {
       if (isNaN(amt)) return sheetMsg("Use numbers like 12.50 (up to 2 decimals).");
       if (!(amt > 0)) return sheetMsg("Enter an amount greater than zero.");
       if (amt > MAX_CENTS) return sheetMsg("That amount is too large.");
-      if (existing) Object.assign(existing, { from, to, amount: amt, upd: Date.now() });
-      else v.settlements.push({ id: uid(), from, to, amount: amt, date: today(), upd: Date.now() });
-      if (!commit()) return; FX.settled = v.id; closeSheet(); render(); toast("Payment recorded");
+      // D2: Undo puts the payment back as it was, or takes a new one away (tombstoned), as a normal write
+      // D3: the day it was paid (Today by default) and how, e.g. GCash; "how" is optional and never touches the money
+      const date = $("#s-date").value || today(), how = $("#s-via").value.trim().slice(0, 40);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return sheetMsg("Pick a date.");
+      const now = Date.now(), step = { list: "settlements", id: existing ? existing.id : uid(), was: existing ? { ...existing } : null, upd: now };
+      const rec = { id: step.id, from, to, amount: amt, date, upd: now, ...(how ? { how } : {}) };
+      if (existing) { delete existing.how; Object.assign(existing, rec); } else v.settlements.push(rec);
+      if (!commit()) return; FX.settled = v.id; closeSheet(); render(); toast("Payment recorded", { undo: () => undoSteps(v.id, [step]), ms: 6000 });
     });
   if (!sugg) return;
   // The chosen suggestion is the row the form still matches; editing From/To/Amount away from every row clears it.
@@ -2162,7 +2235,8 @@ function cleanVolume(x) {
       splitType: ["equal", "exact", "percent", "shares"].includes(e.splitType) ? e.splitType : "exact",
       splits: { ...e.splits }, inputs: Object.fromEntries(Object.entries(e.inputs && typeof e.inputs === "object" ? e.inputs : {}).filter(([k, v]) => x.members.some(m => m.id === k) && typeof v === "string" && v.length <= 20)),
       note: typeof e.note === "string" ? e.note : "", upd: updOf(e.upd) })),
-    settlements: x.settlements.map(t => ({ id: t.id, from: t.from, to: t.to, amount: t.amount, date: t.date, upd: updOf(t.upd) })),
+    // `how` (D3, optional, up to 40 characters) goes last: an older phone drops it, and mergeVolumes compares in this key order
+    settlements: x.settlements.map(t => ({ id: t.id, from: t.from, to: t.to, amount: t.amount, date: t.date, upd: updOf(t.upd), ...(typeof t.how === "string" && t.how.trim() && t.how.length <= 40 ? { how: t.how.trim() } : {}) })),
     deleted: [...new Set((x.deleted || []).filter(i => okId(i)))]
   };
 }
@@ -2189,7 +2263,9 @@ function mergeVolumes(localRaw, incomingRaw) {
   const added = { expense: 0, payment: 0, member: 0 }, updated = { ...added, details: 0 }, removed = { ...added };
   // A phone on an older version reads a category it doesn't know as Other and may send it back with the same edit
   // time; a real change of category always has a newer one, so that copy doesn't overwrite the category here.
-  const same = (x, mine) => sameEntry(x, mine) || (x.upd === mine.upd && x.category === "other" && !!mine.category && mine.category !== "other" && sameEntry({ ...x, category: mine.category }, mine));
+  // Likewise a payment's `how` (D3): an older phone sends it back without one at the same edit time.
+  const same = (x, mine) => sameEntry(x, mine) || (x.upd === mine.upd && x.category === "other" && !!mine.category && mine.category !== "other" && sameEntry({ ...x, category: mine.category }, mine)) ||
+    (x.upd === mine.upd && x.how === undefined && mine.how !== undefined && sameEntry({ ...x, how: mine.how }, mine));
   const union = (a, b, isGone, kind) => {
     const out = new Map(a.map(x => [x.id, x]));
     for (const x of b) {
@@ -2554,7 +2630,7 @@ function bindExpenseForm() {
   const f = ui.form, form = $("#expForm");
   form.addEventListener("input", ev => {
     const t = ev.target;
-    if (t.id === "f-amount") f.amount = t.value;
+    if (t.id === "f-amount") { f.amount = t.value; $("#pasteMsg").textContent = ""; $("#pasteSug").innerHTML = ""; }
     else if (t.id === "f-desc") { f.desc = t.value; if (t.value.trim()) { t.removeAttribute("aria-invalid"); $("#descMsg").textContent = ""; } }
     else if (t.id === "f-note") f.note = t.value;
     if (t.id === "f-desc" || t.id === "f-amount") refreshSuggest();
@@ -2574,7 +2650,17 @@ function bindExpenseForm() {
     }
     refreshSplitPreview(); saveDraft();
   });
+  // D9: receipt text pasted into the amount (a plain number is left to the field). Reads clipboardData in the paste
+  // event only, so iOS asks for no clipboard permission.
+  form.addEventListener("paste", ev => {
+    if (ev.target.id !== "f-amount" || !ev.clipboardData) return;
+    const text = ev.clipboardData.getData("text/plain") || ev.clipboardData.getData("text");
+    if (!text || (text.length < 40 && !isNaN(parseMoney(text)))) return;
+    ev.preventDefault(); pasteReceipt(text);
+  });
   form.addEventListener("click", ev => {
+    const pc = ev.target.closest("[data-pc]");
+    if (pc && ui.pasteC) { setPasted(ui.pasteC[+pc.dataset.pc], ""); $("#f-amount").focus(); return; }
     const c = ev.target.closest("[data-cat]"), s = ev.target.closest("[data-split]"), g = ev.target.closest("[data-sug]");
     if (g && ui.sug && ui.sug[g.dataset.sug]) return applyPast(ui.sug[g.dataset.sug].e);
     if (ev.target.closest("[data-last]") && ui.lastAmt) {
@@ -2662,10 +2748,10 @@ document.addEventListener("click", async ev => {
     case "addMember": if (sheetOpen()) dropSheet(); memberSheet(); break;
     case "addExpense": openExpense(null); break;
     case "editExpense": openExpense(v.expenses.find(e => e.id === el.dataset.id)); break;
-    case "deleteExpense": confirmSheet("Delete expense?", `${ui.form.desc || "This expense"} will be removed and balances recalculated.`, "Delete", () => { v.expenses = v.expenses.filter(e => e.id !== ui.form.id); tombstone(v, ui.form.id); if (!commit()) return; leave(); toast("Expense deleted"); }); break;
+    case "deleteExpense": confirmSheet("Delete expense?", `${ui.form.desc || "This expense"} will be removed and balances recalculated.`, "Delete", () => { const was = v.expenses.find(e => e.id === ui.form.id); v.expenses = v.expenses.filter(e => e.id !== ui.form.id); tombstone(v, ui.form.id); if (!commit()) return; leave(); toast("Expense deleted", was ? { undo: () => undoSteps(v.id, [{ list: "expenses", id: was.id, was, upd: 0 }]), ms: 6000 } : {}); }); break;
     case "settle": settleSheet(null); break;
     case "editSettle": settleSheet(v.settlements.find(s => s.id === el.dataset.id)); break;
-    case "deleteSettle": { const id = el.dataset.id; confirmSheet("Delete payment?", "This payment will be removed and balances recalculated.", "Delete", () => { v.settlements = v.settlements.filter(s => s.id !== id); tombstone(v, id); if (!commit()) return; closeSheet(); render(); toast("Payment deleted"); }); break; }
+    case "deleteSettle": { const id = el.dataset.id; confirmSheet("Delete payment?", "This payment will be removed and balances recalculated.", "Delete", () => { const was = v.settlements.find(s => s.id === id); v.settlements = v.settlements.filter(s => s.id !== id); tombstone(v, id); if (!commit()) return; closeSheet(); render(); toast("Payment deleted", was ? { undo: () => undoSteps(v.id, [{ list: "settlements", id, was, upd: 0 }]), ms: 6000 } : {}); }); break; }
     case "editMember": { const m = v.members.find(x => x.id === el.dataset.id); if (m) editMemberSheet(m); break; }
     case "removeMember": removeMember(el.dataset.id); break;
     case "backup": await downloadBackup(); break;

@@ -24,4 +24,6 @@ trap 'kill $SERVER 2>/dev/null || true; rm -f "docs/app/$E2E" "docs/app/$CON" "d
 if (cd docs/app && URL="http://127.0.0.1:$PORT/" node "$CON") > "$SHOTS/contrast.txt" 2>&1; then echo "PASS text contrast >= 4.5:1 in every palette and theme"; else echo "FAIL text contrast (see $SHOTS/contrast.txt)"; tail -5 "$SHOTS/contrast.txt"; exit 1; fi
 # Data in and out (backup/restore, share code, invite links) on desktop, the Android app and iPhone.
 (cd docs/app && URL="http://127.0.0.1:$PORT/" node "$DIO") | tee "$SHOTS/data-io.txt"
-! grep -q '^FAIL' "$SHOTS/e2e.txt" "$SHOTS/data-io.txt"
+# The paste-a-receipt parser table (D9), plain node.
+node web/tests/receipt.js | tee "$SHOTS/receipt.txt"
+! grep -q '^FAIL' "$SHOTS/e2e.txt" "$SHOTS/data-io.txt" "$SHOTS/receipt.txt"
