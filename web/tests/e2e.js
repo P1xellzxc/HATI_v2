@@ -505,7 +505,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    const CLAY_SET='.btn:not(.quiet):not(.text), .ico, .cat, .seg button, .vol, button.chip:not(.add)';
    for (const id of ids) for (const mode of ['light','dark']) {
      const set=async v=>pg.evaluate(([id,mode,v])=>{ S.settings.palette=id; S.settings.mode=mode; applyTheme(); dropSheet&&dropSheet(); if(v==='expense'){ ui.volId=S.volumes[0].id; ui.view='volume'; openExpense(null); } else { if(v==='volume') ui.volId=S.volumes[0].id; go(v); } },[id,mode,v]);
-     const want=async(sel,clay,tag)=>{ const s=await st(pg,sel); if(!s) { bad.push(`${id}/${mode} ${tag||sel}: missing`); return; } if(clay? !isClay(s) : (/inset/.test(s.boxShadow)||s.borderTopLeftRadius!==(tag==='sheet'?'6px':'3px'))) bad.push(`${id}/${mode} ${tag||sel}: ${s.borderTopWidth} r${s.borderTopLeftRadius} ${s.boxShadow}`); };
+     const want=async(sel,clay,tag)=>{ const s=await st(pg,sel); if(!s) { bad.push(`${id}/${mode} ${tag||sel}: missing`); return; } if(clay? !isClay(s) : (layers(s.boxShadow).some(l=>/inset/.test(l)&&nums(l)[2]>0)||s.borderTopLeftRadius!==(tag==='sheet'?'6px':'3px'))) bad.push(`${id}/${mode} ${tag||sel}: ${s.borderTopWidth} r${s.borderTopLeftRadius} ${s.boxShadow}`); };
      await set('hub'); await want('.vol',true); await want('.topbar [data-act=settings]',true,'hub gear');
      await set('volume'); await want('.btn.primary',true); await want('.ico',true); await want('button.chip:not(.add)',true); await want('.ledger',false); await want('.hero',false);
      await want('.chip.add',false,'chip.add (flat, 3px)');
@@ -516,7 +516,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); volMenuSheet(); }); await want('.sheet',false,'sheet');
      const grad=await pg.evaluate(sel=>[...document.querySelectorAll(sel)].filter(x=>getComputedStyle(x).backgroundImage!=='none').map(x=>x.className),CLAY_SET); if(grad.length) bad.push(`${id}/${mode} gradient on clay: ${grad}`);
      await pg.evaluate(()=>dropSheet()); }
-   ok(bad.length===0,'clay: clay set has 2px ink, 6-10px corners, inset light/shade and a 0-blur offset; reading surfaces stay flat 3px; no gradients; .pal and .chip.add flat, in 13 palettes x light/dark '+JSON.stringify(bad.slice(0,4)));
+   ok(bad.length===0,'clay: clay set has 2px ink, 6-10px corners, inset light/shade and a 0-blur offset; reading surfaces stay 3px with no clay shading (frosted light lines are 0-blur); no gradients on clay; .pal and .chip.add flat, in 13 palettes x light/dark '+JSON.stringify(bad.slice(0,4)));
    // Disabled clay is flat
    await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); go('hub'); $('#app').insertAdjacentHTML('beforeend','<button class="btn primary" id="__dis" disabled>x</button>'); });
    ok((await st(pg,'#__dis')).boxShadow==='none','clay: a disabled .btn has no shadow at all');
@@ -526,7 +526,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    for (const [sel,view] of [['.btn.primary','volume'],['.vol','hub']]) {
      await pg.evaluate(v=>{ ui.volId=S.volumes[0].id; go(v); },view);
      const {rest,held}=await press(pg,sel); const m=/matrix\(1, 0, 0, 1, ([\d.]+), ([\d.]+)\)/.exec(held.transform)||[];
-     { const lift=nums(offLayer(rest.boxShadow))[0]; ok(+m[1]===lift && +m[2]===lift && lift===(sel===".vol"?5:3) && nums(offLayer(held.boxShadow)).slice(0,3).every(x=>x===0) && shade(held.boxShadow)>shade(rest.boxShadow),`clay: held ${sel} moves exactly onto its ${lift}px slab (controls 3, cards 5), loses its offset and its inner shade grows (${held.transform}; ${held.boxShadow})`); } }
+     { const lift=nums(offLayer(rest.boxShadow))[0]; ok(+m[1]===lift && +m[2]===lift && lift===3 && nums(offLayer(held.boxShadow)).slice(0,3).every(x=>x===0) && shade(held.boxShadow)>shade(rest.boxShadow),`clay: held ${sel} moves exactly onto its ${lift}px slab (controls 3, volume cards are inner cards: 3), loses its offset and its inner shade grows (${held.transform}; ${held.boxShadow})`); } }
    { const rc=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780},reducedMotion:'reduce'}); const R=await rc.newPage(); await R.goto(URL);
      for (const [sel,view] of [['.btn.primary','volume'],['.vol','hub']]) {
        await R.evaluate(v=>{ ui.volId=S.volumes[0].id; go(v); },view);
@@ -604,9 +604,10 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
        const tb=getComputedStyle($('.topbar')), ta=getComputedStyle($('.topbar'),'::after');
        out.head=[tb.borderBottomWidth, getComputedStyle($('.vol')).borderTopWidth, ta.content, ta.height, ta.position, /radial-gradient/.test(ta.backgroundImage), /(\/ 0\.[0-9]+\)|rgba\([^)]*, 0\.[0-9]+\))/.test(tb.backgroundColor), tb.boxShadow, tb.filter, tb.backdropFilter];
        ui.volId=S.volumes[0].id; go('volume');
-       out.btn=off($('.btn.primary')); out.ico=off($('.topbar .ico')); out.chip=off($('button.chip:not(.add)')); out.ledger=off($('#app .ledger'));
+       out.sect=off($('#app .sect')); out.btn=off($('.btn.primary')); out.ico=off($('.topbar .ico')); out.chip=off($('button.chip:not(.add)')); out.ledger=off($('#app .ledger'));
        const h=$('.hero'), hs=getComputedStyle(h), ha=getComputedStyle(h,'::after');
-       out.hero=[hs.boxShadow, hs.marginBottom, ha.top, ha.left, ha.right, ha.bottom, ha.borderTopWidth, /radial-gradient/.test(ha.backgroundImage), /8px/.test(ha.clipPath), (hs.backgroundImage.match(/radial-gradient/g)||[]).length, /linear-gradient|conic/.test(hs.backgroundImage), hs.maskImage||hs.webkitMaskImage];
+       const z=l=>(l.replace(/(rgba?|color)\([^)]*\)/g,'').match(/-?[\d.]+px/g)||[]).map(parseFloat);
+       out.hero=[lay(hs.boxShadow).every(l=>/inset/.test(l)&&z(l)[2]===0)?'none':hs.boxShadow, hs.marginBottom, ha.top, ha.left, ha.right, ha.bottom, ha.borderTopWidth, /radial-gradient/.test(ha.backgroundImage), /8px/.test(ha.clipPath), (hs.backgroundImage.match(/radial-gradient/g)||[]).length, (hs.backgroundImage.match(/linear-gradient/g)||[]).length>1||/conic/.test(hs.backgroundImage), hs.maskImage||hs.webkitMaskImage];
        // the heavy end of the ramp (the 5 columns with dots over 1.2px: the right 30px of the padding box) holds no text
        const hr=h.getBoundingClientRect(), heavyL=hr.right-2-30; out.heavy=[...h.querySelectorAll('*')].filter(x=>[...x.childNodes].some(n=>n.nodeType===3&&n.textContent.trim())).map(x=>{ const g=document.createRange(); g.selectNodeContents(x); return g.getBoundingClientRect().right; }).filter(x=>x>heavyL).length;
        out.rows=[...document.querySelectorAll('#app .ledger, #app .ledger > *, #app .tx, #app .debt')].reduce((a,x)=>a+blurs(x),0);
@@ -615,14 +616,15 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
        return out; },[id,mode]);
      const why=[];
      for (const k of ['gear','btn','ico','chip','cat','seg']) if (r[k]!=='3/3/0') why.push(`${k} ${r[k]}`);
-     for (const k of ['vol','ledger','panel']) if (r[k]!=='5/5/0') why.push(`${k} ${r[k]}`);
+     for (const k of ['vol','ledger','panel']) if (r[k]!=='3/3/0') why.push(`${k} ${r[k]}`);
+     if (r.sect!=='5/5/0') why.push(`sect ${r.sect}`);
      const H=r.hero; if (H[0]!=='none'||H[1]!=='8px'||H[2]!=='6px'||H[3]!=='6px'||H[4]!=='-10px'||H[5]!=='-10px'||H[6]!=='2px'||!H[7]||!H[8]||H[9]!==9||H[10]||(H[11]&&H[11]!=='none')) why.push('hero '+JSON.stringify(H));
      if (r.heavy) why.push(`${r.heavy} text runs reach the heavy end`);
      if (r.strip[0]!==4||!r.strip[1]||r.strip[2]) why.push('card strip '+JSON.stringify(r.strip));
      if (why.length) bad.push(`${id}/${mode}: ${why.join(', ')}`);
      const T=r.head; if (T[0]!=='2px'||T[1]!=='2px'||T[2]!=='""'||T[3]!=='10px'||T[4]!=='absolute'||!T[5]||!T[6]||!/0px 3px 0px/.test(T[7])||/\d+px \d+px [1-9]/.test(T[7].replace(/inset[^,]*/g,''))||T[8]!=='none'||T[9]!=='none') band.push(`${id}/${mode} ${JSON.stringify(T)}`);
      if (r.rows||r.filters) flat.push(`${id}/${mode} rows with blur ${r.rows}, filters ${r.filters}`); }
-   ok(bad.length===0,'DEPTH: offsets by rank — controls 3px (gear, primary, icon, chip, category, segmented), cards and page panels 5px (volume card, ledger, panel), hero 8px dotted slab (pseudo-element, 8px margin under it, 9-column dot ramp, no gradient fade or mask), heavy ramp end free of text, card shade is an L (right and bottom), all 0-blur, 13 palettes x light/dark '+JSON.stringify(bad.slice(0,3)));
+   ok(bad.length===0,'DEPTH: offsets by rank — controls 3px (gear, primary, icon, chip, category, segmented), section cards 5px, inner cards 3px (volume card, ledger, panel), hero 8px dotted slab (frosted: 0-blur light lines, one sheen) (pseudo-element, 8px margin under it, 9-column dot ramp, no gradient fade or mask), heavy ramp end free of text, card shade is an L (right and bottom), all 0-blur, 13 palettes x light/dark '+JSON.stringify(bad.slice(0,3)));
    ok(band.length===0,'DEPTH: header is manga acetate in both themes — translucent cel (alpha < 1), 2px ink edge, a 3px 0-blur slab, a second dotted cel (10px) behind it, no filter or backdrop-filter, 13 palettes x light/dark '+JSON.stringify(band.slice(0,3)));
    ok(flat.length===0,'DEPTH: paint cost — no blurred box-shadow on ledgers or list rows and no filter/backdrop-filter anywhere in the volume page, 13 palettes x light/dark '+JSON.stringify(flat.slice(0,3)));
    // The header is static: scrolling a long history changes neither its edge, its band nor where they are drawn
@@ -650,10 +652,11 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      await pg.evaluate(([mode,name])=>{ S.settings.palette='classic'; S.settings.mode=mode; applyTheme(); dropSheet(); document.querySelectorAll('.toast').forEach(n=>n.remove()); },[mode,name]);
      await pg.evaluate(`(${open.toString()})()`);
      const r=await pg.evaluate(()=>{ const lay=s=>s==='none'?[]:s.split(/,(?![^(]*\))/).map(x=>x.trim()), num=l=>(l.replace(/(rgba?|color)\([^)]*\)/g,'').match(/-?[\d.]+px/g)||[]).map(parseFloat);
-       const cards=[...document.querySelectorAll('#app :is(.panel, .ledger, .vol, .amount-box), .sheet :is(.panel, .ledger, .share-sum), .toast')].filter(x=>x.getClientRects().length);
+       const cards=[...document.querySelectorAll('#app :is(.sect, .panel, .ledger, .vol, .amount-box), .sheet :is(.panel, .ledger, .share-sum), .toast')].filter(x=>x.getClientRects().length);
        const flat=cards.filter(x=>{ const o=lay(getComputedStyle(x).boxShadow).filter(l=>!/inset/.test(l)).map(num); return !o.some(n=>(n[0]>0||n[1]>0)&&!n[2]); }).map(x=>x.className);
        const blurred=[...document.querySelectorAll('*')].flatMap(x=>[null,'::before','::after'].map(pe=>{ const s=getComputedStyle(x,pe); const o=lay(s.boxShadow).filter(l=>!/inset/.test(l)).some(l=>num(l)[2]>0);
-         return s.filter!=='none'||s.backdropFilter!=='none'||o||(s.textShadow!=='none')?x.className+(pe||''):null; })).filter(Boolean);
+         const dof=!pe&&x.id==='app'&&x.inert&&/^blur\(([0-2](\.\d+)?|3)px\)$/.test(s.filter);
+         return (s.filter!=='none'&&!dof)||s.backdropFilter!=='none'||o||(s.textShadow!=='none')?(x.id||x.className)+(pe||''):null; })).filter(Boolean);
        return {n:cards.length,flat,blurred}; });
      if (!r.n||r.flat.length) bad.push(`${mode}/${name}: ${r.n} cards, flat: ${r.flat.slice(0,3)}`);
      if (r.blurred.length) blur.push(`${mode}/${name}: ${r.blurred.slice(0,3)}`); }

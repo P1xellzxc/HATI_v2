@@ -33,6 +33,17 @@
   --cel-dot: color-mix(in srgb, var(--ink-l) 26%, transparent);
   --glint: var(--paper-l); --bevel: color-mix(in srgb, var(--ink-l) 30%, transparent);
   --cel-sub: color-mix(in srgb, var(--fg) 72%, var(--b2));
+  /* Frosted cards on plain paper (owner 2026-11-11): a glass body tinted from the same second swatch, printed at 90%
+     (nothing behind it to blur, so no backdrop-filter), a sheen kept inside the card, a light line under the top ink
+     edge, a light rim and a shade line at the foot. --sub-f: grey words on the tint, a step toward ink (measured ≥5:1
+     in 13 plates x 2 themes, top of the sheen included). --haze: the section's own marks, softer than inner cards. */
+  --frost: color-mix(in srgb, color-mix(in srgb, var(--b2) 10%, var(--panel)) 90%, transparent);
+  --sheen: color-mix(in srgb, var(--paper-l) 60%, transparent);
+  --frost-hi: color-mix(in srgb, var(--paper-l) 90%, transparent);
+  --frost-rim: color-mix(in srgb, var(--paper-l) 65%, transparent);
+  --frost-lo: color-mix(in srgb, var(--ink-l) 8%, transparent);
+  --sub-f: color-mix(in srgb, var(--sub) 80%, var(--fg));
+  --haze: color-mix(in srgb, var(--rule) 50%, transparent);
   /* Strip under the iOS status bar: black-translucent draws white clock text, so it stays dark in every theme (an ink band). */
   --sbar: var(--ink-l);
 
@@ -91,6 +102,12 @@
   --cel-dot: color-mix(in srgb, var(--fg) 24%, transparent);
   --glint: color-mix(in srgb, var(--fg) 60%, transparent); --bevel: color-mix(in srgb, #000 50%, transparent);
   --cel-sub: color-mix(in srgb, var(--fg) 80%, var(--bg));
+  /* frosted cards at night: a 6% tint, a faint chalk sheen (5%: more would lift the text's ground), chalk light lines */
+  --frost: color-mix(in srgb, color-mix(in srgb, var(--b2) 6%, var(--panel)) 90%, transparent);
+  --sheen: color-mix(in srgb, var(--fg) 5%, transparent);
+  --frost-hi: color-mix(in srgb, var(--fg) 16%, transparent);
+  --frost-rim: color-mix(in srgb, var(--fg) 8%, transparent);
+  --frost-lo: color-mix(in srgb, #000 35%, transparent);
   --clay-hi: color-mix(in srgb, var(--fg) 10%, transparent); --clay-lo: color-mix(in srgb, #000 45%, transparent);
   --clay-sel: color-mix(in srgb, var(--bg) 10%, transparent);
   color-scheme: dark;
@@ -157,6 +174,30 @@ section { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
 /* Card rank (5px slab, never clay shading: reading surfaces stay flat paper) on every card-like block: page panels and
    ledgers, the expense form's amount box, and the ledgers, panels and summaries inside sheets (owner 2026-11-11: no flat sheets). */
 #app :is(.panel, .ledger, .amount-box), .sheet :is(.panel, .ledger, .share-sum) { box-shadow: var(--off-card) var(--off-card) 0 var(--off); }
+/* Section cards with inner cards (owner 2026-11-11): each screen groups its content into big frosted section cards
+   (5px slab); what sits inside (ledgers, panels, volume cards, the amount box) is an inner card: solid, lighter fill,
+   the same top light, the control slab (3px), so nesting reads front to back. Every light and shade line is 0-blur;
+   the soft part is the sheen, a gradient that never leaves the card. */
+.sect { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 12px; min-width: 0; border: 2px solid var(--rule); border-radius: var(--r);
+  --sub: var(--sub-f);
+  background: linear-gradient(to bottom, var(--sheen), transparent 40px), var(--frost);
+  box-shadow: inset 0 2px 0 var(--frost-hi), inset 0 -2px 0 var(--frost-lo), inset 0 0 0 1px var(--frost-rim), var(--off-card) var(--off-card) 0 var(--off); }
+#app .sect :is(.panel, .ledger, .amount-box) { box-shadow: inset 0 2px 0 var(--frost-hi), var(--off-ctl) var(--off-ctl) 0 var(--off); }
+.sect .vol { --c-lift: var(--off-ctl); }
+.sect .arch-box, .sect .arch-box > summary { margin-top: 0; margin-bottom: 0; }
+#app > .sect { margin-top: 12px; }
+.sect .pad { padding: 12px; }
+/* Divider strip between groups (manga, not a grey hairline): the label, then an ink rule with a screentone band
+   hanging from it (heavy dots under the rule, light ones below). Hazed: the section's marks sit behind the inner cards. */
+.strip { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+.strip > .label { margin: 0; flex: 0 1 auto; min-width: 0; }
+.strip > :not(.label) { order: 2; flex: none; }
+.strip::after { content: ""; order: 1; flex: 1 1 24px; min-width: 24px; height: 10px; border-top: 2px solid var(--haze);
+  background: radial-gradient(circle, var(--haze) 1px, transparent 1.4px) 0 0 / 4px 4px repeat-x,
+    radial-gradient(circle, var(--haze) .7px, transparent 1.1px) 2px 4px / 4px 4px repeat-x; }
+/* Inside a section card the category grid is 24px narrower: 68px tiles keep 4 across from 360px (3 at 320) */
+.sect .cats { grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); }
+.sect .cat { padding-inline: 2px; }
 .pad { padding: 14px; }
 .label { margin: 18px 0 2px; font: 400 1.05rem/1.2 var(--font-disp); letter-spacing: .02em; color: var(--fg); }
 section > .label, section > .row > .label { margin-top: 6px; }
@@ -250,7 +291,9 @@ section > .label, section > .row > .label { margin-top: 6px; }
    ramp, fine dots to heavy ones toward the right edge, one column of dots per layer (no mask, no fade). Nine columns, 54px:
    the panel's right padding is 32px, so text only ever meets the light columns (dots ≤1.05px), never the heavy 30px. */
 .hero { position: relative; padding: 16px 32px 14px 16px; border: 2px solid var(--rule); border-radius: var(--r); --t: var(--tone);
-  background:
+  /* frosted like the cards (owner 2026-11-11): the sheen over its top, a light line and rim inside the ink, all 0-blur */
+  box-shadow: inset 0 2px 0 var(--frost-hi), inset 0 0 0 1px var(--frost-rim);
+  background: linear-gradient(to bottom, var(--sheen), transparent 40px),
     radial-gradient(circle, var(--t) 2.4px, transparent 2.8px) right 0 top 0 / 6px 6px repeat-y,
     radial-gradient(circle, var(--t) 2.1px, transparent 2.5px) right 6px top 0 / 6px 6px repeat-y,
     radial-gradient(circle, var(--t) 1.8px, transparent 2.2px) right 12px top 0 / 6px 6px repeat-y,
@@ -323,7 +366,7 @@ button.tx:active, button.debt:active { background: var(--sunk); }
 /* A long history lays out and paints only the rows near the screen. The first 32 are always drawn: that reaches past
    the browser's look-ahead margin, so the first frame of the wipe never has to lay out rows that just came into range.
    A focused row is drawn whole so its focus ring isn't clipped. Rows keep their last measured height once seen. */
-.ledger.hist > :nth-child(n+33):not(:focus-within) { content-visibility: auto; contain-intrinsic-size: auto 64px; }
+.ledger.hist > .cv:not(:focus-within) { content-visibility: auto; contain-intrinsic-size: auto 64px; } /* .cv: 33rd row on, across the month cards */
 .tx-t { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 .tx-m { display: block; overflow-wrap: anywhere; }
 .tx-r { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; align-self: stretch; justify-content: space-between; }
@@ -394,7 +437,7 @@ hati-pick { display: block; min-width: 0; }
 .split-in { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
 .msg { font-size: .9rem; font-weight: 600; color: var(--err); min-height: 1.2em; }
 .msg.ok { color: var(--pos); }
-.stack > .msg:empty, .stack > [aria-live]:empty, .stack > #s-pick:empty { min-height: 0; margin-top: -12px; }
+.stack > .msg:empty, .stack > [aria-live]:empty, .stack > #s-pick:empty, .sect > [aria-live]:empty { min-height: 0; margin-top: -12px; }
 .field > .msg:empty { min-height: 0; margin-top: -6px; }
 
 /* Sheet */
@@ -408,7 +451,9 @@ hati-pick { display: block; min-width: 0; }
 :host .scrim::before { display: none; }
 .sheet {
   width: 100%; max-width: 520px; max-height: min(88%, var(--vvh, 100dvh)); overflow: auto; overscroll-behavior: contain;
-  border-radius: 6px 6px 0 0; border: 2px solid var(--rule); border-top-width: 3px; border-bottom: none; background: var(--sheet);
+  border-radius: 6px 6px 0 0; border: 2px solid var(--rule); border-top-width: 3px; border-bottom: none;
+  /* frosted top (owner 2026-11-11): the sheen and a light line under the ink edge; the body stays opaque (text on it) */
+  background: linear-gradient(to bottom, var(--sheen), transparent 48px) var(--sheet); box-shadow: inset 0 2px 0 var(--frost-hi);
   padding: 16px max(16px, env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
 }
 .sheet h2 { margin: 0 0 12px; font: 400 1.35rem var(--font-disp); letter-spacing: .02em; }
@@ -450,6 +495,18 @@ hati-pick { display: block; min-width: 0; }
 :is(.btn, .ico, .cat, .vol, button.chip:not(.add)):focus-visible { box-shadow: var(--clay), 0 0 0 6px var(--accent); }
 :root .cat[aria-pressed="true"]:focus-visible { box-shadow: inset 0 0 0 2px var(--sel-edge), var(--clay), 0 0 0 6px var(--accent); }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } .btn:active, .ico:active, .cat:active, .vol:active, button.chip:active { transform: none !important; } }
+/* Depth of field (owner 2026-11-11): while a sheet, picker list, long-press menu or dialog is open, the page behind it
+   (#app, inert meanwhile) steps back: dimmed, scaled to .97 round the middle of the screen (--dof-y, set when it turns
+   inert) and blurred 2px. The blur is set once, never animated, and never scrolls: the root stops scrolling while #app
+   is inert. The open layer lives outside #app, so it stays sharp. Low-end phones (:root.lowfx, ≤4 cores or ≤2 GB) get
+   scale and dim only; reduced motion gets the dim only. */
+:root:has(> body > #app[inert]) { overflow: hidden; }
+#app[inert] { opacity: .85; }
+@media (prefers-reduced-motion: no-preference) {
+  #app { transition: transform var(--dur-in) var(--ease-out), opacity var(--dur-in) var(--ease-out); }
+  #app[inert] { transform: scale(.97); transform-origin: 50% var(--dof-y, 50vh); }
+  :root:not(.lowfx) #app[inert] { filter: blur(2px); }
+}
 
 /* Motion (hati-motion with hati-design): manga ink, not app-store bounce. Only transform and opacity move, plus
    clip-path on two small things (the toast and the sync words). Every animation is inside no-preference, and JS makes
@@ -965,6 +1022,20 @@ function expenseRow(v, e) {
     <span class="grow"><b class="tx-t">${esc(e.desc)}</b><span class="muted small tx-m">${esc(meName(v, e.paidBy))} paid ${esc(fmt(e.amount, v.currency))}</span></span>
     <span class="tx-r"><span class="tx-a num" style="color:${effect > 0 ? "var(--pos)" : effect < 0 ? "var(--neg)" : "var(--sub)"}">${effect === 0 ? "—" : esc(signed(effect, v.currency))}</span><span class="muted small date">${esc(niceDate(e.date))}</span></span>${txClose(v)}`;
 }
+// History as one section card per month (owner 2026-11-11), newest first, each with its own ledger. Rows keep their
+// place in the whole list: the first 12 ink in (.lead) and rows after the 32nd are drawn only near the screen (.cv).
+const MONTH = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" });
+function histMonths(v, rows, sel) {
+  const groups = [];
+  rows.forEach((it, i) => {
+    const k = /^\d{4}-\d{2}/.test(it.d) ? it.d.slice(0, 7) : "";
+    let g = groups[groups.length - 1]; if (!g || g.k !== k) groups.push(g = { k, html: [] });
+    const cls = i < 12 ? "tx lead" : i >= 32 ? "tx cv" : "tx";
+    g.html.push(itemRow(v, it).replace('class="tx"', `class="${cls}"`));
+  });
+  return groups.map(g => `<section class="sect month"><div class="strip"><h2 class="label">${g.k ? MONTH.format(new Date(+g.k.slice(0, 4), +g.k.slice(5) - 1, 1)) : "Other dates"}</h2></div>
+    <div class="ledger hist${sel ? " selecting" : ""}">${g.html.join("")}</div></section>`).join("");
+}
 const emptyCard = (kao, text) => `<div class="panel empty"><div class="kao" aria-hidden="true">${kao}</div><div class="muted small">${text}</div></div>`;
 
 const views = {
@@ -986,9 +1057,9 @@ const views = {
     const live = S.volumes.filter(v => !v.archived), arch = S.volumes.filter(v => v.archived);
     return topbar("HATI²", { right: `<button class="btn quiet" data-act="import">${I.import} Import</button><button class="ico" data-act="settings" aria-label="Settings">${I.gear}</button>` }) +
       `<p class="tagline">Split trip and home costs with your group.</p>${iosHint()}
-      <h2 class="label">Your volumes</h2><div class="stack">${live.map(card).join("")}
+      <section class="sect"><div class="strip"><h2 class="label">Your volumes</h2></div><div class="stack">${live.map(card).join("")}
       <button class="dashed" data-act="newVolume"><span class="logo" aria-hidden="true">${I.plus}</span><span><b>New volume</b><span class="muted small">One for each trip or group</span></span></button></div>
-      ${arch.length ? `<details class="arch-box" id="archBox"${ui.archOpen ? " open" : ""}><summary class="label">Archived (${arch.length})</summary><div class="stack">${arch.map(card).join("")}</div></details>` : ""}
+      ${arch.length ? `<details class="arch-box" id="archBox"${ui.archOpen ? " open" : ""}><summary class="label">Archived (${arch.length})</summary><div class="stack">${arch.map(card).join("")}</div></details>` : ""}</section>
       <p id="volTip" hidden>Press and hold, right-click or press Shift+F10 for Edit, Archive and Delete.</p><p id="archTip" hidden>Press and hold, right-click or press Shift+F10 to unarchive or delete.</p>`;
   },
 
@@ -1007,6 +1078,7 @@ const views = {
     const hist = items.length ? `<button class="ico" data-act="history" aria-label="History">${I.clock}</button>` : "";
     return topbar(v.title, { back: true, right: `${hist}<button class="ico" data-act="volMenu" aria-label="Volume options">${I.dots}</button>` }) +
       `<div class="stack">
+      <section class="sect"><div class="strip"><h2 class="label">Balance</h2></div>
       <section class="hero${done ? " done" : ""}" aria-label="Your balance" style="margin:0 0 8px">
         <div class="meta"><span class="vno">Vol. ${volNo(v)} · </span>${t[1]} · ${plural(v.members.length, "member")} · <span class="money">${esc(fmt(tot, v.currency))} spent</span></div>
         <div class="k ${cls}${settled ? " settled" : ""}${done && settled ? " stamped" : ""}">${settled ? "You're all settled" : mine > 0 ? "You are owed" : "You owe"}</div>
@@ -1020,14 +1092,14 @@ const views = {
         <button class="btn" data-act="share" aria-label="Share volume">${I.share} Share</button>
       </div>`}
       ${v.members.length < 2 && !v.archived ? `<div class="panel pad row between"><span class="small">You're the only member so far.</span><button class="btn quiet" data-act="addMember">Add someone</button></div>` : ""}
-      <section><h2 class="label">Members</h2><div class="chips">
+      <div class="strip"><h2 class="label">Members</h2></div><div class="chips">
         ${v.members.map(m => memberChip(v, m, b[m.id] || 0)).join("")}
         ${v.archived ? "" : `<button class="chip add" data-act="addMember">+ Add</button>`}</div></section>
-      <section><h2 class="label">Who pays whom <span class="muted small" style="font-family:var(--font-body)">${S.settings.strategy === "pairwise" ? "pairwise" : "fewest payments"}</span></h2>
+      <section class="sect"><div class="strip"><h2 class="label">Who pays whom <span class="muted small" style="font-family:var(--font-body)">${S.settings.strategy === "pairwise" ? "pairwise" : "fewest payments"}</span></h2></div>
         ${ds.length ? `<div class="ledger">${ds.map(d => debtRow(v, d)).join("")}</div>` : emptyCard("(＾▽＾)", "Nobody owes anything.")}</section>
-      <section><div class="row between"><h2 class="label">Recent</h2>${items.length > 4 ? `<button class="btn quiet" data-act="history">${I.list} See all ${items.length}</button>` : ""}</div>
+      <section class="sect"><div class="strip"><h2 class="label">Recent</h2>${items.length > 4 ? `<button class="btn quiet" data-act="history">${I.list} See all ${items.length}</button>` : ""}</div>
         ${items.length ? `<div class="ledger">${items.slice(0, 4).map(it => itemRow(v, it)).join("")}</div>` : emptyCard("(・_・;)", v.archived ? "No expenses." : "No expenses yet. Add the first one.")}</section>
-      ${catRows.length ? `<section><h2 class="label">Spending by category</h2><div class="panel bars">${catRows.map(([c, a]) => {
+      ${catRows.length ? `<section class="sect"><div class="strip"><h2 class="label">Spending by category</h2></div><div class="panel bars">${catRows.map(([c, a]) => {
         const k = catOf(c); return `<div><div class="row between small"><span>${k[1]}</span><b class="num">${esc(fmt(a, v.currency))} · ${Math.round(a * 100 / tot)}%</b></div><div class="bar" aria-hidden="true"><i style="width:${(a * 100 / tot).toFixed(1)}%"></i></div></div>`;
       }).join("")}</div></section>` : ""}
       </div>`;
@@ -1041,7 +1113,7 @@ const views = {
     const meta = sel ? "Tap the ones to change, then pick a date." : `${plural(v.expenses.length, "expense")} and ${plural(v.settlements.length, "payment")}. ${v.archived ? "Archived: read-only." : "Tap one to edit it."}`;
     return topbar("History", { back: true, right: `<span class="muted sub ellip">${esc(v.title)}</span>` }) +
       `<div class="row between" style="margin:0 0 8px;gap:8px"><p class="muted small" style="margin:0">${meta}</p>${!sel && !v.archived && items.length ? `<button class="btn quiet" data-act="selStart">Set dates</button>` : ""}</div>` +
-      (shown.length ? `<div class="ledger hist${sel ? " selecting" : ""}">${shown.map(it => itemRow(v, it)).join("")}</div>` : emptyCard("(・_・;)", "Nothing recorded yet.")) +
+      (shown.length ? histMonths(v, shown, sel) : emptyCard("(・_・;)", "Nothing recorded yet.")) +
       (items.length > shown.length ? `<button class="btn block" data-act="more" style="margin-top:12px">Show ${Math.min(100, items.length - shown.length)} more</button>` : "") +
       (sel ? `<div class="panel pad stack setdate" role="group" aria-label="Set date">
         <p class="small" id="selCount" style="margin:0"><b>${sel.size} selected</b></p>
@@ -1056,16 +1128,20 @@ const views = {
     if (v.archived) { ui.view = "volume"; return views.volume(); } // read-only: no expense form
     return topbar(f.id ? "Edit expense" : "New expense", { back: true, right: `<span class="muted sub ellip">${esc(v.title)}</span>` }) +
       `<form id="expForm" class="stack" novalidate>
+      <section class="sect"><div class="strip"><h2 class="label">Amount &amp; who</h2></div>
       <div class="amount-box"><label for="f-amount" class="legend">Amount</label>
         <div class="row"><span class="cur" aria-hidden="true">${esc(v.currency)}</span><input id="f-amount" inputmode="decimal" autocomplete="off" placeholder="0.00" value="${esc(f.amount)}"></div><div id="lastAmt"></div></div>
       <div class="field"><label for="f-desc">Description</label><input id="f-desc" class="input" maxlength="100" placeholder="Ramen dinner" autocomplete="off" value="${esc(f.desc)}" aria-describedby="descMsg"><div class="msg" id="descMsg"></div><div class="chips sug" id="descSug" role="group" aria-label="Used before in this volume"></div></div>
       <div class="field">${pickField("f-paid", "Paid by", v.members.map(m => [m.id, meName(v, m.id)]), f.paidBy)}</div>
-      <div class="field"><label for="f-date">Date</label><input id="f-date" type="date" class="input" value="${esc(f.date)}">${quickDays(f.date)}</div>
-      <fieldset><legend class="legend">Category</legend><div class="cats">${CATEGORIES.map(c => `<button type="button" class="cat" data-cat="${c[0]}" aria-pressed="${c[0] === f.category}"><span aria-hidden="true">${CAT_ICON[c[0]]}</span>${c[1]}</button>`).join("")}</div></fieldset>
-      <fieldset><legend class="legend">Split</legend><div class="seg">${[["equal", "Equal"], ["exact", "Exact"], ["percent", "Percent"], ["shares", "Shares"]].map(s => `<button type="button" data-split="${s[0]}" aria-pressed="${s[0] === f.splitType}">${s[1]}</button>`).join("")}</div></fieldset>
+      </section><section class="sect"><div class="strip"><h2 class="label">Split</h2></div>
+      <fieldset><legend class="legend sr">Split</legend><div class="seg">${[["equal", "Equal"], ["exact", "Exact"], ["percent", "Percent"], ["shares", "Shares"]].map(s => `<button type="button" data-split="${s[0]}" aria-pressed="${s[0] === f.splitType}">${s[1]}</button>`).join("")}</div></fieldset>
       <div class="ledger" id="splitRows">${v.members.map(m => splitRow(v, m)).join("")}</div>
       <div class="muted small" id="splitSum" aria-live="polite"></div>
+      </section><section class="sect"><div class="strip"><h2 class="label">Details</h2></div>
+      <div class="field"><label for="f-date">Date</label><input id="f-date" type="date" class="input" value="${esc(f.date)}">${quickDays(f.date)}</div>
+      <fieldset><legend class="legend">Category</legend><div class="cats">${CATEGORIES.map(c => `<button type="button" class="cat" data-cat="${c[0]}" aria-pressed="${c[0] === f.category}"><span aria-hidden="true">${CAT_ICON[c[0]]}</span>${c[1]}</button>`).join("")}</div></fieldset>
       <div class="field"><label for="f-note">Note (optional)</label><input id="f-note" class="input" maxlength="200" autocomplete="off" value="${esc(f.note || "")}"></div>
+      </section>
       <div class="msg" id="formMsg" role="alert"></div>
       <button class="btn primary block" type="submit">${f.id ? "Update expense" : "Save expense"}</button>
       ${f.id ? `<button type="button" class="btn danger block" data-act="deleteExpense">Delete expense</button>` : ""}
@@ -1076,18 +1152,21 @@ const views = {
     const st = S.settings;
     const seg = (key, label, opts) => `<div class="seg" role="group" aria-label="${label}">${opts.map(o => `<button type="button" data-set="${key}" data-val="${o[0]}" aria-pressed="${st[key] === o[0]}">${o[1]}</button>`).join("")}</div>`;
     return topbar("Settings", { back: true }) + `<div class="stack">
-      <section class="panel pad stack"><h2 class="label" style="margin:0">Appearance</h2>${seg("mode", "Appearance", [["system", "System"], ["light", "Light"], ["dark", "Dark"]])}
+      <section class="sect"><div class="strip"><h2 class="label">Appearance</h2></div>
+      <div class="panel pad stack">${seg("mode", "Appearance", [["system", "System"], ["light", "Light"], ["dark", "Dark"]])}
         <div><h3 class="legend" style="margin:0" id="palLabel">Color theme</h3><div class="muted small">From Sanzo Wada's A Dictionary of Color Combinations (1918).</div></div>
         <div class="pals" role="radiogroup" aria-labelledby="palLabel">${PALETTES.map(p => `<button type="button" class="pal" role="radio" aria-checked="${p.id === st.palette}" tabindex="${p.id === st.palette ? 0 : -1}" data-pal="${p.id}" style="--pp:${p.paper};--pi:${p.ink};--pm:${p.muted}">
           <span class="sw" aria-hidden="true">${p.sw.map(c => `<i style="background:${c}"></i>`).join("")}</span>
           <b>${p.name}</b><span class="n">${p.n ? "No. " + String(p.n).padStart(3, "0") : "HATI original"}</span>
-          ${p.id === st.palette ? `<span class="dot" style="background:${p.acc}" aria-hidden="true">✓</span>` : ""}</button>`).join("")}</div></section>
-      <section class="panel pad stack"><div><h2 class="label" style="margin:0">Debt calculation</h2><div class="muted small">Fewest payments merges debts across the group. Pairwise only cancels debts between the same two people.</div></div>
-        ${seg("strategy", "Debt calculation", [["simplify", "Fewest payments"], ["pairwise", "Pairwise"]])}</section>
-      <section class="panel pad stack"><div><h2 class="label" style="margin:0">Data</h2><div class="muted small">Everything stays on this device. Save a backup file now and then; Restore reads it back.</div></div>
+          ${p.id === st.palette ? `<span class="dot" style="background:${p.acc}" aria-hidden="true">✓</span>` : ""}</button>`).join("")}</div></div></section>
+      <section class="sect"><div class="strip"><h2 class="label">Data</h2></div>
+      <div class="panel pad stack"><div><h3 class="legend" style="margin:0">Debt calculation</h3><div class="muted small">Fewest payments merges debts across the group. Pairwise only cancels debts between the same two people.</div></div>
+        ${seg("strategy", "Debt calculation", [["simplify", "Fewest payments"], ["pairwise", "Pairwise"]])}</div>
+      <div class="panel pad stack"><div><h3 class="legend" style="margin:0">Backup</h3><div class="muted small">Everything stays on this device. Save a backup file now and then; Restore reads it back.</div></div>
         <div class="btns pair"><button class="btn" data-act="backup">Save backup</button><button class="btn" data-act="restore">Restore</button></div>
-        <div class="btns pair"><button class="btn" data-act="seed">Add example</button><button class="btn danger" data-act="reset">Erase all</button></div></section>
-      <div class="muted small" style="text-align:center">HATI² · ${plural(S.volumes.length, "volume")} on this device</div>
+        <div class="btns pair"><button class="btn" data-act="seed">Add example</button><button class="btn danger" data-act="reset">Erase all</button></div></div></section>
+      <section class="sect"><div class="strip"><h2 class="label">About</h2></div>
+      <div class="panel pad muted small">HATI² · ${plural(S.volumes.length, "volume")} on this device</div></section>
       </div>`;
   }
 };
@@ -1291,6 +1370,11 @@ function sheet(html, onSubmit) {
 }
 function dropSheet() { layerOut(false); $("#layer").innerHTML = ""; $("#app").inert = false; syncHeld(); }
 function closeSheet() { dropSheet(); if (lastFocus && document.contains(lastFocus)) lastFocus.focus(); }
+// Depth of field (see the CSS): when #app turns inert under any layer, it scales round the middle of what is on screen.
+// Set in the same task, before that frame is drawn. Low-end phones get no blur (:root.lowfx).
+{ const n = navigator; if (n.hardwareConcurrency <= 4 || n.deviceMemory <= 2) document.documentElement.classList.add("lowfx");
+  new MutationObserver(() => { const a = $("#app"); if (a.inert) a.style.setProperty("--dof-y", Math.round(scrollY + innerHeight / 2) + "px"); })
+    .observe($("#app"), { attributes: true, attributeFilter: ["inert"] }); }
 // A new message is written in, left to right (a success says so once; rule 8)
 const sheetMsg = t => { const m = $("#sheetMsg"); if (!m) return; m.textContent = t; if (t && motionOn()) m.animate([{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0)" }], { duration: motionTimes().in, easing: motionTimes().easeOut }); };
 const sheetButtons = (label, cls = "primary") => `<div class="btns"><button type="button" class="btn quiet" data-act="closeSheet">Cancel</button><button class="btn ${cls}">${label}</button></div>`;
@@ -2463,7 +2547,7 @@ addEventListener("popstate", () => {
 });
 
 let renders = 0;
-const INK_ROWS = ":is(.ledger > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(-n+12)";
+const INK_ROWS = ":is(.ledger:not(.hist) > *, .stack > .volw, .stack > .dashed, .chips > *, .bars > *):nth-child(-n+12), .ledger.hist > .lead";
 function render() {
   const app = $("#app"), dir = enterDir, n = ++renders;
   delete app.dataset.turn; enterDir = "";
