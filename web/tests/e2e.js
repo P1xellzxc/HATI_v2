@@ -517,11 +517,11 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
        pane('#app .cat[aria-pressed="false"]',12);
        const sel=getComputedStyle($('#app .cat[aria-pressed="true"]')), root=getComputedStyle(document.documentElement);
        if (sel.backgroundColor!==getComputedStyle(document.body).getPropertyValue('--sel-bg').trim() && sel.color===getComputedStyle($('#app .cat[aria-pressed="false"]')).color) out.push('chosen category does not invert');
-       const inp=getComputedStyle($('#f-desc')); if (inp.borderTopWidth!=='1.5px') out.push('field edge '+inp.borderTopWidth);
+       const inp=getComputedStyle($('#f-desc')); if (inp.borderTopWidth!=='2px') out.push('field edge '+inp.borderTopWidth);
        const tb=getComputedStyle($('.topbar')); if (!document.documentElement.classList.contains('lowfx') && !/blur/.test(tb.backdropFilter)) out.push('top bar not frosted');
        return out; },[id,mode]);
      bad.push(...r.map(x=>`${id}/${mode} ${x}`)); }
-   ok(bad.length===0,'GLASS: cards 16px and controls 12px glass panes, no ink border, soft shadow down-right, opaque matte body, no blur on lists, chosen inverts, fields keep a 1.5px edge, frosted top bar; 13 palettes x 2 themes '+JSON.stringify(bad.slice(0,12)));
+   ok(bad.length===0,'GLASS: cards 16px and controls 12px glass panes, no ink border, soft shadow down-right, opaque matte body, no blur on lists, chosen inverts, fields keep a 2px edge, frosted top bar; 13 palettes x 2 themes '+JSON.stringify(bad.slice(0,12)));
    const low=await pg.evaluate(()=>{ document.documentElement.classList.add('lowfx'); const t=getComputedStyle($('.topbar')).backdropFilter; document.documentElement.classList.remove('lowfx'); return t; });
    ok(low==='none','GLASS: low-end phones (:root.lowfx) get no blur on the top bar '+low);
    await pg.setViewportSize({width:360,height:780}); await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); });

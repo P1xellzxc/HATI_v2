@@ -1,0 +1,230 @@
+<title>HATI² Spent Over Time</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap">
+<style>
+/* Layout: a proof sheet of phone screens. Each shows the "Spent over time" glass card: one line per expense type
+   (top 3 + "Other", fixed colour order), the moving average of all spending as a dashed ink line, legend chips that
+   toggle lines, a tap crosshair with that day's numbers, and a numbers table. Matte glass on calm two-tone paper. */
+:root {
+  --paper: #FFFFFF; --ink: #000000; --acc: #FEF08A; --s2: #BFDBFE;
+  --bg: color-mix(in srgb, var(--s2) 12%, var(--paper)); --bg2: color-mix(in srgb, var(--acc) 12%, var(--paper));
+  --fg: #111014; --sub: #4D4F57; --rule: color-mix(in srgb, var(--fg) 14%, transparent);
+  --g-top: color-mix(in srgb, var(--s2) 6%, var(--paper)); --g-foot: color-mix(in srgb, var(--s2) 16%, var(--paper));
+  --g-lip: rgba(255,255,255,.85); --g-rim: rgba(255,255,255,.7); --g-shadow: rgba(0,0,0,.28); --g-contact: rgba(0,0,0,.14);
+  --grain: rgba(0,0,0,.07);
+  --surface: #f4f7fd; --desk: #E4E2DC;
+  /* categorical slots (validated: CVD ΔE ≥ 9.1, normal ≥ 19.6; light marks < 3:1 → legend + tap values + table) */
+  --c1: #2a78d6; --c2: #eb6834; --c3: #1baf7a; --c4: #eda100;
+  --avg: var(--fg);
+  --font-disp: 'Black Han Sans', 'Arial Black', Impact, sans-serif;
+  --font-body: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #17181d; --bg2: #18171a; --fg: #EDEBE4; --sub: #B4B2BB; --rule: rgba(237,235,228,.14);
+  --g-top: #26272d; --g-foot: #2a2b32; --g-lip: rgba(237,235,228,.24); --g-rim: rgba(237,235,228,.10); --g-shadow: rgba(0,0,0,.62); --g-contact: rgba(0,0,0,.40);
+  --grain: rgba(237,235,228,.05); --surface: #2a2b32; --desk: #0A0A0D;
+  --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #17181d; --bg2: #18171a; --fg: #EDEBE4; --sub: #B4B2BB; --rule: rgba(237,235,228,.14);
+  --g-top: #26272d; --g-foot: #2a2b32; --g-lip: rgba(237,235,228,.24); --g-rim: rgba(237,235,228,.10); --g-shadow: rgba(0,0,0,.62); --g-contact: rgba(0,0,0,.40);
+  --grain: rgba(237,235,228,.05); --surface: #2a2b32; --desk: #0A0A0D;
+  --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; color-scheme: dark; }
+
+*, *::before, *::after { box-sizing: border-box; }
+html { background: var(--desk); }
+body { margin: 0; background: var(--desk); color: var(--fg); font: 16px/1.45 var(--font-body); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--desk); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+.wrap { max-width: 1260px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px; }
+.mast { display: grid; gap: 12px; margin-bottom: 26px; }
+.mast h1 { margin: 0; font: 400 clamp(2rem, 5vw, 3.2rem)/1 var(--font-disp); text-wrap: balance; }
+.mast h1 sup { font-size: .5em; }
+.mast p { margin: 0; color: var(--sub); max-width: 70ch; }
+.seg { display: inline-flex; border-radius: 12px; overflow: hidden; background: var(--g-foot); box-shadow: inset 0 0 0 1px var(--g-rim), 3px 4px 10px -2px var(--g-shadow); }
+.seg button { border: 0; background: transparent; padding: 8px 14px; font-size: .88rem; font-weight: 700; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.row { display: flex; gap: 28px; overflow-x: auto; padding: 8px 12px 24px 2px; }
+.phone { flex: 0 0 auto; width: 360px; display: grid; gap: 8px; margin: 0; }
+.cap { font-size: .82rem; color: var(--sub); font-weight: 500; }
+.screen { width: 360px; height: 720px; overflow: hidden; border-radius: 28px; border: 2px solid var(--fg);
+  background: linear-gradient(170deg, var(--bg) 0 52%, var(--bg2) 52%); padding: 18px 16px; display: flex; flex-direction: column; gap: 14px; }
+.label { display: flex; align-items: center; gap: 8px; font: 400 1.15rem/1.1 var(--font-disp); }
+.label::after { content: ""; flex: 1; height: 1px; background: var(--rule); }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px 28px; font-size: .9rem; margin-top: 6px; }
+.notes b { display: block; font-size: .78rem; letter-spacing: .04em; color: var(--sub); }
+.notes p { margin: 0; }
+h2.v { margin: 34px 0 6px; font: 400 1.5rem/1.1 var(--font-disp); }
+p.v { margin: 0 0 12px; color: var(--sub); max-width: 70ch; }
+
+/* matte glass card */
+.glass { position: relative; border-radius: 16px; padding: 14px 14px 12px;
+  background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat,
+    radial-gradient(var(--grain) .6px, transparent .9px) 0 0 / 3px 3px, radial-gradient(var(--grain) .6px, transparent .9px) 1px 2px / 5px 5px,
+    linear-gradient(180deg, var(--g-top), var(--g-foot)) var(--g-foot);
+  box-shadow: inset 0 0 0 1px var(--g-rim), 8px 11px 21px -4px var(--g-shadow), 1px 2px 3px var(--g-contact); }
+.gh { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.gh h3 { margin: 0; font-size: .95rem; }
+.gh .range { font-size: .78rem; color: var(--sub); }
+.say { margin: 4px 0 8px; font-size: .86rem; }
+.say b { font-variant-numeric: tabular-nums; }
+.chart { position: relative; touch-action: pan-y; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { fill: var(--sub); font: 500 10px var(--font-body); font-variant-numeric: tabular-nums; }
+.chart .grid { stroke: var(--rule); stroke-width: 1; }
+.chart .base { stroke: color-mix(in srgb, var(--fg) 40%, transparent); stroke-width: 1; }
+.chart .line { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: opacity .12s; }
+.chart .avg { fill: none; stroke: var(--avg); stroke-width: 3; stroke-dasharray: 6 4; stroke-linecap: round; }
+.chart .dot { stroke: var(--surface); stroke-width: 2; }
+.chart .x { stroke: var(--fg); stroke-width: 1; stroke-dasharray: 2 3; }
+.chart .avgLabel { fill: var(--fg); font-weight: 700; }
+.chart.dim .line:not(.on) { opacity: .15; }
+.tip { position: absolute; top: 0; pointer-events: none; min-width: 132px; padding: 7px 9px; border-radius: 10px; font-size: .74rem; line-height: 1.35;
+  background: var(--g-foot); color: var(--fg); box-shadow: inset 0 0 0 1px var(--g-rim), 4px 6px 14px -2px var(--g-shadow); }
+.tip b { display: block; margin-bottom: 2px; }
+.tip .r { display: flex; justify-content: space-between; gap: 10px; font-variant-numeric: tabular-nums; }
+.tip .k { display: inline-flex; align-items: center; gap: 5px; }
+.sw { width: 10px; height: 3px; border-radius: 2px; display: inline-block; }
+.sw.avgsw { height: 0; border-top: 3px dashed var(--avg); width: 12px; }
+.legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+.lg { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 36px; padding: 6px 9px; border: 0; border-radius: 10px; cursor: pointer; text-align: left;
+  background: var(--g-foot); box-shadow: inset 0 0 0 1px var(--g-rim), 2px 3px 6px -2px var(--g-shadow); font-size: .78rem; }
+.lg .k { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.lg .k span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lg .num { font-variant-numeric: tabular-nums; font-weight: 700; flex: none; }
+.lg[aria-pressed="false"] { opacity: .5; }
+.lg.avgchip { grid-column: 1 / -1; cursor: default; }
+details.tbl { margin-top: 8px; font-size: .78rem; }
+details.tbl summary { cursor: pointer; color: var(--sub); font-weight: 500; }
+.tblw { overflow-x: auto; margin-top: 6px; }
+table { border-collapse: collapse; font-variant-numeric: tabular-nums; width: 100%; }
+th, td { padding: 4px 6px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--rule); }
+th:first-child, td:first-child { text-align: left; }
+.small { font-size: .78rem; color: var(--sub); }
+@media (max-width: 520px) { .phone, .screen { width: 320px; } }
+@media (prefers-reduced-motion: reduce) { .chart .line { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <h1>HATI<sup>2</sup> spent over time</h1>
+    <p>Mock of the "At a glance" chart: one line per expense type, and a dashed line for the moving average of all spending. Tap or drag on a chart for that day's numbers; tap a legend chip to hide or show a line. Example data.</p>
+    <div class="seg" role="group" aria-label="Theme"><button type="button" data-t="light" aria-pressed="false">Light</button><button type="button" data-t="dark" aria-pressed="false">Dark</button></div>
+  </header>
+
+  <h2 class="v">Trip, day by day</h2>
+  <p class="v">Tokyo, 10 days. Lines for the top 3 types plus everything else; the dashed line is the 3-day average of all spending.</p>
+  <div class="row">
+    <figure class="phone"><div class="screen" id="s1"></div><figcaption class="cap">At rest</figcaption></figure>
+    <figure class="phone"><div class="screen" id="s2"></div><figcaption class="cap">Tapped on Nov 6</figcaption></figure>
+    <figure class="phone"><div class="screen" id="s3"></div><figcaption class="cap">Food only (others hidden), numbers open</figcaption></figure>
+  </div>
+
+  <h2 class="v">Household, month by month</h2>
+  <p class="v">Bebetime, 6 months. The dashed line is the 3-month average of all spending, so a one-off big month doesn't look like a trend.</p>
+  <div class="row">
+    <figure class="phone"><div class="screen" id="s4"></div><figcaption class="cap">At rest</figcaption></figure>
+    <figure class="phone"><div class="screen" id="s5"></div><figcaption class="cap">Tapped on September</figcaption></figure>
+  </div>
+
+  <div class="notes">
+    <div><b>hati-design</b><p>Lines are thin ink-weight strokes on the glass card; the average is the one heavy, dashed line, so it reads first without a colour.</p></div>
+    <div><b>dataviz rules</b><p>One axis in money. Fixed colour order by type (the colour follows the type when others are hidden). More than 3 types fold into "Other".</p></div>
+    <div><b>hati-a11y</b><p>Colours pass colour-blind checks; in light mode three lines are under 3:1, so every line has a legend chip with its total, tap values and a numbers table.</p></div>
+    <div><b>hati-money-parity</b><p>Lines and the average come from the same integer cents as the balance; the types add up to the day's total.</p></div>
+  </div>
+</div>
+
+<script>
+const C = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)'];
+const yen = n => '¥' + Math.round(n).toLocaleString('en-US'), peso = n => '₱' + Math.round(n).toLocaleString('en-US');
+const k = (n, cur) => cur + (n >= 1000 ? (n / 1000).toFixed(n >= 100000 ? 0 : 1).replace(/\.0$/, '') + 'k' : Math.round(n));
+// example data (whole currency units for the mock)
+const TRIP = { cur: '¥', fmt: yen, unit: 'day', win: 3, avgName: '3-day average, all types',
+  labels: ['Nov 1', 'Nov 2', 'Nov 3', 'Nov 4', 'Nov 5', 'Nov 6', 'Nov 7', 'Nov 8', 'Nov 9', 'Nov 10'],
+  series: [
+    { name: 'Eating out', v: [6200, 4800, 7600, 5100, 9800, 6400, 5300, 8700, 7100, 4200] },
+    { name: 'Transport', v: [14100, 2300, 1800, 3100, 900, 12600, 1500, 2200, 1700, 2600] },
+    { name: 'Fun', v: [0, 9600, 2400, 0, 7200, 1800, 3600, 0, 5400, 1200] },
+    { name: 'Other', v: [1200, 3400, 900, 2800, 1100, 4600, 700, 2300, 1900, 800] } ] };
+const HOME = { cur: '₱', fmt: peso, unit: 'month', win: 3, avgName: '3-month avg, all types',
+  labels: ['Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'],
+  series: [
+    { name: 'Groceries', v: [8200, 7900, 8800, 9400, 8600, 9100] },
+    { name: 'Bills', v: [5400, 5600, 6100, 5900, 5700, 5800] },
+    { name: 'Eating out', v: [3900, 4600, 3300, 7800, 4100, 3700] },
+    { name: 'Other', v: [1800, 2600, 1500, 6400, 2200, 1900] } ] };
+
+function avg(d) { const t = d.labels.map((_, i) => d.series.reduce((a, s) => a + s.v[i], 0));
+  return t.map((_, i) => { const a = Math.max(0, i - d.win + 1), w = t.slice(a, i + 1); return w.reduce((x, y) => x + y, 0) / w.length; }); }
+function totals(d) { return d.labels.map((_, i) => d.series.reduce((a, s) => a + s.v[i], 0)); }
+
+function card(el, d, opt = {}) {
+  const on = opt.on || d.series.map(() => true), A = avg(d), T = totals(d);
+  const W = 296, H = 170, L = 34, R = 8, Tp = 8, B = 20, pw = W - L - R, ph = H - Tp - B;
+  const max = Math.max(...A, ...d.series.flatMap((s, i) => on[i] ? s.v : [0]));
+  const step = [1000, 2000, 2500, 5000, 10000, 20000].find(s => max / s <= 4) || 25000, top = Math.ceil(max / step) * step;
+  const x = i => L + (d.labels.length === 1 ? pw / 2 : i * pw / (d.labels.length - 1)), y = v => Tp + ph - v / top * ph;
+  const path = vs => vs.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
+  const ticks = []; for (let v = 0; v <= top; v += step) ticks.push(v);
+  const xl = [0, Math.floor((d.labels.length - 1) / 2), d.labels.length - 1];
+  const sum = d.series.map(s => s.v.reduce((a, b) => a + b, 0)), all = T.reduce((a, b) => a + b, 0);
+  const last = A[A.length - 1], first = A[Math.min(d.win - 1, A.length - 1)];
+  const trend = last > first * 1.05 ? 'rising' : last < first * 0.95 ? 'easing' : 'steady';
+  const svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Spent per ${d.unit} by type, with the ${d.avgName}">
+    ${ticks.map(v => `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 6}" y="${y(v) + 3.5}" text-anchor="end">${k(v, d.cur)}</text>`).join('')}
+    <line class="base" x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}"/>
+    ${xl.map(i => `<text x="${x(i)}" y="${H - 5}" text-anchor="${i === 0 ? 'start' : i === d.labels.length - 1 ? 'end' : 'middle'}">${d.labels[i]}</text>`).join('')}
+    ${d.series.map((s, i) => `<path class="line${on[i] ? ' on' : ''}" stroke="${C[i]}" d="${path(s.v)}" ${on[i] ? '' : 'visibility="hidden"'}/>`).join('')}
+    <path class="avg" d="${path(A)}"/>
+    ${d.series.map((s, i) => on[i] ? `<circle class="dot" r="4" fill="${C[i]}" cx="${x(s.v.length - 1)}" cy="${y(s.v[s.v.length - 1])}"/>` : '').join('')}
+    <circle class="dot" r="4.5" fill="var(--avg)" cx="${x(A.length - 1)}" cy="${y(last)}"/>
+    <g class="hover"></g></svg>`;
+  el.innerHTML = `<div class="label">At a glance</div>
+    <section class="glass" aria-labelledby="${el.id}h">
+      <div class="gh"><h3 id="${el.id}h">Spent over time</h3><span class="range">${d.labels[0]} – ${d.labels[d.labels.length - 1]}</span></div>
+      <p class="say">Average ${d.cur === '¥' ? 'per day' : 'per month'} <b>${d.fmt(last)}</b>, ${trend}. Most on <b>${d.labels[T.indexOf(Math.max(...T))]}</b> (${d.fmt(Math.max(...T))}).</p>
+      <div class="chart${on.every(Boolean) ? '' : ' dim'}">${svg}<div class="tip" hidden></div></div>
+      <div class="legend" role="group" aria-label="Show or hide a type">
+        ${d.series.map((s, i) => `<button type="button" class="lg" data-i="${i}" aria-pressed="${on[i]}"><span class="k"><span class="sw" style="background:${C[i]}"></span><span>${s.name}</span></span><span class="num">${k(sum[i], d.cur)}</span></button>`).join('')}
+        <div class="lg avgchip"><span class="k"><span class="sw avgsw"></span><span>${d.avgName}</span></span><span class="num">${d.fmt(all)} total</span></div>
+      </div>
+      <details class="tbl"${opt.table ? ' open' : ''}><summary>Show the numbers</summary><div class="tblw"><table>
+        <thead><tr><th>${d.unit === 'day' ? 'Day' : 'Month'}</th>${d.series.map(s => `<th>${s.name}</th>`).join('')}<th>Avg</th></tr></thead>
+        <tbody>${d.labels.map((l, i) => `<tr><td>${l}</td>${d.series.map(s => `<td>${k(s.v[i], d.cur)}</td>`).join('')}<td>${k(A[i], d.cur)}</td></tr>`).join('')}</tbody></table></div></details>
+    </section>
+    <div class="small">Tap or drag on the chart for one ${d.unit}'s numbers.</div>`;
+  const chart = el.querySelector('.chart'), tip = chart.querySelector('.tip'), g = chart.querySelector('.hover'), sv = chart.querySelector('svg');
+  const show = i => {
+    g.innerHTML = `<line class="x" x1="${x(i)}" x2="${x(i)}" y1="${Tp}" y2="${y(0)}"/>` +
+      d.series.map((s, j) => on[j] ? `<circle class="dot" r="4" fill="${C[j]}" cx="${x(i)}" cy="${y(s.v[i])}"/>` : '').join('') +
+      `<circle class="dot" r="4.5" fill="var(--avg)" cx="${x(i)}" cy="${y(A[i])}"/>`;
+    tip.innerHTML = `<b>${d.labels[i]} · ${d.fmt(T[i])}</b>` + d.series.map((s, j) => on[j] ? `<div class="r"><span class="k"><span class="sw" style="background:${C[j]}"></span>${s.name}</span><span>${d.fmt(s.v[i])}</span></div>` : '').join('') +
+      `<div class="r"><span class="k"><span class="sw avgsw"></span>Average</span><span>${d.fmt(A[i])}</span></div>`;
+    tip.hidden = false; const px = x(i) / W * chart.clientWidth;
+    tip.style.left = (px > chart.clientWidth / 2 ? px - tip.offsetWidth - 10 : px + 10) + 'px';
+  };
+  const pick = ev => { const r = sv.getBoundingClientRect(), mx = (ev.clientX - r.left) / r.width * W; let best = 0;
+    d.labels.forEach((_, i) => { if (Math.abs(x(i) - mx) < Math.abs(x(best) - mx)) best = i; }); show(best); };
+  chart.addEventListener('pointermove', pick); chart.addEventListener('pointerdown', pick);
+  chart.addEventListener('pointerleave', () => { if (opt.hold == null) { tip.hidden = true; g.innerHTML = ''; } });
+  el.querySelectorAll('.lg[data-i]').forEach(b => b.addEventListener('click', () => {
+    const n = on.slice(); n[+b.dataset.i] = !n[+b.dataset.i]; if (!n.some(Boolean)) return; card(el, d, { ...opt, on: n, hold: null }); }));
+  if (opt.hold != null) show(opt.hold);
+}
+function render() {
+  card(document.getElementById('s1'), TRIP);
+  card(document.getElementById('s2'), TRIP, { hold: 5 });
+  card(document.getElementById('s3'), TRIP, { on: [true, false, false, false], table: true });
+  card(document.getElementById('s4'), HOME);
+  card(document.getElementById('s5'), HOME, { hold: 3 });
+}
+const root = document.documentElement, seg = document.querySelector('.seg');
+const setT = t => { root.setAttribute('data-theme', t); seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === t))); try { localStorage.setItem('sg.t', t); } catch (e) {} render(); };
+seg.addEventListener('click', e => { const b = e.target.closest('button'); if (b) setT(b.dataset.t); });
+let t0 = null; try { t0 = localStorage.getItem('sg.t'); } catch (e) {}
+const q = new URLSearchParams(location.search).get('theme');
+if (q || t0) setT(q || t0); else { seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')))); render(); }
+</script>
