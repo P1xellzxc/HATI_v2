@@ -367,9 +367,9 @@ section > .label, section > .row > .label { margin-top: 6px; }
 .sync[data-s="bad"] i, .sync[data-s="big"] i { border-color: var(--neg); background: var(--neg); }
 
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
-.mem-grid { display: grid; gap: 8px; }
+.mem-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; }
 .chips.mem-row { padding: 0; margin: 0; display: grid; grid-template-columns: repeat(var(--cols, 1), minmax(0, 1fr)); gap: 8px; }
-.mem-row > .chip { min-width: 0; width: 100%; margin: 0; }
+.mem-row > .chip { min-width: 0; width: 100%; margin: 0; overflow: hidden; overflow-wrap: anywhere; }
 .mem-row > .chip:has(> .av) { grid-template-columns: auto minmax(0, 1fr); } /* name column right after the avatar in every chip */
 .mem-row > .chip.add { justify-content: center; }
 .mem-row > .chip > :not(.av) { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -704,7 +704,7 @@ hati-pick { display: block; min-width: 0; }
 :root { --grain-l: radial-gradient(var(--g-grain) .6px, transparent .9px) 0 0 / 3px 3px, radial-gradient(var(--g-grain) .6px, transparent .9px) 1px 2px / 5px 5px, radial-gradient(var(--g-grain) .6px, transparent .9px) 2px 1px / 7px 7px;
  }
 html { background: var(--page-a); }
-body { background: linear-gradient(170deg, var(--page-a) 0 min(52%, 900px), var(--page-b) min(52%, 900px)) 0 0 / 100% max(100%, 100vh) no-repeat, var(--page-b); }
+body { background: linear-gradient(170deg, var(--page-a) 0 min(52%, 900px), var(--page-b) min(52%, 900px)) 0 0 / 100% max(100%, 100vh) no-repeat, var(--bg); } /* the base stays the theme's paper: the status bar (theme-color) reads it */
 :root :is(#app, #layer) { --sub: var(--sub-f); }
 :root :is(#app, #layer) .sect { border-color: transparent; background: none; box-shadow: none; padding: 0; }
 :root :is(#app, #layer) .strip::after { border-top-color: var(--g-seam); background: none; height: 0; }
@@ -732,17 +732,17 @@ body { background: linear-gradient(170deg, var(--page-a) 0 min(52%, 900px), var(
 :root :is(#app, #layer) :is(.btn:not(.quiet):not(.text), .ico, .cat, button.chip:not(.add), .seg) {
   --t: var(--c-x, 4px); border-color: transparent; border-radius: 12px;
   background-color: var(--g-foot);
-  background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), linear-gradient(180deg, var(--g-top), var(--g-foot));
+  background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), linear-gradient(180deg, var(--g-top), var(--g-foot)) var(--g-foot);
   box-shadow: inset 0 1px 0 var(--g-lip), inset 1px 0 0 var(--g-rim), inset 0 0 0 1px var(--g-rim), var(--t) calc(1.4 * var(--t)) calc(2.6 * var(--t)) calc(-.5 * var(--t)) var(--g-shadow), 1px 2px 3px var(--g-contact); }
 :root :is(#app, #layer) .seg { --t: 4px; overflow: hidden; }
-:root :is(#app, #layer) .seg button { background: transparent; box-shadow: none; }
+:root :is(#app, #layer) .seg button { background: var(--g-foot); box-shadow: none; }
 :root :is(#app, #layer) .seg button + button { border-left: 1px solid var(--g-seam); }
 :root :is(#app, #layer) .btn.primary:not(.quiet):not(.text) { --g-e: var(--a-edge); background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), linear-gradient(180deg, var(--b-top), var(--b-foot)) var(--b-foot); color: var(--on-accent); }
 :root :is(#app, #layer) .btn.danger:not(.quiet):not(.text) { --g-e: var(--err); color: var(--err); background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), var(--panel); } /* untinted glass: red words need the plain paper */
 :root :is(#app, #layer) :is(.btn, .ico, .cat, button.chip):active:not(:disabled) { --c-x: 0px; }
 :root :is(#app, #layer) :is(.cat[aria-pressed="true"], .seg button:is([aria-pressed="true"], [aria-checked="true"]), .btn.pkg[aria-checked="true"], .qd .chip[aria-pressed="true"], .qh .chip[aria-pressed="true"]) {
-  background: var(--sel-bg); color: var(--sel-fg); box-shadow: inset 0 2px 0 var(--g-foot-line); --c-x: 0px; }
-:root :is(#app, #layer) .cat[aria-pressed="true"] { transform: translateY(3px); }
+  background: var(--sel-bg); color: var(--sel-fg); box-shadow: inset 0 2px 0 color-mix(in srgb, var(--sel-bg) 80%, var(--sel-fg)); --c-x: 0px; }
+:root :is(#app, #layer) :is(.btn.quiet, .btn.text) { border-radius: 12px; }
 :root :is(#app, #layer) .chip.add { border: 1.5px dashed var(--g-field-line); border-radius: 10px; }
 :root :is(#app, #layer) .chip:not(button) { border-color: transparent; border-radius: 10px; background: linear-gradient(180deg, var(--g-top), var(--g-foot)); box-shadow: inset 0 1px 0 var(--g-lip), inset 0 0 0 1px var(--g-rim); }
 /* fields keep a visible edge (non-text contrast), in the glass */
@@ -1556,7 +1556,8 @@ function pastExpenses(v, q) {
     by.set(k, x);
   });
   q = String(q || "").trim().toLowerCase();
-  return [...by.entries()].filter(([k]) => !q || k.includes(q)).map(([k, x]) => ({ k, ...x }))
+  // owner 2026-11-12: nothing until a letter is typed, then every description that starts with what was typed
+  return [...by.entries()].filter(([k]) => q && k.startsWith(q)).map(([k, x]) => ({ k, ...x }))
     .sort((a, b) => b.n - a.n || (a.key < b.key ? 1 : -1));
 }
 function refreshSuggest() {
@@ -1566,7 +1567,7 @@ function refreshSuggest() {
   const typed = f.desc.trim().toLowerCase(), all = pastExpenses(v, typed);
   const exact = all.find(x => x.k === typed);
   // while the description is one already used, there is nothing left to suggest: offer its amount instead
-  ui.sug = exact ? [] : all.slice(0, 3);
+  ui.sug = exact ? [] : all;
   box.innerHTML = ui.sug.map((x, i) => `<button type="button" class="chip" data-sug="${i}"><span aria-hidden="true">${CAT_ICON[catOf(x.e.category)[0]]}</span><span class="ellip">${esc(x.e.desc)}</span></button>`).join("");
   ui.lastAmt = exact && parseMoney(f.amount) !== exact.e.amount ? exact.e.amount : 0;
   last.innerHTML = ui.lastAmt ? `<button type="button" class="chip" data-last><span class="muted">Last time</span> <span class="num">${fmt(ui.lastAmt, v.currency)}</span></button>` : "";

@@ -595,14 +595,14 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      // the rendered selected segment and category really use the selected fill
      await pg.evaluate(()=>{ ui.view='volume'; openExpense(null); });
      const rs=await pg.evaluate(()=>[getComputedStyle($('.seg button[aria-pressed="true"]')).backgroundColor,getComputedStyle($('.seg button[aria-pressed="true"]')).color,getComputedStyle($('.cat[aria-pressed="true"]')).backgroundColor,getComputedStyle($('.cat[aria-pressed="true"]')).color,getComputedStyle($('.cat[aria-pressed="true"]')).getPropertyValue('--clay-lo').trim(),getComputedStyle($('.input')).backgroundColor,getComputedStyle($('.btn.primary')||$('.sheet')).backgroundColor]);
-     if(rs[0]!==t['--sel-bg']||rs[1]!==t['--sel-fg']||rs[2]!==t['--chip']||rs[3]!==t['--on-accent']||!/16%/.test(rs[4])) bad.push(`${id}: rendered selected fills ${rs.join(' | ')}`);
+     if(rs[0]!==t['--sel-bg']||rs[1]!==t['--sel-fg']||rs[2]!==t['--sel-bg']||rs[3]!==t['--sel-fg']) bad.push(`${id}: rendered selected fills ${rs.join(' | ')}`); // glass: a chosen category inverts like a segment
      await pg.evaluate(()=>dropSheet()); }
    await pg.emulateMedia({colorScheme:'light'});
    ok(bad.length===0,'L3-dark: night paper layers (panel/bg ≥1.25, line & rule/panel ≥3, frames quieter than text, offset slab ≥3 vs night and hero, ≤ rule), hero ≥1.15 with text ≥4.5, screentone 1.3–1.6, selected seg/cat ≥3 vs unselected (WCAG 1.4.11) with text ≥4.5, field/sheet ≥1.15, sheet/scrim ≥1.3, focus ring ≥3, theme-color = night paper, 13 palettes '+JSON.stringify(bad.slice(0,3)));
    ok(drift.length===0,'L3-dark: OS dark and the Dark setting give identical tokens and .pal tiles in 13 palettes (one dark source) '+JSON.stringify(drift.slice(0,3)));
    // light keeps the old scrim and sheet, offsets stay ink
    const lt=await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); settleSheet(null); const r=[getComputedStyle($('.scrim')).backgroundColor,getComputedStyle($('.sheet')).backgroundColor,getComputedStyle(document.body).backgroundColor,getComputedStyle($('.hero')).boxShadow+' / '+getComputedStyle($('.hero'),'::after').right,document.querySelector('meta[name=theme-color]').content]; dropSheet(); return r; });
-   ok(lt[0]==='rgba(10, 10, 14, 0.5)' && lt[1]===lt[2] && /^(none|((color\([^)]*\)|rgba?\([^)]*\)) 0px \d+px 0px \d+px inset(, )?)+) \/ -10px$/.test(lt[3]) && lt[4]==='#FFFFFF','L3-dark: light scrim, sheet, hero 8px slab (a pseudo-element; its only box-shadows are 0-blur inset frost lines) and theme-color '+JSON.stringify(lt));
+   ok(lt[0]==='rgba(10, 10, 14, 0.5)' && lt[4]==='#FFFFFF','L3-dark (glass): light scrim and theme-color = the plate paper (the hero slab and sheet frame belong to the old look) '+JSON.stringify(lt));
    // toasts in dark wrap at 320/360/390 (merge summary and SAVE_GONE), offset stays the accent
    const tb=[];
    for (const w of [320,360,390]) { await pg.setViewportSize({width:w,height:780});
@@ -630,22 +630,23 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      const c=C(bg).map(Math.round), s2=Math.max(...c)-Math.min(...c), ch=chroma(c); sp.push(`${id} ${s2}/${ch.toFixed(3)}`);
      if(s2>14||ch>0.03) bad.push(`${id}: night ${c} spread ${s2} chroma ${ch.toFixed(3)}`); if(lb.includes(false)) bad.push(`${id}: light tokens changed ${lb}`); }
    ok(bad.length===0,'R2-2: dark --bg RGB spread ≤14 and OKLCH chroma ≤0.03 in 13 palettes, light --bg/--panel/--line/--hero/--chip still the plate inputs ['+sp.join(', ')+'] '+JSON.stringify(bad.slice(-3)));
-   // R2-5 (design): in light the selected category carries an inner ink edge the others lack (not hue alone); dark keeps the pastel inversion
-   const ce=[];
+   // R2-5 under glass (owner 2026-11-12): a chosen category inverts to a solid ink fill (not hue alone): its fill stands
+   // ≥3:1 from an unchosen one (WCAG 1.4.11) with text ≥4.5:1, and keyboard focus keeps the 3px outline on it.
+   const ce=[], cf=[];
    for (const id of ids) for (const mode of ['light','dark']) {
      const r=await pg.evaluate(([id,mode])=>{ S.settings.palette=id; S.settings.mode=mode; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); openExpense(null);
-       const fg=getComputedStyle(document.body).color, s=getComputedStyle($('.cat[aria-pressed="true"]')).boxShadow, u=getComputedStyle($('.cat[aria-pressed="false"]')).boxShadow; dropSheet(); return {fg,s,u}; },[id,mode]);
-     const ring=r.s.startsWith(r.fg+' 0px 0px 0px 2px inset'), uHas=/0px 0px 0px 2px inset/.test(r.u);
-     if(mode==='light' ? (!ring||uHas) : ring) ce.push(`${id}/${mode}: ${JSON.stringify(r)}`); }
-   ok(ce.length===0,'R2-5: light selected .cat has a 2px inner --fg edge and unselected has none (13 palettes); dark selected has no chalk edge '+JSON.stringify(ce.slice(0,2)));
-   // R2-5 revise (a11y): the inner ink edge survives keyboard focus (the :is() focus rule must not out-specify it)
-   const cf=[];
-   for (const id of ids) { await pg.evaluate(id=>{ S.settings.palette=id; S.settings.mode='light'; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); openExpense(null); },id);
+       const parse=c=>{ const n=(c.match(/[\d.]+/g)||[0,0,0]).map(Number); if (/^color\(srgb/.test(c)) { n[0]*=255; n[1]*=255; n[2]*=255; } return n; };
+       const lin=v=>{ v/=255; return v<=0.03928?v/12.92:((v+0.055)/1.055)**2.4; }, L=([r,g,b])=>0.2126*lin(r)+0.7152*lin(g)+0.0722*lin(b), cr=(a,b)=>{ const x=L(parse(a)), y=L(parse(b)); return (Math.max(x,y)+0.05)/(Math.min(x,y)+0.05); };
+       const s=getComputedStyle($('.cat[aria-pressed="true"]')), u=getComputedStyle($('.cat[aria-pressed="false"]'));
+       return {fill:+cr(s.backgroundColor,u.backgroundColor).toFixed(2),text:+cr(s.color,s.backgroundColor).toFixed(2)}; },[id,mode]);
+     if (r.fill<3||r.text<4.5) ce.push(`${id}/${mode}: ${JSON.stringify(r)}`); }
+   ok(ce.length===0,'R2-5 (glass): a chosen category inverts: fill ≥3:1 from an unchosen one, text ≥4.5:1, 13 palettes x 2 themes '+JSON.stringify(ce.slice(0,3)));
+   for (const id of ids.slice(0,3)) { await pg.evaluate(id=>{ S.settings.palette=id; S.settings.mode='light'; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); openExpense(null); },id);
      await pg.evaluate(()=>{ const s=$('.cat[aria-pressed="true"]'); (s.previousElementSibling||s.nextElementSibling).focus(); });
-     await pg.keyboard.press(await pg.evaluate(()=>$('.cat[aria-pressed="true"]').previousElementSibling?'Tab':'Shift+Tab')); await pg.waitForTimeout(400); // let the box-shadow transition settle
-     const r=await pg.evaluate(()=>{ const s=$('.cat[aria-pressed="true"]'); const o={fv:s.matches(':focus-visible'),fg:getComputedStyle(document.body).color,s:getComputedStyle(s).boxShadow}; dropSheet(); return o; });
-     if(!r.fv || !r.s.startsWith(r.fg+' 0px 0px 0px 2px inset') || !/0px 0px 0px 6px/.test(r.s)) cf.push(`${id}: ${JSON.stringify(r)}`); }
-   ok(cf.length===0,'R2-5: light selected .cat keeps its 2px inner --fg edge plus the focus ring under keyboard :focus-visible (13 palettes) '+JSON.stringify(cf.slice(0,2)));
+     await pg.keyboard.press(await pg.evaluate(()=>$('.cat[aria-pressed="true"]').previousElementSibling?'Tab':'Shift+Tab')); await pg.waitForTimeout(300);
+     const r=await pg.evaluate(()=>{ const s=$('.cat[aria-pressed="true"]'); const c=getComputedStyle(s); return {fv:s.matches(':focus-visible'),ow:c.outlineWidth,os:c.outlineStyle}; });
+     if (!r.fv||r.ow!=='3px'||r.os==='none') cf.push(`${id}: ${JSON.stringify(r)}`); }
+   ok(cf.length===0,'R2-5 (glass): keyboard focus on the chosen category shows the 3px outline '+JSON.stringify(cf));
    // R2-3 (design): history rows wrap instead of cutting off; title ≤2 lines, icon/title/amount share line 1, no dangling "·"
    const hb=[];
    for (const mode of ['light','dark']) for (const w of [360,390]) for (const long of [false,true]) { await pg.setViewportSize({width:w,height:780});
@@ -1341,7 +1342,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      await c2.close(); }
    const badGeo=geo.filter(g=>g.over||g.picks.some(p=>!p.inView||p.small||p.cut||(p.mode==='grid'?false:p.rows>1))); // X4: the Paid by grid wraps into even rows by design
    ok(badGeo.length===0 && geo.length>=30,'D0-5: all 7 pickers (and the sheet list) at 320/360/390, light and dark: no sideways scroll, in view, targets ≥44px, no cut labels, rows never wrap '+JSON.stringify(badGeo.slice(0,2)));
-   ok(geo.filter(g=>g.w===320&&g.name==='volume sheet').every(g=>g.picks.find(p=>p.id==='s-type').mode==='list') && geo.filter(g=>g.w===390&&g.name==='volume sheet').every(g=>g.picks.find(p=>p.id==='s-type').mode==='seg') && geo.filter(g=>g.name==='join').every(g=>g.picks.find(p=>p.id==='s-who').mode==='list'),'D0-5: a row whose words do not fit becomes the button + list (Type at 320, a long member name), and stays a row where it fits (Type at 390)');
+   ok(geo.filter(g=>g.w===320&&g.name==='volume sheet').every(g=>['list','seg'].includes(g.picks.find(p=>p.id==='s-type').mode)) && /* glass sheets lost the 2px ink sides: Type may fit at 320; D0-5 above still bans cut labels */ geo.filter(g=>g.w===390&&g.name==='volume sheet').every(g=>g.picks.find(p=>p.id==='s-type').mode==='seg') && geo.filter(g=>g.name==='join').every(g=>g.picks.find(p=>p.id==='s-who').mode==='list'),'D0-5: a row whose words do not fit becomes the button + list (Type at 320, a long member name), and stays a row where it fits (Type at 390)');
    { const {c:c3,pg:q}=await mk({viewport:{width:360,height:740}}); const ids=await q.evaluate(()=>PALETTES.map(x=>x.id));
      for (const id of ids) for (const mode of ['light','dark']) for (const [name,fn] of screens.slice(0,3)) {
        await q.evaluate(([id,m,f])=>{ S.settings.palette=id; S.settings.mode=m; applyTheme(); (0,eval)('('+f+')')(); },[id,mode,fn.toString()]);
@@ -1556,7 +1557,10 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await pg.locator('[data-act=addExpense]').click(); await pg.waitForSelector('#expForm'); await pg.waitForTimeout(350);                          // tap 1
    const sug=()=>pg.evaluate(()=>[...document.querySelectorAll('#descSug [data-sug]')].map(b=>b.textContent.trim()));
    const s0=await sug();
-   ok(JSON.stringify(s0)===JSON.stringify(['house of bagnet','Chowking','Uncle John']) && await pg.locator('#f-amount').inputValue()==='' && await pg.locator('#lastAmt').innerHTML()==='','D1: a new expense offers the 3 most used descriptions of this volume (latest spelling), most used first; the amount stays empty '+JSON.stringify(s0));
+   ok(s0.length===0 && await pg.locator('#f-amount').inputValue()==='' && await pg.locator('#lastAmt').innerHTML()==='','D1 (owner 2026-11-12): an empty description shows no suggestions; the amount stays empty '+JSON.stringify(s0));
+   await pg.locator('#f-desc').fill('c'); const sc=await sug();
+   const wantC=await pg.evaluate(()=>[...new Set(vol().expenses.map(e=>e.desc.trim().toLowerCase()).filter(k=>k.startsWith('c')))].length);
+   ok(sc.length>0 && sc.length===wantC && sc.every(t=>t.toLowerCase().startsWith('c')),'D1 (owner 2026-11-12): one letter shows every past description that starts with it '+JSON.stringify([sc,wantC]));
    const box=await pg.evaluate(()=>{ const g=document.getElementById('descSug'), bs=[...g.querySelectorAll('button')]; return {role:g.getAttribute('role'),name:g.getAttribute('aria-label'),h:Math.min(...bs.map(x=>x.getBoundingClientRect().height)),fit:bs.every(x=>x.getBoundingClientRect().right<=innerWidth),tab:bs.every(x=>x.tabIndex===0)}; });
    ok(box.role==='group' && !!box.name && box.h>=44 && box.fit && box.tab,'D1: the suggestions are real buttons in a named group, at least 44 px tall, inside the screen '+JSON.stringify(box));
    await pg.locator('#f-desc').fill('cho'); const s1=await sug();
