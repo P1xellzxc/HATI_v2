@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-oB3xLweuboVHN5EZ7SVm8jSuWS2J7XKN0FBpNMVQcqc='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://hati-sync.gerymefernando.workers.dev wss://hati-sync.gerymefernando.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-8/C0V3vLc4Nir40O2m6A+tQN1i1dGkFWtsRdjNq+CME='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://hati-sync.gerymefernando.workers.dev wss://hati-sync.gerymefernando.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>HATI²</title>
@@ -52,6 +52,7 @@
   --cel-dot: color-mix(in srgb, var(--ink-l) 26%, transparent);
   --glint: var(--paper-l); --bevel: color-mix(in srgb, var(--ink-l) 30%, transparent);
   --cel-sub: color-mix(in srgb, var(--fg) 72%, var(--b2));
+  --cel-edge: var(--rule);
   /* Frosted cards on plain paper (owner 2026-11-11): a glass body tinted from the same second swatch, printed at 90%
      (nothing behind it to blur, so no backdrop-filter), a sheen kept inside the card, a light line under the top ink
      edge, a light rim and a shade line at the foot. --sub-f: grey words on the tint, a step toward ink (measured ≥5:1
@@ -119,7 +120,8 @@
   --cel-back: color-mix(in srgb, color-mix(in srgb, var(--b2) 22%, var(--panel)) 86%, transparent);
   --cel-dot: color-mix(in srgb, var(--fg) 24%, transparent);
   --glint: color-mix(in srgb, var(--fg) 60%, transparent); --bevel: color-mix(in srgb, #000 50%, transparent);
-  --cel-sub: color-mix(in srgb, var(--fg) 80%, var(--bg));
+  --cel-sub: color-mix(in srgb, var(--fg) 88%, var(--bg));
+  --cel-edge: color-mix(in srgb, var(--fg) 40%, var(--rule)); /* the chalk rule fell to 3.6:1 on the tinted night cel; ≥5.3:1 now, still under the text */
   /* frosted cards at night: a 6% tint, a faint chalk sheen (5%: more would lift the text's ground), chalk light lines */
   --frost: color-mix(in srgb, color-mix(in srgb, var(--b2) 6%, var(--panel)) 90%, transparent);
   --sheen: color-mix(in srgb, var(--fg) 5%, transparent);
@@ -158,7 +160,8 @@
   --cel-back: color-mix(in srgb, color-mix(in srgb, var(--b2) 22%, var(--panel)) 86%, transparent);
   --cel-dot: color-mix(in srgb, var(--fg) 24%, transparent);
   --glint: color-mix(in srgb, var(--fg) 60%, transparent); --bevel: color-mix(in srgb, #000 50%, transparent);
-  --cel-sub: color-mix(in srgb, var(--fg) 80%, var(--bg));
+  --cel-sub: color-mix(in srgb, var(--fg) 88%, var(--bg));
+  --cel-edge: color-mix(in srgb, var(--fg) 40%, var(--rule)); /* the chalk rule fell to 3.6:1 on the tinted night cel; ≥5.3:1 now, still under the text */
   /* frosted cards at night: a 6% tint, a faint chalk sheen (5%: more would lift the text's ground), chalk light lines */
   --frost: color-mix(in srgb, color-mix(in srgb, var(--b2) 6%, var(--panel)) 90%, transparent);
   --sheen: color-mix(in srgb, var(--fg) 5%, transparent);
@@ -207,13 +210,13 @@ h1, h2 { text-wrap: balance; }
      highlight on the top edge (a 2px light line over a 1px ink line, no gradient), the 2px ink edge, a 3px hard slab under it. */
   background: radial-gradient(circle, var(--cel-dot) 1px, transparent 1.4px) 0 calc(100% - 1px) / 4px 4px repeat-x,
     radial-gradient(circle, var(--cel-dot) .7px, transparent 1.1px) 2px calc(100% - 5px) / 4px 4px repeat-x, var(--cel);
-  border-bottom: 2px solid var(--rule);
+  border-bottom: 2px solid var(--cel-edge);
   box-shadow: inset 0 2px 0 var(--glint), inset 0 3px 0 var(--bevel), 0 var(--off-ctl) 0 var(--off);
 }
 /* The second cel behind it, for 3D stacking: a dotted strip of the deeper tint under the slab, framed by its own ink line.
    Drawn once: nothing changes while the page scrolls under it. */
 .topbar::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 10px; margin-top: calc(2px + var(--off-ctl)); pointer-events: none;
-  border-bottom: 2px solid var(--rule); background: radial-gradient(circle, var(--cel-dot) 1px, transparent 1.4px) 0 1px / 4px 4px, var(--cel-back); }
+  border-bottom: 2px solid var(--cel-edge); background: radial-gradient(circle, var(--cel-dot) 1px, transparent 1.4px) 0 1px / 4px 4px, var(--cel-back); }
 .topbar h1 { flex: 1; min-width: 0; margin: 0; font: 400 1.35rem/1.1 var(--font-disp); letter-spacing: .02em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
 .topbar h1:focus, .topbar h1:focus-visible { outline: none; box-shadow: none; }
 .topbar .sub { font-size: .85rem; max-width: 40%; }
@@ -237,7 +240,9 @@ section { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
    the soft part is the sheen, a gradient that never leaves the card. */
 .sect { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 12px; min-width: 0; border: 2px solid var(--rule); border-radius: var(--r);
   --sub: var(--sub-f);
-  background: linear-gradient(to bottom, var(--sheen), transparent 40px), var(--frost);
+  /* the sheen is a 40px tile, not a gradient the height of the card: a tall section (a month of history) otherwise
+     rasterises a full-height gradient on each screen change (M-perf 4x: long tasks 52-66 ms) */
+  background: linear-gradient(var(--sheen), transparent) 0 0 / 100% 40px no-repeat, var(--frost);
   box-shadow: inset 0 2px 0 var(--frost-hi), inset 0 -2px 0 var(--frost-lo), inset 0 0 0 1px var(--frost-rim), var(--off-card) var(--off-card) 0 var(--off); }
 #app .sect :is(.panel, .ledger, .amount-box) { box-shadow: inset 0 2px 0 var(--frost-hi), var(--off-ctl) var(--off-ctl) 0 var(--off); }
 .sect .vol { --c-lift: var(--off-ctl); }
@@ -247,6 +252,8 @@ section { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
 /* Divider strip between groups (manga, not a grey hairline): the label, then an ink rule with a screentone band
    hanging from it (heavy dots under the rule, light ones below). Hazed: the section's marks sit behind the inner cards. */
 .strip { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+/* the strip names what follows it: 8px to its content, not the section's 12px (keeps the hub's first volume high under the iOS hint) */
+.sect > .strip { margin-bottom: -4px; }
 .strip > .label { margin: 0; flex: 0 1 auto; min-width: 0; }
 .strip > :not(.label) { order: 2; flex: none; }
 .strip::after { content: ""; order: 1; flex: 1 1 24px; min-width: 24px; height: 10px; border-top: 2px solid var(--haze);
@@ -254,7 +261,7 @@ section { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
     radial-gradient(circle, var(--haze) .7px, transparent 1.1px) 2px 4px / 4px 4px repeat-x; }
 /* Inside a section card the category grid is 24px narrower: 68px tiles keep 4 across from 360px (3 at 320) */
 .sect .cats { grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); }
-.sect .cat { padding-inline: 2px; }
+.sect .cat { padding: 6px 2px; } /* two-line labels ("Stay & rent") keep the 360 grid ≤220px tall */
 .pad { padding: 14px; }
 .label { margin: 18px 0 2px; font: 400 1.05rem/1.2 var(--font-disp); letter-spacing: .02em; color: var(--fg); }
 section > .label, section > .row > .label { margin-top: 6px; }
@@ -310,6 +317,7 @@ section > .label, section > .row > .label { margin-top: 6px; }
 .vol-name { font: 400 1.1rem/1.2 var(--font-disp); letter-spacing: .02em; overflow-wrap: anywhere; }
 /* Card meta wraps between its parts (never inside "¥48,000.00 spent"), so nothing on the first screen is cut off */
 .vol-meta > span { white-space: nowrap; }
+.vol-meta > span:last-child { white-space: normal; } /* a huge total wraps before "spent", never inside the amount */
 /* Separator dots belong to the part after them; the row starts .9em left and clip-path hides that strip, so a dot that
    lands at a line start is cut and none hangs at a line end */
 .vol-meta { display: flex; flex-wrap: wrap; margin-left: -.9em; clip-path: inset(0 0 0 .9em); }
@@ -350,7 +358,7 @@ section > .label, section > .row > .label { margin-top: 6px; }
 .hero { position: relative; padding: 16px 32px 14px 16px; border: 2px solid var(--rule); border-radius: var(--r); --t: var(--tone);
   /* frosted like the cards (owner 2026-11-11): the sheen over its top, a light line and rim inside the ink, all 0-blur */
   box-shadow: inset 0 2px 0 var(--frost-hi), inset 0 0 0 1px var(--frost-rim);
-  background: linear-gradient(to bottom, var(--sheen), transparent 40px),
+  background: linear-gradient(var(--sheen), transparent) 0 0 / 100% 40px no-repeat,
     radial-gradient(circle, var(--t) 2.4px, transparent 2.8px) right 0 top 0 / 6px 6px repeat-y,
     radial-gradient(circle, var(--t) 2.1px, transparent 2.5px) right 6px top 0 / 6px 6px repeat-y,
     radial-gradient(circle, var(--t) 1.8px, transparent 2.2px) right 12px top 0 / 6px 6px repeat-y,
@@ -390,6 +398,9 @@ section > .label, section > .row > .label { margin-top: 6px; }
 button.chip { min-height: 44px; text-align: left; }
 button.chip:not(.add) { border: 2px solid var(--rule); }
 button.chip:active { background: var(--sunk); }
+/* Member chips: the name over the amount beside the avatar, so two sit to a row at 360 inside a section card */
+.chip:has(> .av) { display: inline-grid; grid-template-columns: auto auto; column-gap: 8px; align-items: start; align-content: center; justify-items: start; line-height: 1.2; }
+.chip:has(> .av) > .av { grid-row: span 2; align-self: center; }
 .chips.sug:not(:empty) { margin-top: 8px; }
 .chips.sug .chip { padding: 4px 12px 4px 8px; max-width: 100%; }
 .chips.sug .chip svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -515,7 +526,7 @@ hati-pick { display: block; min-width: 0; }
   width: 100%; max-width: 520px; max-height: min(88%, var(--vvh, 100dvh)); overflow: auto; overscroll-behavior: contain;
   border-radius: 6px 6px 0 0; border: 2px solid var(--rule); border-top-width: 3px; border-bottom: none;
   /* frosted top (owner 2026-11-11): the sheen and a light line under the ink edge; the body stays opaque (text on it) */
-  background: linear-gradient(to bottom, var(--sheen), transparent 48px) var(--sheet); box-shadow: inset 0 2px 0 var(--frost-hi);
+  background: linear-gradient(var(--sheen), transparent) 0 0 / 100% 48px no-repeat, var(--sheet); box-shadow: inset 0 2px 0 var(--frost-hi);
   padding: 16px max(16px, env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
 }
 .sheet h2 { margin: 0 0 12px; font: 400 1.35rem var(--font-disp); letter-spacing: .02em; }
@@ -535,12 +546,13 @@ hati-pick { display: block; min-width: 0; }
 .share-sum { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 2px solid var(--rule); border-radius: var(--r); background: var(--panel); min-width: 0; }
 .share-sum b { font: 400 1.1rem/1.2 var(--font-disp); letter-spacing: .02em; }
 #s-code { resize: none; }
-/* QR: ink on white in every theme (scanners need it); the quiet zone is its only frame */
-/* QR: corner ticks say "scan this" (a viewfinder); the white stays inside them */
-.qr { display: block; width: min(100%, 300px); height: auto; margin: 0 auto; padding: 10px; --tk: linear-gradient(var(--fg), var(--fg));
+/* QR: ink on white in every theme (scanners need it), never wider than 280px. Corner ticks on a frame around it say
+   "scan this" (a viewfinder); the white and the QR itself stay untouched inside them. */
+.qr { display: block; width: 100%; height: auto; background: #fff; }
+.qr-frame { width: min(100%, 300px); margin: 0 auto; padding: 10px; --tk: linear-gradient(var(--fg), var(--fg));
   background: var(--tk) 0 0 / 22px 3px, var(--tk) 0 0 / 3px 22px, var(--tk) 100% 0 / 22px 3px, var(--tk) 100% 0 / 3px 22px,
-    var(--tk) 0 100% / 22px 3px, var(--tk) 0 100% / 3px 22px, var(--tk) 100% 100% / 22px 3px, var(--tk) 100% 100% / 3px 22px,
-    linear-gradient(#fff, #fff) content-box; background-repeat: no-repeat; }
+    var(--tk) 0 100% / 22px 3px, var(--tk) 0 100% / 3px 22px, var(--tk) 100% 100% / 22px 3px, var(--tk) 100% 100% / 3px 22px;
+  background-repeat: no-repeat; }
 .codebox summary { min-height: 44px; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .9rem; cursor: pointer; list-style: none; }
 .codebox summary::-webkit-details-marker { display: none; }
 .codebox summary::before { content: ""; width: 0; height: 0; border-left: 6px solid currentColor; border-block: 5px solid transparent; transition: transform .1s; }
@@ -1820,7 +1832,7 @@ async function shareSheet() {
       : `<button type="button" class="btn primary" data-act="copyLink" style="grid-column:1/-1">Copy link</button>`}</div>
     <label class="sr" for="s-link">Invite link</label><input id="s-link" class="input" readonly hidden value="${esc(link)}">
     <div class="msg ok" id="sheetMsg" role="status"></div>
-    ${qr ? `<div class="legend">Or scan it in the same room</div>${qr}` : `<p class="muted small" id="s-noqr" style="margin:0">This volume is too big for a QR code. Send the link instead.</p>`}`
+    ${qr ? `<div class="legend">Or scan it in the same room</div><div class="qr-frame">${qr}</div>` : `<p class="muted small" id="s-noqr" style="margin:0">This volume is too big for a QR code. Send the link instead.</p>`}`
     : `<p class="small" style="margin:0">Send it to the others in any chat. They open HATI², tap <b>Import</b> on Volumes and paste it.</p>
     <div class="btns">${send ? `<button type="button" class="btn primary" data-act="sendCode">${I.share} Send…</button><button type="button" class="btn" data-act="copyCode">Copy code</button>`
       : `<button type="button" class="btn primary" data-act="copyCode" style="grid-column:1/-1">Copy code</button>`}</div>

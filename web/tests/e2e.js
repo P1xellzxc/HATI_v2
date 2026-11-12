@@ -720,7 +720,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(drift.length===0,'L3-dark: OS dark and the Dark setting give identical tokens and .pal tiles in 13 palettes (one dark source) '+JSON.stringify(drift.slice(0,3)));
    // light keeps the old scrim and sheet, offsets stay ink
    const lt=await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); settleSheet(null); const r=[getComputedStyle($('.scrim')).backgroundColor,getComputedStyle($('.sheet')).backgroundColor,getComputedStyle(document.body).backgroundColor,getComputedStyle($('.hero')).boxShadow+' / '+getComputedStyle($('.hero'),'::after').right,document.querySelector('meta[name=theme-color]').content]; dropSheet(); return r; });
-   ok(lt[0]==='rgba(10, 10, 14, 0.5)' && lt[1]===lt[2] && lt[3]==='none / -10px' && lt[4]==='#FFFFFF','L3-dark: light scrim, sheet, hero 8px slab (a pseudo-element, no shadow) and theme-color '+JSON.stringify(lt));
+   ok(lt[0]==='rgba(10, 10, 14, 0.5)' && lt[1]===lt[2] && /^(none|((color\([^)]*\)|rgba?\([^)]*\)) 0px \d+px 0px \d+px inset(, )?)+) \/ -10px$/.test(lt[3]) && lt[4]==='#FFFFFF','L3-dark: light scrim, sheet, hero 8px slab (a pseudo-element; its only box-shadows are 0-blur inset frost lines) and theme-color '+JSON.stringify(lt));
    // toasts in dark wrap at 320/360/390 (merge summary and SAVE_GONE), offset stays the accent
    const tb=[];
    for (const w of [320,360,390]) { await pg.setViewportSize({width:w,height:780});
@@ -1254,7 +1254,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await pg.reload(); ok(await pg.evaluate(id=>{ const v=S.volumes.find(x=>x.id===id); return v.title==='Bali 2026' && v.members.length===5; },baliId),'LP-5: the edit survives a reload');
    // LP-6 Archive: a closed "Archived (1)" shelf at the bottom, read-only page, survives reload
    await pg.locator('.vol',{hasText:'Bali 2026'}).click({button:'right'}); await pg.locator('#sheetForm [data-act=archive]').click();
-   const sh=await pg.evaluate(()=>({live:[...document.querySelectorAll('#app > .stack .vol')].map(x=>x.querySelector('.vol-name').textContent),box:!!$('#archBox'),open:$('#archBox')&&$('#archBox').open,sum:$('#archBox summary').textContent,last:$('#archBox')===$('#archBox').parentElement.querySelector('details:last-of-type'),focus:document.activeElement===$('#archBox summary'),toast:$('.toast').textContent}));
+   const sh=await pg.evaluate(()=>({live:[...document.querySelectorAll('#app .sect > .stack .vol')].map(x=>x.querySelector('.vol-name').textContent),box:!!$('#archBox'),open:$('#archBox')&&$('#archBox').open,sum:$('#archBox summary').textContent,last:$('#archBox')===$('#archBox').parentElement.querySelector('details:last-of-type'),focus:document.activeElement===$('#archBox summary'),toast:$('.toast').textContent}));
    ok(JSON.stringify(sh.live)==='["Tokyo Trip (example)"]' && sh.box && !sh.open && sh.sum==='Archived (1)' && sh.focus && /Bali 2026 archived/.test(sh.toast),'LP-6: Archive moves it to a closed "Archived (1)" shelf at the bottom, focus on the shelf '+JSON.stringify(sh));
    await pg.reload();
    ok(await pg.evaluate(id=>!!S.volumes.find(x=>x.id===id).archived && $('#archBox summary').textContent==='Archived (1)',baliId),'LP-6: archived survives a reload');
@@ -1451,6 +1451,8 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      const {c:c2,pg:q}=await mk({viewport:{width:w,height:740}});
      for (const [name,fn] of screens) {
        await q.evaluate(([m,f])=>{ S.settings.mode=m; applyTheme(); (0,eval)('('+f+')')(); },[mode,fn.toString()]); await q.waitForTimeout(60);
+       // measured at rest, like the QR check: mid slide-up a fractional translateY reads a 44px target as 43.99997px
+       await q.evaluate(()=>{ const s=$('#sheetForm'); return s && Promise.all(s.getAnimations({subtree:true}).map(a=>a.finished.catch(()=>{}))); });
        const r=await q.evaluate(probe); geo.push({w,mode,name,...r}); low.push(...r.low.map(x=>({w,mode,name,...x})));
        const btn=await q.$('hati-pick[data-mode=list] .pick-btn'); if (btn) { await btn.click(); await q.waitForTimeout(250); const r2=await q.evaluate(probe); geo.push({w,mode,name:name+' list',...r2}); low.push(...r2.low.map(x=>({w,mode,name:name+' list',...x}))); await q.keyboard.press('Escape'); } }
      await c2.close(); }
@@ -1559,7 +1561,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await step(pg,'settle-up done pulses the balance',x=>x.name==='pulse');
    await step(pg,'all settled lands like a stamp',x=>x.name==='stamp'&&/stamped/.test(x.on));
    await step(pg,'"Payment recorded" toast is brushed in',x=>x.name==='toast-in');
-   await pg.waitForFunction(()=>!!document.querySelector('.toast.out'),null,{timeout:4000});
+   await pg.waitForFunction(()=>!!document.querySelector('.toast.out'),null,{timeout:7000}); // 6 s with Undo (D2)
    await step(pg,'the toast is wiped off when it ends',x=>x.name==='toast-out');
    await pg.waitForFunction(()=>!document.querySelector('.toast'),null,{timeout:1000}).catch(()=>{});
    ok(await pg.evaluate(()=>!document.querySelector('.toast')),'M: a wiped-off toast is removed');
