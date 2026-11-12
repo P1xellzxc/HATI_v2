@@ -45,7 +45,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
  const pick=async(pg,id,want)=>{ const el=pg.locator('#'+id);
    const name=await el.evaluate((e,w)=>{ const os=e.opts, i=typeof w==='string'?os.findIndex(x=>x[0]===w):w.label!=null?os.findIndex(x=>x[1]===w.label):w.index; return os[i]?os[i][1]:null; },want);
    if (name==null) throw new Error('no option '+JSON.stringify(want)+' in #'+id);
-   if (await el.getAttribute('data-mode')==='seg') { await el.getByRole('radio',{name,exact:true}).click(); return 1; }
+   if (['seg','grid'].includes(await el.getAttribute('data-mode'))) { await el.getByRole('radio',{name,exact:true}).click(); return 1; }
    await el.locator('.pick-btn').click(); await pg.locator('#pickLayer').getByRole('option',{name,exact:true}).click(); return 2; };
  const pickVal=(pg,id)=>pg.locator('#'+id).evaluate(e=>e.value);
  // There is no bottom bar: the hub is reached with the top bar's Back (or Escape for a sheet), Settings with the hub's gear.
@@ -199,7 +199,8 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      const c=await b.newContext({viewport:{width:360,height:780},colorScheme:os}); const pg=await c.newPage(); await pg.goto(URL);
      await pg.evaluate(a=>{ S.settings.mode=a; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); scrollTo(0,1e5); },app);
      const bg=await pg.evaluate(()=>[getComputedStyle(document.documentElement).backgroundColor,getComputedStyle(document.body).backgroundColor,document.body.offsetHeight>=document.scrollingElement.scrollHeight-1]);
-     ok(bg[0]===bg[1] && bg[2],`OS ${os} + app ${app}: page background is one colour to the bottom (${bg[0]} / ${bg[1]}, body covers page: ${bg[2]})`);
+     const lum=c=>{ const n=(c.match(/[\d.]+/g)||[]).map(Number); const k=/^color\(srgb/.test(c)?1:1/255; return (0.2126*n[0]+0.7152*n[1]+0.0722*n[2])*k; };
+     ok(bg.slice(0,2).every(x=>app==='dark'?lum(x)<0.3:lum(x)>0.8) && bg[2],`OS ${os} + app ${app}: the page (two-tone glass paper) follows the app theme to the bottom (${bg[0]} / ${bg[1]}, body covers page: ${bg[2]})`);
      // R2 revise (iOS): native controls (checkbox, date picker, keyboard) follow the app theme, not the OS
      const cs=await pg.evaluate(()=>{ const o=[getComputedStyle(document.documentElement).colorScheme]; S.settings.mode='system'; applyTheme(); o.push(getComputedStyle(document.documentElement).colorScheme); return o; });
      ok(cs[0]===app && cs[1]===os,`OS ${os} + app ${app}: color-scheme is ${app}, and ${os} on System ${JSON.stringify(cs)}`);
@@ -493,65 +494,36 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      ok(await Q.pg.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith('hati2.corrupt.')).length)===1,'loading the same damaged data again does not write a second copy'); }
    const errs2=all.flatMap(x=>x.e); ok(errs2.length===0,'no console errors in revise (code) checks '+JSON.stringify(errs2));
    for (const x of all) await x.c.close(); }
- // R1-clay / R1-share / R1-ioshint (design): manga clay on pressable controls only, one-tap Share, short iOS hint
- { const layers=s=>s==='none'?[]:s.split(/,(?![^(]*\))/).map(x=>x.trim());
-   const nums=l=>(l.replace(/(rgba?|color)\([^)]*\)/g,'').match(/-?[\d.]+px/g)||[]).map(parseFloat);
-   const offLayer=s=>layers(s).find(l=>!/inset/.test(l));
-   const isClay=cs=>{ const o=offLayer(cs.boxShadow); const n=o?nums(o):[]; const r=parseFloat(cs.borderTopLeftRadius); return cs.borderTopWidth==='2px' && r>=6 && r<=10 && /inset/.test(cs.boxShadow) && !!o && n[2]===0; };
-   const st=(pg,sel)=>pg.evaluate(sel=>{ const e=document.querySelector(sel); if(!e) return null; const c=getComputedStyle(e); return {boxShadow:c.boxShadow,borderTopWidth:c.borderTopWidth,borderTopLeftRadius:c.borderTopLeftRadius,borderTopRightRadius:c.borderTopRightRadius,backgroundImage:c.backgroundImage,transform:c.transform,outlineWidth:c.outlineWidth}; },sel);
-   const c=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780}}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())});
+ // GLASS (owner 2026-11-12): matte glass replaces ink-and-clay. Cards 16px and controls 12px corners, no ink border,
+ // a soft shadow falling down and to the right, an opaque matte body; blur only on the top bar and sheets (none on lowfx);
+ // fields keep a visible 1.5px edge; a chosen category / segment inverts. 13 palettes x light/dark. Then R1-share.
+ { const c=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780}}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())});
    await pg.goto(URL);
    const ids=await pg.evaluate(()=>PALETTES.map(x=>x.id)); const bad=[];
-   const CLAY_SET='.btn:not(.quiet):not(.text), .ico, .cat, .seg button, .vol, button.chip:not(.add)';
    for (const id of ids) for (const mode of ['light','dark']) {
-     const set=async v=>pg.evaluate(([id,mode,v])=>{ S.settings.palette=id; S.settings.mode=mode; applyTheme(); dropSheet&&dropSheet(); if(v==='expense'){ ui.volId=S.volumes[0].id; ui.view='volume'; openExpense(null); } else { if(v==='volume') ui.volId=S.volumes[0].id; go(v); } },[id,mode,v]);
-     const want=async(sel,clay,tag)=>{ const s=await st(pg,sel); if(!s) { bad.push(`${id}/${mode} ${tag||sel}: missing`); return; } if(clay? !isClay(s) : (layers(s.boxShadow).some(l=>/inset/.test(l)&&nums(l)[2]>0)||s.borderTopLeftRadius!==(tag==='sheet'?'6px':'3px'))) bad.push(`${id}/${mode} ${tag||sel}: ${s.borderTopWidth} r${s.borderTopLeftRadius} ${s.boxShadow}`); };
-     await set('hub'); await want('.vol',true); await want('.topbar [data-act=settings]',true,'hub gear');
-     await set('volume'); await want('.btn.primary',true); await want('.ico',true); await want('button.chip:not(.add)',true); await want('.ledger',false); await want('.hero',false);
-     await want('.chip.add',false,'chip.add (flat, 3px)');
-     await set('expense'); await want('.cat[aria-pressed="false"]',true); await want('.cat[aria-pressed="true"]',true); await want('.input',false);
-     const pc=await st(pg,'.cat[aria-pressed="true"]'); if(!/^0px 0px 0px/.test(nums(offLayer(pc.boxShadow)).slice(0,3).map(x=>x+'px').join(' '))) bad.push(`${id}/${mode} selected cat not pushed in: ${pc.boxShadow}`);
-     await set('settings'); await want('.panel',false); await want('.pal',false,'pal (flat swatch)');
-     const pal=await st(pg,'.pal'); if(/inset/.test(pal.boxShadow)) bad.push(`${id}/${mode} .pal has inset`);
-     await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); volMenuSheet(); }); await want('.sheet',false,'sheet');
-     const grad=await pg.evaluate(sel=>[...document.querySelectorAll(sel)].filter(x=>getComputedStyle(x).backgroundImage!=='none').map(x=>x.className),CLAY_SET); if(grad.length) bad.push(`${id}/${mode} gradient on clay: ${grad}`);
-     await pg.evaluate(()=>dropSheet()); }
-   ok(bad.length===0,'clay: clay set has 2px ink, 6-10px corners, inset light/shade and a 0-blur offset; reading surfaces stay 3px with no clay shading (frosted light lines are 0-blur); no gradients on clay; .pal and .chip.add flat, in 13 palettes x light/dark '+JSON.stringify(bad.slice(0,4)));
-   // Disabled clay is flat
-   await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); go('hub'); $('#app').insertAdjacentHTML('beforeend','<button class="btn primary" id="__dis" disabled>x</button>'); });
-   ok((await st(pg,'#__dis')).boxShadow==='none','clay: a disabled .btn has no shadow at all');
-   // Pressed: squash (normal motion) and squash shading without movement (reduced motion)
-   const press=async(P,sel)=>{ await P.evaluate(sel=>document.querySelector(sel).scrollIntoView({block:'center'}),sel); const r=await P.locator(sel).first().boundingBox(); const rest=await st(P,sel); await P.mouse.move(r.x+r.width/2,r.y+r.height/2); await P.mouse.down(); await P.waitForTimeout(150); const held=await st(P,sel); await P.mouse.move(1,1); await P.mouse.up(); return {rest,held}; };
-   const shade=s=>{ const ins=layers(s).filter(l=>/inset/.test(l)); return ins.reduce((a,l)=>a+Math.abs(nums(l)[2]||0),0); };
-   for (const [sel,view] of [['.btn.primary','volume'],['.vol','hub']]) {
-     await pg.evaluate(v=>{ ui.volId=S.volumes[0].id; go(v); },view);
-     const {rest,held}=await press(pg,sel); const m=/matrix\(1, 0, 0, 1, ([\d.]+), ([\d.]+)\)/.exec(held.transform)||[];
-     { const lift=nums(offLayer(rest.boxShadow))[0]; ok(+m[1]===lift && +m[2]===lift && lift===3 && nums(offLayer(held.boxShadow)).slice(0,3).every(x=>x===0) && shade(held.boxShadow)>shade(rest.boxShadow),`clay: held ${sel} moves exactly onto its ${lift}px slab (controls 3, volume cards are inner cards: 3), loses its offset and its inner shade grows (${held.transform}; ${held.boxShadow})`); } }
-   { const rc=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780},reducedMotion:'reduce'}); const R=await rc.newPage(); await R.goto(URL);
-     for (const [sel,view] of [['.btn.primary','volume'],['.vol','hub']]) {
-       await R.evaluate(v=>{ ui.volId=S.volumes[0].id; go(v); },view);
-       const {rest,held}=await press(R,sel);
-       ok(held.transform==='none' && held.boxShadow!==rest.boxShadow,`clay, reduced motion: held ${sel} does not move but still squashes (${held.transform})`); }
-     await rc.close(); }
-   // Focus ring survives clay (classic light and dark)
-   for (const mode of ['light','dark']) {
-     await pg.evaluate(m=>{ S.settings.palette='classic'; S.settings.mode=m; applyTheme(); },mode);
-     for (const [sel,view] of [['.btn.primary','volume'],['.cat','expense'],['.vol','hub']]) {
-       await pg.evaluate(v=>{ if(v==='expense'){ ui.volId=S.volumes[0].id; ui.view='volume'; openExpense(null); } else { ui.volId=S.volumes[0].id; go(v); } },view);
-       await pg.evaluate(sel=>document.querySelector(sel).focus(),sel); await pg.keyboard.press('Tab'); await pg.keyboard.press('Shift+Tab'); await pg.waitForTimeout(200);
-       const s=await st(pg,sel); const vis=await pg.evaluate(sel=>document.querySelector(sel).matches(':focus-visible'),sel);
-       ok(vis && s.outlineWidth==='3px' && /0px 0px 0px 6px/.test(s.boxShadow) && /inset/.test(s.boxShadow),`clay focus (${mode}) on ${sel}: 3px outline plus the 6px accent ring on top of the clay `+JSON.stringify([vis,s.outlineWidth,s.boxShadow])); } }
-   await pg.evaluate(()=>{ S.settings.mode='light'; applyTheme(); });
-   // Rows of clay buttons share height and text baseline (±1px)
-   for (const w of [360,390]) { await pg.setViewportSize({width:w,height:780});
-     const row=async sels=>pg.evaluate(sels=>sels.map(s=>{ const el=document.querySelector(s); const r=el.getBoundingClientRect(); const t=[...el.childNodes].filter(n=>n.nodeType===3&&n.textContent.trim()).pop(); const rg=document.createRange(); rg.selectNodeContents(t); const tr=rg.getBoundingClientRect(); return {h:r.height,base:tr.bottom-r.top,top:r.top}; }),sels);
-     await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); });
-     const a=await row(['[data-act=addExpense]','[data-act=settle]','.acts [data-act=share]']);
-     ok(Math.max(...a.map(x=>x.h))-Math.min(...a.map(x=>x.h))<=1 && Math.max(...a.map(x=>x.base))-Math.min(...a.map(x=>x.base))<=1 && Math.abs(a[1].top-a[2].top)<=1,`clay rows at ${w}: Add expense, Settle up and Share share height and baseline ${JSON.stringify(a)}`);
-     await pg.evaluate(()=>go('settings'));
-     const d=await row(['[data-act=backup]','[data-act=restore]','[data-act=seed]','[data-act=reset]']);
-     ok(Math.max(...d.map(x=>x.h))-Math.min(...d.map(x=>x.h))<=1 && Math.abs(d[0].base-d[1].base)<=1 && Math.abs(d[2].base-d[3].base)<=1 && Math.abs(d[0].top-d[1].top)<=1,`clay rows at ${w}: Settings Data pairs share height and baseline`); }
-   // R1-share: one tap from the volume page, menu entry still there
+     const r=await pg.evaluate(([id,mode])=>{ S.settings.palette=id; S.settings.mode=mode; applyTheme(); dropSheet&&dropSheet(); const out=[];
+       const outer=sh=>sh.split(/,(?![^(]*\))/).map(x=>x.trim()).filter(l=>!/inset/.test(l)).map(l=>(l.replace(/(rgba?|color)\([^)]*\)/g,'').match(/-?[\d.]+px/g)||[]).map(parseFloat));
+       const pane=(sel,r)=>{ const el=document.querySelector(sel); if(!el) return out.push(sel+' missing'); const cs=getComputedStyle(el), o=outer(cs.boxShadow);
+         if (cs.borderTopLeftRadius!==r+'px') out.push(sel+' radius '+cs.borderTopLeftRadius);
+         if (!o.some(n=>n[0]>0&&n[1]>0&&n[2]>0)) out.push(sel+' no soft down-right shadow '+cs.boxShadow);
+         if (o.some(n=>n[0]<0)) out.push(sel+' shadow falls left');
+         if (cs.borderTopWidth!=='0px' && !/rgba\(0, 0, 0, 0\)|transparent/.test(cs.borderTopColor)) out.push(sel+' ink border '+cs.borderTopColor);
+         if (/rgba\(0, 0, 0, 0\)/.test(cs.backgroundColor)) out.push(sel+' see-through body'); };
+       ui.volId=S.volumes.find(v=>!v.archived).id; go('volume');
+       pane('#app .hero',16); pane('#app .ledger',16); pane('#app .btn.primary',12); pane('#app .ico',12); pane('#app .btn:not(.primary):not(.quiet)',12);
+       if (getComputedStyle($('#app .ledger')).backdropFilter!=='none') out.push('ledger blurs (scroll cost)');
+       go('hub'); pane('#app .vol',16);
+       openExpense(null); ui.volId=S.volumes.find(v=>!v.archived).id; ui.view='volume'; openExpense(null);
+       pane('#app .cat[aria-pressed="false"]',12);
+       const sel=getComputedStyle($('#app .cat[aria-pressed="true"]')), root=getComputedStyle(document.documentElement);
+       if (sel.backgroundColor!==getComputedStyle(document.body).getPropertyValue('--sel-bg').trim() && sel.color===getComputedStyle($('#app .cat[aria-pressed="false"]')).color) out.push('chosen category does not invert');
+       const inp=getComputedStyle($('#f-desc')); if (inp.borderTopWidth!=='2px') out.push('field edge '+inp.borderTopWidth);
+       const tb=getComputedStyle($('.topbar')); if (!document.documentElement.classList.contains('lowfx') && !/blur/.test(tb.backdropFilter)) out.push('top bar not frosted');
+       return out; },[id,mode]);
+     bad.push(...r.map(x=>`${id}/${mode} ${x}`)); }
+   ok(bad.length===0,'GLASS: cards 16px and controls 12px glass panes, no ink border, soft shadow down-right, opaque matte body, no blur on lists, chosen inverts, fields keep a 2px edge, frosted top bar; 13 palettes x 2 themes '+JSON.stringify(bad.slice(0,12)));
+   const low=await pg.evaluate(()=>{ document.documentElement.classList.add('lowfx'); const t=getComputedStyle($('.topbar')).backdropFilter; document.documentElement.classList.remove('lowfx'); return t; });
+   ok(low==='none','GLASS: low-end phones (:root.lowfx) get no blur on the top bar '+low);
    await pg.setViewportSize({width:360,height:780}); await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); });
    const sb=pg.getByRole('button',{name:'Share volume',exact:true});
    ok(await sb.count()===1 && await sb.isVisible(),'Share volume is a visible button on the volume page, without opening a menu');
@@ -588,96 +560,6 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      ok(t.lines===1 && t.gloss,`R2-4: hub tagline is one line at ${w} and "New volume" still says what a volume is ${JSON.stringify(t)}`); }
    ok(e.length===0,'no page errors in R2-4 checks '+JSON.stringify(e));
    await c.close(); }
- // DEPTH (owner 2026-11-09, direction A "layered"): hard 0-blur ink slabs by rank (controls 3px, cards and page panels 5px,
- // the hero an 8px dotted slab), a dotted L shade on the card's far edges, a stepped dot ramp on the hero only, and a header
- // with a 3px ink edge and an 8px screentone band that stays the same while the page scrolls. 13 palettes x light/dark.
- { const c=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780},deviceScaleFactor:1}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())});
-   await pg.goto(URL);
-   const ids=await pg.evaluate(()=>PALETTES.map(x=>x.id)); const bad=[], band=[], flat=[];
-   for (const id of ids) for (const mode of ['light','dark']) {
-     const r=await pg.evaluate(([id,mode])=>{ S.settings.palette=id; S.settings.mode=mode; applyTheme(); dropSheet(); const out={};
-       const lay=s=>s==='none'?[]:s.split(/,(?![^(]*\))/).map(x=>x.trim());
-       const off=el=>{ const l=lay(getComputedStyle(el).boxShadow).find(x=>!/inset/.test(x)); if(!l) return null; const n=(l.replace(/(rgba?|color)\([^)]*\)/g,'').match(/-?[\d.]+px/g)||[]).map(parseFloat); return n.slice(0,3).join('/'); };
-       const blurs=el=>lay(getComputedStyle(el).boxShadow).filter(x=>!/inset/.test(x)).map(l=>(l.replace(/(rgba?|color)\([^)]*\)/g,'').match(/-?[\d.]+px/g)||[]).map(parseFloat)[2]).filter(x=>x>0).length;
-       go('hub'); out.vol=off($('.vol')); out.gear=off($('.topbar [data-act=settings]')); const vi=getComputedStyle($('.vol-info'));
-       out.strip=[(vi.backgroundImage.match(/radial-gradient/g)||[]).length, /repeat-x/.test(vi.backgroundRepeat)&&/repeat-y/.test(vi.backgroundRepeat), /linear-gradient/.test(vi.backgroundImage)];
-       const tb=getComputedStyle($('.topbar')), ta=getComputedStyle($('.topbar'),'::after');
-       out.head=[tb.borderBottomWidth, getComputedStyle($('.vol')).borderTopWidth, ta.content, ta.height, ta.position, /radial-gradient/.test(ta.backgroundImage), /(\/ 0\.[0-9]+\)|rgba\([^)]*, 0\.[0-9]+\))/.test(tb.backgroundColor), tb.boxShadow, tb.filter, tb.backdropFilter];
-       ui.volId=S.volumes[0].id; go('volume');
-       out.sect=off($('#app .sect')); out.btn=off($('.btn.primary')); out.ico=off($('.topbar .ico')); out.chip=off($('button.chip:not(.add)')); out.ledger=off($('#app .ledger'));
-       const h=$('.hero'), hs=getComputedStyle(h), ha=getComputedStyle(h,'::after');
-       const z=l=>(l.replace(/(rgba?|color)\([^)]*\)/g,'').match(/-?[\d.]+px/g)||[]).map(parseFloat);
-       out.hero=[lay(hs.boxShadow).every(l=>/inset/.test(l)&&z(l)[2]===0)?'none':hs.boxShadow, hs.marginBottom, ha.top, ha.left, ha.right, ha.bottom, ha.borderTopWidth, /radial-gradient/.test(ha.backgroundImage), /8px/.test(ha.clipPath), (hs.backgroundImage.match(/radial-gradient/g)||[]).length, (hs.backgroundImage.match(/linear-gradient/g)||[]).length>1||/conic/.test(hs.backgroundImage), hs.maskImage||hs.webkitMaskImage];
-       // the heavy end of the ramp (the 5 columns with dots over 1.2px: the right 30px of the padding box) holds no text
-       const hr=h.getBoundingClientRect(), heavyL=hr.right-2-30; out.heavy=[...h.querySelectorAll('*')].filter(x=>[...x.childNodes].some(n=>n.nodeType===3&&n.textContent.trim())).map(x=>{ const g=document.createRange(); g.selectNodeContents(x); return g.getBoundingClientRect().right; }).filter(x=>x>heavyL).length;
-       out.rows=[...document.querySelectorAll('#app .ledger, #app .ledger > *, #app .tx, #app .debt')].reduce((a,x)=>a+blurs(x),0);
-       out.filters=[...document.querySelectorAll('#app *')].filter(x=>{ const s=getComputedStyle(x); return s.filter!=='none'||s.backdropFilter!=='none'; }).length;
-       go('settings'); out.panel=off($('#app .panel')); ui.volId=S.volumes[0].id; ui.view='volume'; openExpense(null); out.cat=off($('.cat[aria-pressed="false"]')); out.seg=off($('.seg')); dropSheet();
-       return out; },[id,mode]);
-     const why=[];
-     for (const k of ['gear','btn','ico','chip','cat','seg']) if (r[k]!=='3/3/0') why.push(`${k} ${r[k]}`);
-     for (const k of ['vol','ledger','panel']) if (r[k]!=='3/3/0') why.push(`${k} ${r[k]}`);
-     if (r.sect!=='5/5/0') why.push(`sect ${r.sect}`);
-     const H=r.hero; if (H[0]!=='none'||H[1]!=='8px'||H[2]!=='6px'||H[3]!=='6px'||H[4]!=='-10px'||H[5]!=='-10px'||H[6]!=='2px'||!H[7]||!H[8]||H[9]!==9||H[10]||(H[11]&&H[11]!=='none')) why.push('hero '+JSON.stringify(H));
-     if (r.heavy) why.push(`${r.heavy} text runs reach the heavy end`);
-     if (r.strip[0]!==4||!r.strip[1]||r.strip[2]) why.push('card strip '+JSON.stringify(r.strip));
-     if (why.length) bad.push(`${id}/${mode}: ${why.join(', ')}`);
-     const T=r.head; if (T[0]!=='2px'||T[1]!=='2px'||T[2]!=='""'||T[3]!=='10px'||T[4]!=='absolute'||!T[5]||!T[6]||!/0px 3px 0px/.test(T[7])||/\d+px \d+px [1-9]/.test(T[7].replace(/inset[^,]*/g,''))||T[8]!=='none'||T[9]!=='none') band.push(`${id}/${mode} ${JSON.stringify(T)}`);
-     if (r.rows||r.filters) flat.push(`${id}/${mode} rows with blur ${r.rows}, filters ${r.filters}`); }
-   ok(bad.length===0,'DEPTH: offsets by rank — controls 3px (gear, primary, icon, chip, category, segmented), section cards 5px, inner cards 3px (volume card, ledger, panel), hero 8px dotted slab (frosted: 0-blur light lines, one sheen) (pseudo-element, 8px margin under it, 9-column dot ramp, no gradient fade or mask), heavy ramp end free of text, card shade is an L (right and bottom), all 0-blur, 13 palettes x light/dark '+JSON.stringify(bad.slice(0,3)));
-   ok(band.length===0,'DEPTH: header is manga acetate in both themes — translucent cel (alpha < 1), 2px ink edge, a 3px 0-blur slab, a second dotted cel (10px) behind it, no filter or backdrop-filter, 13 palettes x light/dark '+JSON.stringify(band.slice(0,3)));
-   ok(flat.length===0,'DEPTH: paint cost — no blurred box-shadow on ledgers or list rows and no filter/backdrop-filter anywhere in the volume page, 13 palettes x light/dark '+JSON.stringify(flat.slice(0,3)));
-   // The header is static: scrolling a long history changes neither its edge, its band nor where they are drawn
-   await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); const v=S.volumes[0], ids=v.members.map(m=>m.id); for (let i=0;i<40;i++) v.expenses.push({id:'dp'+i,desc:'Lunch '+i,amount:1000,paidBy:ids[0],category:'food',date:'2026-01-01',splitType:'equal',splits:splitEqual(1000,ids),inputs:{},note:'',upd:1}); ui.volId=v.id; go('history'); scrollTo(0,0); });
-   const hs=async()=>pg.evaluate(()=>{ const t=$('.topbar'), s=getComputedStyle(t), a=getComputedStyle(t,'::after'); return JSON.stringify([Math.round(t.getBoundingClientRect().top),Math.round(t.getBoundingClientRect().bottom),s.borderBottom,s.boxShadow,s.background,a.background,a.height,a.top,a.opacity]); });
-   const top0=await hs(); await pg.mouse.move(180,500); await pg.mouse.wheel(0,900); await pg.waitForTimeout(300); const sy=await pg.evaluate(()=>scrollY); const top1=await hs();
-   ok(sy>300 && top0===top1,`DEPTH: the header and its band look and sit the same after scrolling ${sy}px (no scroll-linked shadow) ${top0===top1?'':top0+' vs '+top1}`);
-   await pg.evaluate(()=>{ S.volumes[0].expenses=S.volumes[0].expenses.filter(x=>!/^dp/.test(x.id)); scrollTo(0,0); });
-   // Slabs stay on the screen at phone widths: nothing scrolls sideways and the hero's slab ends inside the gutter
-   for (const w of [320,360,390]) { await pg.setViewportSize({width:w,height:780});
-     const m=await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); const h=$('.hero').getBoundingClientRect(); return {sw:document.scrollingElement.scrollWidth,cw:document.scrollingElement.clientWidth,slabR:h.right+8,vw:innerWidth}; });
-     ok(m.sw<=m.cw && m.slabR<=m.vw-8,`DEPTH: at ${w}px no sideways scroll and the hero slab ends ≥8px from the screen edge ${JSON.stringify(m)}`); }
-   ok(e.length===0,'no page errors in DEPTH checks '+JSON.stringify(e));
-   await c.close(); }
- // ALL-OUT (design, 2026-11-11): every card-like block on every view and sheet stands on a non-zero 0-blur ink offset;
- // no filter, backdrop-filter or blurred outer shadow anywhere; the header cel is translucent and its grey words hold 4.5:1.
- { const c=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780},deviceScaleFactor:1}); await c.addInitScript(noSync); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message));
-   await pg.goto(URL); const bad=[], blur=[], head=[];
-   const scenes=[['hub',()=>go('hub')],['volume',()=>{ ui.volId=S.volumes[0].id; go('volume'); }],['history',()=>{ ui.volId=S.volumes[0].id; go('history'); }],
-     ['expense',()=>{ ui.volId=S.volumes[0].id; ui.view='volume'; openExpense(null); }],['settings',()=>go('settings')],
-     ['empty volume',()=>{ S.volumes=S.volumes.filter(v=>v.id!=='ao1'); S.volumes.push({id:'ao1',title:'Flat',type:'home',currency:'$',meId:'a',created:Date.now(),members:[{id:'a',name:'Ana'},{id:'b',name:'Rio'}],expenses:[],settlements:[]}); ui.volId='ao1'; go('volume'); }],
-     ['settle sheet',()=>{ ui.volId=S.volumes[0].id; go('volume'); settleSheet(null); }],['edit volume sheet',()=>{ ui.volId=S.volumes[0].id; go('volume'); volumeSheet(S.volumes[0]); }],
-     ['toast',()=>{ go('hub'); toast('Expense saved'); }]];
-   for (const mode of ['light','dark']) for (const [name,open] of scenes) {
-     await pg.evaluate(([mode,name])=>{ S.settings.palette='classic'; S.settings.mode=mode; applyTheme(); dropSheet(); document.querySelectorAll('.toast').forEach(n=>n.remove()); },[mode,name]);
-     await pg.evaluate(`(${open.toString()})()`);
-     const r=await pg.evaluate(()=>{ const lay=s=>s==='none'?[]:s.split(/,(?![^(]*\))/).map(x=>x.trim()), num=l=>(l.replace(/(rgba?|color)\([^)]*\)/g,'').match(/-?[\d.]+px/g)||[]).map(parseFloat);
-       const cards=[...document.querySelectorAll('#app :is(.sect, .panel, .ledger, .vol, .amount-box), .sheet :is(.panel, .ledger, .share-sum), .toast')].filter(x=>x.getClientRects().length);
-       const flat=cards.filter(x=>{ const o=lay(getComputedStyle(x).boxShadow).filter(l=>!/inset/.test(l)).map(num); return !o.some(n=>(n[0]>0||n[1]>0)&&!n[2]); }).map(x=>x.className);
-       const blurred=[...document.querySelectorAll('*')].flatMap(x=>[null,'::before','::after'].map(pe=>{ const s=getComputedStyle(x,pe); const o=lay(s.boxShadow).filter(l=>!/inset/.test(l)).some(l=>num(l)[2]>0);
-         const dof=!pe&&x.id==='app'&&x.inert&&/^blur\(([0-2](\.\d+)?|3)px\)$/.test(s.filter);
-         return (s.filter!=='none'&&!dof)||s.backdropFilter!=='none'||o||(s.textShadow!=='none')?(x.id||x.className)+(pe||''):null; })).filter(Boolean);
-       return {n:cards.length,flat,blurred}; });
-     if (!r.n||r.flat.length) bad.push(`${mode}/${name}: ${r.n} cards, flat: ${r.flat.slice(0,3)}`);
-     if (r.blurred.length) blur.push(`${mode}/${name}: ${r.blurred.slice(0,3)}`); }
-   // header cel: translucent, its grey text 4.5:1 composited over the page and over ink scrolling under it, 13 plates x 2 themes
-   const ids=await pg.evaluate(()=>PALETTES.map(x=>x.id));
-   for (const id of ids) for (const mode of ['light','dark']) {
-     const r=await pg.evaluate(([id,mode])=>{ S.settings.palette=id; S.settings.mode=mode; applyTheme(); dropSheet(); go('settings');
-       const t=$('.topbar'); t.insertAdjacentHTML('beforeend','<span class="muted" id="__celsub">x</span>');
-       const P=c=>{ const n=(c.match(/[\d.]+/g)||[0,0,0]).map(Number); if (/^color\(srgb/.test(c)) { n[0]*=255; n[1]*=255; n[2]*=255; } if (n.length<4) n[3]=1; return n; };
-       const lin=v=>{ v/=255; return v<=0.03928?v/12.92:((v+0.055)/1.055)**2.4; }, L=([r,g,b])=>0.2126*lin(r)+0.7152*lin(g)+0.0722*lin(b);
-       const over=(a,u)=>[0,1,2].map(i=>a[i]*a[3]+u[i]*(1-a[3]));
-       const cel=P(getComputedStyle(t).backgroundColor), page=P(getComputedStyle(document.body).backgroundColor), ink=P(getComputedStyle(document.body).color);
-       const cr=(f,g)=>{ const x=L(f), y=L(g); return (Math.max(x,y)+0.05)/(Math.min(x,y)+0.05); };
-       const sub=P(getComputedStyle($('#__celsub')).color), h1=P(getComputedStyle($('.topbar h1')).color); $('#__celsub').remove();
-       return {a:cel[3],sub:Math.min(cr(sub,over(cel,page)),cr(sub,over(cel,ink))),h1:Math.min(cr(h1,over(cel,page)),cr(h1,over(cel,ink))),bf:getComputedStyle(t).backdropFilter}; },[id,mode]);
-     if (!(r.a>=0.85&&r.a<=0.92)||r.sub<4.5||r.h1<4.5||r.bf!=='none') head.push(`${id}/${mode} ${JSON.stringify(r)}`); }
-   ok(bad.length===0,'ALL-OUT: every card-like block (cards, panels, ledgers, amount box, sheet ledgers and summaries, toast) on 9 views and sheets has a non-zero 0-blur ink offset, light and dark '+JSON.stringify(bad.slice(0,3)));
-   ok(blur.length===0,'ALL-OUT: no filter, backdrop-filter, text-shadow or blurred outer shadow on any element or pseudo-element, 9 views and sheets, light and dark '+JSON.stringify(blur.slice(0,3)));
-   ok(head.length===0,'ALL-OUT: header acetate cel is 85-92% opaque with no backdrop-filter; its title and grey words hold 4.5:1 over the page and over ink under it, 13 palettes x light/dark '+JSON.stringify(head.slice(0,3)));
-   ok(e.length===0,'no page errors in ALL-OUT checks '+JSON.stringify(e));
-   await c.close(); }
  // L3-dark (design): ink on night paper. Layer steps, chalk frames quieter than text, a chalk-ink offset slab (R2 revise), plate-tinted hero, selected
  // states mixed from chalk (never diluted accent), sheet lifts off a darker scrim, one dark source (no drift), status bar
  // colour = night paper, focus ring and toasts in dark. All measured from computed colours in 13 palettes.
@@ -713,14 +595,14 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      // the rendered selected segment and category really use the selected fill
      await pg.evaluate(()=>{ ui.view='volume'; openExpense(null); });
      const rs=await pg.evaluate(()=>[getComputedStyle($('.seg button[aria-pressed="true"]')).backgroundColor,getComputedStyle($('.seg button[aria-pressed="true"]')).color,getComputedStyle($('.cat[aria-pressed="true"]')).backgroundColor,getComputedStyle($('.cat[aria-pressed="true"]')).color,getComputedStyle($('.cat[aria-pressed="true"]')).getPropertyValue('--clay-lo').trim(),getComputedStyle($('.input')).backgroundColor,getComputedStyle($('.btn.primary')||$('.sheet')).backgroundColor]);
-     if(rs[0]!==t['--sel-bg']||rs[1]!==t['--sel-fg']||rs[2]!==t['--chip']||rs[3]!==t['--on-accent']||!/16%/.test(rs[4])) bad.push(`${id}: rendered selected fills ${rs.join(' | ')}`);
+     if(rs[0]!==t['--sel-bg']||rs[1]!==t['--sel-fg']||rs[2]!==t['--sel-bg']||rs[3]!==t['--sel-fg']) bad.push(`${id}: rendered selected fills ${rs.join(' | ')}`); // glass: a chosen category inverts like a segment
      await pg.evaluate(()=>dropSheet()); }
    await pg.emulateMedia({colorScheme:'light'});
    ok(bad.length===0,'L3-dark: night paper layers (panel/bg ≥1.25, line & rule/panel ≥3, frames quieter than text, offset slab ≥3 vs night and hero, ≤ rule), hero ≥1.15 with text ≥4.5, screentone 1.3–1.6, selected seg/cat ≥3 vs unselected (WCAG 1.4.11) with text ≥4.5, field/sheet ≥1.15, sheet/scrim ≥1.3, focus ring ≥3, theme-color = night paper, 13 palettes '+JSON.stringify(bad.slice(0,3)));
    ok(drift.length===0,'L3-dark: OS dark and the Dark setting give identical tokens and .pal tiles in 13 palettes (one dark source) '+JSON.stringify(drift.slice(0,3)));
    // light keeps the old scrim and sheet, offsets stay ink
    const lt=await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); settleSheet(null); const r=[getComputedStyle($('.scrim')).backgroundColor,getComputedStyle($('.sheet')).backgroundColor,getComputedStyle(document.body).backgroundColor,getComputedStyle($('.hero')).boxShadow+' / '+getComputedStyle($('.hero'),'::after').right,document.querySelector('meta[name=theme-color]').content]; dropSheet(); return r; });
-   ok(lt[0]==='rgba(10, 10, 14, 0.5)' && lt[1]===lt[2] && /^(none|((color\([^)]*\)|rgba?\([^)]*\)) 0px \d+px 0px \d+px inset(, )?)+) \/ -10px$/.test(lt[3]) && lt[4]==='#FFFFFF','L3-dark: light scrim, sheet, hero 8px slab (a pseudo-element; its only box-shadows are 0-blur inset frost lines) and theme-color '+JSON.stringify(lt));
+   ok(lt[0]==='rgba(10, 10, 14, 0.5)' && lt[4]==='#FFFFFF','L3-dark (glass): light scrim and theme-color = the plate paper (the hero slab and sheet frame belong to the old look) '+JSON.stringify(lt));
    // toasts in dark wrap at 320/360/390 (merge summary and SAVE_GONE), offset stays the accent
    const tb=[];
    for (const w of [320,360,390]) { await pg.setViewportSize({width:w,height:780});
@@ -748,22 +630,23 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      const c=C(bg).map(Math.round), s2=Math.max(...c)-Math.min(...c), ch=chroma(c); sp.push(`${id} ${s2}/${ch.toFixed(3)}`);
      if(s2>14||ch>0.03) bad.push(`${id}: night ${c} spread ${s2} chroma ${ch.toFixed(3)}`); if(lb.includes(false)) bad.push(`${id}: light tokens changed ${lb}`); }
    ok(bad.length===0,'R2-2: dark --bg RGB spread ≤14 and OKLCH chroma ≤0.03 in 13 palettes, light --bg/--panel/--line/--hero/--chip still the plate inputs ['+sp.join(', ')+'] '+JSON.stringify(bad.slice(-3)));
-   // R2-5 (design): in light the selected category carries an inner ink edge the others lack (not hue alone); dark keeps the pastel inversion
-   const ce=[];
+   // R2-5 under glass (owner 2026-11-12): a chosen category inverts to a solid ink fill (not hue alone): its fill stands
+   // ≥3:1 from an unchosen one (WCAG 1.4.11) with text ≥4.5:1, and keyboard focus keeps the 3px outline on it.
+   const ce=[], cf=[];
    for (const id of ids) for (const mode of ['light','dark']) {
      const r=await pg.evaluate(([id,mode])=>{ S.settings.palette=id; S.settings.mode=mode; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); openExpense(null);
-       const fg=getComputedStyle(document.body).color, s=getComputedStyle($('.cat[aria-pressed="true"]')).boxShadow, u=getComputedStyle($('.cat[aria-pressed="false"]')).boxShadow; dropSheet(); return {fg,s,u}; },[id,mode]);
-     const ring=r.s.startsWith(r.fg+' 0px 0px 0px 2px inset'), uHas=/0px 0px 0px 2px inset/.test(r.u);
-     if(mode==='light' ? (!ring||uHas) : ring) ce.push(`${id}/${mode}: ${JSON.stringify(r)}`); }
-   ok(ce.length===0,'R2-5: light selected .cat has a 2px inner --fg edge and unselected has none (13 palettes); dark selected has no chalk edge '+JSON.stringify(ce.slice(0,2)));
-   // R2-5 revise (a11y): the inner ink edge survives keyboard focus (the :is() focus rule must not out-specify it)
-   const cf=[];
-   for (const id of ids) { await pg.evaluate(id=>{ S.settings.palette=id; S.settings.mode='light'; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); openExpense(null); },id);
+       const parse=c=>{ const n=(c.match(/[\d.]+/g)||[0,0,0]).map(Number); if (/^color\(srgb/.test(c)) { n[0]*=255; n[1]*=255; n[2]*=255; } return n; };
+       const lin=v=>{ v/=255; return v<=0.03928?v/12.92:((v+0.055)/1.055)**2.4; }, L=([r,g,b])=>0.2126*lin(r)+0.7152*lin(g)+0.0722*lin(b), cr=(a,b)=>{ const x=L(parse(a)), y=L(parse(b)); return (Math.max(x,y)+0.05)/(Math.min(x,y)+0.05); };
+       const s=getComputedStyle($('.cat[aria-pressed="true"]')), u=getComputedStyle($('.cat[aria-pressed="false"]'));
+       return {fill:+cr(s.backgroundColor,u.backgroundColor).toFixed(2),text:+cr(s.color,s.backgroundColor).toFixed(2)}; },[id,mode]);
+     if (r.fill<3||r.text<4.5) ce.push(`${id}/${mode}: ${JSON.stringify(r)}`); }
+   ok(ce.length===0,'R2-5 (glass): a chosen category inverts: fill ≥3:1 from an unchosen one, text ≥4.5:1, 13 palettes x 2 themes '+JSON.stringify(ce.slice(0,3)));
+   for (const id of ids.slice(0,3)) { await pg.evaluate(id=>{ S.settings.palette=id; S.settings.mode='light'; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); openExpense(null); },id);
      await pg.evaluate(()=>{ const s=$('.cat[aria-pressed="true"]'); (s.previousElementSibling||s.nextElementSibling).focus(); });
-     await pg.keyboard.press(await pg.evaluate(()=>$('.cat[aria-pressed="true"]').previousElementSibling?'Tab':'Shift+Tab')); await pg.waitForTimeout(400); // let the box-shadow transition settle
-     const r=await pg.evaluate(()=>{ const s=$('.cat[aria-pressed="true"]'); const o={fv:s.matches(':focus-visible'),fg:getComputedStyle(document.body).color,s:getComputedStyle(s).boxShadow}; dropSheet(); return o; });
-     if(!r.fv || !r.s.startsWith(r.fg+' 0px 0px 0px 2px inset') || !/0px 0px 0px 6px/.test(r.s)) cf.push(`${id}: ${JSON.stringify(r)}`); }
-   ok(cf.length===0,'R2-5: light selected .cat keeps its 2px inner --fg edge plus the focus ring under keyboard :focus-visible (13 palettes) '+JSON.stringify(cf.slice(0,2)));
+     await pg.keyboard.press(await pg.evaluate(()=>$('.cat[aria-pressed="true"]').previousElementSibling?'Tab':'Shift+Tab')); await pg.waitForTimeout(300);
+     const r=await pg.evaluate(()=>{ const s=$('.cat[aria-pressed="true"]'); const c=getComputedStyle(s); return {fv:s.matches(':focus-visible'),ow:c.outlineWidth,os:c.outlineStyle}; });
+     if (!r.fv||r.ow!=='3px'||r.os==='none') cf.push(`${id}: ${JSON.stringify(r)}`); }
+   ok(cf.length===0,'R2-5 (glass): keyboard focus on the chosen category shows the 3px outline '+JSON.stringify(cf));
    // R2-3 (design): history rows wrap instead of cutting off; title ≤2 lines, icon/title/amount share line 1, no dangling "·"
    const hb=[];
    for (const mode of ['light','dark']) for (const w of [360,390]) for (const long of [false,true]) { await pg.setViewportSize({width:w,height:780});
@@ -1364,13 +1247,13 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      await pg.getByRole('button',{name:'Save expense'}).click(); await pg.waitForTimeout(80);
      const saved=await pg.evaluate(()=>{ const v=vol(), x=v.expenses[0]; return x && nameOf(v,x.paidBy); });
      one.push({n:names.length+1,mode,taps,pressed,saved}); }
-   ok(one.every(r=>r.mode==='seg' && r.taps===1 && r.saved==='Ivy' && /Ivy:true/.test(r.pressed) && /You:false/.test(r.pressed)),'D0-2: Paid by is a segmented row and Ivy is one tap in volumes of 2, 3 and 4 members; the expense saves paidBy = Ivy '+JSON.stringify(one));
+   ok(one.every(r=>r.mode==='grid' && r.taps===1 && r.saved==='Ivy' && /Ivy:true/.test(r.pressed) && /You:false/.test(r.pressed)),'D0-2/X4: Paid by is the balanced grid and Ivy is one tap in volumes of 2, 3 and 4 members; the expense saves paidBy = Ivy '+JSON.stringify(one));
    await pg.evaluate(()=>{ const me=uid(); const v={id:uid(),title:'Big',type:'other',currency:'$',meId:me,created:Date.now(),members:[{id:me,name:'Al'},...['Ivy','Bo','Cy','Di','Ed'].map(n=>({id:uid(),name:n}))],expenses:[],settlements:[]}; S.volumes.unshift(v); save(); ui.volId=v.id; go('volume'); openExpense(null); });
    await pg.waitForTimeout(80);
    const big={mode:await pg.locator('#f-paid').getAttribute('data-mode'),btn:await pg.getByRole('button',{name:'Paid by You'}).count()};
    await pg.fill('#f-amount','30'); await pg.fill('#f-desc','Pizza'); const bt=await pick(pg,'f-paid',{label:'Ed'}); await pg.getByRole('button',{name:'Save expense'}).click(); await pg.waitForTimeout(80);
    const bs=await pg.evaluate(()=>nameOf(vol(),vol().expenses[0].paidBy));
-   ok(big.mode==='list' && big.btn===1 && bt===2 && bs==='Ed','D0-2: 6 members (over 4): Paid by is a button named "Paid by You" that opens the sheet list; Ed in 2 taps, saved '+JSON.stringify([big,bt,bs]));
+   ok(big.mode==='grid' && big.btn===0 && bt===1 && bs==='Ed','X4: 6 members: Paid by stays the grid (no list button); Ed in 1 tap, saved '+JSON.stringify([big,bt,bs]));
    // D0-3: keyboard and screen reader. Row: radiogroup named by its label, radios with aria-checked, one tab stop,
    // arrows move the choice (wrapping), Home/End. Sheet list: button "Currency ¥" (haspopup listbox), Enter opens a dialog
    // with a listbox named Currency, focus on the chosen option, arrows move focus only, Esc closes and returns focus,
@@ -1399,10 +1282,11 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    const s5=await pg.evaluate(()=>({gone:!$('#pickLayer'),sheet:sheetOpen(),v:$('#s-cur').value}));
    // Back (Android) closes only the list: the page under it stays
    await pg.keyboard.press('Escape'); await pg.waitForTimeout(80);
-   await pg.evaluate(()=>{ ui.volId=S.volumes.find(v=>v.title==='Big').id; go('volume'); openExpense(null); }); await pg.waitForTimeout(150);
-   await pg.locator('#f-paid .pick-btn').click(); await pg.waitForTimeout(250); await pg.goBack(); await pg.waitForTimeout(150);
-   const bk=await pg.evaluate(()=>({gone:!$('#pickLayer'),view:ui.view,inert:$('#app').inert}));
-   ok(bk.gone && bk.view==='expense' && !bk.inert,'D0-3: Back with the Paid by list open closes the list and stays on the expense form '+JSON.stringify(bk));
+   await pg.evaluate(()=>{ ui.volId=S.volumes.find(v=>v.title==='Big').id; go('volume'); volumeSheet(vol()); }); await pg.waitForTimeout(250);
+   await pg.locator('#s-cur .pick-btn').click(); await pg.waitForTimeout(250); await pg.goBack(); await pg.waitForTimeout(150);
+   const bk=await pg.evaluate(()=>({gone:!$('#pickLayer'),view:ui.view,sheet:sheetOpen()}));
+   ok(bk.gone && bk.view==='volume' && bk.sheet,'D0-3: Back with the Currency list open closes the list and keeps the sheet under it '+JSON.stringify(bk));
+   await pg.keyboard.press('Escape'); await pg.waitForTimeout(80);
    await pg.evaluate(()=>{ ui.volId=S.volumes.find(v=>/example/.test(v.title)).id; go('volume'); volumeSheet(vol()); }); await pg.waitForTimeout(250);
    ok(pop==='listbox' && s1v===1 && s1.f==='option:¥:true' && s1.n===10 && s1.inert && s2==='Rp:¥' && s3.gone && s3.sheet && s3.focus && s3.v==='¥' && !s3.layer && s4.gone && s4.v==='RM' && s4.label==='RM' && s4.focus && s5.gone && s5.sheet && s5.v==='RM','D0-3: Currency: button with a listbox popup; Enter opens a dialog + listbox "Currency" focused on ¥; arrows move focus only; Esc closes it (not the volume sheet) and returns focus; End + Enter picks RM; a tap outside closes it '+JSON.stringify([pop,s1,s2,s3,s4,s5]));
    await pg.keyboard.press('Escape'); await pg.waitForTimeout(80);
@@ -1456,9 +1340,9 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
        const r=await q.evaluate(probe); geo.push({w,mode,name,...r}); low.push(...r.low.map(x=>({w,mode,name,...x})));
        const btn=await q.$('hati-pick[data-mode=list] .pick-btn'); if (btn) { await btn.click(); await q.waitForTimeout(250); const r2=await q.evaluate(probe); geo.push({w,mode,name:name+' list',...r2}); low.push(...r2.low.map(x=>({w,mode,name:name+' list',...x}))); await q.keyboard.press('Escape'); } }
      await c2.close(); }
-   const badGeo=geo.filter(g=>g.over||g.picks.some(p=>!p.inView||p.small||p.cut||p.rows>1));
+   const badGeo=geo.filter(g=>g.over||g.picks.some(p=>!p.inView||p.small||p.cut||(p.mode==='grid'?false:p.rows>1))); // X4: the Paid by grid wraps into even rows by design
    ok(badGeo.length===0 && geo.length>=30,'D0-5: all 7 pickers (and the sheet list) at 320/360/390, light and dark: no sideways scroll, in view, targets ≥44px, no cut labels, rows never wrap '+JSON.stringify(badGeo.slice(0,2)));
-   ok(geo.filter(g=>g.w===320&&g.name==='volume sheet').every(g=>g.picks.find(p=>p.id==='s-type').mode==='list') && geo.filter(g=>g.w===390&&g.name==='volume sheet').every(g=>g.picks.find(p=>p.id==='s-type').mode==='seg') && geo.filter(g=>g.name==='join').every(g=>g.picks.find(p=>p.id==='s-who').mode==='list'),'D0-5: a row whose words do not fit becomes the button + list (Type at 320, a long member name), and stays a row where it fits (Type at 390)');
+   ok(geo.filter(g=>g.w===320&&g.name==='volume sheet').every(g=>['list','seg'].includes(g.picks.find(p=>p.id==='s-type').mode)) && /* glass sheets lost the 2px ink sides: Type may fit at 320; D0-5 above still bans cut labels */ geo.filter(g=>g.w===390&&g.name==='volume sheet').every(g=>g.picks.find(p=>p.id==='s-type').mode==='seg') && geo.filter(g=>g.name==='join').every(g=>g.picks.find(p=>p.id==='s-who').mode==='list'),'D0-5: a row whose words do not fit becomes the button + list (Type at 320, a long member name), and stays a row where it fits (Type at 390)');
    { const {c:c3,pg:q}=await mk({viewport:{width:360,height:740}}); const ids=await q.evaluate(()=>PALETTES.map(x=>x.id));
      for (const id of ids) for (const mode of ['light','dark']) for (const [name,fn] of screens.slice(0,3)) {
        await q.evaluate(([id,m,f])=>{ S.settings.palette=id; S.settings.mode=m; applyTheme(); (0,eval)('('+f+')')(); },[id,mode,fn.toString()]);
@@ -1482,7 +1366,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(['food','transport','entertainment','utilities','shopping','other'].every(id=>cats.ids.includes(id)),'CAT: the six original ids are still categories (old data, links, older phones)');
    ok(cats.icons.every(s=>/^<svg viewBox="0 0 24 24"><path d="[^"]+"\/>/.test(s)) && new Set(cats.icons).size===12,'CAT: every category has its own 24px ink-line icon');
    const un=await pg.evaluate(()=>{ const v=exampleVolume(); v.expenses[0].category='pets'; v.expenses[1].category='groceries'; const cl=cleanVolume(v); S.volumes.unshift(cl); save(); ui.volId=cl.id; go('volume');
-     return {pets:cl.expenses[0].category,gro:cl.expenses[1].category,bars:[...document.querySelectorAll('.bars .row span')].map(x=>x.textContent),icon:CAT_ICON.other.includes(document.querySelector('.tx[data-id="'+cl.expenses[0].id+'"] .tx-ic path').getAttribute('d'))}; });
+     return {pets:cl.expenses[0].category,gro:cl.expenses[1].category,bars:[...document.querySelectorAll('.glance .gl-b:last-child .gl-bars .row > span:first-child')].map(x=>x.textContent),icon:CAT_ICON.other.includes(document.querySelector('.tx[data-id="'+cl.expenses[0].id+'"] .tx-ic path').getAttribute('d'))}; });
    ok(un.pets==='other' && un.gro==='groceries' && un.icon && un.bars.includes('Other') && un.bars.includes('Groceries') && new Set(un.bars).size===un.bars.length,'CAT: an unknown id reads as Other (icon and summary), a new id is kept; the summary has one row per category '+JSON.stringify(un));
    const mg=await pg.evaluate(()=>{ const v=S.volumes[0], o=JSON.parse(JSON.stringify(v)); v.expenses[1].upd=5; o.expenses[1].upd=5; o.expenses[1].category='other';
      const a=mergeVolumes(v,o).vol.expenses[1].category; o.expenses[1].upd=6; const b=mergeVolumes(v,o).vol.expenses[1].category; return [a,b]; });
@@ -1673,7 +1557,10 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await pg.locator('[data-act=addExpense]').click(); await pg.waitForSelector('#expForm'); await pg.waitForTimeout(350);                          // tap 1
    const sug=()=>pg.evaluate(()=>[...document.querySelectorAll('#descSug [data-sug]')].map(b=>b.textContent.trim()));
    const s0=await sug();
-   ok(JSON.stringify(s0)===JSON.stringify(['house of bagnet','Chowking','Uncle John']) && await pg.locator('#f-amount').inputValue()==='' && await pg.locator('#lastAmt').innerHTML()==='','D1: a new expense offers the 3 most used descriptions of this volume (latest spelling), most used first; the amount stays empty '+JSON.stringify(s0));
+   ok(s0.length===0 && await pg.locator('#f-amount').inputValue()==='' && await pg.locator('#lastAmt').innerHTML()==='','D1 (owner 2026-11-12): an empty description shows no suggestions; the amount stays empty '+JSON.stringify(s0));
+   await pg.locator('#f-desc').fill('c'); const sc=await sug();
+   const wantC=await pg.evaluate(()=>[...new Set(vol().expenses.map(e=>e.desc.trim().toLowerCase()).filter(k=>k.startsWith('c')))].length);
+   ok(sc.length>0 && sc.length===wantC && sc.every(t=>t.toLowerCase().startsWith('c')),'D1 (owner 2026-11-12): one letter shows every past description that starts with it '+JSON.stringify([sc,wantC]));
    const box=await pg.evaluate(()=>{ const g=document.getElementById('descSug'), bs=[...g.querySelectorAll('button')]; return {role:g.getAttribute('role'),name:g.getAttribute('aria-label'),h:Math.min(...bs.map(x=>x.getBoundingClientRect().height)),fit:bs.every(x=>x.getBoundingClientRect().right<=innerWidth),tab:bs.every(x=>x.tabIndex===0)}; });
    ok(box.role==='group' && !!box.name && box.h>=44 && box.fit && box.tab,'D1: the suggestions are real buttons in a named group, at least 44 px tall, inside the screen '+JSON.stringify(box));
    await pg.locator('#f-desc').fill('cho'); const s1=await sug();
@@ -1888,7 +1775,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    const f0=await pg.evaluate(()=>({d:$('#s-date').value,type:$('#s-date').type,q:[...document.querySelectorAll('#sheetForm [data-day]')].map(b=>b.textContent+':'+b.getAttribute('aria-pressed')+':'+(b.getBoundingClientRect().height>=44)),
      how:{label:document.querySelector('label[for=s-via]').textContent,ph:$('#s-via').placeholder,max:$('#s-via').maxLength,fs:getComputedStyle($('#s-via')).fontSize},dfs:getComputedStyle($('#s-date')).fontSize}));
    ok(f0.d===dayAgo(0) && f0.type==='date' && f0.q.join()==='Today:true:true,Yesterday:false:true' && f0.dfs==='16px','D3: the settle sheet has a native date field set to today, with Today (pressed) and Yesterday '+JSON.stringify(f0));
-   ok(f0.how.label==='How (optional)' && f0.how.ph==='GCash, cash' && f0.how.max===40 && f0.how.fs==='16px','D3: "How (optional)", placeholder "GCash, cash", up to 40 characters, 16px '+JSON.stringify(f0.how));
+   ok(f0.how.label==='How (optional)' && f0.how.ph==='GCash ref 1234' && f0.how.max===40 && f0.how.fs==='16px','D3/X5: "How (optional)", placeholder "GCash ref 1234", up to 40 characters, 16px '+JSON.stringify(f0.how));
    await pg.getByRole('button',{name:'Yesterday',exact:true}).click(); taps++;
    await pg.locator('#s-via').fill('GCash'); taps++;
    await pg.locator('#sheetForm button.primary').click(); taps++; await pg.waitForTimeout(400);
@@ -1920,6 +1807,89 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    const hx=await pg.evaluate(()=>({h:window.__h,t:document.querySelector('.ledger.hist .tx[data-act=editSettle] .tx-m').textContent,kept:S.volumes[0].settlements[0].how}));
    ok(hx.h===undefined && /via <img/.test(hx.t) && /^<img/.test(hx.kept),'D3: how survives a reload and shows as text '+JSON.stringify(hx));
    ok(errs.length===0,'D3: no page errors '+JSON.stringify(errs)); await c.close(); }
+
+ // NEXT round (owner 2026-11-12): X1 At a glance, X2 month totals, X3 search/filter, X4 balanced Paid by, X5 payment
+ // methods, X6 Copy as new. Real functions, integer cents.
+ { const c=await b.newContext({...devices['Pixel 7']}); await c.addInitScript(noSync); const pg=await c.newPage(); const errs=[]; pg.on('pageerror',x=>errs.push(x.message)); pg.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
+   await pg.goto(URL); await pg.waitForSelector('.vol');
+   const seed=await pg.evaluate(()=>{ const me='me', ids=['ivy','bo','cy','di','ed','fr'], all=[me,...ids];
+     const now=today(), [Y,M]=now.split('-').map(Number), prev=M===1?`${Y-1}-12`:`${Y}-${pad2(M-1)}`;
+     const cats=['food','groceries','utilities','lodging','transport','drinks','health'], ex=[];
+     for (let i=0;i<24;i++) { const amt=1001+i*137, d=(i%2?prev:now.slice(0,7))+'-'+pad2(1+(i%9)); ex.push({id:'x'+i,desc:['Rent','Groceries','Meralco','Water','Grab','Coffee','Meds'][i%7]+' '+i,amount:amt,paidBy:all[i%7],category:cats[i%7],date:d,splitType:'equal',splits:splitEqual(amt,all),inputs:{},note:i===5?'GCash promo':'',upd:1}); }
+     const v={id:'nx',title:'Bebetime',type:'household',currency:'₱',meId:me,created:Date.now(),members:all.map((id,k)=>({id,name:k?['Ivy','Bo','Cy','Di','Ed','Francesca'][k-1]:'Al'})),expenses:ex,settlements:[{id:'s1',from:'bo',to:'me',amount:500,date:now,upd:1,how:'GCash'}]};
+     S.volumes.unshift(v); save(); ui.volId=v.id; go('volume'); return {now,prev}; });
+   await pg.waitForTimeout(300);
+   // X1
+   const g=await pg.evaluate(()=>{ const v=vol(), g=glance(v), b=balances(v);
+     const pay=id=>v.settlements.reduce((a,s)=>a+(s.from===id?s.amount:0)-(s.to===id?s.amount:0),0);
+     return {panel:!!document.querySelector('.glance'),after:!!document.querySelector('.sect:has(.debt) + .sect .glance'),old:[...document.querySelectorAll('h2')].some(h=>/Spending by category/.test(h.textContent)),
+       parity:g.who.every(r=>r.diff===(b[r.id]||0)-pay(r.id)), cats:g.cats.reduce((a,c)=>a+c[1],0)===g.tot, tot:g.tot===total(v), months:g.time.cols.reduce((a,c)=>a+c.a,0)===g.tot,
+       ints:[g.tot,...g.who.flatMap(r=>[r.paid,r.share,r.diff]),...g.cats.map(c=>c[1]),...g.time.cols.map(c=>c.a)].every(Number.isInteger),
+       top:g.who[0].paid===Math.max(...g.who.map(r=>r.paid)), stamp:document.querySelectorAll('.glance .stamp-s').length, catLines:g.cats.length,
+       say:document.querySelector('.glance .gl-say').textContent}; });
+   ok(g.panel && g.after && !g.old,'X1: "At a glance" sits right after "Who pays whom" and replaces the bottom "Spending by category" '+JSON.stringify(g));
+   ok(g.parity && g.cats && g.tot && g.months && g.ints,'X1: money: each "Who paid" difference = that member\'s balance before payments; category lines and this/last month sum to the total; all integer cents '+JSON.stringify(g));
+   ok(g.top && g.stamp===1 && g.catLines===6 && /^This month ₱/.test(g.say),'X1: the top payer is first with one "Paid most" stamp; top 5 categories + "Everything else"; a household says this month vs last '+JSON.stringify(g));
+   const trip=await pg.evaluate(()=>{ const v=exampleVolume(), g=glance(v); return {kind:g.time.kind,sum:g.time.cols.reduce((a,c)=>a+c.a,0)===g.tot,n:g.time.cols.length}; });
+   ok(trip.kind==='days' && trip.sum,'X1: a trip shows one column per day and the days sum to the total '+JSON.stringify(trip));
+   // X2
+   await pg.evaluate(()=>go('history')); await pg.waitForSelector('.ledger.hist'); await pg.waitForTimeout(300);
+   const m=await pg.evaluate(()=>{ const v=vol(), want={}; v.expenses.forEach(e=>{ const k=e.date.slice(0,7); want[k]=(want[k]||0)+e.amount; });
+     return [...document.querySelectorAll('.sect.month')].map(s=>({h:s.querySelector('h2').textContent,t:s.querySelector('.month-tot')&&s.querySelector('.month-tot').firstChild.textContent,ok:false,want:null})).map((r,i)=>{ const k=Object.keys(want).sort().reverse()[i]; return {...r,ok:r.t===fmt(want[k],v.currency)}; }); });
+   ok(m.length===2 && m.every(r=>r.ok),'X2: every month heading carries that month\'s expense total (payments excluded) '+JSON.stringify(m));
+   // X3
+   const f0=await pg.evaluate(()=>({bar:!!$('#h-q'),role:$('.hfilter').getAttribute('role')}));
+   await pg.fill('#h-q','rent'); await pg.waitForTimeout(150);
+   const f1=await pg.evaluate(()=>({n:document.querySelectorAll('.ledger.hist .tx').length,c:$('#histCount').textContent,focus:document.activeElement.id,live:$('#status').textContent}));
+   await pg.waitForTimeout(100); const live1=await pg.evaluate(()=>$('#status').textContent);
+   await pg.fill('#h-q','gcash'); await pg.waitForTimeout(150);
+   const f2=await pg.evaluate(()=>[...document.querySelectorAll('.ledger.hist .tx')].map(r=>r.dataset.id));
+   await pg.fill('#h-q',''); await pick(pg,'h-cat',{label:'Groceries'}); await pg.waitForTimeout(150);
+   const f3=await pg.evaluate(()=>({n:document.querySelectorAll('.ledger.hist .tx').length,all:vol().expenses.filter(e=>e.category==='groceries').length,tot:document.querySelector('.month-tot')&&document.querySelector('.month-tot').firstChild.textContent}));
+   await pick(pg,'h-cat',{label:'All'}); await pick(pg,'h-who',{label:'Bo'}); await pg.waitForTimeout(150);
+   const f4=await pg.evaluate(()=>({n:document.querySelectorAll('.ledger.hist .tx').length,want:vol().expenses.filter(e=>e.paidBy==='bo'||has(e.splits,'bo')).length+vol().settlements.filter(s=>s.from==='bo'||s.to==='bo').length}));
+   await pg.getByRole('button',{name:'Clear'}).click(); await pg.waitForTimeout(150);
+   const f5=await pg.evaluate(()=>({n:document.querySelectorAll('.ledger.hist .tx').length,q:$('#h-q').value,clear:$('#histClear').hidden}));
+   ok(f0.bar && f0.role==='search','X3: History over 20 items has a search region '+JSON.stringify(f0));
+   ok(f1.n===7 && f1.c==='7 matches' && f1.focus==='h-q' && /7 matches/.test(live1),'X3: words match description and category; the count shows and is announced; focus stays in the field '+JSON.stringify([f1,live1]));
+   ok(f2.join()==='s1,x5','X3: "gcash" finds the payment by its method and the expense by its note '+JSON.stringify(f2));
+   ok(f3.n===f3.all && f3.n>0,'X3: the Category filter keeps only that category (payments drop out) '+JSON.stringify(f3));
+   ok(f4.n===f4.want && f4.n>0,'X3: the Who filter keeps what that member paid or shares, and their payments '+JSON.stringify(f4));
+   ok(f5.n===25 && f5.q==='' && f5.clear,'X3: Clear brings every item back '+JSON.stringify(f5));
+   const small=await pg.evaluate(()=>{ ui.volId=S.volumes.find(v=>/example/.test(v.title)).id; go('history'); return !!$('#h-q'); });
+   ok(!small,'X3: a short history (20 or fewer) has no search bar '+small);
+   // X4: balanced rows for 1..8 people; one tap; arrows across rows
+   const rows=await pg.evaluate(()=>[1,2,3,4,5,6,7,8].map(n=>pickRows(n).join('+')));
+   ok(rows.join()==='1,2,3,4,3+2,3+3,4+3,4+4','X4: rows are at most 4 and as even as possible '+rows.join());
+   await pg.evaluate(()=>{ ui.volId='nx'; go('volume'); openExpense(null); }); await pg.waitForTimeout(200);
+   const geo=await pg.evaluate(()=>{ const rs=[...document.querySelectorAll('#f-paid .pk-row')].map(r=>r.getBoundingClientRect()), bs=[...document.querySelectorAll('#f-paid .pkg')].map(x=>x.getBoundingClientRect()), d=$('#f-desc').getBoundingClientRect();
+     const byRow=rs.map(r=>bs.filter(x=>Math.abs(x.top-r.top)<4||Math.abs(x.top-r.top-3)<4));
+     return {rows:byRow.map(x=>x.length),edges:rs.every(r=>Math.abs(r.left-d.left)<1&&Math.abs(r.right-d.right)<1),equal:byRow.every(x=>Math.max(...x.map(y=>y.width))-Math.min(...x.map(y=>y.width))<1),fill:byRow.every((x,i)=>Math.abs(x[x.length-1].right-rs[i].right)<4)}; });
+   ok(geo.rows.join('+')==='4+3' && geo.edges && geo.equal && geo.fill,'X4: 7 people = rows of 4 and 3, equal widths per row, each row fills the field width '+JSON.stringify(geo));
+   const t1=await pick(pg,'f-paid',{label:'Francesca'});
+   await pg.getByRole('radio',{name:'Francesca'}).focus(); await pg.keyboard.press('ArrowRight');
+   const k=await pg.evaluate(()=>({f:document.activeElement.textContent,v:ui.form.paidBy}));
+   ok(t1===1 && k.f==='You' && k.v==='me','X4: any payer is one tap; arrows walk across rows and wrap '+JSON.stringify([t1,k]));
+   // X6 Copy as new
+   await pg.evaluate(()=>{ go('volume'); openExpense(vol().expenses.find(e=>e.id==='x3')); }); await pg.waitForTimeout(200);
+   await pg.getByRole('button',{name:'Copy as new'}).click(); await pg.waitForTimeout(200);
+   const cp=await pg.evaluate(()=>({title:document.querySelector('.topbar h1').textContent,f:{...ui.form},focus:document.activeElement.id}));
+   await pg.getByRole('button',{name:'Save expense'}).click(); await pg.waitForTimeout(300);
+   const cs=await pg.evaluate(()=>{ const v=vol(), o=v.expenses.find(e=>e.id==='x3'), n=v.expenses.filter(e=>e.desc===o.desc); return {n:n.length,same:n.every(e=>e.amount===o.amount&&e.paidBy===o.paidBy&&e.category===o.category&&JSON.stringify(e.splits)===JSON.stringify(o.splits)),date:n.find(e=>e.id!=='x3').date,orig:o.date}; });
+   ok(cp.title==='New expense' && !cp.f.id && cp.f.date===seed.now && cp.focus==='f-amount','X6: Copy as new opens a new expense with the same fields, dated today, focus on the amount '+JSON.stringify(cp));
+   ok(cs.n===2 && cs.same && cs.date===seed.now && cs.orig!==seed.now,'X6: saving it adds a second expense with the same amount, payer, category and split; the original is untouched '+JSON.stringify(cs));
+   // X5 methods
+   await pg.evaluate(()=>{ go('volume'); settleSheet(null); }); await pg.waitForSelector('#s-via');
+   await pg.getByRole('button',{name:'GCash',exact:true}).click();
+   const h1=await pg.evaluate(()=>({v:$('#s-via').value,p:[...document.querySelectorAll('[data-how]')].map(b=>b.getAttribute('aria-pressed')).join()}));
+   await pg.getByRole('button',{name:'GCash',exact:true}).click();
+   const h2=await pg.evaluate(()=>$('#s-via').value);
+   await pg.getByRole('button',{name:'Cash',exact:true}).click(); await pg.locator('#s-via').fill('Cash ref 77');
+   const h3=await pg.evaluate(()=>[...document.querySelectorAll('[data-how]')].map(b=>b.getAttribute('aria-pressed')).join());
+   await pg.locator('#sheetForm button.primary').click(); await pg.waitForTimeout(300);
+   const h4=await pg.evaluate(()=>vol().settlements.slice(-1)[0].how);
+   ok(h1.v==='GCash' && h1.p==='false,true,false' && h2==='' && h3==='false,false,false' && h4==='Cash ref 77','X5: Cash / GCash / Bank fill "How" in one tap (tap again clears); typed words still save as typed '+JSON.stringify([h1,h2,h3,h4]));
+   ok(errs.length===0,'NEXT: no page errors '+JSON.stringify(errs)); await c.close(); }
 
  await b.close();
 })();

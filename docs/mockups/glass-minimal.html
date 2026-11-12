@@ -1,0 +1,367 @@
+<title>HATI² Glass Paper Proofs</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap">
+<style>
+/* Layout: a proof sheet. Three minimal directions, each a strip of three phone screens (hub, volume, new expense)
+   with margin notes. Minimal = fewer materials, not no voice: ink, paper, one plate accent, one display face. */
+:root {
+  --ink: #000000; --paper: #FFFFFF; --acc: #FEF08A; --acc-on: #000000; --s2: #BFDBFE; --s3: #BBF7D0; --s4: #E9D5FF;
+  --pos: #166534; --neg: #9D174D; --mute: #5B5F69;
+
+  --bg: var(--paper); --fg: var(--ink); --sub: var(--mute);
+  --sunk: color-mix(in srgb, var(--ink) 4%, var(--paper));
+  --sunk-2: color-mix(in srgb, var(--ink) 7%, var(--paper));
+  --line: color-mix(in srgb, var(--ink) 14%, var(--paper));
+  --rule: var(--ink);
+  --tone: color-mix(in srgb, var(--ink) 22%, transparent);
+  --scrim: color-mix(in srgb, var(--ink) 35%, transparent);
+  --sheet: var(--paper);
+  --desk: #E4E2DC;
+  --cel: color-mix(in srgb, color-mix(in srgb, var(--s2) 18%, var(--paper)) 88%, transparent);
+  --cel-dot: color-mix(in srgb, var(--ink) 14%, transparent);
+  --pane: color-mix(in srgb, color-mix(in srgb, var(--s2) 14%, var(--paper)) 62%, transparent);
+  --glint: color-mix(in srgb, var(--paper) 85%, transparent);
+  --mis-c: color-mix(in srgb, #00A3D9 70%, transparent); --mis-m: color-mix(in srgb, #E5007E 60%, transparent);
+  --cel-sub: color-mix(in srgb, var(--mute) 70%, var(--ink));
+
+  --font-disp: 'Black Han Sans', 'Arial Black', Impact, sans-serif;
+  --font-body: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --r: 3px; --r-ctl: 6px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: color-mix(in srgb, var(--ink) 5%, #0E0D12); --fg: #EDEBE4; --sub: #A3A1AB;
+    --sunk: color-mix(in srgb, #EDEBE4 6%, var(--bg)); --sunk-2: color-mix(in srgb, #EDEBE4 10%, var(--bg));
+    --line: color-mix(in srgb, #EDEBE4 18%, var(--bg)); --rule: color-mix(in srgb, #EDEBE4 70%, var(--bg));
+    --tone: color-mix(in srgb, #EDEBE4 22%, transparent);
+    --pos: #BBF7D0; --neg: #FBCFE8; --scrim: rgba(0,0,0,.6); --sheet: color-mix(in srgb, #EDEBE4 8%, var(--bg)); --desk: #0A0A0D;
+    --cel: color-mix(in srgb, color-mix(in srgb, var(--s2) 10%, var(--sheet)) 90%, transparent);
+    --cel-dot: color-mix(in srgb, #EDEBE4 16%, transparent);
+    --pane: color-mix(in srgb, color-mix(in srgb, var(--s2) 10%, var(--bg)) 66%, transparent);
+    --glint: color-mix(in srgb, #EDEBE4 30%, transparent);
+    --cel-sub: color-mix(in srgb, #EDEBE4 86%, var(--bg));
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: color-mix(in srgb, var(--ink) 5%, #0E0D12); --fg: #EDEBE4; --sub: #A3A1AB;
+  --sunk: color-mix(in srgb, #EDEBE4 6%, var(--bg)); --sunk-2: color-mix(in srgb, #EDEBE4 10%, var(--bg));
+  --line: color-mix(in srgb, #EDEBE4 18%, var(--bg)); --rule: color-mix(in srgb, #EDEBE4 70%, var(--bg));
+  --tone: color-mix(in srgb, #EDEBE4 22%, transparent);
+  --pos: #BBF7D0; --neg: #FBCFE8; --scrim: rgba(0,0,0,.6); --sheet: color-mix(in srgb, #EDEBE4 8%, var(--bg)); --desk: #0A0A0D;
+  --cel: color-mix(in srgb, color-mix(in srgb, var(--s2) 10%, var(--sheet)) 90%, transparent);
+  --cel-dot: color-mix(in srgb, #EDEBE4 16%, transparent);
+  --pane: color-mix(in srgb, color-mix(in srgb, var(--s2) 10%, var(--bg)) 66%, transparent);
+  --glint: color-mix(in srgb, #EDEBE4 30%, transparent);
+  --cel-sub: color-mix(in srgb, #EDEBE4 86%, var(--bg));
+  color-scheme: dark;
+}
+:root[data-plate="persimmon"] { --ink: #003119; --acc: #FFAB00; --s2: #FFAB00; --s3: #A10B2B; --s4: #BFABCC; --mute: #4F5B55; }
+:root[data-plate="lagoon"]    { --ink: #2A0082; --acc: #59B3C2; --s2: #008AA1; --s3: #C2612C; --s4: #59B3C2; --mute: #57536A; }
+:root[data-plate="peony"]     { --ink: #06004F; --acc: #FF4DC9; --s2: #B319AB; --s3: #718600; --s4: #FF4DC9; --mute: #55536A; }
+
+*, *::before, *::after { box-sizing: border-box; }
+html { background: var(--desk); }
+body { margin: 0; background: var(--desk); color: var(--fg); font: 16px/1.45 var(--font-body); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--desk); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+
+/* proof sheet chrome */
+.sheetwrap { max-width: 1320px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px; }
+.mast { display: grid; gap: 14px; margin-bottom: 28px; }
+.mast h1 { margin: 0; font: 400 clamp(2rem, 5vw, 3.4rem)/1 var(--font-disp); color: var(--fg); text-wrap: balance; }
+.mast h1 sup { font-size: .5em; }
+.mast p { margin: 0; max-width: 68ch; color: var(--sub); }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.ctl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ctl > span { font-size: .8rem; color: var(--sub); font-weight: 500; }
+.seg { display: inline-flex; border: 1.5px solid var(--fg); border-radius: var(--r-ctl); overflow: hidden; background: var(--bg); }
+.seg button { border: 0; background: transparent; padding: 7px 12px; font-size: .85rem; font-weight: 500; cursor: pointer; }
+.seg button + button { border-left: 1.5px solid var(--fg); }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.dir { margin-top: 44px; display: grid; gap: 18px; }
+.dir-head { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: baseline; border-top: 2px solid var(--fg); padding-top: 12px; }
+.dir-head .num { font: 400 2.6rem/1 var(--font-disp); color: var(--fg); grid-row: span 2; }
+.dir-head h2 { margin: 0; font: 400 1.6rem/1.1 var(--font-disp); color: var(--fg); }
+.dir-head .tag { margin: 0; color: var(--sub); font-size: .92rem; max-width: 70ch; }
+.badge { display: inline-block; margin-left: 8px; padding: 1px 8px; border: 1.5px solid var(--fg); font: 700 .72rem/1.5 var(--font-body); letter-spacing: .04em; vertical-align: middle; color: var(--fg); }
+.badge.pick { background: var(--fg); color: var(--bg); }
+.row { display: flex; gap: 28px; overflow-x: auto; padding: 6px 4px 18px 2px; scroll-snap-type: x mandatory; }
+.row > * { scroll-snap-align: start; }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px 28px; font-size: .9rem; }
+.notes div { min-width: 0; }
+.notes b { display: block; font-size: .78rem; letter-spacing: .04em; color: var(--sub); font-weight: 700; margin-bottom: 2px; }
+.notes p { margin: 0; color: var(--fg); }
+
+/* phone */
+.phone { flex: 0 0 auto; width: 360px; display: grid; gap: 8px; margin: 0; }
+.phone .cap { font-size: .8rem; color: var(--sub); font-weight: 500; }
+.screen { position: relative; width: 360px; height: 760px; overflow: hidden; border: 2px solid var(--fg); border-radius: 26px; background: var(--bg); color: var(--fg); isolation: isolate; }
+.scr { position: absolute; inset: 0; z-index: 0; overflow: hidden; padding: 0 20px 24px; display: flex; flex-direction: column; gap: 12px; }
+.status { height: 30px; flex: 0 0 auto; margin: 0 -20px; padding: 9px 24px 0; display: flex; justify-content: space-between; font: 700 .72rem/1 var(--font-body); }
+.topbar { display: flex; align-items: center; gap: 10px; margin: -6px -20px 0; padding: 10px 20px; }
+.topbar h1 { flex: 1; margin: 0; font: 700 1.2rem/1.2 var(--font-body); letter-spacing: -.01em; }
+.logo { font: 400 1rem/1 var(--font-disp); }
+.ico { width: 40px; height: 40px; display: grid; place-items: center; border-radius: var(--r-ctl); color: var(--fg); }
+.ico svg, .btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.lbl { font-size: .78rem; font-weight: 700; color: var(--sub); letter-spacing: .02em; }
+.amt { font-variant-numeric: tabular-nums; font-weight: 700; }
+.pos { color: var(--pos); } .neg { color: var(--neg); }
+.small { font-size: .82rem; color: var(--sub); }
+.hero .k { font-size: .85rem; color: var(--sub); }
+.hero .big { font: 400 2.6rem/1 var(--font-disp); margin: 8px 0 6px; font-variant-numeric: tabular-nums; }
+.hero .meta { font-size: .88rem; }
+.list { display: grid; }
+.item { display: grid; grid-template-columns: auto 1fr auto; gap: 2px 14px; align-items: center; padding: 11px 0; }
+.item .no { grid-row: span 2; font: 400 1.25rem/1 var(--font-disp); width: 28px; color: var(--sub); }
+.item .t { font-weight: 700; min-width: 0; }
+.item .s { font-size: .82rem; color: var(--sub); grid-column: 2; }
+.item .amt { grid-row: span 2; grid-column: 3; grid-row-start: 1; text-align: right; }
+.item.nonum { grid-template-columns: 1fr auto; }
+.item.nonum .s { grid-column: 1; }
+.item.nonum .amt { grid-column: 2; }
+.btn { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 50px; padding: 0 18px; border-radius: var(--r-ctl); font-weight: 700; border: 1.5px solid var(--fg); background: transparent; }
+.btn.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.mini { display: grid; gap: 6px; margin-top: 10px; }
+.mini .m { display: grid; grid-template-columns: 42px 1fr 74px; gap: 10px; align-items: center; font-size: .82rem; }
+.mini .bar { height: 6px; position: relative; background: var(--sunk-2); border-radius: 1px; }
+.mini .bar::before { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1.5px; background: var(--fg); }
+.mini .bar i { position: absolute; top: 0; bottom: 0; background: var(--fg); }
+.mini .bar.n i { background: repeating-linear-gradient(135deg, var(--fg) 0 1.5px, transparent 1.5px 4px); }
+.mini .m span:last-child { text-align: right; }
+.spacer { flex: 1; }
+
+/* sheet */
+.dim { position: absolute; inset: 0; background: var(--scrim); z-index: 5; }
+.bsheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 6; padding: 12px 20px 20px; display: grid; gap: 14px; border-radius: 16px 16px 0 0; background: var(--sheet); }
+.bsheet .grab { width: 36px; height: 4px; border-radius: 2px; background: var(--line); justify-self: center; }
+.bsheet .head { display: flex; justify-content: space-between; align-items: baseline; }
+.bsheet h2 { margin: 0; font: 700 1.15rem/1.2 var(--font-body); }
+.bsheet .x { font-size: .9rem; color: var(--sub); }
+.amount { display: flex; align-items: baseline; gap: 6px; }
+.amount .cur { font: 400 1.6rem/1 var(--font-disp); color: var(--sub); }
+.amount .v { font: 400 3rem/1 var(--font-disp); font-variant-numeric: tabular-nums; }
+.amount .caret { width: 2px; height: 36px; background: var(--fg); align-self: center; }
+.field { display: grid; gap: 2px; font-size: .95rem; }
+.field small { font-size: .74rem; color: var(--sub); font-weight: 700; }
+.opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.opt { padding: 6px 12px; border-radius: var(--r-ctl); font-size: .86rem; font-weight: 500; border: 1.5px solid var(--line); }
+.opt.on { border-color: var(--fg); background: var(--fg); color: var(--bg); }
+.tabs { display: flex; gap: 18px; font-size: .9rem; font-weight: 500; }
+.tabs span { padding-bottom: 4px; color: var(--sub); }
+.tabs span.on { color: var(--fg); box-shadow: inset 0 -2.5px 0 var(--fg); }
+
+/* =========================================================
+   01 PAPER — manga reduced to its key line. Ink rules, no
+   fills, no slabs, no screentone except one strip under the
+   balance. The accent appears once: the primary action.
+   ========================================================= */
+.d-paper .topbar { border-bottom: 2px solid var(--rule); }
+.d-paper .hero { padding-bottom: 14px; border-bottom: 2px solid var(--rule); position: relative; }
+.d-paper .hero::after { content: ""; position: absolute; left: 0; right: 0; bottom: -10px; height: 6px; background: radial-gradient(var(--tone) 1px, transparent 1.4px) 0 0 / 4px 4px; }
+.d-paper .list .item + .item { border-top: 1px solid var(--line); }
+.d-paper .list { border-bottom: 1px solid var(--line); }
+.d-paper .btn.primary { background: var(--acc); color: var(--acc-on); border-color: var(--rule); }
+.d-paper .bsheet { border-top: 2px solid var(--rule); }
+.d-paper .field { border-bottom: 1.5px solid var(--rule); padding-bottom: 6px; }
+.d-paper .amount { border-bottom: 2px solid var(--rule); padding-bottom: 8px; }
+
+/* =========================================================
+   HYBRIDS — every screen is Paper (above); each hybrid adds
+   glass in one role only.
+   ========================================================= */
+
+/* H1 CEL ON TOP — glass only on what floats: the top bar, the
+   bottom action bar and the sheet. Tinted acetate printed at ~88%
+   with its dots, a hard light line, 2px ink edge. No blur. */
+.d-cel .scr { padding-bottom: 0; }
+.d-cel .topbar { background: radial-gradient(var(--cel-dot) 1px, transparent 1.4px) 0 0 / 5px 5px, var(--cel); box-shadow: inset 0 -2px 0 var(--rule), inset 0 2px 0 var(--glint); border-bottom: 0; }
+.d-cel .dock { margin: 0 -20px; padding: 12px 20px 22px; border-top: 2px solid var(--rule); box-shadow: inset 0 2px 0 var(--glint);
+  background: radial-gradient(var(--cel-dot) 1px, transparent 1.4px) 0 0 / 5px 5px, var(--cel); }
+.d-cel .bsheet { border-top: 2px solid var(--rule); box-shadow: inset 0 2px 0 var(--glint);
+  background: radial-gradient(var(--cel-dot) 1px, transparent 1.4px) 0 0 / 5px 5px, color-mix(in srgb, color-mix(in srgb, var(--s2) 14%, var(--sheet)) 97%, transparent); }
+.d-cel .bsheet .small, .d-cel .bsheet .field small, .d-cel .bsheet .x { color: var(--cel-sub); }
+
+/* H2 ONE PANE — the balance is the only glass: a frosted pane over
+   a printed speed-line panel. Real blur, on one element only. */
+.d-pane .scr::before { content: ""; position: absolute; left: 0; right: 0; top: 78px; height: var(--burst-h, 200px); z-index: -1;
+  border-block: 2px solid var(--rule);
+  background:
+    repeating-conic-gradient(from 0deg at 78% 46%, color-mix(in srgb, var(--rule) 55%, transparent) 0 1.4deg, transparent 1.4deg 8deg),
+    radial-gradient(circle at 78% 46%, var(--acc) 0 46px, transparent 47px),
+    linear-gradient(120deg, color-mix(in srgb, var(--s2) 55%, var(--bg)) 0 50%, color-mix(in srgb, var(--s4) 50%, var(--bg)) 50%); }
+.d-pane.vol .scr::before { --burst-h: 258px; }
+.d-pane .hero { margin-top: 8px; padding: 14px 16px 16px; border: 2px solid var(--rule); border-bottom-width: 2px; border-radius: 6px;
+  background: linear-gradient(var(--glint), var(--glint)) 0 0 / 100% 2px no-repeat, var(--pane);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4); backdrop-filter: blur(12px) saturate(1.4); }
+.d-pane .hero::after { display: none; }
+.d-pane .topbar { background: var(--bg); }
+.d-pane .hero + .sec { margin-top: 4px; }
+
+/* H3 MISPRINT KEY — no blur, no gradient fade. The balance and the
+   main button are printed glass: a stepped dot sheen (three dot
+   sizes in hard bands) and cyan/magenta misregistration. */
+.d-mis .hero { padding: 14px 16px 16px; margin-top: 4px; border: 2px solid var(--rule); border-radius: var(--r); position: relative; isolation: isolate;
+  background: color-mix(in srgb, color-mix(in srgb, var(--s2) 14%, var(--paper)) 92%, transparent);
+  box-shadow: -3px -2px 0 var(--mis-c), 3px 2px 0 var(--mis-m); }
+.d-mis .hero::after { display: none; }
+.d-mis .hero > .sheen { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.d-mis .hero > .sheen i { position: absolute; inset: 0; }
+.d-mis .hero > .sheen i:nth-child(1) { background: radial-gradient(var(--glint) 1.9px, transparent 2.2px) 0 0 / 6px 6px; clip-path: polygon(0 0, 22% 0, 8% 100%, 0 100%); }
+.d-mis .hero > .sheen i:nth-child(2) { background: radial-gradient(var(--glint) 1.2px, transparent 1.5px) 0 0 / 6px 6px; clip-path: polygon(22% 0, 36% 0, 22% 100%, 8% 100%); }
+.d-mis .hero > .sheen i:nth-child(3) { background: radial-gradient(var(--glint) .7px, transparent 1px) 0 0 / 6px 6px; clip-path: polygon(36% 0, 48% 0, 34% 100%, 22% 100%); }
+.d-mis .hero .big { text-shadow: -2px 0 0 var(--mis-c), 2px 1px 0 var(--mis-m); }
+.d-mis .btn.primary { box-shadow: -2px -2px 0 var(--mis-c), 2px 2px 0 var(--mis-m); }
+.d-mis .bsheet { box-shadow: 0 -3px 0 var(--mis-c), 0 -6px 0 var(--mis-m); }
+.d-mis .bsheet .amount .v { text-shadow: -2px 0 0 var(--mis-c), 2px 1px 0 var(--mis-m); }
+.d-mis .glint { position: absolute; top: 10px; right: 14px; width: 34px; height: 12px; pointer-events: none;
+  background: linear-gradient(var(--rule), var(--rule)) 0 0 / 20px 2px no-repeat, linear-gradient(var(--rule), var(--rule)) 24px 0 / 6px 2px no-repeat; transform: rotate(-24deg); opacity: .5; }
+
+@media (max-width: 520px) { .phone, .screen { width: 320px; } .screen { height: 700px; } }
+</style>
+
+<div class="sheetwrap">
+  <header class="mast">
+    <h1>HATI<sup>2</sup> glass on paper</h1>
+    <p>The minimal Paper layout with glass added back in one place each. Ink lines and white paper carry the screen; glass marks only what floats or what matters most. Same three screens: your volumes, one volume, and a new expense.</p>
+    <div class="controls">
+      <div class="ctl"><span id="plateLbl">Plate</span>
+        <div class="seg" role="group" aria-labelledby="plateLbl" id="plates">
+          <button type="button" data-plate="classic" aria-pressed="true">Classic</button>
+          <button type="button" data-plate="persimmon" aria-pressed="false">Persimmon</button>
+          <button type="button" data-plate="lagoon" aria-pressed="false">Lagoon</button>
+          <button type="button" data-plate="peony" aria-pressed="false">Peony</button>
+        </div>
+      </div>
+      <div class="ctl"><span id="themeLbl">Theme</span>
+        <div class="seg" role="group" aria-labelledby="themeLbl" id="themes">
+          <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
+          <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
+        </div>
+      </div>
+    </div>
+  </header>
+  <main id="board"></main>
+</div>
+
+<script>
+const ICON = {
+  gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/></svg>',
+  back: '<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>',
+  share: '<svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8.2 10.9l7.6-3.8M8.2 13.1l7.6 3.8"/></svg>',
+  plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>'
+};
+const DIRS = [
+  { id: 'cel', no: 'A', name: 'Paper + cel on top', badge: 'Inside the rules',
+    tag: 'Glass only on what floats: the top bar, a bottom action dock and the sheet are tinted acetate with printed dots. Everything that scrolls is plain Paper.',
+    notes: [
+      ['hati-design', 'Glass becomes a role, not a style: if it floats, it is a cel. Paper keeps the reading calm.'],
+      ['hati-slop-rubric', 'Scores 0. Matches the original acetate rule exactly: floating layers, screentone, ink edge, no blur.'],
+      ['hati-ios', 'The dock must sit above the home indicator: padding-bottom adds env(safe-area-inset-bottom).'],
+      ['hati-a11y', 'Grey words on the cel use a darker step (--cel-sub). Measure in 13 plates before build.']
+    ] },
+  { id: 'pane', no: 'B', name: 'Paper + one pane',
+    tag: 'The balance is the only glass: a frosted pane over a printed speed-line panel. The rest of the screen is plain Paper, so the money is the one loud thing.',
+    notes: [
+      ['hati-design', 'Strongest single image of the three. Glass with something real behind it, used once.'],
+      ['hati-slop-rubric', 'backdrop-filter is still tell #1 (score 2) even on one element. Needs an owner override, scoped to the balance.'],
+      ['hati-ponytail', 'One blurred element that does not scroll with a list: affordable. Fall back to a solid pane on lowfx phones.'],
+      ['hati-a11y', 'Pane is 62% opaque over a busy burst; the number holds, grey text needs a measured check.']
+    ] },
+  { id: 'mis', no: 'C', name: 'Paper + misprint key', badge: 'Recommended',
+    tag: 'Printed glass without blur. The balance and the main button get a stepped halftone sheen and cyan and magenta misregistration; the sheet edge carries the same offset. Everything else is Paper.',
+    notes: [
+      ['hati-design', 'Most manga of the three: every effect is something a press could print. Paper keeps it from getting noisy.'],
+      ['hati-slop-rubric', 'Scores 0: no blur, glow or mask fade (the sheen is hard dot bands clipped to a shape).'],
+      ['hati-lazy-check', 'Balance and “Add expense” are the two marked things; understood in 3 seconds.'],
+      ['hati-a11y', 'Colour ghosts sit outside the glyphs. Check the money number at 200% zoom and with reduced transparency.']
+    ] }
+];
+const sec = (label, inner) => `<div class="sec"><div class="lbl">${label}</div>${inner}</div>`;
+
+function hub(d) {
+  const it = (n, t, s, a, c) => `<div class="item"><span class="no">${n}</span><span class="t">${t}</span><span class="s">${s}</span><span class="amt ${c}">${a}</span></div>`;
+  return `<div class="scr">
+    <div class="status"><span>9:41</span><span>5G</span></div>
+    <div class="topbar"><span class="logo">HATI²</span><h1></h1><span class="ico" aria-label="Settings">${ICON.gear}</span></div>
+    <section class="hero">${d.id === 'mis' ? '<span class="sheen"><i></i><i></i><i></i></span><span class="glint"></span>' : ''}<div class="k">Across 3 volumes</div><div class="big">€212.40</div><div class="meta">You’re owed this in total. Ben owes you the most.</div></section>
+    ${sec('Your volumes', `<div class="list" style="margin-top:12px">
+      ${it(1, 'Lisbon trip', '4 people · €1,284.50 spent', '+€86.20', 'pos')}
+      ${it(2, 'Flat 3B', '3 people · €2,960.00 spent', '+€168.30', 'pos')}
+      ${it(3, 'Friday dinners', '6 people · €412.75 spent', '−€42.10', 'neg')}
+    </div>`)}
+    <div class="spacer"></div>
+    ${d.id === 'cel' ? '<div class="dock"><div class="btn">' + ICON.plus + ' New volume</div></div>' : '<div class="btn">' + ICON.plus + ' New volume</div>'}
+  </div>`;
+}
+
+function volume(d, withSheet) {
+  const it = (t, s, a) => `<div class="item nonum"><span class="t">${t}</span><span class="s">${s}</span><span class="amt">${a}</span></div>`;
+  const sheet = withSheet ? `<div class="dim"></div>
+    <div class="bsheet">
+      <span class="grab"></span>
+      <div class="head"><h2>New expense</h2><span class="x">Cancel</span></div>
+      <div class="amount"><span class="cur">€</span><span class="v">48.00</span><span class="caret"></span></div>
+      <div class="field"><small>Description</small>Dinner at Taberna da Rua</div>
+      <div class="field" style="border:0;background:none;padding:0"><small>Category</small>
+        <div class="opts" style="margin-top:6px"><span class="opt on">Food</span><span class="opt">Travel</span><span class="opt">Stay</span><span class="opt">Drinks</span><span class="opt">Shop</span><span class="opt">Other</span></div></div>
+      <div class="field" style="border:0;background:none;padding:0"><small>Paid by</small>
+        <div class="opts" style="margin-top:6px"><span class="opt on">You</span><span class="opt">Ana</span><span class="opt">Ben</span><span class="opt">Caro</span></div></div>
+      <div class="tabs"><span class="on">Split equally</span><span>Exact amounts</span><span>Shares</span></div>
+      <div class="btn primary">Add expense</div>
+    </div>` : '';
+  return `<div class="scr">
+    <div class="status"><span>9:41</span><span>5G</span></div>
+    <div class="topbar"><span class="ico" aria-label="Back">${ICON.back}</span><h1>Lisbon trip</h1><span class="ico" aria-label="Share">${ICON.share}</span></div>
+    <section class="hero">${d.id === 'mis' ? '<span class="sheen"><i></i><i></i><i></i></span><span class="glint"></span>' : ''}<div class="k">You’re owed</div><div class="big">€86.20</div>
+      <div class="mini">
+        <div class="m"><span>You</span><span class="bar"><i style="left:50%;width:30%"></i></span><span class="amt pos">+€86.20</span></div>
+        <div class="m"><span>Ana</span><span class="bar"><i style="left:50%;width:9%"></i></span><span class="amt pos">+€24.60</span></div>
+        <div class="m"><span>Ben</span><span class="bar n"><i style="left:36%;width:14%"></i></span><span class="amt neg">−€41.10</span></div>
+        <div class="m"><span>Caro</span><span class="bar n"><i style="left:25%;width:25%"></i></span><span class="amt neg">−€69.70</span></div>
+      </div></section>
+    ${sec('Who pays whom', `<div class="list" style="margin-top:12px">
+      ${it('Caro → You', 'Suggested payment', '€69.70')}
+      ${it('Ben → You', 'Suggested payment', '€16.50')}
+      ${it('Ben → Ana', 'Suggested payment', '€24.60')}
+    </div>`)}
+    ${sec('Fri 7 Nov', `<div class="list" style="margin-top:12px">
+      ${it('Pastéis de Belém', 'Ana paid · split 4 ways', '€18.60')}
+    </div>`)}
+    <div class="spacer"></div>
+    ${withSheet ? (d.id === 'cel' ? '<div class="dock" style="visibility:hidden"><div class="btn"></div></div>' : '') : (d.id === 'cel' ? '<div class="dock"><div class="btn primary">' + ICON.plus + ' Add expense</div></div>' : '<div class="btn primary">' + ICON.plus + ' Add expense</div>')}
+    ${sheet}
+  </div>`;
+}
+
+document.getElementById('board').innerHTML = DIRS.map(d => `
+  <section class="dir" aria-labelledby="h-${d.id}">
+    <div class="dir-head"><span class="num">${d.no}</span>
+      <h2 id="h-${d.id}">${d.name}${d.badge ? `<span class="badge ${d.badge === 'Recommended' ? 'pick' : ''}">${d.badge}</span>` : ''}</h2>
+      <p class="tag">${d.tag}</p></div>
+    <div class="row" tabindex="0" aria-label="${d.name} screens">
+      <figure class="phone"><div class="screen d-paper d-${d.id}">${hub(d)}</div><figcaption class="cap">Your volumes</figcaption></figure>
+      <figure class="phone"><div class="screen d-paper d-${d.id} vol">${volume(d, false)}</div><figcaption class="cap">Lisbon trip</figcaption></figure>
+      <figure class="phone"><div class="screen d-paper d-${d.id} vol">${volume(d, true)}</div><figcaption class="cap">New expense</figcaption></figure>
+    </div>
+    <div class="notes">${d.notes.map(n => `<div><b>${n[0]}</b><p>${n[1]}</p></div>`).join('')}</div>
+  </section>`).join('');
+
+const root = document.documentElement;
+const plates = document.getElementById('plates'), themes = document.getElementById('themes');
+const press = (g, a, v) => g.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.getAttribute(a) === v)));
+function plate(p) { p === 'classic' ? root.removeAttribute('data-plate') : root.setAttribute('data-plate', p); press(plates, 'data-plate', p); try { localStorage.setItem('gm.plate', p); } catch (e) {} }
+function theme(t) { root.setAttribute('data-theme', t); press(themes, 'data-theme-set', t); try { localStorage.setItem('gm.theme', t); } catch (e) {} }
+plates.addEventListener('click', e => { const b = e.target.closest('button'); if (b) plate(b.dataset.plate); });
+themes.addEventListener('click', e => { const b = e.target.closest('button'); if (b) theme(b.dataset.themeSet); });
+let p0 = 'classic', t0 = null;
+try { p0 = localStorage.getItem('gm.plate') || 'classic'; t0 = localStorage.getItem('gm.theme'); } catch (e) {}
+plate(p0);
+if (t0) theme(t0); else press(themes, 'data-theme-set', matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+const q = new URLSearchParams(location.search);
+if (q.get('plate')) plate(q.get('plate'));
+if (q.get('theme')) theme(q.get('theme'));
+</script>

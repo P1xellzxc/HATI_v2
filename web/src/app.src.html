@@ -44,6 +44,24 @@
   --frost-rim: color-mix(in srgb, var(--paper-l) 65%, transparent);
   --frost-lo: color-mix(in srgb, var(--ink-l) 8%, transparent);
   --sub-f: color-mix(in srgb, var(--sub) 80%, var(--fg));
+  /* MATTE GLASS (owner 2026-11-12): calm two-tone paper, matte glass slabs. --g-*: the slab; --a-*: accent glass. */
+  --page-a: color-mix(in srgb, var(--b2) 14%, color-mix(in srgb, var(--ink-l) 7%, var(--paper-l))); --page-b: color-mix(in srgb, var(--acc-l) 14%, color-mix(in srgb, var(--ink-l) 7%, var(--paper-l)));
+  --g-top: var(--paper-l);
+  --g-foot: color-mix(in srgb, var(--b2) 7%, var(--paper-l));
+  --g-line: color-mix(in srgb, var(--ink-l) 14%, transparent);
+  --g-edge: color-mix(in srgb, var(--b2) 30%, color-mix(in srgb, var(--ink-l) 24%, var(--paper-l)));
+  --g-lip: color-mix(in srgb, var(--paper-l) 85%, transparent);
+  --g-rim: color-mix(in srgb, var(--paper-l) 70%, transparent);
+  --g-seam: color-mix(in srgb, var(--ink-l) 12%, transparent);
+  --g-foot-line: color-mix(in srgb, var(--ink-l) 22%, transparent);
+  --g-grain: color-mix(in srgb, var(--ink-l) 7%, transparent);
+  --a-top: color-mix(in srgb, var(--accent) 18%, var(--paper-l));
+  --a-foot: color-mix(in srgb, var(--accent) 32%, var(--paper-l));
+  --a-edge: color-mix(in srgb, var(--accent) 78%, var(--ink-l) 22%);
+  --b-top: color-mix(in srgb, var(--accent) 70%, var(--paper-l)); --b-foot: var(--accent);
+  --g-bar: color-mix(in srgb, color-mix(in srgb, var(--b2) 10%, var(--paper-l)) 80%, transparent);
+  --g-field-line: color-mix(in srgb, var(--ink-l) 58%, var(--paper-l));
+  --g-shadow: color-mix(in srgb, var(--ink-l) 38%, transparent); --g-contact: color-mix(in srgb, var(--ink-l) 22%, transparent);
   --haze: color-mix(in srgb, var(--rule) 50%, transparent);
   /* Strip under the iOS status bar: black-translucent draws white clock text, so it stays dark in every theme (an ink band). */
   --sbar: var(--ink-l);
@@ -112,6 +130,23 @@
   --frost-lo: color-mix(in srgb, #000 35%, transparent);
   --clay-hi: color-mix(in srgb, var(--fg) 10%, transparent); --clay-lo: color-mix(in srgb, #000 45%, transparent);
   --clay-sel: color-mix(in srgb, var(--bg) 10%, transparent);
+  --page-a: color-mix(in srgb, var(--b2) 16%, var(--bg)); --page-b: color-mix(in srgb, var(--acc-d) 7%, var(--bg));
+  --g-top: color-mix(in srgb, var(--b2) 5%, var(--panel));
+  --g-foot: color-mix(in srgb, var(--b2) 10%, var(--panel));
+  --g-edge: color-mix(in srgb, var(--b2) 22%, color-mix(in srgb, var(--fg) 26%, var(--bg)));
+  --g-lip: color-mix(in srgb, var(--fg) 24%, transparent);
+  --g-rim: color-mix(in srgb, var(--fg) 10%, transparent);
+  --g-seam: color-mix(in srgb, #000 40%, transparent);
+  --g-foot-line: color-mix(in srgb, #000 55%, transparent);
+  --g-grain: color-mix(in srgb, var(--fg) 5%, transparent);
+  --a-top: color-mix(in srgb, var(--accent) 12%, var(--panel));
+  --a-foot: color-mix(in srgb, var(--accent) 20%, var(--panel));
+  --a-edge: color-mix(in srgb, var(--accent) 70%, var(--bg));
+  --b-top: color-mix(in srgb, var(--accent) 88%, var(--fg)); --b-foot: var(--accent);
+  --g-bar: color-mix(in srgb, color-mix(in srgb, var(--b2) 6%, var(--panel)) 82%, transparent);
+  --g-field-line: color-mix(in srgb, var(--fg) 58%, var(--bg));
+  --g-shadow: color-mix(in srgb, #000 62%, transparent); --g-contact: color-mix(in srgb, #000 40%, transparent);
+  --g-line: color-mix(in srgb, var(--fg) 16%, transparent);
   color-scheme: dark;
 }
 /* Light fills (accent, chalk, pastel) take the light-mode shade strength: 45% black on them reads as an olive/brown edge */
@@ -334,6 +369,12 @@ section > .label, section > .row > .label { margin-top: 6px; }
 .sync[data-s="bad"] i, .sync[data-s="big"] i { border-color: var(--neg); background: var(--neg); }
 
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.mem-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; }
+.chips.mem-row { padding: 0; margin: 0; display: grid; grid-template-columns: repeat(var(--cols, 1), minmax(0, 1fr)); gap: 8px; }
+.mem-row > .chip { min-width: 0; width: 100%; margin: 0; overflow: hidden; overflow-wrap: anywhere; }
+.mem-row > .chip:has(> .av) { grid-template-columns: auto minmax(0, 1fr); } /* name column right after the avatar in every chip */
+.mem-row > .chip.add { justify-content: center; }
+.mem-row > .chip > :not(.av) { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 8px 4px 4px; border-radius: var(--r); border: 1.5px solid var(--line); background: var(--panel); font-size: .9rem; font-weight: 600; }
 .chip .num { font-weight: 500; }
 .chip.add { padding: 4px 14px; min-height: 44px; border: 2px dashed var(--line); background: transparent; }
@@ -354,9 +395,9 @@ button.chip:active { background: var(--sunk); }
 #pasteSug:not(:empty) { margin-top: 8px; }
 #pasteSug .chip { padding: 4px 14px; background: var(--panel); }
 /* N5: Today / Yesterday under a date field, pressed = the day it holds (the same inverted fill as the other toggles) */
-.qd { margin-top: 8px; }
-.qd .chip { padding: 4px 14px; }
-.qd .chip[aria-pressed="true"] { background: var(--sel-bg); color: var(--sel-fg); }
+.qd, .qh { margin-top: 8px; }
+.qd .chip, .qh .chip { padding: 4px 14px; }
+.qd .chip[aria-pressed="true"], .qh .chip[aria-pressed="true"] { background: var(--sel-bg); color: var(--sel-fg); }
 /* N5 Set dates: a chosen row gets an ink bar at its left edge and an inverted icon tile (not color alone) */
 .hist.selecting .tx[aria-pressed="true"] { background: var(--sunk); box-shadow: inset 4px 0 0 var(--fg); }
 .hist.selecting .tx[aria-pressed="true"] .tx-ic { background: var(--fg); color: var(--bg); border-color: var(--fg); }
@@ -381,6 +422,10 @@ button.tx:active, button.debt:active { background: var(--sunk); }
 /* A long history lays out and paints only the rows near the screen. The first 32 are always drawn: that reaches past
    the browser's look-ahead margin, so the first frame of the wipe never has to lay out rows that just came into range.
    A focused row is drawn whole so its focus ring isn't clipped. Rows keep their last measured height once seen. */
+.month-tot { font-weight: 700; font-size: .95rem; }
+.hfilter { margin: 0 0 12px; }
+.hf-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.hf-row > .field { min-width: 0; }
 .ledger.hist > .cv:not(:focus-within) { content-visibility: auto; contain-intrinsic-size: auto 64px; } /* .cv: 33rd row on, across the month cards */
 .tx-t { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 .tx-m { display: block; overflow-wrap: anywhere; }
@@ -389,6 +434,22 @@ button.tx:active, button.debt:active { background: var(--sunk); }
 .who > .nm { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .who > :not(.nm) { flex: none; }
 .who > .nm ~ .nm { flex-shrink: 0; max-width: 45%; }
+/* X1 At a glance: one panel, three ruled blocks; ink bars, the accent only on this month / today */
+.glance { padding: 4px 12px; }
+.gl-b { padding: 12px 0; display: grid; gap: 8px; }
+.gl-b + .gl-b { border-top: 1px solid var(--line); }
+.gl-b .legend { margin: 0; }
+.gl-say { margin: 0; }
+.gl-bars, .gl-who, .gl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.gl-bars li { display: grid; gap: 4px; }
+.bar.now i { background: var(--accent); box-shadow: inset 0 0 0 1.5px var(--rule); }
+.gl-cols { height: 72px; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 2px; align-items: end; border-bottom: 2px solid var(--rule); }
+.gl-cols i { display: block; background: var(--fg); min-height: 0; }
+.gl-cols i.now { background: var(--accent); box-shadow: inset 0 0 0 1.5px var(--rule); }
+.gl-ends { margin-top: -2px; }
+.gl-who li { display: grid; gap: 2px; }
+.gl-list { gap: 6px; margin-top: 8px; }
+.stamp-s { display: inline-block; margin-left: 6px; padding: 0 6px; border: 2px solid var(--rule); font: 400 .72rem/1.4 var(--font-disp); letter-spacing: .03em; transform: rotate(-3deg); vertical-align: 1px; }
 .bars { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
 .bar { height: 10px; border: 1.5px solid var(--rule); border-radius: 1px; background: var(--panel); overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--fg); }
@@ -430,6 +491,13 @@ textarea.input { height: auto; }
 hati-pick { display: block; min-width: 0; }
 .seg.pk, .seg.pk:has(> :nth-child(3)) { display: flex; flex-wrap: nowrap; }
 .seg.pk > button { min-width: 0; padding: 8px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* X4 Paid by grid: equal clay buttons per row, rows as even as possible; the chosen one is pushed in and inverted */
+.pk-grid { display: grid; gap: 8px; }
+.pk-row { display: grid; grid-template-columns: repeat(var(--cols, 1), minmax(0, 1fr)); gap: 8px; }
+.btn.pkg { min-width: 0; padding: 8px 10px; font-size: .95rem; }
+.btn.pkg > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn.pkg[aria-checked="true"] { --c-x: 0px; --c-in: 3px; transform: translate(var(--c-lift), var(--c-lift)); background: var(--sel-bg); color: var(--sel-fg); --c-hi: transparent; --c-lo: var(--clay-sel); }
+@media (prefers-reduced-motion: reduce) { .btn.pkg[aria-checked="true"] { transform: none; } }
 .btn.pick-btn { width: 100%; justify-content: space-between; text-align: left; font-size: 1rem; }
 .pick-btn .pv { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pick-btn::after { content: ""; flex: none; width: 0; height: 0; border-top: 6px solid currentColor; border-inline: 5px solid transparent; }
@@ -626,6 +694,74 @@ hati-pick { display: block; min-width: 0; }
   .sync.in span { animation: ink-write 180ms var(--ease-out); }
   @keyframes ink-write { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
 }
+
+/* ── MATTE GLASS (owner 2026-11-12: "use the new design in the upcoming APK") ─────────────────────────────────
+   Replaces the ink-and-clay materials; layout, type and markup stay. One light, from above.
+   Page: calm two-tone paper (two plate tints, one soft diagonal), no art behind the glass.
+   Slab (owner's reference image, 2026-11-12): a clear matte pane, big round corners, a 1px lit top edge and a light
+   rim, and a soft shadow falling down and to the right (light from the top left; owner 2026-11-12), --t deep: cards 8px, controls 4px;
+   a press shrinks it to a contact shadow. This overrides the "no blurred shadows" rule for the glass build. Grain = three prime-sized micro-dot
+   layers (CSS only: the CSP allows no image data). Real blur only on what floats (top bar, sheets, toast), so long
+   lists scroll as fast as before; :root.lowfx drops it. Pressed / chosen = sinks onto its edge and inverts. */
+:root { --grain-l: radial-gradient(var(--g-grain) .6px, transparent .9px) 0 0 / 3px 3px, radial-gradient(var(--g-grain) .6px, transparent .9px) 1px 2px / 5px 5px, radial-gradient(var(--g-grain) .6px, transparent .9px) 2px 1px / 7px 7px;
+ }
+html { background: var(--page-a); }
+body { background: linear-gradient(170deg, var(--page-a) 0 min(52%, 900px), var(--page-b) min(52%, 900px)) 0 0 / 100% max(100%, 100vh) no-repeat, var(--bg); } /* the base stays the theme's paper: the status bar (theme-color) reads it */
+:root :is(#app, #layer) { --sub: var(--sub-f); }
+:root :is(#app, #layer) .sect { border-color: transparent; background: none; box-shadow: none; padding: 0; }
+:root :is(#app, #layer) .strip::after { border-top-color: var(--g-seam); background: none; height: 0; }
+/* cards */
+:root :is(#app, #layer) :is(.panel, .ledger, .amount-box, .share-sum, .vol, .hero, .dashed) {
+  --t: 8px; border-color: transparent; border-style: solid; border-radius: 16px;
+  background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), linear-gradient(180deg, var(--g-top), var(--g-foot));
+  background-color: var(--g-foot);
+  box-shadow: inset 0 1px 0 var(--g-lip), inset 1px 0 0 var(--g-rim), inset 0 0 0 1px var(--g-rim), 0 0 0 1px var(--g-line), var(--t) calc(1.4 * var(--t)) calc(2.6 * var(--t)) calc(-.5 * var(--t)) var(--g-shadow), 1px 2px 3px var(--g-contact); margin-bottom: 6px; }
+:root :is(#app, #layer) .stack > :is(.panel, .ledger, .vol, .hero, .dashed):last-child, :root :is(#app, #layer) .volw > .vol { margin-bottom: 0; }
+:root :is(#app, #layer) .volw { margin-bottom: 8px; }
+:root :is(#app, #layer) .hero { --g-e: var(--a-edge); padding: 16px;
+  background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), linear-gradient(180deg, var(--a-top), var(--a-foot)) var(--a-foot); }
+:root :is(#app, #layer) .hero::after, :root :is(#app, #layer) .vol-info::after, :root :is(#app, #layer) .vol-info::before { display: none; }
+:root :is(#app, #layer) .vol-info { background: none; }
+:root :is(#app, #layer) .vol .spine { background: linear-gradient(180deg, var(--b-top), var(--b-foot)) var(--b-foot); border-right: 1px solid var(--g-rim); box-shadow: inset 0 1px 0 var(--g-lip); }
+:root :is(#app, #layer) .vol.arch .spine { background: linear-gradient(180deg, var(--g-top), var(--g-foot)) var(--g-foot); color: var(--fg); }
+:root :is(#app, #layer) .amount-box { --g-e: var(--a-edge); background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), linear-gradient(180deg, var(--a-top), var(--a-foot)) var(--a-foot); }
+:root :is(#app, #layer) .dashed { --t: 4px; }
+:root :is(#app, #layer) :is(.ledger, .panel) > * + * { border-top-color: var(--g-rim); }
+:root :is(#app, #layer) .ledger > :is(.tx, .debt) + :is(.tx, .debt) { border-top: 1px solid color-mix(in srgb, var(--g-seam) 70%, transparent); }
+:root :is(#app, #layer) .hero .mine { border-top-color: var(--fg); }
+:root :is(#app, #layer) .hero :is(.meta, .sync) { color: color-mix(in srgb, var(--fg) 84%, var(--a-foot)); }
+/* controls: the same glass, 3px edge; the slab is the press distance */
+:root :is(#app, #layer) :is(.btn:not(.quiet):not(.text), .ico, .cat, button.chip:not(.add), .seg) {
+  --t: var(--c-x, 4px); border-color: transparent; border-radius: 12px;
+  background-color: var(--g-foot);
+  background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), linear-gradient(180deg, var(--g-top), var(--g-foot)) var(--g-foot);
+  box-shadow: inset 0 1px 0 var(--g-lip), inset 1px 0 0 var(--g-rim), inset 0 0 0 1px var(--g-rim), 0 0 0 1px var(--g-line), var(--t) calc(1.4 * var(--t)) calc(2.6 * var(--t)) calc(-.5 * var(--t)) var(--g-shadow), 1px 2px 3px var(--g-contact); }
+:root :is(#app, #layer) .seg { --t: 4px; overflow: hidden; }
+:root :is(#app, #layer) .seg button { background: var(--g-foot); box-shadow: none; }
+:root :is(#app, #layer) .seg button + button { border-left: 1px solid var(--g-seam); }
+:root :is(#app, #layer) .btn.primary:not(.quiet):not(.text) { --g-e: var(--a-edge); background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), linear-gradient(180deg, var(--b-top), var(--b-foot)) var(--b-foot); color: var(--on-accent); }
+:root :is(#app, #layer) .btn.danger:not(.quiet):not(.text) { --g-e: var(--err); color: var(--err); background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), var(--panel); } /* untinted glass: red words need the plain paper */
+:root :is(#app, #layer) :is(.btn, .ico, .cat, button.chip):active:not(:disabled) { --c-x: 0px; }
+:root :is(#app, #layer) :is(.cat[aria-pressed="true"], .seg button:is([aria-pressed="true"], [aria-checked="true"]), .btn.pkg[aria-checked="true"], .qd .chip[aria-pressed="true"], .qh .chip[aria-pressed="true"]) {
+  background: var(--sel-bg); color: var(--sel-fg); box-shadow: inset 0 2px 0 color-mix(in srgb, var(--sel-bg) 80%, var(--sel-fg)); --c-x: 0px; }
+:root :is(#app, #layer) :is(.btn.quiet, .btn.text) { border-radius: 12px; }
+:root :is(#app, #layer) .chip.add { border: 1.5px dashed var(--g-field-line); border-radius: 10px; }
+:root :is(#app, #layer) .chip:not(button) { border-color: transparent; border-radius: 10px; background: linear-gradient(180deg, var(--g-top), var(--g-foot)); box-shadow: inset 0 1px 0 var(--g-lip), inset 0 0 0 1px var(--g-rim); }
+/* fields keep a visible edge (non-text contrast), in the glass */
+:root :is(#app, #layer) .input { border: 2px solid var(--g-field-line); border-radius: 10px; background: linear-gradient(180deg, var(--g-top), var(--g-foot)) var(--g-top); box-shadow: inset 0 1px 0 var(--g-lip); }
+:root :is(#app, #layer) .input:focus { border-color: var(--fg); }
+:root :is(#app, #layer) .input[aria-invalid="true"] { border-color: var(--err); }
+/* floating layers: real frosted glass */
+:root .topbar { background: linear-gradient(var(--g-lip), var(--g-lip)) 0 100% / 100% 1px no-repeat, var(--grain-l), var(--g-bar); border-bottom: 0; box-shadow: 0 1px 0 var(--g-seam);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3); }
+:root .topbar::after { display: none; }
+:root .sheet { border: 0; border-radius: 18px 18px 0 0; background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), color-mix(in srgb, var(--page-a) 96%, transparent);
+  box-shadow: inset 0 0 0 1px var(--g-rim), 0 -1px 0 var(--g-seam); -webkit-backdrop-filter: blur(24px) saturate(1.2); backdrop-filter: blur(24px) saturate(1.2); }
+:root .sheet::before, :root .sheet::after { display: none; }
+:root .scrim::before { background: none; height: 0; } /* the ink sheet band belongs to the old look */
+:root.lowfx :is(.topbar, .sheet) { -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root.lowfx .topbar { background: var(--nav); }
+@media (prefers-reduced-transparency: reduce) { :root :is(.topbar, .sheet) { -webkit-backdrop-filter: none; backdrop-filter: none; } :root .topbar { background: var(--nav); } }
 </style>
 
 <main id="app"></main>
@@ -902,6 +1038,9 @@ const DAY = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" })
 const dayAgo = n => { const d = new Date(); d.setDate(d.getDate() - n); return isoLocal(d); };
 // Today / Yesterday under a date field (N5): real buttons, pressed while the field holds that day. The click handler
 // sets the field and fires input + change, so each form keeps its own wiring.
+const METHODS = ["Cash", "GCash", "Bank"];
+const quickHow = val => `<div class="chips qh" role="group" aria-label="Quick methods">${METHODS.map(m => `<button type="button" class="chip" data-how="${m}" aria-pressed="${(val || "").toLowerCase() === m.toLowerCase()}">${m}</button>`).join("")}</div>`;
+function paintHow(input) { const f = input.closest(".field"); if (f) f.querySelectorAll("[data-how]").forEach(b => b.setAttribute("aria-pressed", String(input.value.trim().toLowerCase() === b.dataset.how.toLowerCase()))); }
 const quickDays = val => `<div class="chips qd" role="group" aria-label="Quick dates">${[[0, "Today"], [1, "Yesterday"]].map(([n, t]) => `<button type="button" class="chip" data-day="${n}" aria-pressed="${val === dayAgo(n)}">${t}</button>`).join("")}</div>`;
 function paintDays(input) { const f = input.closest(".field"); if (f) f.querySelectorAll("[data-day]").forEach(b => b.setAttribute("aria-pressed", String(input.value === dayAgo(+b.dataset.day)))); }
 const announce = t => { const live = $("#status"); live.textContent = ""; setTimeout(() => { live.textContent = t; }, 30); };
@@ -974,6 +1113,12 @@ function banner() {
   if (recovered && ui.view === "hub") return `<div class="banner panel row between" role="status"><span>Some saved data couldn't be read, so it was set aside. A backup is kept on this device.</span><button class="btn quiet" data-act="dismissRecovered">OK</button></div>`;
   return "";
 }
+// Members (owner 2026-11-12: "balanced space like Who pays"): equal chips filling even rows of at most 2 (3 cut "settled" at 360px), "+ Add" counted
+// as one, the same row rule as Paid by (pickRows).
+function memberGrid(items) {
+  let k = 0;
+  return `<div class="mem-grid">${pickRows(items.length, 2).map(c => `<div class="chips mem-row" style="--cols:${c}">${items.slice(k, k += c).join("")}</div>`).join("")}</div>`;
+}
 function memberChip(v, m, c) {
   const say = Math.abs(c) <= 1 ? "is settled" : c > 0 ? `is owed ${fmt(c, v.currency)}` : `owes ${fmt(-c, v.currency)}`;
   const show = Math.abs(c) <= 1 ? "settled" : signed(c, v.currency);
@@ -994,10 +1139,22 @@ const CHECK = `<span class="ck" aria-hidden="true"><svg viewBox="0 0 24 24"><pat
 // screen (fit()), are a clay button showing the choice that opens an ink sheet list (listbox: a tap or Enter picks and
 // closes, Esc closes, focus returns to the button). With a placeholder nothing is chosen until the user picks;
 // without one an unknown value falls back to the first option, as the dropdown did.
-function pickField(id, label, opts, value, ph = "") {
+function pickField(id, label, opts, value, ph = "", grid = false) {
   const val = opts.some(o => o[0] === value) ? value : ph ? "" : (opts[0] || [""])[0];
+  if (grid) return `<span class="legend" id="${id}-l">${esc(label)}</span><hati-pick id="${id}" value="${esc(val)}" data-mode="grid" data-ph="" data-opts="${esc(JSON.stringify(opts))}">${pickGridHtml(id, opts, val)}</hati-pick>`;
   const seg = opts.length <= 4 && opts.every(o => o[1].length <= 16);
   return `<span class="legend" id="${id}-l">${esc(label)}</span><hati-pick id="${id}" value="${esc(val)}" data-mode="${seg ? "seg" : "list"}" data-ph="${esc(ph)}" data-opts="${esc(JSON.stringify(opts))}">${seg ? pickSegHtml(id, opts, val) : pickBtnHtml(id, opts, val, ph)}</hati-pick>`;
+}
+// X4 Paid by (owner 2026-11-12: "balanced, whether there is one or more than one in the volume"): equal buttons that always
+// fill the row. Up to 4 people is one row of n; more is the fewest rows of at most 4, split as evenly as possible
+// (5 = 3+2, 6 = 3+3, 7 = 4+3), each row's buttons sharing that row's width. Long names end in "…".
+function pickRows(n, max = 4) {
+  const rows = Math.max(1, Math.ceil(n / max)), base = Math.floor(n / rows), extra = n % rows;
+  return Array.from({ length: rows }, (_, i) => base + (i < extra ? 1 : 0));
+}
+function pickGridHtml(id, opts, val) {
+  const any = opts.some(o => o[0] === val); let k = 0;
+  return `<div class="pk-grid" role="radiogroup" aria-labelledby="${id}-l">${pickRows(opts.length).map(c => `<div class="pk-row" style="--cols:${c}">${opts.slice(k, k += c).map((o, j) => `<button type="button" class="btn pkg" role="radio" aria-checked="${o[0] === val}" tabindex="${o[0] === val || (!any && k - c + j === 0) ? 0 : -1}" data-pv="${esc(o[0])}"><span>${esc(o[1])}</span></button>`).join("")}</div>`).join("")}</div>`;
 }
 function pickSegHtml(id, opts, val) {
   const any = opts.some(o => o[0] === val);
@@ -1013,7 +1170,7 @@ class HatiPick extends HTMLElement {
   set value(v) { this.setAttribute("value", v == null ? "" : String(v)); this.paint(); }
   paint() {
     const v = this.value, o = this.opts;
-    if (this.dataset.mode === "seg") {
+    if (this.dataset.mode === "seg" || this.dataset.mode === "grid") {
       const any = o.some(x => x[0] === v);
       this.querySelectorAll("[data-pv]").forEach((b, i) => { b.setAttribute("aria-checked", String(b.dataset.pv === v)); b.tabIndex = b.dataset.pv === v || (!any && !i) ? 0 : -1; });
     } else this.innerHTML = pickBtnHtml(this.id, o, v, this.dataset.ph);
@@ -1081,7 +1238,14 @@ function expenseRow(v, e) {
 // History as one section card per month (owner 2026-11-11), newest first, each with its own ledger. Rows keep their
 // place in the whole list: the first 12 ink in (.lead) and rows after the 32nd are drawn only near the screen (.cv).
 const MONTH = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" });
-function histMonths(v, rows, sel) {
+// X2: each month's heading carries the total of the expenses listed in it (all of that month's matching expenses, not only
+// the rows drawn so far; payments are not spending). X3 passes the filtered list, so the totals follow the filter.
+function monthTotals(rows) {
+  const t = {};
+  rows.forEach(it => { if (it.k !== "e") return; const k = /^\d{4}-\d{2}/.test(it.d) ? it.d.slice(0, 7) : ""; t[k] = (t[k] || 0) + it.x.amount; });
+  return t;
+}
+function histMonths(v, rows, sel, totals = {}) {
   const groups = [];
   rows.forEach((it, i) => {
     const k = /^\d{4}-\d{2}/.test(it.d) ? it.d.slice(0, 7) : "";
@@ -1089,8 +1253,108 @@ function histMonths(v, rows, sel) {
     const cls = i < 12 ? "tx lead" : i >= 32 ? "tx cv" : "tx";
     g.html.push(itemRow(v, it).replace('class="tx"', `class="${cls}"`));
   });
-  return groups.map(g => `<section class="sect month"><div class="strip"><h2 class="label">${g.k ? MONTH.format(new Date(+g.k.slice(0, 4), +g.k.slice(5) - 1, 1)) : "Other dates"}</h2></div>
+  return groups.map(g => `<section class="sect month"><div class="strip"><h2 class="label">${g.k ? MONTH.format(new Date(+g.k.slice(0, 4), +g.k.slice(5) - 1, 1)) : "Other dates"}</h2>${totals[g.k] ? `<span class="num month-tot">${esc(fmt(totals[g.k], v.currency))}<span class="sr"> spent</span></span>` : ""}</div>
     <div class="ledger hist${sel ? " selecting" : ""}">${g.html.join("")}</div></section>`).join("");
+}
+// X3 search and filter (History): words in the description, note, names or "how"; a member (paid, or has a share; for a
+// payment, either side); a category (expenses only). Shown once a volume has more than 20 items, or while a filter is on.
+// The filter lives in ui.hf for one volume and is dropped when another volume's history opens.
+function histFilter(v) {
+  if (!ui.hf || ui.hf.vol !== v.id) ui.hf = { vol: v.id, q: "", who: "", cat: "" };
+  return ui.hf;
+}
+const filterOn = hf => !!(hf.q.trim() || hf.who || hf.cat);
+function matchItem(v, it, hf) {
+  const q = hf.q.trim().toLowerCase(), x = it.x;
+  if (it.k === "e") {
+    if (hf.cat && catOf(x.category)[0] !== hf.cat) return false;
+    if (hf.who && x.paidBy !== hf.who && !has(x.splits, hf.who)) return false;
+    if (q && ![x.desc, x.note || "", catOf(x.category)[1], meName(v, x.paidBy)].some(t => t.toLowerCase().includes(q))) return false;
+    return true;
+  }
+  if (hf.cat) return false;
+  if (hf.who && x.from !== hf.who && x.to !== hf.who) return false;
+  if (q && ![meName(v, x.from), meName(v, x.to), x.how || "", "payment"].some(t => t.toLowerCase().includes(q))) return false;
+  return true;
+}
+function histBody(v) {
+  const hf = histFilter(v), all = timeline(v), items = filterOn(hf) ? all.filter(it => matchItem(v, it, hf)) : all;
+  const shown = items.slice(0, ui.histLimit), sel = ui.sel;
+  const none = filterOn(hf) ? emptyCard("(・_・;)", "Nothing matches. Try other words or clear the filter.") : emptyCard("(・_・;)", "Nothing recorded yet.");
+  return (shown.length ? histMonths(v, shown, sel, monthTotals(items)) : none) +
+    (items.length > shown.length ? `<button class="btn block" data-act="more" style="margin-top:12px">Show ${Math.min(100, items.length - shown.length)} more</button>` : "");
+}
+function histCount(v) {
+  const hf = histFilter(v); if (!filterOn(hf)) return "";
+  const n = timeline(v).filter(it => matchItem(v, it, hf)).length;
+  return n === 1 ? "1 match" : `${n} matches`;
+}
+function refreshHist() {
+  const v = vol(), body = $("#histBody"); if (!v || !body) return;
+  body.innerHTML = histBody(v);
+  const c = histCount(v), out = $("#histCount"); if (out) out.textContent = c;
+  const clr = $("#histClear"); if (clr) clr.hidden = !filterOn(histFilter(v));
+  announce(c || `${plural(timeline(v).length, "item")}`);
+}
+// X1 At a glance (owner request): one pass over the expenses, integer cents only.
+// spent over time: a household compares this calendar month with last month; any other volume shows one column per day
+//   from its first to its last expense date (more than 31 days: one column per month instead).
+// who paid: per member, what they paid, their share and the difference (= their balance before payments), most paid first.
+// by category: the top 5, the rest summed as one "Other" line. Percentages are text only, never fed back.
+function glance(v, now = today()) {
+  const paid = Object.fromEntries(v.members.map(m => [m.id, 0])), share = { ...paid }, byCat = {}, byDay = {}, byMonth = {};
+  let tot = 0;
+  for (const e of v.expenses) {
+    tot += e.amount; paid[e.paidBy] = (paid[e.paidBy] || 0) + e.amount;
+    for (const [id, a] of Object.entries(e.splits)) share[id] = (share[id] || 0) + a;
+    const c = catOf(e.category)[0]; byCat[c] = (byCat[c] || 0) + e.amount;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(e.date)) { byDay[e.date] = (byDay[e.date] || 0) + e.amount; const m = e.date.slice(0, 7); byMonth[m] = (byMonth[m] || 0) + e.amount; }
+  }
+  const ids = [...new Set([...v.members.map(m => m.id), ...Object.keys(paid), ...Object.keys(share)])];
+  const who = ids.map(id => ({ id, paid: paid[id] || 0, share: share[id] || 0, diff: (paid[id] || 0) - (share[id] || 0) }))
+    .filter(r => r.paid || r.share).sort((a, b) => b.paid - a.paid || a.id.localeCompare(b.id));
+  const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+  const top = cats.slice(0, 5), rest = cats.slice(5).reduce((a, c) => a + c[1], 0);
+  if (rest) top.push(["more", rest]);
+  let time;
+  if (v.type === "household") {
+    const [Y, M] = now.split("-").map(Number), prev = M === 1 ? `${Y - 1}-12` : `${Y}-${pad2(M - 1)}`, cur = now.slice(0, 7);
+    time = { kind: "months", cols: [{ k: prev, a: byMonth[prev] || 0 }, { k: cur, a: byMonth[cur] || 0, now: true }] };
+  } else {
+    const days = Object.keys(byDay).sort();
+    if (!days.length) time = { kind: "days", cols: [] };
+    else {
+      const a = new Date(days[0] + "T12:00:00"), z = new Date(days[days.length - 1] + "T12:00:00"), span = Math.round((z - a) / 864e5) + 1;
+      if (span > 31) time = { kind: "months", cols: Object.keys(byMonth).sort().map(k => ({ k, a: byMonth[k], now: k === now.slice(0, 7) })) };
+      else time = { kind: "days", cols: Array.from({ length: span }, (_, i) => { const d = isoLocal(new Date(a.getTime() + i * 864e5)); return { k: d, a: byDay[d] || 0, now: d === now }; }) };
+    }
+  }
+  return { tot, who, cats: top, time };
+}
+const monthName = k => MONTH.format(new Date(+k.slice(0, 4), +k.slice(5) - 1, 1));
+function glanceHtml(v) {
+  const g = glance(v); if (!g.tot) return "";
+  const cur = v.currency, max = Math.max(1, ...g.time.cols.map(c => c.a));
+  let time = "";
+  if (g.time.kind === "months" && v.type === "household") {
+    const [last, now] = g.time.cols, d = now.a - last.a;
+    const words = !last.a ? "" : d === 0 ? "the same as last month" : `${fmt(Math.abs(d), cur)} ${d > 0 ? "more" : "less"} than last month`;
+    time = `<div class="gl-b"><h3 class="legend">Spent over time</h3><p class="small gl-say">This month ${esc(fmt(now.a, cur))}${words ? ` · ${esc(words)}` : ""}</p>
+      <ul class="gl-bars">${[now, last].map(c => `<li><span class="row between small"><span>${c.now ? "This month" : "Last month"}</span><b class="num">${esc(fmt(c.a, cur))}</b></span><span class="bar${c.now ? " now" : ""}" aria-hidden="true"><i style="width:${(c.a * 100 / max).toFixed(1)}%"></i></span></li>`).join("")}</ul></div>`;
+  } else if (g.time.cols.length > 1) {
+    const big = g.time.cols.reduce((a, c) => c.a > a.a ? c : a), label = c => g.time.kind === "days" ? niceDate(c.k) : monthName(c.k);
+    time = `<div class="gl-b"><h3 class="legend">Spent over time</h3><p class="small gl-say">Most on ${esc(label(big))}: ${esc(fmt(big.a, cur))}</p>
+      <div class="gl-cols" aria-hidden="true" style="--n:${g.time.cols.length}">${g.time.cols.map(c => `<i class="${c.now ? "now" : ""}" style="height:${Math.max(c.a ? 6 : 0, c.a * 100 / max).toFixed(1)}%"></i>`).join("")}</div>
+      <div class="row between small muted gl-ends" aria-hidden="true"><span>${esc(label(g.time.cols[0]))}</span><span>${esc(label(g.time.cols[g.time.cols.length - 1]))}</span></div>
+      <details class="gl-days"><summary class="small">Show ${g.time.kind === "days" ? "each day" : "each month"}</summary><ul class="gl-list">${g.time.cols.filter(c => c.a).map(c => `<li class="row between small"><span>${esc(label(c))}</span><b class="num">${esc(fmt(c.a, cur))}</b></li>`).join("")}</ul></details></div>`;
+  }
+  const who = g.who.length > 1 ? `<div class="gl-b"><h3 class="legend">Who paid</h3><ul class="gl-who">${g.who.map((r, i) => `<li><span class="row between"><b>${esc(meName(v, r.id))}${i === 0 && r.paid ? ` <span class="stamp-s">Paid most</span>` : ""}</b><b class="num">${esc(fmt(r.paid, cur))}</b></span>
+      <span class="row between small muted"><span>Share ${esc(fmt(r.share, cur))}</span><span class="num ${r.diff > 0 ? "pos" : r.diff < 0 ? "neg" : ""}">${r.diff === 0 ? "even" : esc(signed(r.diff, cur))}</span></span></li>`).join("")}</ul></div>` : "";
+  const cats = `<div class="gl-b"><h3 class="legend">By category</h3><ul class="gl-bars">${g.cats.map(([c, a]) => {
+    const name = c === "more" ? "Everything else" : catOf(c)[1];
+    return `<li><span class="row between small"><span>${name}</span><b class="num">${esc(fmt(a, cur))} · ${Math.round(a * 100 / g.tot)}%</b></span><span class="bar" aria-hidden="true"><i style="width:${(a * 100 / g.tot).toFixed(1)}%"></i></span></li>`;
+  }).join("")}</ul></div>`;
+  return `<section class="sect"><div class="strip"><h2 class="label">At a glance</h2></div><div class="panel glance">${time}${who}${cats}</div></section>`;
 }
 const emptyCard = (kao, text) => `<div class="panel empty"><div class="kao" aria-hidden="true">${kao}</div><div class="muted small">${text}</div></div>`;
 
@@ -1128,8 +1392,6 @@ const views = {
     FX.amt[v.id] = settled ? null : { t: fig, c: Math.abs(mine) }; FX.settled = null;
     const roll = !settled && was && was.t !== fig && motionOn() ? (Math.abs(mine) < was.c ? " roll down" : " roll") : "";
     const items = timeline(v), tot = total(v);
-    const byCat = {}; v.expenses.forEach(e => { const k = catOf(e.category)[0]; byCat[k] = (byCat[k] || 0) + e.amount; });
-    const catRows = Object.entries(byCat).sort((a, c) => c[1] - a[1]);
     const myDebts = ds.filter(d => d.from === v.meId || d.to === v.meId);
     const hist = items.length ? `<button class="ico" data-act="history" aria-label="History">${I.clock}</button>` : "";
     return topbar(v.title, { back: true, right: `${hist}<button class="ico" data-act="volMenu" aria-label="Volume options">${I.dots}</button>` }) +
@@ -1148,29 +1410,29 @@ const views = {
         <button class="btn" data-act="share" aria-label="Share volume">${I.share} Share</button>
       </div>`}
       ${v.members.length < 2 && !v.archived ? `<div class="panel pad row between"><span class="small">You're the only member so far.</span><button class="btn quiet" data-act="addMember">Add someone</button></div>` : ""}
-      <div class="strip"><h2 class="label">Members</h2></div><div class="chips">
-        ${v.members.map(m => memberChip(v, m, b[m.id] || 0)).join("")}
-        ${v.archived ? "" : `<button class="chip add" data-act="addMember">+ Add</button>`}</div></section>
+      <div class="strip"><h2 class="label">Members</h2></div>${memberGrid([...v.members.map(m => memberChip(v, m, b[m.id] || 0)), ...(v.archived ? [] : [`<button class="chip add" data-act="addMember">+ Add</button>`])])}</section>
       <section class="sect"><div class="strip"><h2 class="label">Who pays whom <span class="muted small" style="font-family:var(--font-body)">${S.settings.strategy === "pairwise" ? "pairwise" : "fewest payments"}</span></h2></div>
         ${ds.length ? `<div class="ledger">${ds.map(d => debtRow(v, d)).join("")}</div>` : emptyCard("(＾▽＾)", "Nobody owes anything.")}</section>
+      ${glanceHtml(v)}
       <section class="sect"><div class="strip"><h2 class="label">Recent</h2>${items.length > 4 ? `<button class="btn quiet" data-act="history">${I.list} See all ${items.length}</button>` : ""}</div>
         ${items.length ? `<div class="ledger">${items.slice(0, 4).map(it => itemRow(v, it)).join("")}</div>` : emptyCard("(・_・;)", v.archived ? "No expenses." : "No expenses yet. Add the first one.")}</section>
-      ${catRows.length ? `<section class="sect"><div class="strip"><h2 class="label">Spending by category</h2></div><div class="panel bars">${catRows.map(([c, a]) => {
-        const k = catOf(c); return `<div><div class="row between small"><span>${k[1]}</span><b class="num">${esc(fmt(a, v.currency))} · ${Math.round(a * 100 / tot)}%</b></div><div class="bar" aria-hidden="true"><i style="width:${(a * 100 / tot).toFixed(1)}%"></i></div></div>`;
-      }).join("")}</div></section>` : ""}
       </div>`;
   },
 
   history() {
     const v = vol(); if (!v) { ui.view = "hub"; return views.hub(); }
     if (ui.sel && (v.archived || ui.selVol !== v.id)) ui.sel = null;
-    const items = timeline(v), shown = items.slice(0, ui.histLimit), sel = ui.sel;
+    const items = timeline(v), sel = ui.sel, hf = histFilter(v);
+    const bar = items.length > 20 || filterOn(hf) ? `<div class="panel pad stack hfilter" role="search" aria-label="Search history">
+      <div class="field"><label for="h-q">Search</label><input id="h-q" class="input" type="search" enterkeyhint="search" maxlength="60" autocomplete="off" placeholder="Groceries, Ivy, GCash" value="${esc(hf.q)}"></div>
+      <div class="hf-row"><div class="field">${pickField("h-who", "Who", [["", "Everyone"], ...v.members.map(m => [m.id, meName(v, m.id)])], hf.who)}</div>
+      <div class="field">${pickField("h-cat", "Category", [["", "All"], ...CATEGORIES.map(c => [c[0], c[1]])], hf.cat)}</div></div>
+      <div class="row between"><span class="small" id="histCount">${esc(histCount(v))}</span><button type="button" class="btn quiet" id="histClear" data-act="histClear"${filterOn(hf) ? "" : " hidden"}>Clear</button></div></div>` : "";
     // N5 "Set dates": the rows become toggles (txOpen) and a bar gives the chosen ones one date
     const meta = sel ? "Tap the ones to change, then pick a date." : `${plural(v.expenses.length, "expense")} and ${plural(v.settlements.length, "payment")}. ${v.archived ? "Archived: read-only." : "Tap one to edit it."}`;
     return topbar("History", { back: true, right: `<span class="muted sub ellip">${esc(v.title)}</span>` }) +
       `<div class="row between" style="margin:0 0 8px;gap:8px"><p class="muted small" style="margin:0">${meta}</p>${!sel && !v.archived && items.length ? `<button class="btn quiet" data-act="selStart">Set dates</button>` : ""}</div>` +
-      (shown.length ? histMonths(v, shown, sel) : emptyCard("(・_・;)", "Nothing recorded yet.")) +
-      (items.length > shown.length ? `<button class="btn block" data-act="more" style="margin-top:12px">Show ${Math.min(100, items.length - shown.length)} more</button>` : "") +
+      bar + `<div id="histBody">${histBody(v)}</div>` +
       (sel ? `<div class="panel pad stack setdate" role="group" aria-label="Set date">
         <p class="small" id="selCount" style="margin:0"><b>${sel.size} selected</b></p>
         <div class="field"><label for="sd-date">New date</label><input id="sd-date" type="date" class="input">${quickDays("")}</div>
@@ -1189,7 +1451,7 @@ const views = {
         <div class="row"><span class="cur" aria-hidden="true">${esc(v.currency)}</span><input id="f-amount" inputmode="decimal" autocomplete="off" placeholder="0.00" value="${esc(f.amount)}"></div><div id="lastAmt"></div>
         <p class="small" id="pasteMsg" aria-live="polite"></p><div class="chips" id="pasteSug" role="group" aria-label="Amounts in what you pasted"></div></div>
       <div class="field"><label for="f-desc">Description</label><input id="f-desc" class="input" maxlength="100" placeholder="Ramen dinner" autocomplete="off" value="${esc(f.desc)}" aria-describedby="descMsg"><div class="msg" id="descMsg"></div><div class="chips sug" id="descSug" role="group" aria-label="Used before in this volume"></div></div>
-      <div class="field">${pickField("f-paid", "Paid by", v.members.map(m => [m.id, meName(v, m.id)]), f.paidBy)}</div>
+      <div class="field">${pickField("f-paid", "Paid by", v.members.map(m => [m.id, meName(v, m.id)]), f.paidBy, "", true)}</div>
       </section><section class="sect"><div class="strip"><h2 class="label">Split</h2></div>
       <fieldset><legend class="legend sr">Split</legend><div class="seg">${[["equal", "Equal"], ["exact", "Exact"], ["percent", "Percent"], ["shares", "Shares"]].map(s => `<button type="button" data-split="${s[0]}" aria-pressed="${s[0] === f.splitType}">${s[1]}</button>`).join("")}</div></fieldset>
       <div class="ledger" id="splitRows">${v.members.map(m => splitRow(v, m)).join("")}</div>
@@ -1201,7 +1463,7 @@ const views = {
       </section>
       <div class="msg" id="formMsg" role="alert"></div>
       <button class="btn primary block" type="submit">${f.id ? "Update expense" : "Save expense"}</button>
-      ${f.id ? `<button type="button" class="btn danger block" data-act="deleteExpense">Delete expense</button>` : ""}
+      ${f.id ? `<button type="button" class="btn block" data-act="copyExpense">${I.plus} Copy as new</button><button type="button" class="btn danger block" data-act="deleteExpense">Delete expense</button>` : ""}
       </form>`;
   },
 
@@ -1296,7 +1558,8 @@ function pastExpenses(v, q) {
     by.set(k, x);
   });
   q = String(q || "").trim().toLowerCase();
-  return [...by.entries()].filter(([k]) => !q || k.includes(q)).map(([k, x]) => ({ k, ...x }))
+  // owner 2026-11-12: nothing until a letter is typed, then every description that starts with what was typed
+  return [...by.entries()].filter(([k]) => q && k.startsWith(q)).map(([k, x]) => ({ k, ...x }))
     .sort((a, b) => b.n - a.n || (a.key < b.key ? 1 : -1));
 }
 function refreshSuggest() {
@@ -1306,7 +1569,7 @@ function refreshSuggest() {
   const typed = f.desc.trim().toLowerCase(), all = pastExpenses(v, typed);
   const exact = all.find(x => x.k === typed);
   // while the description is one already used, there is nothing left to suggest: offer its amount instead
-  ui.sug = exact ? [] : all.slice(0, 3);
+  ui.sug = exact ? [] : all;
   box.innerHTML = ui.sug.map((x, i) => `<button type="button" class="chip" data-sug="${i}"><span aria-hidden="true">${CAT_ICON[catOf(x.e.category)[0]]}</span><span class="ellip">${esc(x.e.desc)}</span></button>`).join("");
   ui.lastAmt = exact && parseMoney(f.amount) !== exact.e.amount ? exact.e.amount : 0;
   last.innerHTML = ui.lastAmt ? `<button type="button" class="chip" data-last><span class="muted">Last time</span> <span class="num">${fmt(ui.lastAmt, v.currency)}</span></button>` : "";
@@ -1345,6 +1608,13 @@ function setPasted(c, label) {
   f.amount = (c / 100).toFixed(2); $("#f-amount").value = f.amount; $("#pasteSug").innerHTML = ""; ui.pasteC = null;
   $("#pasteMsg").textContent = `From paste: ${label ? label + " " : ""}${fmt(c, v.currency)}`;
   refreshSplitPreview(); refreshSuggest(); saveDraft();
+}
+// X6: the open expense becomes a new one (rent, bills): same fields, a new id, dated today; nothing saves until Save.
+function copyExpense() {
+  const f = ui.form; if (!f || !f.id) return;
+  ui.form = { ...JSON.parse(JSON.stringify(f)), id: null, date: today(), touched: false };
+  saveDraft(); render(); { const a = $("#f-amount"); if (a) a.focus(); }
+  announce("Copied. Check the date and amount, then save.");
 }
 function openExpense(e) {
   ui.from = ui.view === "history" ? "history" : "volume";
@@ -1675,7 +1945,7 @@ function settleSheet(existing) {
     <div class="field">${pickField("s-to", "To", people, s.to)}</div>
     <div class="field"><label for="s-amt">Amount (${esc(v.currency)})</label><input id="s-amt" class="input num" inputmode="decimal" placeholder="0.00" autocomplete="off" value="${s.amount ? (s.amount / 100).toFixed(2) : ""}"></div>
     <div class="field"><label for="s-date">Date</label><input id="s-date" type="date" class="input" value="${esc(day0)}">${quickDays(day0)}</div>
-    <div class="field"><label for="s-via">How (optional)</label><input id="s-via" class="input" maxlength="40" placeholder="GCash, cash" autocomplete="off" value="${esc((existing && existing.how) || "")}"></div>
+    <div class="field"><label for="s-via">How (optional)</label><input id="s-via" class="input" maxlength="40" placeholder="GCash ref 1234" autocomplete="off" value="${esc((existing && existing.how) || "")}">${quickHow((existing && existing.how) || "")}</div>
     <div class="msg" id="sheetMsg" role="alert"></div>
     ${sheetButtons("Record payment")}
     ${existing ? `<button type="button" class="btn danger block" data-act="deleteSettle" data-id="${esc(existing.id)}">Delete payment</button>` : ""}</div>`,
@@ -2737,6 +3007,8 @@ document.addEventListener("click", async ev => {
   const drop = ev.target.closest && ev.target.closest("#sheetForm [data-drop]"); if (drop) return toggleDrop(drop);
   const pv = ev.target.closest && ev.target.closest("hati-pick [data-pv]"); if (pv) return pv.closest("hati-pick").choose(pv.dataset.pv);
   const pb = ev.target.closest && ev.target.closest("hati-pick .pick-btn"); if (pb) return pickSheet(pb.closest("hati-pick"));
+  const qh = ev.target.closest && ev.target.closest(".field [data-how]");
+  if (qh) { const i = qh.closest(".field").querySelector("input"); if (!i) return; const on = qh.getAttribute("aria-pressed") === "true"; i.value = on ? "" : qh.dataset.how; paintHow(i); i.dispatchEvent(new Event("input", { bubbles: true })); return; }
   const qd = ev.target.closest && ev.target.closest(".field [data-day]");
   if (qd) { const i = qd.closest(".field").querySelector("input[type=date]"); if (!i) return; i.value = dayAgo(+qd.dataset.day); ["input", "change"].forEach(t => i.dispatchEvent(new Event(t, { bubbles: true }))); return; }
   const el = ev.target.closest("[data-act],[data-pal],[data-set]"); if (!el) return;
@@ -2768,7 +3040,9 @@ document.addEventListener("click", async ev => {
     case "restore": importSheet({ restore: true }); break;
     case "dismissRecovered": recovered = false; render(); break;
     case "dismissIosHint": try { localStorage.setItem(IOS_HINT, "1"); } catch (e) {} el.closest("#iosHint").remove(); break;
-    case "more": ui.histLimit += 100; render(); break;
+    case "copyExpense": copyExpense(); break;
+    case "more": ui.histLimit += 100; if ($("#histBody")) refreshHist(); else render(); break;
+    case "histClear": ui.hf = null; ui.histLimit = 100; render(); { const q = $("#h-q"); if (q) q.focus(); } announce("Filter cleared"); break;
     case "selStart": ui.sel = new Set(); ui.selVol = v.id; render(); { const r = $("#app .ledger.hist .tx"); if (r) r.focus(); } announce("Tap the ones to change, then pick a date."); break;
     case "selRow": if (ui.sel) selToggle(el); break;
     case "selCancel": ui.sel = null; render(); { const b = $("#app [data-act=selStart]"); if (b) b.focus(); } break;
@@ -2803,7 +3077,14 @@ document.addEventListener("click", async ev => {
     case "reset": confirmSheet("Erase all data?", "Every volume on this device will be deleted. Copies shared to other phones are not affected.", "Erase", () => { S.volumes = []; if (!commit()) return; go("hub", { replace: true }); toast("All data erased"); }); break;
   }
 });
-document.addEventListener("input", ev => { if (ev.target.type === "date") paintDays(ev.target); });
+document.addEventListener("input", ev => {
+  if (ev.target.type === "date") paintDays(ev.target);
+  if (ev.target.id === "s-via") paintHow(ev.target);
+  const t = ev.target, v = ui.view === "history" && vol();
+  if (v && (t.id === "h-q" || t.id === "h-who" || t.id === "h-cat")) {
+    const hf = histFilter(v); hf[t.id === "h-q" ? "q" : t.id === "h-who" ? "who" : "cat"] = t.value; ui.histLimit = 100; refreshHist();
+  }
+});
 document.addEventListener("keydown", ev => {
   if (ev.key === "Escape" && sheetOpen()) { closeSheet(); return; }
   eatClick = false;
@@ -2811,7 +3092,7 @@ document.addEventListener("keydown", ev => {
   const rb = ev.target.closest && ev.target.closest("hati-pick [role=radio]");
   if (rb && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Home", "End"].includes(ev.key)) {
     ev.preventDefault();
-    const all = [...rb.parentNode.children], i = all.indexOf(rb), n = all.length;
+    const all = [...rb.closest("hati-pick").querySelectorAll("[role=radio]")], i = all.indexOf(rb), n = all.length;
     const t = all[ev.key === "Home" ? 0 : ev.key === "End" ? n - 1 : (i + (ev.key === "ArrowDown" || ev.key === "ArrowRight" ? 1 : -1) + n) % n];
     rb.closest("hati-pick").choose(t.dataset.pv); t.focus(); return;
   }

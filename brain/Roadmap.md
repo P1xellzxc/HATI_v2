@@ -16,6 +16,13 @@ Facts from the code that shaped the debate (`web/src/app.src.html`):
 - No duplicate check anywhere. **Owner correction:** the repeated "House of Bagnet" ₱334.13 and the two Chowking entries are real, separate meals on different dates. Same-amount repeats are normal for this couple, so they are not evidence for duplicate detection. What they do show: per-expense dates matter, and the import set every date to today, so the history can't tell the meals apart.
 - Open items from the 2026-11-09 handoff: perf regression (patch `brain/WIP/perf-fix-wip.patch`), K3, restore does not re-join sync, real-Worker check never done.
 
+## 0. Current plan (2026-11-12, all skills)
+- **In the next APK:** X1–X6, matte glass, balanced Members.
+- **Now:** N4 + D8 (restore re-joins sync, backup you can trust) → N3 K3 (APK save survives process death) → glass pass on every view (shots, pixel, slop, reduced transparency) → G1 "Spent over time" line chart (lines per type + moving average of the total; owner: next APK).
+- **Next:** D4 Why this balance → D6 sync status in words → D7 odd centavo shown → Q1 "+ Expense" from the hub card → D5 changes from the other phone in words.
+- **Owner:** N2 two-phone real sync check after installing the APK.
+- Discussion: [[Team log]], "Feature review · all skills, one voice (2026-11-12)".
+
 ## 1. Proposals (condensed, each skill's voice)
 
 - **hati-plan:** (1) Finish the perf fix first: `web/test.sh` is red, so criterion 1 is unmet and every later round is judged on a flaky base (S). (2) Real two-phone sync check on the live Worker, scripted for the owner (S). (3) Rank everything else by "does the owner hit it this week".
@@ -82,6 +89,9 @@ Asked for: total spent, who owes whom, spend by category, spend over time (this 
 Ship as two rounds: A = N1, N2, N3 (no data-shape change); B = N4, N5.
 
 ### Next
+
+**Status (2026-11-12): X1–X6 built** (see [[Team log]], "Next features X1–X6"). X4 follows the owner's balanced-grid rule instead of "select above 3".
+
 
 | # | Item | Owner | Size | Acceptance checks | Risks |
 |---|---|---|---|---|---|

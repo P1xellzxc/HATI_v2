@@ -1,0 +1,397 @@
+<title>HATI² Glass Slabs</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap">
+<style>
+/* Layout: a proof sheet. Three minimal directions, each a strip of three phone screens (hub, volume, new expense)
+   with margin notes. Minimal = fewer materials, not no voice: ink, paper, one plate accent, one display face. */
+:root {
+  --ink: #000000; --paper: #FFFFFF; --acc: #FEF08A; --acc-on: #000000; --s2: #BFDBFE; --s3: #BBF7D0; --s4: #E9D5FF;
+  --pos: #166534; --neg: #9D174D; --mute: #5B5F69;
+
+  --bg: var(--paper); --fg: var(--ink); --sub: var(--mute);
+  --sunk: color-mix(in srgb, var(--ink) 4%, var(--paper));
+  --sunk-2: color-mix(in srgb, var(--ink) 7%, var(--paper));
+  --line: color-mix(in srgb, var(--ink) 14%, var(--paper));
+  --rule: var(--ink);
+  --tone: color-mix(in srgb, var(--ink) 22%, transparent);
+  --scrim: color-mix(in srgb, var(--ink) 35%, transparent);
+  --sheet: var(--paper);
+  --desk: #E4E2DC;
+  /* glass slab: body, lit top edge, rim, and the slab side (two 0-blur steps = thickness) */
+  --gl: color-mix(in srgb, color-mix(in srgb, var(--s2) 14%, var(--paper)) 74%, transparent);
+  --gl-hi: color-mix(in srgb, var(--paper) 95%, transparent);
+  --gl-rim: color-mix(in srgb, var(--paper) 70%, transparent);
+  --gl-side: color-mix(in srgb, color-mix(in srgb, var(--s2) 45%, var(--ink)) 34%, transparent);
+  --gl-foot: color-mix(in srgb, var(--ink) 22%, transparent);
+  --gl-sub: color-mix(in srgb, var(--mute) 70%, var(--ink));
+  --page-a: color-mix(in srgb, var(--s2) 30%, var(--paper));
+  --page-b: color-mix(in srgb, var(--s4) 28%, var(--paper));
+  --page-dot: color-mix(in srgb, var(--ink) 16%, transparent);
+  --acc-gl: color-mix(in srgb, var(--acc) 72%, transparent);
+  --acc-side: color-mix(in srgb, var(--acc) 55%, var(--ink));
+
+  --font-disp: 'Black Han Sans', 'Arial Black', Impact, sans-serif;
+  --font-body: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --r: 3px; --r-ctl: 6px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: color-mix(in srgb, var(--ink) 5%, #0E0D12); --fg: #EDEBE4; --sub: #A3A1AB;
+    --sunk: color-mix(in srgb, #EDEBE4 6%, var(--bg)); --sunk-2: color-mix(in srgb, #EDEBE4 10%, var(--bg));
+    --line: color-mix(in srgb, #EDEBE4 18%, var(--bg)); --rule: color-mix(in srgb, #EDEBE4 70%, var(--bg));
+    --tone: color-mix(in srgb, #EDEBE4 22%, transparent);
+    --pos: #BBF7D0; --neg: #FBCFE8; --scrim: rgba(0,0,0,.6); --sheet: color-mix(in srgb, #EDEBE4 8%, var(--bg)); --desk: #0A0A0D;
+    --gl: color-mix(in srgb, color-mix(in srgb, var(--s2) 12%, #26252C) 72%, transparent);
+    --gl-hi: color-mix(in srgb, #EDEBE4 40%, transparent);
+    --gl-rim: color-mix(in srgb, #EDEBE4 14%, transparent);
+    --gl-side: color-mix(in srgb, color-mix(in srgb, var(--s2) 30%, #000) 70%, transparent);
+    --gl-foot: color-mix(in srgb, #000 60%, transparent);
+    --gl-sub: color-mix(in srgb, #EDEBE4 82%, var(--bg));
+    --page-a: color-mix(in srgb, var(--s2) 22%, var(--bg));
+    --page-b: color-mix(in srgb, var(--s4) 18%, var(--bg));
+    --page-dot: color-mix(in srgb, #EDEBE4 12%, transparent);
+    --acc-gl: color-mix(in srgb, var(--acc) 78%, transparent);
+    --acc-side: color-mix(in srgb, var(--acc) 45%, #000);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: color-mix(in srgb, var(--ink) 5%, #0E0D12); --fg: #EDEBE4; --sub: #A3A1AB;
+  --sunk: color-mix(in srgb, #EDEBE4 6%, var(--bg)); --sunk-2: color-mix(in srgb, #EDEBE4 10%, var(--bg));
+  --line: color-mix(in srgb, #EDEBE4 18%, var(--bg)); --rule: color-mix(in srgb, #EDEBE4 70%, var(--bg));
+  --tone: color-mix(in srgb, #EDEBE4 22%, transparent);
+  --pos: #BBF7D0; --neg: #FBCFE8; --scrim: rgba(0,0,0,.6); --sheet: color-mix(in srgb, #EDEBE4 8%, var(--bg)); --desk: #0A0A0D;
+  --gl: color-mix(in srgb, color-mix(in srgb, var(--s2) 12%, #26252C) 72%, transparent);
+  --gl-hi: color-mix(in srgb, #EDEBE4 40%, transparent);
+  --gl-rim: color-mix(in srgb, #EDEBE4 14%, transparent);
+  --gl-side: color-mix(in srgb, color-mix(in srgb, var(--s2) 30%, #000) 70%, transparent);
+  --gl-foot: color-mix(in srgb, #000 60%, transparent);
+  --gl-sub: color-mix(in srgb, #EDEBE4 82%, var(--bg));
+  --page-a: color-mix(in srgb, var(--s2) 22%, var(--bg));
+  --page-b: color-mix(in srgb, var(--s4) 18%, var(--bg));
+  --page-dot: color-mix(in srgb, #EDEBE4 12%, transparent);
+  --acc-gl: color-mix(in srgb, var(--acc) 78%, transparent);
+  --acc-side: color-mix(in srgb, var(--acc) 45%, #000);
+  color-scheme: dark;
+}
+:root[data-plate="persimmon"] { --ink: #003119; --acc: #FFAB00; --s2: #FFAB00; --s3: #A10B2B; --s4: #BFABCC; --mute: #4F5B55; }
+:root[data-plate="lagoon"]    { --ink: #2A0082; --acc: #59B3C2; --s2: #008AA1; --s3: #C2612C; --s4: #59B3C2; --mute: #57536A; }
+:root[data-plate="peony"]     { --ink: #06004F; --acc: #FF4DC9; --s2: #B319AB; --s3: #718600; --s4: #FF4DC9; --mute: #55536A; }
+
+*, *::before, *::after { box-sizing: border-box; }
+html { background: var(--desk); }
+body { margin: 0; background: var(--desk); color: var(--fg); font: 16px/1.45 var(--font-body); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--desk); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+
+/* proof sheet chrome */
+.sheetwrap { max-width: 1320px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px; }
+.mast { display: grid; gap: 14px; margin-bottom: 28px; }
+.mast h1 { margin: 0; font: 400 clamp(2rem, 5vw, 3.4rem)/1 var(--font-disp); color: var(--fg); text-wrap: balance; }
+.mast h1 sup { font-size: .5em; }
+.mast p { margin: 0; max-width: 68ch; color: var(--sub); }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.ctl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ctl > span { font-size: .8rem; color: var(--sub); font-weight: 500; }
+.seg { display: inline-flex; border: 1.5px solid var(--fg); border-radius: var(--r-ctl); overflow: hidden; background: var(--bg); }
+.seg button { border: 0; background: transparent; padding: 7px 12px; font-size: .85rem; font-weight: 500; cursor: pointer; }
+.seg button + button { border-left: 1.5px solid var(--fg); }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.dir { margin-top: 44px; display: grid; gap: 18px; }
+.dir-head { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: baseline; border-top: 2px solid var(--fg); padding-top: 12px; }
+.dir-head .num { font: 400 2.6rem/1 var(--font-disp); color: var(--fg); grid-row: span 2; }
+.dir-head h2 { margin: 0; font: 400 1.6rem/1.1 var(--font-disp); color: var(--fg); }
+.dir-head .tag { margin: 0; color: var(--sub); font-size: .92rem; max-width: 70ch; }
+.badge { display: inline-block; margin-left: 8px; padding: 1px 8px; border: 1.5px solid var(--fg); font: 700 .72rem/1.5 var(--font-body); letter-spacing: .04em; vertical-align: middle; color: var(--fg); }
+.badge.pick { background: var(--fg); color: var(--bg); }
+.row { display: flex; gap: 28px; overflow-x: auto; padding: 6px 4px 18px 2px; scroll-snap-type: x mandatory; }
+.row > * { scroll-snap-align: start; }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px 28px; font-size: .9rem; }
+.notes div { min-width: 0; }
+.notes b { display: block; font-size: .78rem; letter-spacing: .04em; color: var(--sub); font-weight: 700; margin-bottom: 2px; }
+.notes p { margin: 0; color: var(--fg); }
+
+/* phone */
+.phone { flex: 0 0 auto; width: 360px; display: grid; gap: 8px; margin: 0; }
+.phone .cap { font-size: .8rem; color: var(--sub); font-weight: 500; }
+.screen { position: relative; width: 360px; height: 760px; overflow: hidden; border: 2px solid var(--fg); border-radius: 26px; background: var(--bg); color: var(--fg); isolation: isolate; }
+.scr { position: absolute; inset: 0; z-index: 0; overflow: hidden; padding: 0 20px 24px; display: flex; flex-direction: column; gap: 12px; }
+.status { height: 30px; flex: 0 0 auto; margin: 0 -20px; padding: 9px 24px 0; display: flex; justify-content: space-between; font: 700 .72rem/1 var(--font-body); }
+.topbar { display: flex; align-items: center; gap: 10px; margin: -6px -20px 0; padding: 10px 20px; }
+.topbar h1 { flex: 1; margin: 0; font: 700 1.2rem/1.2 var(--font-body); letter-spacing: -.01em; }
+.logo { font: 400 1rem/1 var(--font-disp); }
+.ico { width: 40px; height: 40px; display: grid; place-items: center; border-radius: var(--r-ctl); color: var(--fg); }
+.ico svg, .btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.lbl { font-size: .78rem; font-weight: 700; color: var(--sub); letter-spacing: .02em; }
+.amt { font-variant-numeric: tabular-nums; font-weight: 700; }
+.pos { color: var(--pos); } .neg { color: var(--neg); }
+.small { font-size: .82rem; color: var(--sub); }
+.hero .k { font-size: .85rem; color: var(--sub); }
+.hero .big { font: 400 2.6rem/1 var(--font-disp); margin: 8px 0 6px; font-variant-numeric: tabular-nums; }
+.hero .meta { font-size: .88rem; }
+.list { display: grid; }
+.item { display: grid; grid-template-columns: auto 1fr auto; gap: 2px 14px; align-items: center; padding: 11px 0; }
+.item .no { grid-row: span 2; font: 400 1.25rem/1 var(--font-disp); width: 28px; color: var(--sub); }
+.item .t { font-weight: 700; min-width: 0; }
+.item .s { font-size: .82rem; color: var(--sub); grid-column: 2; }
+.item .amt { grid-row: span 2; grid-column: 3; grid-row-start: 1; text-align: right; }
+.item.nonum { grid-template-columns: 1fr auto; }
+.item.nonum .s { grid-column: 1; }
+.item.nonum .amt { grid-column: 2; }
+.btn { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 50px; padding: 0 18px; border-radius: var(--r-ctl); font-weight: 700; border: 1.5px solid var(--fg); background: transparent; }
+.btn.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.mini { display: grid; gap: 6px; margin-top: 10px; }
+.mini .m { display: grid; grid-template-columns: 42px 1fr 74px; gap: 10px; align-items: center; font-size: .82rem; }
+.mini .bar { height: 6px; position: relative; background: var(--sunk-2); border-radius: 1px; }
+.mini .bar::before { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1.5px; background: var(--fg); }
+.mini .bar i { position: absolute; top: 0; bottom: 0; background: var(--fg); }
+.mini .bar.n i { background: repeating-linear-gradient(135deg, var(--fg) 0 1.5px, transparent 1.5px 4px); }
+.mini .m span:last-child { text-align: right; }
+.spacer { flex: 1; }
+
+/* sheet */
+.dim { position: absolute; inset: 0; background: var(--scrim); z-index: 5; }
+.bsheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 6; padding: 12px 20px 20px; display: grid; gap: 14px; border-radius: 16px 16px 0 0; background: var(--sheet); }
+.bsheet .grab { width: 36px; height: 4px; border-radius: 2px; background: var(--line); justify-self: center; }
+.bsheet .head { display: flex; justify-content: space-between; align-items: baseline; }
+.bsheet h2 { margin: 0; font: 700 1.15rem/1.2 var(--font-body); }
+.bsheet .x { font-size: .9rem; color: var(--sub); }
+.amount { display: flex; align-items: baseline; gap: 6px; }
+.amount .cur { font: 400 1.6rem/1 var(--font-disp); color: var(--sub); }
+.amount .v { font: 400 3rem/1 var(--font-disp); font-variant-numeric: tabular-nums; }
+.amount .caret { width: 2px; height: 36px; background: var(--fg); align-self: center; }
+.field { display: grid; gap: 2px; font-size: .95rem; }
+.field small { font-size: .74rem; color: var(--sub); font-weight: 700; }
+.opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.opt { padding: 6px 12px; border-radius: var(--r-ctl); font-size: .86rem; font-weight: 500; border: 1.5px solid var(--line); }
+.opt.on { border-color: var(--fg); background: var(--fg); color: var(--bg); }
+.tabs { display: flex; gap: 18px; font-size: .9rem; font-weight: 500; }
+.tabs span { padding-bottom: 4px; color: var(--sub); }
+.tabs span.on { color: var(--fg); box-shadow: inset 0 -2.5px 0 var(--fg); }
+
+/* =========================================================
+   03 QUIET — no lines at all. Grouping by soft paper steps,
+   ink only for words. One accent block: the balance.
+   ========================================================= */
+.d-quiet .scr { background: var(--sunk); }
+.d-quiet .hero { background: var(--acc); color: var(--acc-on); padding: 18px; border-radius: var(--r-ctl); }
+.d-quiet .hero .k { color: color-mix(in srgb, var(--acc-on) 72%, var(--acc)); }
+.d-quiet .hero .mini .bar { background: color-mix(in srgb, var(--acc-on) 14%, transparent); }
+.d-quiet .hero .mini .bar::before, .d-quiet .hero .mini .bar i { background-color: var(--acc-on); }
+.d-quiet .hero .mini .bar.n i { background: repeating-linear-gradient(135deg, var(--acc-on) 0 1.5px, transparent 1.5px 4px); }
+.d-quiet .hero .pos, .d-quiet .hero .neg { color: var(--acc-on); }
+.d-quiet .list { background: var(--bg); border-radius: var(--r-ctl); padding: 0 14px; }
+.d-quiet .list .item + .item { box-shadow: 0 -1px 0 var(--sunk-2); }
+.d-quiet .btn { border: 0; background: var(--bg); }
+.d-quiet .btn.primary { background: var(--fg); color: var(--bg); }
+.d-quiet .field { background: var(--sunk); padding: 8px 12px; border-radius: var(--r-ctl); }
+.d-quiet .amount { background: var(--sunk); padding: 10px 12px; border-radius: var(--r-ctl); }
+.d-quiet .opt { border-color: transparent; background: var(--sunk); }
+.d-quiet .opt.on { background: var(--fg); }
+
+
+/* =========================================================
+   QUIET GLASS — shared slab material on top of Quiet.
+   A slab = translucent body + lit top edge (inset) + 1px rim +
+   a hard side (0-blur, --t thick) + a 1px foot. Pressing a slab
+   sinks it onto its side.
+   ========================================================= */
+.qg .scr { background: var(--page); }
+.qg { --t: 6px; --page:
+    radial-gradient(var(--page-dot) 1px, transparent 1.4px) 0 0 / 6px 6px,
+    linear-gradient(160deg, var(--page-a) 0 46%, var(--page-b) 46%); }
+.qg .slab, .qg .list, .qg .btn, .qg .field, .qg .amount, .qg .opt { position: relative;
+  background: linear-gradient(var(--gl-hi), var(--gl-hi)) 0 0 / 100% 1.5px no-repeat, var(--gl);
+  box-shadow: inset 0 0 0 1px var(--gl-rim), 0 var(--t) 0 var(--gl-side), 0 calc(var(--t) + 1px) 0 var(--gl-foot);
+  margin-bottom: var(--t); border: 0; }
+.qg .list { border-radius: 10px; }
+.qg .list .item + .item { box-shadow: 0 -1px 0 var(--gl-rim); }
+.qg .item { padding: 9px 0; }
+.qg .scr { gap: 10px; }
+.qg .field[style] { box-shadow: none; margin-bottom: 0; background: none; }
+.qg .small, .qg .item .s, .qg .hero .k, .qg .field small { color: var(--gl-sub); }
+.qg .hero { position: relative; border-radius: 12px; color: var(--acc-on); --t: 10px;
+  background: linear-gradient(var(--gl-hi), var(--gl-hi)) 0 0 / 100% 2px no-repeat, var(--acc-gl);
+  box-shadow: inset 0 0 0 1px var(--gl-rim), 0 var(--t) 0 var(--acc-side), 0 calc(var(--t) + 1px) 0 var(--gl-foot); margin-bottom: 10px; }
+.qg .hero .k { color: color-mix(in srgb, var(--acc-on) 78%, var(--acc)); }
+.qg .btn { --t: 5px; border-radius: 10px; }
+.qg .btn.primary { background: linear-gradient(var(--gl-hi), var(--gl-hi)) 0 0 / 100% 1.5px no-repeat, var(--acc-gl); color: var(--acc-on);
+  box-shadow: inset 0 0 0 1px var(--gl-rim), 0 var(--t) 0 var(--acc-side), 0 calc(var(--t) + 1px) 0 var(--gl-foot); }
+.qg .opt { --t: 3px; border-radius: 8px; }
+.qg .opt.on { --t: 0px; transform: translateY(3px); background: var(--fg); color: var(--bg); box-shadow: inset 0 2px 0 var(--gl-foot); }
+.qg .field, .qg .amount { --t: 3px; border-radius: 8px; }
+.qg .bsheet { border-radius: 18px 18px 0 0; background: linear-gradient(var(--gl-hi), var(--gl-hi)) 0 0 / 100% 2px no-repeat, color-mix(in srgb, color-mix(in srgb, var(--s2) 12%, var(--sheet)) 98%, transparent);
+  box-shadow: inset 0 0 0 1px var(--gl-rim), 0 -8px 0 var(--gl-side); }
+.qg .tabs span.on { box-shadow: inset 0 -3px 0 var(--fg); }
+.qg .topbar { position: relative; }
+.qg .ico { --t: 3px; background: linear-gradient(var(--gl-hi), var(--gl-hi)) 0 0 / 100% 1.5px no-repeat, var(--gl); box-shadow: inset 0 0 0 1px var(--gl-rim), 0 3px 0 var(--gl-side); border-radius: 10px; }
+.qg .logo { font-size: 1.1rem; }
+
+/* A SLAB — printed glass slabs, no blur. The page is printed paper
+   (two plate tints + dots) so the slabs have something to show. */
+
+/* B FROST — same slabs, but the body really frosts what is behind it:
+   big halftone dots and speed lines printed on the page. */
+.d-frost { --page:
+    repeating-conic-gradient(from 0deg at 88% 12%, color-mix(in srgb, var(--fg) 22%, transparent) 0 1.2deg, transparent 1.2deg 9deg),
+    radial-gradient(circle at 88% 12%, var(--acc) 0 64px, transparent 65px),
+    radial-gradient(circle at 10% 62%, color-mix(in srgb, var(--s3) 70%, transparent) 0 90px, transparent 91px),
+    radial-gradient(var(--page-dot) 1.6px, transparent 2px) 0 0 / 9px 9px,
+    linear-gradient(160deg, var(--page-a) 0 46%, var(--page-b) 46%); }
+.d-frost :is(.list, .hero, .btn, .field, .amount, .opt:not(.on), .ico) { -webkit-backdrop-filter: blur(14px) saturate(1.5); backdrop-filter: blur(14px) saturate(1.5); }
+.d-frost .bsheet { -webkit-backdrop-filter: blur(20px) saturate(1.5); backdrop-filter: blur(20px) saturate(1.5); background: linear-gradient(var(--gl-hi), var(--gl-hi)) 0 0 / 100% 2px no-repeat, color-mix(in srgb, color-mix(in srgb, var(--s2) 12%, var(--sheet)) 78%, transparent); }
+
+/* C STACK — slabs plus thickness you can count: the balance is three
+   stacked panes, list slabs are thicker, buttons are glass keycaps. */
+.d-stack { --t: 8px; }
+.d-stack .hero { --t: 12px; margin-top: 14px; }
+.d-stack .hero::before, .d-stack .hero::after { content: ""; position: absolute; left: 10px; right: 10px; top: -8px; height: 20px; z-index: -1; border-radius: 12px 12px 0 0;
+  background: color-mix(in srgb, var(--acc) 40%, transparent); box-shadow: inset 0 1.5px 0 var(--gl-hi), inset 0 0 0 1px var(--gl-rim); }
+.d-stack .hero::after { left: 22px; right: 22px; top: -15px; background: color-mix(in srgb, var(--acc) 22%, transparent); }
+.d-stack .hero { isolation: auto; }
+.d-stack .list { border-radius: 12px; }
+.d-stack .btn { --t: 7px; }
+.d-stack .opt { --t: 4px; }
+.d-stack .opt.on { transform: translateY(4px); }
+
+
+/* A + C — printed slabs, 8px corners, stacked balance panes */
+.d-ac .list, .d-ac .btn, .d-ac .ico { border-radius: 8px; }
+.d-ac .hero { border-radius: 8px; --t: 12px; margin-top: 14px; }
+.d-ac .hero::before, .d-ac .hero::after { content: ""; position: absolute; left: 10px; right: 10px; top: -8px; height: 20px; z-index: -1; border-radius: 8px 8px 0 0;
+  background: color-mix(in srgb, var(--acc) 40%, transparent); box-shadow: inset 0 1.5px 0 var(--gl-hi), inset 0 0 0 1px var(--gl-rim); }
+.d-ac .hero::after { left: 22px; right: 22px; top: -15px; background: color-mix(in srgb, var(--acc) 22%, transparent); }
+.d-ac .scr { padding-bottom: 28px; }
+.d-ac .item { padding: 8px 0; }
+@media (max-width: 520px) { .phone, .screen { width: 320px; } .screen { height: 700px; } }
+</style>
+
+<div class="sheetwrap">
+  <header class="mast">
+    <h1>HATI<sup>2</sup> glass slabs</h1>
+    <p>The chosen mix: Quiet layout, printed glass slabs (A) and the stacked balance (C). No blur, nothing flat. Corners are 8px so the slabs stay sharp. Switch the plate and the theme to check it.</p>
+    <div class="controls">
+      <div class="ctl"><span id="plateLbl">Plate</span>
+        <div class="seg" role="group" aria-labelledby="plateLbl" id="plates">
+          <button type="button" data-plate="classic" aria-pressed="true">Classic</button>
+          <button type="button" data-plate="persimmon" aria-pressed="false">Persimmon</button>
+          <button type="button" data-plate="lagoon" aria-pressed="false">Lagoon</button>
+          <button type="button" data-plate="peony" aria-pressed="false">Peony</button>
+        </div>
+      </div>
+      <div class="ctl"><span id="themeLbl">Theme</span>
+        <div class="seg" role="group" aria-labelledby="themeLbl" id="themes">
+          <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
+          <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
+        </div>
+      </div>
+    </div>
+  </header>
+  <main id="board"></main>
+</div>
+
+<script>
+const ICON = {
+  gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/></svg>',
+  back: '<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>',
+  share: '<svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8.2 10.9l7.6-3.8M8.2 13.1l7.6 3.8"/></svg>',
+  plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>'
+};
+const DIRS = [
+  { id: 'ac', no: 'A+C', name: 'Glass slabs, stacked balance', badge: 'Owner pick',
+    tag: 'Every block is a printed glass slab: you see the page through it, the top edge is lit, and a hard side shows its thickness. The balance sits on two more panes, the total of the volumes underneath.',
+    notes: [
+      ['hati-design', 'Calm Quiet layout, physical glass. The stacked balance is the one loud thing per screen.'],
+      ['hati-slop-rubric', 'Glass 0 (no blur, no glow). Corners now 8px, so the big-radius tell drops to 0.'],
+      ['hati-a11y', 'Slab sides give every block a visible edge. Grey words use --gl-sub; contrast.js across 13 plates comes with the build.'],
+      ['hati-lazy-check', 'Balance first, then “Add expense”. Selected options sink, so state reads without colour.']
+    ] }
+];
+const sec = (label, inner) => `<div class="sec"><div class="lbl">${label}</div>${inner}</div>`;
+
+function hub(d) {
+  const it = (n, t, s, a, c) => `<div class="item"><span class="no">${n}</span><span class="t">${t}</span><span class="s">${s}</span><span class="amt ${c}">${a}</span></div>`;
+  return `<div class="scr">
+    <div class="status"><span>9:41</span><span>5G</span></div>
+    <div class="topbar"><span class="logo">HATI²</span><h1></h1><span class="ico" aria-label="Settings">${ICON.gear}</span></div>
+    <section class="hero"><div class="k">Across 3 volumes</div><div class="big">€212.40</div><div class="meta">You’re owed this in total. Ben owes you the most.</div></section>
+    ${sec('Your volumes', `<div class="list" style="margin-top:12px">
+      ${it(1, 'Lisbon trip', '4 people · €1,284.50 spent', '+€86.20', 'pos')}
+      ${it(2, 'Flat 3B', '3 people · €2,960.00 spent', '+€168.30', 'pos')}
+      ${it(3, 'Friday dinners', '6 people · €412.75 spent', '−€42.10', 'neg')}
+    </div>`)}
+    <div class="spacer"></div>
+    <div class="btn">${ICON.plus} New volume</div>
+  </div>`;
+}
+
+function volume(d, withSheet) {
+  const it = (t, s, a) => `<div class="item nonum"><span class="t">${t}</span><span class="s">${s}</span><span class="amt">${a}</span></div>`;
+  const sheet = withSheet ? `<div class="dim"></div>
+    <div class="bsheet">
+      <span class="grab"></span>
+      <div class="head"><h2>New expense</h2><span class="x">Cancel</span></div>
+      <div class="amount"><span class="cur">€</span><span class="v">48.00</span><span class="caret"></span></div>
+      <div class="field"><small>Description</small>Dinner at Taberna da Rua</div>
+      <div class="field" style="border:0;background:none;padding:0"><small>Category</small>
+        <div class="opts" style="margin-top:6px"><span class="opt on">Food</span><span class="opt">Travel</span><span class="opt">Stay</span><span class="opt">Drinks</span><span class="opt">Shop</span><span class="opt">Other</span></div></div>
+      <div class="field" style="border:0;background:none;padding:0"><small>Paid by</small>
+        <div class="opts" style="margin-top:6px"><span class="opt on">You</span><span class="opt">Ana</span><span class="opt">Ben</span><span class="opt">Caro</span></div></div>
+      <div class="tabs"><span class="on">Split equally</span><span>Exact amounts</span><span>Shares</span></div>
+      <div class="btn primary">Add expense</div>
+    </div>` : '';
+  return `<div class="scr">
+    <div class="status"><span>9:41</span><span>5G</span></div>
+    <div class="topbar"><span class="ico" aria-label="Back">${ICON.back}</span><h1>Lisbon trip</h1><span class="ico" aria-label="Share">${ICON.share}</span></div>
+    <section class="hero"><div class="k">You’re owed</div><div class="big">€86.20</div>
+      <div class="mini">
+        <div class="m"><span>You</span><span class="bar"><i style="left:50%;width:30%"></i></span><span class="amt pos">+€86.20</span></div>
+        <div class="m"><span>Ana</span><span class="bar"><i style="left:50%;width:9%"></i></span><span class="amt pos">+€24.60</span></div>
+        <div class="m"><span>Ben</span><span class="bar n"><i style="left:36%;width:14%"></i></span><span class="amt neg">−€41.10</span></div>
+        <div class="m"><span>Caro</span><span class="bar n"><i style="left:25%;width:25%"></i></span><span class="amt neg">−€69.70</span></div>
+      </div></section>
+    ${sec('Who pays whom', `<div class="list" style="margin-top:12px">
+      ${it('Caro → You', 'Suggested payment', '€69.70')}
+      ${it('Ben → You', 'Suggested payment', '€16.50')}
+      ${it('Ben → Ana', 'Suggested payment', '€24.60')}
+    </div>`)}
+    ${sec('Fri 7 Nov', `<div class="list" style="margin-top:12px">
+      ${it('Pastéis de Belém', 'Ana paid · split 4 ways', '€18.60')}
+    </div>`)}
+    <div class="spacer"></div>
+    ${withSheet ? '' : '<div class="btn primary">' + ICON.plus + ' Add expense</div>'}
+    ${sheet}
+  </div>`;
+}
+
+document.getElementById('board').innerHTML = DIRS.map(d => `
+  <section class="dir" aria-labelledby="h-${d.id}">
+    <div class="dir-head"><span class="num">${d.no}</span>
+      <h2 id="h-${d.id}">${d.name}${d.badge ? `<span class="badge pick">${d.badge}</span>` : ''}</h2>
+      <p class="tag">${d.tag}</p></div>
+    <div class="row" tabindex="0" aria-label="${d.name} screens">
+      <figure class="phone"><div class="screen qg d-quiet d-${d.id}">${hub(d)}</div><figcaption class="cap">Your volumes</figcaption></figure>
+      <figure class="phone"><div class="screen qg d-quiet d-${d.id}">${volume(d, false)}</div><figcaption class="cap">Lisbon trip</figcaption></figure>
+      <figure class="phone"><div class="screen qg d-quiet d-${d.id}">${volume(d, true)}</div><figcaption class="cap">New expense</figcaption></figure>
+    </div>
+    <div class="notes">${d.notes.map(n => `<div><b>${n[0]}</b><p>${n[1]}</p></div>`).join('')}</div>
+  </section>`).join('');
+
+const root = document.documentElement;
+const plates = document.getElementById('plates'), themes = document.getElementById('themes');
+const press = (g, a, v) => g.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.getAttribute(a) === v)));
+function plate(p) { p === 'classic' ? root.removeAttribute('data-plate') : root.setAttribute('data-plate', p); press(plates, 'data-plate', p); try { localStorage.setItem('ac.plate', p); } catch (e) {} }
+function theme(t) { root.setAttribute('data-theme', t); press(themes, 'data-theme-set', t); try { localStorage.setItem('ac.theme', t); } catch (e) {} }
+plates.addEventListener('click', e => { const b = e.target.closest('button'); if (b) plate(b.dataset.plate); });
+themes.addEventListener('click', e => { const b = e.target.closest('button'); if (b) theme(b.dataset.themeSet); });
+let p0 = 'classic', t0 = null;
+try { p0 = localStorage.getItem('ac.plate') || 'classic'; t0 = localStorage.getItem('ac.theme'); } catch (e) {}
+plate(p0);
+if (t0) theme(t0); else press(themes, 'data-theme-set', matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+const q = new URLSearchParams(location.search);
+if (q.get('plate')) plate(q.get('plate'));
+if (q.get('theme')) theme(q.get('theme'));
+</script>
