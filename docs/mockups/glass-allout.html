@@ -1,0 +1,524 @@
+<title>HATI² Glass Proofs</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap">
+<style>
+/* Layout: a proof sheet. Four glass directions, each a printed strip of three phone screens (hub, volume, new expense)
+   with a margin note. Every colour comes from the chosen Wada plate; glass is ink-edged, slabs are 0-blur. */
+:root {
+  --ink: #000000; --paper: #FFFFFF; --acc: #FEF08A; --acc-on: #000000;
+  --s1: #FEF08A; --s2: #BFDBFE; --s3: #BBF7D0; --s4: #E9D5FF;
+  --pos: #166534; --neg: #9D174D; --mute: #5B5F69;
+
+  --bg: var(--paper); --fg: var(--ink); --sub: var(--mute);
+  --panel: var(--paper);
+  --rule: var(--ink);
+  --tone: color-mix(in srgb, var(--ink) 18%, transparent);
+  --tone-2: color-mix(in srgb, var(--ink) 9%, transparent);
+  --hi: color-mix(in srgb, var(--paper) 92%, transparent);
+  --glint: color-mix(in srgb, var(--paper) 70%, transparent);
+  --glass: color-mix(in srgb, color-mix(in srgb, var(--s2) 22%, var(--paper)) 62%, transparent);
+  --glass-2: color-mix(in srgb, color-mix(in srgb, var(--s3) 30%, var(--paper)) 55%, transparent);
+  --glass-solid: color-mix(in srgb, color-mix(in srgb, var(--s2) 16%, var(--paper)) 90%, transparent);
+  --cel-sub: color-mix(in srgb, var(--mute) 70%, var(--ink));
+  --mis-c: color-mix(in srgb, #00A3D9 70%, transparent);
+  --mis-m: color-mix(in srgb, #E5007E 60%, transparent);
+  --scrim: color-mix(in srgb, var(--ink) 45%, transparent);
+  --sheet: var(--paper);
+  --sheet-bg: #E9E7E1;
+  --desk: #DCDAD3;
+
+  --font-disp: 'Black Han Sans', 'Arial Black', Impact, sans-serif;
+  --font-body: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --r: 3px; --clay-r: 8px;
+  --off-ctl: 3px; --off-card: 5px; --off-hero: 8px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: color-mix(in srgb, var(--ink) 6%, #0E0D12); --fg: #EDEBE4; --sub: #A8A6B0;
+    --panel: color-mix(in srgb, #EDEBE4 11%, var(--bg));
+    --rule: color-mix(in srgb, #EDEBE4 62%, var(--bg));
+    --tone: color-mix(in srgb, #EDEBE4 16%, transparent);
+    --tone-2: color-mix(in srgb, #EDEBE4 8%, transparent);
+    --hi: color-mix(in srgb, #EDEBE4 22%, transparent);
+  --glint: color-mix(in srgb, #EDEBE4 9%, transparent);
+    --glint: color-mix(in srgb, #EDEBE4 9%, transparent);
+    --glass: color-mix(in srgb, color-mix(in srgb, var(--s2) 14%, var(--panel)) 66%, transparent);
+    --glass-2: color-mix(in srgb, color-mix(in srgb, var(--s3) 16%, var(--panel)) 60%, transparent);
+    --glass-solid: color-mix(in srgb, color-mix(in srgb, var(--s2) 8%, var(--panel)) 92%, transparent);
+    --cel-sub: color-mix(in srgb, #EDEBE4 86%, var(--bg));
+    --pos: #BBF7D0; --neg: #FBCFE8;
+    --scrim: rgba(0,0,0,.6); --sheet: var(--panel); --sheet-bg: #17161B; --desk: #0A0A0D;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: color-mix(in srgb, var(--ink) 6%, #0E0D12); --fg: #EDEBE4; --sub: #A8A6B0;
+  --panel: color-mix(in srgb, #EDEBE4 11%, var(--bg));
+  --rule: color-mix(in srgb, #EDEBE4 62%, var(--bg));
+  --tone: color-mix(in srgb, #EDEBE4 16%, transparent);
+  --tone-2: color-mix(in srgb, #EDEBE4 8%, transparent);
+  --hi: color-mix(in srgb, #EDEBE4 22%, transparent);
+  --glint: color-mix(in srgb, #EDEBE4 9%, transparent);
+  --glass: color-mix(in srgb, color-mix(in srgb, var(--s2) 14%, var(--panel)) 66%, transparent);
+  --glass-2: color-mix(in srgb, color-mix(in srgb, var(--s3) 16%, var(--panel)) 60%, transparent);
+  --glass-solid: color-mix(in srgb, color-mix(in srgb, var(--s2) 8%, var(--panel)) 92%, transparent);
+  --cel-sub: color-mix(in srgb, #EDEBE4 86%, var(--bg));
+  --pos: #BBF7D0; --neg: #FBCFE8;
+  --scrim: rgba(0,0,0,.6); --sheet: var(--panel); --sheet-bg: #17161B; --desk: #0A0A0D;
+  color-scheme: dark;
+}
+
+/* Plates (Sanzo Wada). Ink and accent from HatiPalette.kt; the swatches tint the glass. */
+:root[data-plate="persimmon"] { --ink: #003119; --acc: #FFAB00; --s1: #A10B2B; --s2: #FFAB00; --s3: #00592E; --s4: #BFABCC; --mute: #4F5B55; }
+:root[data-plate="lagoon"]    { --ink: #2A0082; --acc: #59B3C2; --s1: #C2612C; --s2: #008AA1; --s3: #3400A3; --s4: #59B3C2; --mute: #57536A; }
+:root[data-plate="peony"]     { --ink: #06004F; --acc: #FF4DC9; --s1: #FF4DC9; --s2: #B319AB; --s3: #718600; --s4: #06004F; --mute: #55536A; }
+
+*, *::before, *::after { box-sizing: border-box; }
+html { background: var(--desk); }
+body { margin: 0; background: var(--desk); color: var(--fg); font: 16px/1.45 var(--font-body); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--desk); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+
+/* ---------- proof sheet chrome ---------- */
+.sheetwrap { max-width: 1320px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px; }
+.mast { display: grid; gap: 14px; margin-bottom: 28px; }
+.mast h1 { margin: 0; font: 400 clamp(2rem, 5vw, 3.4rem)/1 var(--font-disp); letter-spacing: .01em; color: var(--fg); text-wrap: balance; }
+.mast h1 sup { font-size: .5em; }
+.mast p { margin: 0; max-width: 68ch; color: var(--sub); }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.ctl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ctl > span { font-size: .8rem; color: var(--sub); font-weight: 500; }
+.seg { display: inline-flex; border: 2px solid var(--fg); border-radius: var(--clay-r); overflow: hidden; box-shadow: var(--off-ctl) var(--off-ctl) 0 var(--fg); background: var(--bg); }
+.seg button { border: 0; background: transparent; padding: 7px 12px; font-size: .85rem; font-weight: 500; cursor: pointer; }
+.seg button + button { border-left: 2px solid var(--fg); }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+
+.dir { margin-top: 44px; display: grid; gap: 18px; }
+.dir-head { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: baseline; border-top: 3px solid var(--fg); padding-top: 12px; }
+.dir-head .no { font: 400 2.6rem/1 var(--font-disp); color: var(--fg); grid-row: span 2; }
+.dir-head h2 { margin: 0; font: 400 1.6rem/1.1 var(--font-disp); color: var(--fg); }
+.dir-head .tag { color: var(--sub); font-size: .92rem; max-width: 70ch; }
+.verdict { display: inline-block; margin-left: 8px; padding: 1px 8px; border: 2px solid var(--fg); font: 700 .72rem/1.5 var(--font-body); letter-spacing: .04em; vertical-align: middle; }
+.verdict.v-ok { background: var(--s3); color: #000; }
+.verdict.v-over { background: var(--acc); color: #000; }
+.verdict.v-no { background: var(--fg); color: var(--bg); }
+
+.row { display: flex; gap: 28px; overflow-x: auto; padding: 6px 12px 18px 2px; scroll-snap-type: x mandatory; }
+.row > * { scroll-snap-align: start; }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px 28px; font-size: .9rem; }
+.notes div { min-width: 0; }
+.notes b { display: block; font-size: .78rem; letter-spacing: .04em; color: var(--sub); font-weight: 700; margin-bottom: 2px; }
+.notes p { margin: 0; color: var(--fg); }
+
+/* ---------- phone ---------- */
+.phone { flex: 0 0 auto; width: 360px; display: grid; gap: 8px; }
+.phone .cap { font-size: .8rem; color: var(--sub); font-weight: 500; }
+.screen {
+  position: relative; width: 360px; height: 760px; overflow: hidden;
+  border: 3px solid var(--fg); border-radius: 26px; background: var(--bg); color: var(--fg);
+  box-shadow: 8px 8px 0 var(--fg);
+  isolation: isolate;
+}
+.scr { position: absolute; inset: 0; z-index: 0; overflow: hidden; padding: 0 16px 20px; display: flex; flex-direction: column; gap: 14px; }
+.status { height: 30px; flex: 0 0 auto; margin: 0 -16px; padding: 8px 22px 0; display: flex; justify-content: space-between; font: 700 .72rem/1 var(--font-body); background: var(--fg); color: var(--bg); }
+
+/* shared bits */
+.topbar { position: relative; display: flex; align-items: center; gap: 10px; margin: -14px -16px 0; padding: 12px 16px; z-index: 3; }
+.topbar h1 { flex: 1; margin: 0; font: 400 1.35rem/1.1 var(--font-disp); letter-spacing: .02em; }
+.logo { font: 400 1.05rem/1 var(--font-disp); border: 2px solid var(--rule); padding: 5px 6px 4px; border-radius: var(--r); background: var(--acc); color: var(--acc-on); }
+.ico { width: 40px; height: 40px; display: grid; place-items: center; border: 2px solid var(--rule); border-radius: var(--clay-r); background: var(--panel); box-shadow: var(--off-ctl) var(--off-ctl) 0 var(--rule); }
+.ico svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.strip { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: .85rem; margin-top: 2px; }
+.strip::after { content: ""; flex: 1; height: 8px; border-top: 2px solid var(--rule); background: radial-gradient(var(--tone) 1px, transparent 1.4px) 0 2px / 5px 5px; }
+.amt { font-variant-numeric: tabular-nums; font-weight: 700; }
+.pos { color: var(--pos); } .neg { color: var(--neg); }
+.small { font-size: .82rem; color: var(--sub); }
+.hero { position: relative; padding: 16px 18px 18px; }
+.hero .k { font-size: .85rem; font-weight: 500; }
+.hero .big { font: 400 2.1rem/1 var(--font-disp); margin: 6px 0 6px; font-variant-numeric: tabular-nums; }
+.hero .meta { font-size: .85rem; }
+.vols { display: grid; gap: 14px; }
+.vol { display: grid; grid-template-columns: 58px 1fr; border: 2px solid var(--rule); border-radius: var(--clay-r); overflow: hidden; position: relative; }
+.spine { background: var(--acc); color: var(--acc-on); border-right: 2px solid var(--rule); display: grid; place-content: center; text-align: center; padding: 10px 4px; }
+.spine .v { font: 700 .62rem/1 var(--font-body); letter-spacing: .08em; }
+.spine .n { font: 400 1.7rem/1 var(--font-disp); }
+.vol-info { padding: 10px 12px; display: grid; gap: 2px; min-width: 0; }
+.vol-info .t { font-weight: 700; font-size: 1.02rem; }
+.vol-info .l { display: flex; justify-content: space-between; gap: 8px; font-size: .85rem; }
+.ledger { border: 2px solid var(--rule); border-radius: var(--r); }
+.ledger .li { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 10px 12px; align-items: center; }
+.ledger .li + .li { border-top: 1px solid var(--tone); }
+.ledger .li .d { font-weight: 500; }
+.ledger .li .w { font-size: .8rem; color: var(--sub); grid-column: 1; }
+.ledger .li .amt { grid-row: span 2; }
+.btn { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 18px; border: 2px solid var(--rule); border-radius: var(--clay-r); font-weight: 700; background: var(--panel); box-shadow: var(--off-ctl) var(--off-ctl) 0 var(--rule); }
+.btn.primary { background: var(--acc); color: var(--acc-on); }
+.btn.sm { min-height: 34px; padding: 0 10px; font-size: .82rem; }
+.mini { display: grid; gap: 6px; margin-top: 12px; }
+.mini .m { display: grid; grid-template-columns: 44px 1fr 72px; gap: 8px; align-items: center; font-size: .8rem; }
+.mini .bar { height: 10px; border: 2px solid var(--rule); border-radius: 2px; position: relative; overflow: hidden; }
+.mini .bar i { position: absolute; top: 0; bottom: 0; background: var(--acc); }
+.mini .bar.n i { background: repeating-linear-gradient(135deg, var(--rule) 0 2px, transparent 2px 5px); }
+.mini .m span:last-child { text-align: right; }
+
+/* sheet */
+.dim { position: absolute; inset: 0; background: var(--scrim); z-index: 5; }
+.bsheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 6; padding: 14px 16px 18px; display: grid; gap: 12px; border-top: 3px solid var(--rule); border-radius: 14px 14px 0 0; background: var(--sheet); }
+.bsheet .grab { width: 44px; height: 5px; border-radius: 3px; background: var(--rule); justify-self: center; }
+.bsheet h2 { margin: 0; font: 400 1.3rem/1.1 var(--font-disp); }
+.amount-box { display: flex; align-items: baseline; gap: 6px; padding: 10px 14px; border: 2px solid var(--rule); border-radius: var(--r); }
+.amount-box .cur { font: 400 1.4rem/1 var(--font-disp); color: var(--sub); }
+.amount-box .v { font: 400 2.3rem/1 var(--font-disp); font-variant-numeric: tabular-nums; }
+.amount-box .caret { width: 3px; height: 30px; background: var(--fg); align-self: center; }
+.field { padding: 10px 12px; border: 2px solid var(--rule); border-radius: var(--r); font-size: .95rem; }
+.field small { display: block; font-size: .72rem; color: var(--sub); font-weight: 500; }
+.lbl { font-size: .78rem; font-weight: 700; color: var(--sub); margin-bottom: -6px; }
+.cats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.cat { display: grid; justify-items: center; gap: 2px; padding: 8px 2px 6px; border: 2px solid var(--rule); border-radius: var(--clay-r); font-size: .74rem; font-weight: 500; background: var(--panel); box-shadow: var(--off-ctl) var(--off-ctl) 0 var(--rule); }
+.cat svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.cat.on { background: var(--acc); color: var(--acc-on); box-shadow: none; transform: translate(3px, 3px); }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { padding: 5px 12px; border: 2px solid var(--rule); border-radius: var(--clay-r); font-size: .85rem; font-weight: 500; background: var(--panel); box-shadow: 2px 2px 0 var(--rule); }
+.chip.on { background: var(--fg); color: var(--bg); box-shadow: none; transform: translate(2px, 2px); }
+.sseg { display: grid; grid-template-columns: repeat(3, 1fr); border: 2px solid var(--rule); border-radius: var(--clay-r); overflow: hidden; box-shadow: var(--off-ctl) var(--off-ctl) 0 var(--rule); }
+.sseg span { text-align: center; padding: 8px 0; font-size: .85rem; font-weight: 500; background: var(--panel); }
+.sseg span + span { border-left: 2px solid var(--rule); }
+.sseg span.on { background: var(--fg); color: var(--bg); }
+
+/* =========================================================
+   01 CEL — printed acetate. No blur anywhere. The glass is a
+   tinted cel printed at ~85%, screentone printed on it, an
+   ink-drawn bevel, a second cel offset behind, a hard slab.
+   ========================================================= */
+.d-cel .scr { background:
+  radial-gradient(var(--tone-2) 1px, transparent 1.3px) 0 0 / 7px 7px, var(--bg); }
+.d-cel .topbar { background: var(--glass-solid); border-bottom: 3px solid var(--rule); }
+.d-cel .topbar::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 8px; background: radial-gradient(var(--tone) 1.1px, transparent 1.5px) 0 0 / 4px 4px; }
+.d-cel .cel { position: relative; background:
+    linear-gradient(115deg, transparent 0 80%, var(--glint) 80% 83%, transparent 83% 86%, var(--glint) 86% 87%, transparent 87%),
+    radial-gradient(color-mix(in srgb, var(--rule) 14%, transparent) 1px, transparent 1.4px) 0 0 / 5px 5px,
+    var(--glass-solid);
+  border: 2px solid var(--rule); box-shadow: inset 2px 2px 0 var(--hi), var(--off-card) var(--off-card) 0 var(--rule); }
+.d-cel .cel::before { /* the back cel */
+  content: ""; position: absolute; inset: 0; z-index: -1; transform: translate(10px, -7px) rotate(1.2deg);
+  border: 2px solid var(--rule); border-radius: inherit; background: var(--glass-2);
+  background-image: radial-gradient(color-mix(in srgb, var(--rule) 22%, transparent) 1.2px, transparent 1.6px); background-size: 6px 6px; }
+.d-cel .hero.cel { border-radius: var(--r); box-shadow: inset 2px 2px 0 var(--hi), var(--off-hero) var(--off-hero) 0 var(--rule); }
+.d-cel .vol { border-radius: var(--clay-r); }
+.d-cel .vol .spine { box-shadow: inset 2px 2px 0 color-mix(in srgb, #fff 60%, transparent), inset -3px -3px 0 color-mix(in srgb, #000 14%, transparent); }
+.d-cel .ledger.cel { border-radius: var(--r); }
+.d-cel .small, .d-cel .ledger .li .w, .d-cel .vol-info .small { color: var(--cel-sub); }
+.d-cel .bsheet { background:
+    radial-gradient(color-mix(in srgb, var(--rule) 10%, transparent) 1px, transparent 1.4px) 0 0 / 5px 5px, var(--glass-solid); }
+.d-cel .bsheet::before { content: ""; position: absolute; left: 0; right: 0; top: -14px; height: 11px; border-top: 2px solid var(--rule); background: radial-gradient(var(--tone) 1.1px, transparent 1.5px) 0 0 / 4px 4px; }
+
+/* =========================================================
+   02 FROST OVER INK — real backdrop blur over a printed manga
+   page (speed lines + halftone + ink panels). Ink edges and
+   hard slabs keep it manga. The loud one.
+   ========================================================= */
+.d-frost .scr { background:
+    repeating-conic-gradient(from 0deg at 82% 18%, color-mix(in srgb, var(--rule) 30%, transparent) 0 1.2deg, transparent 1.2deg 7deg),
+    radial-gradient(circle at 82% 18%, var(--s1) 0 70px, transparent 71px),
+    radial-gradient(color-mix(in srgb, var(--rule) 42%, transparent) 1.4px, transparent 1.9px) 0 0 / 9px 9px,
+    linear-gradient(160deg, color-mix(in srgb, var(--s2) 70%, var(--bg)) 0 38%, color-mix(in srgb, var(--s3) 60%, var(--bg)) 38% 64%, color-mix(in srgb, var(--s4) 60%, var(--bg)) 64%);
+}
+.d-frost .scr::before { /* ink panel borders printed on the page */
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    linear-gradient(var(--rule), var(--rule)) 0 300px / 100% 4px no-repeat,
+    linear-gradient(var(--rule), var(--rule)) 58% 300px / 4px 100% no-repeat,
+    linear-gradient(var(--rule), var(--rule)) 0 560px / 100% 4px no-repeat; }
+.d-frost .glass { position: relative;
+  background: linear-gradient(180deg, var(--hi) 0 1px, transparent 1px 40px), var(--glass);
+  -webkit-backdrop-filter: blur(14px) saturate(1.5); backdrop-filter: blur(14px) saturate(1.5);
+  border: 2px solid var(--rule); box-shadow: inset 0 2px 0 var(--hi), inset 0 0 0 1px color-mix(in srgb, var(--paper) 30%, transparent), var(--off-card) var(--off-card) 0 var(--rule); }
+.d-frost .topbar { background: var(--glass); -webkit-backdrop-filter: blur(14px) saturate(1.5); backdrop-filter: blur(14px) saturate(1.5); border-bottom: 3px solid var(--rule); }
+.d-frost .hero.glass { border-radius: 12px; box-shadow: inset 0 2px 0 var(--hi), var(--off-hero) var(--off-hero) 0 var(--rule); }
+.d-frost .vol { border-radius: 12px; }
+.d-frost .ledger.glass { border-radius: 10px; }
+.d-frost .hero .big { -webkit-text-stroke: 0; text-shadow: 3px 3px 0 color-mix(in srgb, var(--acc) 90%, transparent); }
+.d-frost .bsheet { background: var(--glass); -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6); border: 3px solid var(--rule); border-bottom: 0; }
+.d-frost .bsheet .amount-box, .d-frost .bsheet .field { background: color-mix(in srgb, var(--panel) 70%, transparent); }
+.d-frost .dim { background: color-mix(in srgb, var(--scrim) 60%, transparent); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+
+/* =========================================================
+   03 MISPRINT — glass as a printed thing. No blur, no soft
+   gradient: the sheen is a halftone dot ramp, the edge is
+   cyan/magenta misregistration under the ink key line.
+   ========================================================= */
+.d-mis .scr { background:
+  linear-gradient(90deg, transparent 0 calc(100% - 1px), color-mix(in srgb, var(--rule) 10%, transparent) 0) 0 0 / 24px 24px,
+  linear-gradient(transparent 0 calc(100% - 1px), color-mix(in srgb, var(--rule) 10%, transparent) 0) 0 0 / 24px 24px,
+  var(--bg); }
+.d-mis .glass { position: relative; isolation: isolate;
+  background: var(--glass-solid);
+  border: 2px solid var(--rule);
+  box-shadow: -3px -2px 0 var(--mis-c), 3px 2px 0 var(--mis-m), calc(var(--off-card) + 3px) calc(var(--off-card) + 3px) 0 var(--rule); }
+.d-mis .glass::before { /* halftone sheen: dots that shrink toward the centre of the pane */
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background-image: radial-gradient(var(--hi) 42%, transparent 46%);
+  background-size: 6px 6px;
+  -webkit-mask: linear-gradient(125deg, #000 0 14%, transparent 34%); mask: linear-gradient(125deg, #000 0 14%, transparent 34%); }
+.d-mis .glass::after { /* the glint: two hard ink-drawn strokes */
+  content: ""; position: absolute; top: 8px; right: 12px; width: 34px; height: 12px; pointer-events: none;
+  background: linear-gradient(var(--hi), var(--hi)) 0 0 / 22px 3px no-repeat, linear-gradient(var(--hi), var(--hi)) 26px 0 / 6px 3px no-repeat;
+  transform: rotate(-24deg); }
+.d-mis .topbar { background: var(--bg); border-bottom: 3px solid var(--rule); box-shadow: 0 2px 0 var(--mis-m), 0 -1px 0 var(--mis-c) inset; }
+.d-mis .hero.glass { border-radius: var(--r); box-shadow: -4px -3px 0 var(--mis-c), 4px 3px 0 var(--mis-m), calc(var(--off-hero) + 4px) calc(var(--off-hero) + 4px) 0 var(--rule); }
+.d-mis .hero .big { text-shadow: -2px 0 0 var(--mis-c), 2px 1px 0 var(--mis-m); }
+.d-mis .vol { border-radius: var(--clay-r); }
+.d-mis .ledger.glass { border-radius: var(--r); }
+.d-mis .small, .d-mis .ledger .li .w { color: var(--cel-sub); }
+.d-mis .btn.primary { box-shadow: -2px -2px 0 var(--mis-c), var(--off-ctl) var(--off-ctl) 0 var(--rule); }
+.d-mis .bsheet { background: var(--glass-solid); box-shadow: 0 -3px 0 var(--mis-c), 0 -6px 0 var(--mis-m); }
+
+/* =========================================================
+   04 IMPACT — glass you can break. Cel cards, and the money
+   moment is a cracked pane: facets in plate tints, ink cracks
+   radiating from the number, a stamp. Action-manga energy on
+   one place per screen.
+   ========================================================= */
+.d-imp .scr { background: var(--bg); }
+.d-imp .topbar { background: var(--bg); border-bottom: 3px solid var(--rule); }
+.d-imp .topbar::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 8px; background: radial-gradient(var(--tone) 1.1px, transparent 1.5px) 0 0 / 4px 4px; }
+.d-imp .glass { position: relative; background: var(--glass-solid); border: 2px solid var(--rule); box-shadow: inset 0 2px 0 var(--hi), var(--off-card) var(--off-card) 0 var(--rule); }
+.d-imp .hero.glass { border-radius: var(--r); overflow: visible; background: transparent; box-shadow: var(--off-hero) var(--off-hero) 0 var(--rule); padding: 0; }
+.d-imp .pane { position: absolute; inset: 0; overflow: hidden; z-index: 0; }
+.d-imp .pane i { position: absolute; inset: 0; }
+.d-imp .pane i:nth-child(1) { background: color-mix(in srgb, var(--s2) 34%, var(--panel)); clip-path: polygon(0 0, 46% 0, 40% 52%, 0 70%); }
+.d-imp .pane i:nth-child(2) { background: color-mix(in srgb, var(--s3) 30%, var(--panel)); clip-path: polygon(46% 0, 100% 0, 100% 34%, 40% 52%); }
+.d-imp .pane i:nth-child(3) { background: color-mix(in srgb, var(--acc) 42%, var(--panel)); clip-path: polygon(100% 34%, 100% 100%, 62% 100%, 40% 52%); }
+.d-imp .pane i:nth-child(4) { background: color-mix(in srgb, var(--s4) 30%, var(--panel)); clip-path: polygon(0 70%, 40% 52%, 62% 100%, 0 100%); }
+.d-imp .pane i:nth-child(5) { /* glints: hard, not soft */
+  background: linear-gradient(118deg, transparent 0 18%, var(--hi) 18% 21%, transparent 21% 24%, var(--hi) 24% 25%, transparent 25% 70%, var(--hi) 70% 72%, transparent 72%); }
+.d-imp .cracks { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+.d-imp .cracks path { fill: none; stroke: var(--rule); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.d-imp .cracks path.t { stroke-width: 1; }
+.d-imp .hero .inner { position: relative; z-index: 2; padding: 16px 18px 18px; }
+.d-imp .hero .big { display: inline-block; background: var(--fg); color: var(--bg); padding: 6px 10px 2px; transform: rotate(-2deg); box-shadow: 4px 4px 0 var(--acc); }
+.d-imp .hero .k, .d-imp .hero .meta { display: inline-block; background: var(--panel); padding: 1px 6px; border: 2px solid var(--rule); }
+.d-imp .stamp { position: absolute; right: 10px; top: -12px; z-index: 3; padding: 4px 10px; border: 3px solid var(--neg); color: var(--neg); font: 400 .95rem/1 var(--font-disp); transform: rotate(-9deg); background: color-mix(in srgb, var(--panel) 80%, transparent); letter-spacing: .04em; }
+.d-imp .vol { border-radius: var(--clay-r); }
+.d-imp .ledger.glass { border-radius: var(--r); }
+.d-imp .fab { position: absolute; right: 18px; bottom: 22px; z-index: 4; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center;
+  background: radial-gradient(circle at 34% 30%, var(--hi) 0 9px, transparent 10px), color-mix(in srgb, var(--acc) 85%, transparent);
+  border: 3px solid var(--rule); box-shadow: 4px 4px 0 var(--rule); color: var(--acc-on); }
+.d-imp .fab svg { width: 28px; height: 28px; stroke: currentColor; stroke-width: 3; fill: none; stroke-linecap: round; }
+.d-imp .fab::before { content: ""; position: absolute; inset: -18px; z-index: -1; border-radius: 50%;
+  background: repeating-conic-gradient(var(--rule) 0 3deg, transparent 3deg 15deg);
+  -webkit-mask: radial-gradient(circle, transparent 0 38px, #000 39px 46px, transparent 47px); mask: radial-gradient(circle, transparent 0 38px, #000 39px 46px, transparent 47px); }
+.d-imp .bsheet { background: var(--sheet); }
+.d-imp .bsheet .amount-box { position: relative; overflow: hidden; background: color-mix(in srgb, var(--acc) 24%, var(--panel)); box-shadow: var(--off-card) var(--off-card) 0 var(--rule); }
+.d-imp .bsheet .amount-box::after { content: ""; position: absolute; right: -10px; top: -30px; width: 120px; height: 140px; background: repeating-conic-gradient(from 200deg at 0 50%, color-mix(in srgb, var(--rule) 40%, transparent) 0 2deg, transparent 2deg 9deg); }
+
+/* shared card frames per direction */
+.d-cel .vol, .d-mis .vol, .d-imp .vol { box-shadow: var(--off-card) var(--off-card) 0 var(--rule); }
+.d-frost .vol { box-shadow: inset 0 2px 0 var(--hi), var(--off-card) var(--off-card) 0 var(--rule); }
+.d-cel .vol-info, .d-frost .vol-info, .d-mis .vol-info, .d-imp .vol-info { background: transparent; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .btn, .cat, .chip { transition: transform 90ms cubic-bezier(.2,.8,.2,1), box-shadow 90ms cubic-bezier(.2,.8,.2,1); }
+}
+@media (max-width: 520px) {
+  .phone, .screen { width: 320px; }
+  .screen { height: 700px; }
+}
+</style>
+
+<div class="sheetwrap">
+  <header class="mast">
+    <h1>HATI<sup>2</sup> glass proofs</h1>
+    <p>Four ways to take the app into glass while it still reads as manga ink on paper. Same three screens in each: your volumes, one volume, and a new expense. Switch the plate and the theme to see how each holds up.</p>
+    <div class="controls">
+      <div class="ctl"><span id="plateLbl">Plate</span>
+        <div class="seg" role="group" aria-labelledby="plateLbl" id="plates">
+          <button type="button" data-plate="classic" aria-pressed="true">Classic</button>
+          <button type="button" data-plate="persimmon" aria-pressed="false">Persimmon</button>
+          <button type="button" data-plate="lagoon" aria-pressed="false">Lagoon</button>
+          <button type="button" data-plate="peony" aria-pressed="false">Peony</button>
+        </div>
+      </div>
+      <div class="ctl"><span id="themeLbl">Theme</span>
+        <div class="seg" role="group" aria-labelledby="themeLbl" id="themes">
+          <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
+          <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
+        </div>
+      </div>
+    </div>
+  </header>
+  <main id="board"></main>
+</div>
+
+<script>
+const ICON = {
+  gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/></svg>',
+  back: '<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>',
+  share: '<svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8.2 10.9l7.6-3.8M8.2 13.1l7.6 3.8"/></svg>',
+  plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  food: '<svg viewBox="0 0 24 24"><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M16 3c-2 2-2 6 0 8v10"/></svg>',
+  travel: '<svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="13" rx="2"/><path d="M5 11h14M8 20l1.5-3M16 20l-1.5-3"/></svg>',
+  stay: '<svg viewBox="0 0 24 24"><path d="M3 18v-8M3 14h18v4M21 18v-5a3 3 0 0 0-3-3h-7v4"/><circle cx="7" cy="11" r="1.6"/></svg>',
+  drinks: '<svg viewBox="0 0 24 24"><path d="M6 4h12l-6 8zM12 12v7M8 20h8"/></svg>',
+  shop: '<svg viewBox="0 0 24 24"><path d="M5 8h14l-1.4 12H6.4zM9 8a3 3 0 0 1 6 0"/></svg>',
+  fun: '<svg viewBox="0 0 24 24"><path d="M4 8h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4z"/></svg>',
+  gift: '<svg viewBox="0 0 24 24"><rect x="4" y="9" width="16" height="11"/><path d="M12 9v11M4 13h16M12 9c-2-4-6-3-5 0M12 9c2-4 6-3 5 0"/></svg>',
+  other: '<svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/></svg>'
+};
+
+const DIRS = [
+  { id: 'cel', cls: 'd-cel', no: '01', name: 'Cel', verdict: ['ok', 'Inside the rules'],
+    tag: 'Printed acetate. Every pane is a tinted cel with screentone printed on it, an ink-drawn bevel and a second cel peeking out behind. No blur anywhere, so it stays cheap and sharp.',
+    notes: [
+      ['hati-design', 'The safest real glass: depth comes from stacked cels and hard slabs, the way an animation cel sits on its background.'],
+      ['hati-slop-rubric', 'Glass tell 0 on the header and sheet. Cels on scrolling cards are covered by the owner’s 2026-11-11 frosted-cards override.'],
+      ['hati-a11y', 'Grey words move to a darker step on the tint so they stay readable. Needs contrast.js across 13 plates before build.'],
+      ['hati-ponytail', 'Pseudo-element back cels cost one extra layer per card. Cheap. Drop them on lists over 20 rows.']
+    ], glassCls: 'cel' },
+  { id: 'frost', cls: 'd-frost', no: '02', name: 'Frost over ink', verdict: ['no', 'Breaks the rules'],
+    tag: 'Real glassmorphism. A printed manga page sits behind everything (speed lines, halftone, panel borders) and every card is frosted glass with a live blur, an ink edge and a hard slab. The loudest option.',
+    notes: [
+      ['hati-design', 'Truest to the word “glassmorphism”. The art behind the glass is where the manga lives, so the cards themselves lose their voice.'],
+      ['hati-slop-rubric', 'backdrop-filter is tell #1. Scores 2. Only possible as an explicit owner override, like the frosted-cards one.'],
+      ['hati-a11y', 'Text sits on a moving mix of art and blur. Earlier frosted test fell to 3.4–3.9:1. Fails 4.5:1 without heavier glass.'],
+      ['hati-ponytail', 'Earlier trace: about 1.4 s of compositor work scrolling 14 cards. Slow on cheap Android. Would need a lowfx fallback.']
+    ], glassCls: 'glass' },
+  { id: 'mis', cls: 'd-mis', no: '03', name: 'Misprint', verdict: ['over', 'Needs a small override'],
+    tag: 'Glass made the way a print shop would fake it. The sheen is a halftone dot ramp instead of a soft gradient, the edge is a cyan and magenta misregistration under the ink key line, and the glint is two hard strokes.',
+    notes: [
+      ['hati-design', 'The most manga of the four: every effect is something a press could print. Misregistration is loud, so keep it to cards and the hero.'],
+      ['hati-slop-rubric', 'No blur, no glow. The halftone sheen uses a mask fade, which the depth round removed; swap it for a stepped dot ramp to score 0.'],
+      ['hati-a11y', 'Cyan and magenta sit outside the text. The money number’s offset ghosts need a check at 200% zoom.'],
+      ['hati-copy', 'No copy change. Keeps “Your volumes”, “Who pays whom”, “Add expense”.']
+    ], glassCls: 'glass' },
+  { id: 'imp', cls: 'd-imp', no: '04', name: 'Impact', verdict: ['over', 'Needs a small override'],
+    tag: 'Glass you can break. Cards stay calm glass; the money moment is a cracked pane with ink cracks running out from the balance, facets tinted from the plate, and a stamp. One loud place per screen.',
+    notes: [
+      ['hati-design', 'Boldness in one place: the balance. The crack lines point at the number, like a manga impact frame.'],
+      ['hati-lazy-check', 'Balance reads in 3 seconds because it sits on a solid ink label, not on the facets.'],
+      ['hati-motion', 'If built: the pane cracks once on a new balance (200 ms, transform only), never on every visit. Reduced motion shows it already cracked.'],
+      ['hati-slop-rubric', 'The round add button is a pill-shaped tell (score 1). Keep it, or move “Add expense” back to the full-width button.']
+    ], glassCls: 'glass' }
+];
+
+const crackSvg = () => `<svg class="cracks" viewBox="0 0 320 170" preserveAspectRatio="none" aria-hidden="true">
+  <path d="M128 88 L150 0"/><path d="M128 88 L320 58"/><path d="M128 88 L198 170"/><path d="M128 88 L0 119"/>
+  <path class="t" d="M128 88 L60 0"/><path class="t" d="M128 88 L320 128"/><path class="t" d="M128 88 L90 170"/>
+  <path class="t" d="M150 0 l-8 30 14 6"/><path class="t" d="M245 70 l10 22 -16 12"/><path class="t" d="M60 104 l-6 -22 -18 -4"/>
+</svg>`;
+
+function hub(d) {
+  const g = d.glassCls;
+  const heroInner = `<div class="k">Across 3 volumes</div><div class="big">You’re owed €212.40</div><div class="meta">Ben owes you the most: €41.10</div>`;
+  const hero = d.id === 'imp'
+    ? `<section class="hero ${g}"><div class="pane"><i></i><i></i><i></i><i></i><i></i></div>${crackSvg()}<div class="inner">${heroInner}</div></section>`
+    : `<section class="hero ${g}">${heroInner}</section>`;
+  const vol = (n, t, people, total, bal, cls) => `<div class="vol ${g}"><div class="spine"><span class="v">VOL.</span><span class="n">${n}</span></div>
+    <div class="vol-info"><span class="t">${t}</span><span class="small">${people} · ${total} spent</span>
+    <span class="l"><span class="small">Your balance</span><span class="amt ${cls}">${bal}</span></span></div></div>`;
+  return `<div class="scr">
+    <div class="status"><span>9:41</span><span>5G ▮▮▮</span></div>
+    <div class="topbar"><span class="logo">H²</span><h1>Your volumes</h1><span class="ico">${ICON.gear}</span></div>
+    ${hero}
+    <div class="strip">Recent</div>
+    <div class="vols">
+      ${vol(1, 'Lisbon trip', '4 people', '€1,284.50', '+€86.20', 'pos')}
+      ${vol(2, 'Flat 3B', '3 people', '€2,960.00', '+€168.30', 'pos')}
+      ${vol(3, 'Friday dinners', '6 people', '€412.75', '−€42.10', 'neg')}
+    </div>
+    ${d.id === 'imp' ? `<span class="fab" aria-label="New volume">${ICON.plus}</span>` : `<div class="btn">${ICON.plus.replace('<svg', '<svg width="20" height="20" stroke="currentColor" fill="none" stroke-width="2.4" stroke-linecap="round"')} New volume</div>`}
+  </div>`;
+}
+
+function volume(d, withSheet) {
+  const g = d.glassCls;
+  const heroInner = `<div class="k">Lisbon trip · 4 people</div><div class="big">You’re owed €86.20</div>
+    <div class="mini">
+      <div class="m"><span>You</span><span class="bar"><i style="left:50%;width:30%"></i></span><span class="amt pos">+€86.20</span></div>
+      <div class="m"><span>Ana</span><span class="bar"><i style="left:50%;width:9%"></i></span><span class="amt pos">+€24.60</span></div>
+      <div class="m"><span>Ben</span><span class="bar n"><i style="left:36%;width:14%"></i></span><span class="amt neg">−€41.10</span></div>
+      <div class="m"><span>Caro</span><span class="bar n"><i style="left:25%;width:25%"></i></span><span class="amt neg">−€69.70</span></div>
+    </div>`;
+  const hero = d.id === 'imp'
+    ? `<section class="hero ${g}"><div class="pane"><i></i><i></i><i></i><i></i><i></i></div>${crackSvg()}<div class="inner">${heroInner}</div></section>`
+    : `<section class="hero ${g}">${heroInner}</section>`;
+  const sheet = withSheet ? `<div class="dim"></div>
+    <div class="bsheet">
+      <span class="grab"></span>
+      <h2>New expense</h2>
+      <div class="amount-box"><span class="cur">€</span><span class="v">48.00</span><span class="caret"></span></div>
+      <div class="field"><small>Description</small>Dinner at Taberna da Rua</div>
+      <div class="lbl">Category</div>
+      <div class="cats">
+        <span class="cat on">${ICON.food}Food</span><span class="cat">${ICON.travel}Travel</span><span class="cat">${ICON.stay}Stay</span><span class="cat">${ICON.drinks}Drinks</span>
+        <span class="cat">${ICON.shop}Shop</span><span class="cat">${ICON.fun}Fun</span><span class="cat">${ICON.gift}Gifts</span><span class="cat">${ICON.other}Other</span>
+      </div>
+      <div class="lbl">Paid by</div>
+      <div class="chips"><span class="chip on">You</span><span class="chip">Ana</span><span class="chip">Ben</span><span class="chip">Caro</span></div>
+      <div class="sseg"><span class="on">Equal</span><span>Exact</span><span>Shares</span></div>
+      <div class="btn primary">Add expense</div>
+    </div>` : '';
+  return `<div class="scr">
+    <div class="status"><span>9:41</span><span>5G ▮▮▮</span></div>
+    <div class="topbar"><span class="ico">${ICON.back}</span><h1>Lisbon trip</h1><span class="ico">${ICON.share}</span></div>
+    ${hero}
+    ${d.id === 'imp' && !withSheet ? '' : ''}
+    <div class="strip">Who pays whom</div>
+    <div class="ledger ${g}">
+      <div class="li"><span class="d">Caro → You</span><span class="amt">€69.70</span><span class="w">Suggested payment</span></div>
+      <div class="li"><span class="d">Ben → You</span><span class="amt">€16.50</span><span class="w">Suggested payment</span></div>
+      <div class="li"><span class="d">Ben → Ana</span><span class="amt">€24.60</span><span class="w">Suggested payment</span></div>
+    </div>
+    <div class="strip">Fri 7 Nov</div>
+    <div class="ledger ${g}">
+      <div class="li"><span class="d">Pastéis de Belém</span><span class="amt">€18.60</span><span class="w">Ana paid · split 4 ways</span></div>
+      <div class="li"><span class="d">Tram 28 tickets</span><span class="amt">€12.00</span><span class="w">You paid · split 4 ways</span></div>
+    </div>
+    ${d.id === 'imp' && !withSheet ? `<span class="fab" aria-label="Add expense">${ICON.plus}</span>` : ''}
+    ${sheet}
+  </div>`;
+}
+
+function render() {
+  const board = document.getElementById('board');
+  board.innerHTML = DIRS.map(d => `
+    <section class="dir" aria-labelledby="h-${d.id}">
+      <div class="dir-head"><span class="no">${d.no}</span>
+        <h2 id="h-${d.id}">${d.name}<span class="verdict v-${d.verdict[0]}">${d.verdict[1]}</span></h2>
+        <p class="tag" style="margin:0">${d.tag}</p></div>
+      <div class="row" tabindex="0" aria-label="${d.name} screens">
+        <figure class="phone" style="margin:0"><div class="screen ${d.cls}">${hub(d)}</div><figcaption class="cap">Your volumes</figcaption></figure>
+        <figure class="phone" style="margin:0"><div class="screen ${d.cls}">${volume(d, false)}</div><figcaption class="cap">Lisbon trip</figcaption></figure>
+        <figure class="phone" style="margin:0"><div class="screen ${d.cls}">${volume(d, true)}</div><figcaption class="cap">New expense</figcaption></figure>
+      </div>
+      <div class="notes">${d.notes.map(n => `<div><b>${n[0]}</b><p>${n[1]}</p></div>`).join('')}</div>
+      ${d.id === 'imp' ? '' : ''}
+    </section>`).join('');
+  // the Impact hub hero gets a stamp
+  const impHero = board.querySelector('.d-imp .hero');
+  if (impHero) impHero.insertAdjacentHTML('beforeend', '<span class="stamp">+€41.10 today</span>');
+}
+
+function setPressed(group, attr, val) {
+  group.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.getAttribute(attr) === val)));
+}
+const root = document.documentElement;
+const plates = document.getElementById('plates'), themes = document.getElementById('themes');
+function applyPlate(p) { if (p === 'classic') root.removeAttribute('data-plate'); else root.setAttribute('data-plate', p); setPressed(plates, 'data-plate', p); try { localStorage.setItem('gp.plate', p); } catch (e) {} }
+function applyTheme(t) { root.setAttribute('data-theme', t); setPressed(themes, 'data-theme-set', t); try { localStorage.setItem('gp.theme', t); } catch (e) {} }
+plates.addEventListener('click', e => { const b = e.target.closest('button'); if (b) applyPlate(b.dataset.plate); });
+themes.addEventListener('click', e => { const b = e.target.closest('button'); if (b) applyTheme(b.dataset.themeSet); });
+
+render();
+let p0 = 'classic', t0 = null;
+try { p0 = localStorage.getItem('gp.plate') || 'classic'; t0 = localStorage.getItem('gp.theme'); } catch (e) {}
+applyPlate(p0);
+const sysDark = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
+if (t0) applyTheme(t0); else setPressed(themes, 'data-theme-set', sysDark ? 'dark' : 'light');
+const q = new URLSearchParams(location.search);
+if (q.get('plate')) applyPlate(q.get('plate'));
+if (q.get('theme')) applyTheme(q.get('theme'));
+</script>
