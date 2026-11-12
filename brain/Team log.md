@@ -1459,3 +1459,4 @@ Owner: "What are the current building features and any other features to add. De
 - *hati-money-parity:* every line and the average come from the expenses' integer cents; types sum to the day's total; averages are display only. *hati-slop-rubric:* no gradient fills, no glow, no donut; one chart, ledger text above it. *hati-lazy-check:* the sentence above the chart ("Average per day ¥12,700, easing. Most on Nov 6") answers it before the lines.
 - Open question for the owner: the average is of **total** spending, so it sits above the type lines; an average **per type** would sit among them. Built as total (what "all expense types" reads as).
 - Not built in the app yet; replaces the current ink-column "Spent over time" when approved.
+- **Owner (2026-11-12): "Reduce line thickness of line charts."** Type lines 2px → 1.25px, average 3px → 2px (dash 5/4, still the heaviest line), dot rings 2px → 1.5px.
