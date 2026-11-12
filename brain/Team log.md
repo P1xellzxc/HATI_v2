@@ -1460,3 +1460,4 @@ Owner: "What are the current building features and any other features to add. De
 - Open question for the owner: the average is of **total** spending, so it sits above the type lines; an average **per type** would sit among them. Built as total (what "all expense types" reads as).
 - Not built in the app yet; replaces the current ink-column "Spent over time" when approved.
 - **Owner (2026-11-12): "Reduce line thickness of line charts."** Type lines 2px → 1.25px, average 3px → 2px (dash 5/4, still the heaviest line), dot rings 2px → 1.5px.
+- **Decision (owner, 2026-11-12): the moving average is of the total of all types** (what the mock already draws). Open question closed.
