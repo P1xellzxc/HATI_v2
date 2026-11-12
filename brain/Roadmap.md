@@ -83,6 +83,9 @@ Ship as two rounds: A = N1, N2, N3 (no data-shape change); B = N4, N5.
 
 ### Next
 
+**Status (2026-11-12): X1–X6 built** (see [[Team log]], "Next features X1–X6"). X4 follows the owner's balanced-grid rule instead of "select above 3".
+
+
 | # | Item | Owner | Size | Acceptance checks | Risks |
 |---|---|---|---|---|---|
 | X1 | **At a glance on every volume** (owner request): one ruled ink panel after "Who pays whom": spend over time (household: this month vs last; trip: per day), who paid (paid / share / difference, top payer first), by category as ONE stacked category strip with a legend in the app's category order (owner picked the "alt" layout of the 2026-11-09 mock, `mockups/dashboard.html?v=alt`, kept out of git because it holds real data) | hati-design + hati-code, with hati-a11y, hati-money-parity | M | First screen at 360/390 still shows balance and Add expense without scrolling; per-month, per-day and per-member figures each sum to the hero total in cents (fuzz); each member's paid−share equals their balance before payments; every bar has its numbers in text (axe clean, screen-reader list); slop rubric 0 at 360/390 both themes, no tiles; pixel.js clean at 320; 4x-CPU volume open on 1,000 expenses no slower than before N1's baseline + 5 ms | Becomes a KPI-tile grid (slop); render cost on big volumes; wrong imported dates (needs N5 first) |

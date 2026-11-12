@@ -45,7 +45,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
  const pick=async(pg,id,want)=>{ const el=pg.locator('#'+id);
    const name=await el.evaluate((e,w)=>{ const os=e.opts, i=typeof w==='string'?os.findIndex(x=>x[0]===w):w.label!=null?os.findIndex(x=>x[1]===w.label):w.index; return os[i]?os[i][1]:null; },want);
    if (name==null) throw new Error('no option '+JSON.stringify(want)+' in #'+id);
-   if (await el.getAttribute('data-mode')==='seg') { await el.getByRole('radio',{name,exact:true}).click(); return 1; }
+   if (['seg','grid'].includes(await el.getAttribute('data-mode'))) { await el.getByRole('radio',{name,exact:true}).click(); return 1; }
    await el.locator('.pick-btn').click(); await pg.locator('#pickLayer').getByRole('option',{name,exact:true}).click(); return 2; };
  const pickVal=(pg,id)=>pg.locator('#'+id).evaluate(e=>e.value);
  // There is no bottom bar: the hub is reached with the top bar's Back (or Escape for a sheet), Settings with the hub's gear.
@@ -1364,13 +1364,13 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      await pg.getByRole('button',{name:'Save expense'}).click(); await pg.waitForTimeout(80);
      const saved=await pg.evaluate(()=>{ const v=vol(), x=v.expenses[0]; return x && nameOf(v,x.paidBy); });
      one.push({n:names.length+1,mode,taps,pressed,saved}); }
-   ok(one.every(r=>r.mode==='seg' && r.taps===1 && r.saved==='Ivy' && /Ivy:true/.test(r.pressed) && /You:false/.test(r.pressed)),'D0-2: Paid by is a segmented row and Ivy is one tap in volumes of 2, 3 and 4 members; the expense saves paidBy = Ivy '+JSON.stringify(one));
+   ok(one.every(r=>r.mode==='grid' && r.taps===1 && r.saved==='Ivy' && /Ivy:true/.test(r.pressed) && /You:false/.test(r.pressed)),'D0-2/X4: Paid by is the balanced grid and Ivy is one tap in volumes of 2, 3 and 4 members; the expense saves paidBy = Ivy '+JSON.stringify(one));
    await pg.evaluate(()=>{ const me=uid(); const v={id:uid(),title:'Big',type:'other',currency:'$',meId:me,created:Date.now(),members:[{id:me,name:'Al'},...['Ivy','Bo','Cy','Di','Ed'].map(n=>({id:uid(),name:n}))],expenses:[],settlements:[]}; S.volumes.unshift(v); save(); ui.volId=v.id; go('volume'); openExpense(null); });
    await pg.waitForTimeout(80);
    const big={mode:await pg.locator('#f-paid').getAttribute('data-mode'),btn:await pg.getByRole('button',{name:'Paid by You'}).count()};
    await pg.fill('#f-amount','30'); await pg.fill('#f-desc','Pizza'); const bt=await pick(pg,'f-paid',{label:'Ed'}); await pg.getByRole('button',{name:'Save expense'}).click(); await pg.waitForTimeout(80);
    const bs=await pg.evaluate(()=>nameOf(vol(),vol().expenses[0].paidBy));
-   ok(big.mode==='list' && big.btn===1 && bt===2 && bs==='Ed','D0-2: 6 members (over 4): Paid by is a button named "Paid by You" that opens the sheet list; Ed in 2 taps, saved '+JSON.stringify([big,bt,bs]));
+   ok(big.mode==='grid' && big.btn===0 && bt===1 && bs==='Ed','X4: 6 members: Paid by stays the grid (no list button); Ed in 1 tap, saved '+JSON.stringify([big,bt,bs]));
    // D0-3: keyboard and screen reader. Row: radiogroup named by its label, radios with aria-checked, one tab stop,
    // arrows move the choice (wrapping), Home/End. Sheet list: button "Currency ¥" (haspopup listbox), Enter opens a dialog
    // with a listbox named Currency, focus on the chosen option, arrows move focus only, Esc closes and returns focus,
@@ -1399,10 +1399,11 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    const s5=await pg.evaluate(()=>({gone:!$('#pickLayer'),sheet:sheetOpen(),v:$('#s-cur').value}));
    // Back (Android) closes only the list: the page under it stays
    await pg.keyboard.press('Escape'); await pg.waitForTimeout(80);
-   await pg.evaluate(()=>{ ui.volId=S.volumes.find(v=>v.title==='Big').id; go('volume'); openExpense(null); }); await pg.waitForTimeout(150);
-   await pg.locator('#f-paid .pick-btn').click(); await pg.waitForTimeout(250); await pg.goBack(); await pg.waitForTimeout(150);
-   const bk=await pg.evaluate(()=>({gone:!$('#pickLayer'),view:ui.view,inert:$('#app').inert}));
-   ok(bk.gone && bk.view==='expense' && !bk.inert,'D0-3: Back with the Paid by list open closes the list and stays on the expense form '+JSON.stringify(bk));
+   await pg.evaluate(()=>{ ui.volId=S.volumes.find(v=>v.title==='Big').id; go('volume'); volumeSheet(vol()); }); await pg.waitForTimeout(250);
+   await pg.locator('#s-cur .pick-btn').click(); await pg.waitForTimeout(250); await pg.goBack(); await pg.waitForTimeout(150);
+   const bk=await pg.evaluate(()=>({gone:!$('#pickLayer'),view:ui.view,sheet:sheetOpen()}));
+   ok(bk.gone && bk.view==='volume' && bk.sheet,'D0-3: Back with the Currency list open closes the list and keeps the sheet under it '+JSON.stringify(bk));
+   await pg.keyboard.press('Escape'); await pg.waitForTimeout(80);
    await pg.evaluate(()=>{ ui.volId=S.volumes.find(v=>/example/.test(v.title)).id; go('volume'); volumeSheet(vol()); }); await pg.waitForTimeout(250);
    ok(pop==='listbox' && s1v===1 && s1.f==='option:¥:true' && s1.n===10 && s1.inert && s2==='Rp:¥' && s3.gone && s3.sheet && s3.focus && s3.v==='¥' && !s3.layer && s4.gone && s4.v==='RM' && s4.label==='RM' && s4.focus && s5.gone && s5.sheet && s5.v==='RM','D0-3: Currency: button with a listbox popup; Enter opens a dialog + listbox "Currency" focused on ¥; arrows move focus only; Esc closes it (not the volume sheet) and returns focus; End + Enter picks RM; a tap outside closes it '+JSON.stringify([pop,s1,s2,s3,s4,s5]));
    await pg.keyboard.press('Escape'); await pg.waitForTimeout(80);
@@ -1482,7 +1483,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(['food','transport','entertainment','utilities','shopping','other'].every(id=>cats.ids.includes(id)),'CAT: the six original ids are still categories (old data, links, older phones)');
    ok(cats.icons.every(s=>/^<svg viewBox="0 0 24 24"><path d="[^"]+"\/>/.test(s)) && new Set(cats.icons).size===12,'CAT: every category has its own 24px ink-line icon');
    const un=await pg.evaluate(()=>{ const v=exampleVolume(); v.expenses[0].category='pets'; v.expenses[1].category='groceries'; const cl=cleanVolume(v); S.volumes.unshift(cl); save(); ui.volId=cl.id; go('volume');
-     return {pets:cl.expenses[0].category,gro:cl.expenses[1].category,bars:[...document.querySelectorAll('.bars .row span')].map(x=>x.textContent),icon:CAT_ICON.other.includes(document.querySelector('.tx[data-id="'+cl.expenses[0].id+'"] .tx-ic path').getAttribute('d'))}; });
+     return {pets:cl.expenses[0].category,gro:cl.expenses[1].category,bars:[...document.querySelectorAll('.glance .gl-b:last-child .gl-bars .row > span:first-child')].map(x=>x.textContent),icon:CAT_ICON.other.includes(document.querySelector('.tx[data-id="'+cl.expenses[0].id+'"] .tx-ic path').getAttribute('d'))}; });
    ok(un.pets==='other' && un.gro==='groceries' && un.icon && un.bars.includes('Other') && un.bars.includes('Groceries') && new Set(un.bars).size===un.bars.length,'CAT: an unknown id reads as Other (icon and summary), a new id is kept; the summary has one row per category '+JSON.stringify(un));
    const mg=await pg.evaluate(()=>{ const v=S.volumes[0], o=JSON.parse(JSON.stringify(v)); v.expenses[1].upd=5; o.expenses[1].upd=5; o.expenses[1].category='other';
      const a=mergeVolumes(v,o).vol.expenses[1].category; o.expenses[1].upd=6; const b=mergeVolumes(v,o).vol.expenses[1].category; return [a,b]; });
@@ -1920,6 +1921,89 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    const hx=await pg.evaluate(()=>({h:window.__h,t:document.querySelector('.ledger.hist .tx[data-act=editSettle] .tx-m').textContent,kept:S.volumes[0].settlements[0].how}));
    ok(hx.h===undefined && /via <img/.test(hx.t) && /^<img/.test(hx.kept),'D3: how survives a reload and shows as text '+JSON.stringify(hx));
    ok(errs.length===0,'D3: no page errors '+JSON.stringify(errs)); await c.close(); }
+
+ // NEXT round (owner 2026-11-12): X1 At a glance, X2 month totals, X3 search/filter, X4 balanced Paid by, X5 payment
+ // methods, X6 Copy as new. Real functions, integer cents.
+ { const c=await b.newContext({...devices['Pixel 7']}); await c.addInitScript(noSync); const pg=await c.newPage(); const errs=[]; pg.on('pageerror',x=>errs.push(x.message)); pg.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
+   await pg.goto(URL); await pg.waitForSelector('.vol');
+   const seed=await pg.evaluate(()=>{ const me='me', ids=['ivy','bo','cy','di','ed','fr'], all=[me,...ids];
+     const now=today(), [Y,M]=now.split('-').map(Number), prev=M===1?`${Y-1}-12`:`${Y}-${pad2(M-1)}`;
+     const cats=['food','groceries','utilities','lodging','transport','drinks','health'], ex=[];
+     for (let i=0;i<24;i++) { const amt=1001+i*137, d=(i%2?prev:now.slice(0,7))+'-'+pad2(1+(i%9)); ex.push({id:'x'+i,desc:['Rent','Groceries','Meralco','Water','Grab','Coffee','Meds'][i%7]+' '+i,amount:amt,paidBy:all[i%7],category:cats[i%7],date:d,splitType:'equal',splits:splitEqual(amt,all),inputs:{},note:i===5?'GCash promo':'',upd:1}); }
+     const v={id:'nx',title:'Bebetime',type:'household',currency:'₱',meId:me,created:Date.now(),members:all.map((id,k)=>({id,name:k?['Ivy','Bo','Cy','Di','Ed','Francesca'][k-1]:'Al'})),expenses:ex,settlements:[{id:'s1',from:'bo',to:'me',amount:500,date:now,upd:1,how:'GCash'}]};
+     S.volumes.unshift(v); save(); ui.volId=v.id; go('volume'); return {now,prev}; });
+   await pg.waitForTimeout(300);
+   // X1
+   const g=await pg.evaluate(()=>{ const v=vol(), g=glance(v), b=balances(v);
+     const pay=id=>v.settlements.reduce((a,s)=>a+(s.from===id?s.amount:0)-(s.to===id?s.amount:0),0);
+     return {panel:!!document.querySelector('.glance'),after:!!document.querySelector('.sect:has(.debt) + .sect .glance'),old:[...document.querySelectorAll('h2')].some(h=>/Spending by category/.test(h.textContent)),
+       parity:g.who.every(r=>r.diff===(b[r.id]||0)-pay(r.id)), cats:g.cats.reduce((a,c)=>a+c[1],0)===g.tot, tot:g.tot===total(v), months:g.time.cols.reduce((a,c)=>a+c.a,0)===g.tot,
+       ints:[g.tot,...g.who.flatMap(r=>[r.paid,r.share,r.diff]),...g.cats.map(c=>c[1]),...g.time.cols.map(c=>c.a)].every(Number.isInteger),
+       top:g.who[0].paid===Math.max(...g.who.map(r=>r.paid)), stamp:document.querySelectorAll('.glance .stamp-s').length, catLines:g.cats.length,
+       say:document.querySelector('.glance .gl-say').textContent}; });
+   ok(g.panel && g.after && !g.old,'X1: "At a glance" sits right after "Who pays whom" and replaces the bottom "Spending by category" '+JSON.stringify(g));
+   ok(g.parity && g.cats && g.tot && g.months && g.ints,'X1: money: each "Who paid" difference = that member\'s balance before payments; category lines and this/last month sum to the total; all integer cents '+JSON.stringify(g));
+   ok(g.top && g.stamp===1 && g.catLines===6 && /^This month ₱/.test(g.say),'X1: the top payer is first with one "Paid most" stamp; top 5 categories + "Everything else"; a household says this month vs last '+JSON.stringify(g));
+   const trip=await pg.evaluate(()=>{ const v=exampleVolume(), g=glance(v); return {kind:g.time.kind,sum:g.time.cols.reduce((a,c)=>a+c.a,0)===g.tot,n:g.time.cols.length}; });
+   ok(trip.kind==='days' && trip.sum,'X1: a trip shows one column per day and the days sum to the total '+JSON.stringify(trip));
+   // X2
+   await pg.evaluate(()=>go('history')); await pg.waitForSelector('.ledger.hist'); await pg.waitForTimeout(300);
+   const m=await pg.evaluate(()=>{ const v=vol(), want={}; v.expenses.forEach(e=>{ const k=e.date.slice(0,7); want[k]=(want[k]||0)+e.amount; });
+     return [...document.querySelectorAll('.sect.month')].map(s=>({h:s.querySelector('h2').textContent,t:s.querySelector('.month-tot')&&s.querySelector('.month-tot').firstChild.textContent,ok:false,want:null})).map((r,i)=>{ const k=Object.keys(want).sort().reverse()[i]; return {...r,ok:r.t===fmt(want[k],v.currency)}; }); });
+   ok(m.length===2 && m.every(r=>r.ok),'X2: every month heading carries that month\'s expense total (payments excluded) '+JSON.stringify(m));
+   // X3
+   const f0=await pg.evaluate(()=>({bar:!!$('#h-q'),role:$('.hfilter').getAttribute('role')}));
+   await pg.fill('#h-q','rent'); await pg.waitForTimeout(150);
+   const f1=await pg.evaluate(()=>({n:document.querySelectorAll('.ledger.hist .tx').length,c:$('#histCount').textContent,focus:document.activeElement.id,live:$('#status').textContent}));
+   await pg.waitForTimeout(100); const live1=await pg.evaluate(()=>$('#status').textContent);
+   await pg.fill('#h-q','gcash'); await pg.waitForTimeout(150);
+   const f2=await pg.evaluate(()=>[...document.querySelectorAll('.ledger.hist .tx')].map(r=>r.dataset.id));
+   await pg.fill('#h-q',''); await pick(pg,'h-cat',{label:'Groceries'}); await pg.waitForTimeout(150);
+   const f3=await pg.evaluate(()=>({n:document.querySelectorAll('.ledger.hist .tx').length,all:vol().expenses.filter(e=>e.category==='groceries').length,tot:document.querySelector('.month-tot')&&document.querySelector('.month-tot').firstChild.textContent}));
+   await pick(pg,'h-cat',{label:'All'}); await pick(pg,'h-who',{label:'Bo'}); await pg.waitForTimeout(150);
+   const f4=await pg.evaluate(()=>({n:document.querySelectorAll('.ledger.hist .tx').length,want:vol().expenses.filter(e=>e.paidBy==='bo'||has(e.splits,'bo')).length+vol().settlements.filter(s=>s.from==='bo'||s.to==='bo').length}));
+   await pg.getByRole('button',{name:'Clear'}).click(); await pg.waitForTimeout(150);
+   const f5=await pg.evaluate(()=>({n:document.querySelectorAll('.ledger.hist .tx').length,q:$('#h-q').value,clear:$('#histClear').hidden}));
+   ok(f0.bar && f0.role==='search','X3: History over 20 items has a search region '+JSON.stringify(f0));
+   ok(f1.n===7 && f1.c==='7 matches' && f1.focus==='h-q' && /7 matches/.test(live1),'X3: words match description and category; the count shows and is announced; focus stays in the field '+JSON.stringify([f1,live1]));
+   ok(f2.join()==='s1,x5','X3: "gcash" finds the payment by its method and the expense by its note '+JSON.stringify(f2));
+   ok(f3.n===f3.all && f3.n>0,'X3: the Category filter keeps only that category (payments drop out) '+JSON.stringify(f3));
+   ok(f4.n===f4.want && f4.n>0,'X3: the Who filter keeps what that member paid or shares, and their payments '+JSON.stringify(f4));
+   ok(f5.n===25 && f5.q==='' && f5.clear,'X3: Clear brings every item back '+JSON.stringify(f5));
+   const small=await pg.evaluate(()=>{ ui.volId=S.volumes.find(v=>/example/.test(v.title)).id; go('history'); return !!$('#h-q'); });
+   ok(!small,'X3: a short history (20 or fewer) has no search bar '+small);
+   // X4: balanced rows for 1..8 people; one tap; arrows across rows
+   const rows=await pg.evaluate(()=>[1,2,3,4,5,6,7,8].map(n=>pickRows(n).join('+')));
+   ok(rows.join()==='1,2,3,4,3+2,3+3,4+3,4+4','X4: rows are at most 4 and as even as possible '+rows.join());
+   await pg.evaluate(()=>{ ui.volId='nx'; go('volume'); openExpense(null); }); await pg.waitForTimeout(200);
+   const geo=await pg.evaluate(()=>{ const rs=[...document.querySelectorAll('#f-paid .pk-row')].map(r=>r.getBoundingClientRect()), bs=[...document.querySelectorAll('#f-paid .pkg')].map(x=>x.getBoundingClientRect()), d=$('#f-desc').getBoundingClientRect();
+     const byRow=rs.map(r=>bs.filter(x=>Math.abs(x.top-r.top)<4||Math.abs(x.top-r.top-3)<4));
+     return {rows:byRow.map(x=>x.length),edges:rs.every(r=>Math.abs(r.left-d.left)<1&&Math.abs(r.right-d.right)<1),equal:byRow.every(x=>Math.max(...x.map(y=>y.width))-Math.min(...x.map(y=>y.width))<1),fill:byRow.every((x,i)=>Math.abs(x[x.length-1].right-rs[i].right)<4)}; });
+   ok(geo.rows.join('+')==='4+3' && geo.edges && geo.equal && geo.fill,'X4: 7 people = rows of 4 and 3, equal widths per row, each row fills the field width '+JSON.stringify(geo));
+   const t1=await pick(pg,'f-paid',{label:'Francesca'});
+   await pg.getByRole('radio',{name:'Francesca'}).focus(); await pg.keyboard.press('ArrowRight');
+   const k=await pg.evaluate(()=>({f:document.activeElement.textContent,v:ui.form.paidBy}));
+   ok(t1===1 && k.f==='You' && k.v==='me','X4: any payer is one tap; arrows walk across rows and wrap '+JSON.stringify([t1,k]));
+   // X6 Copy as new
+   await pg.evaluate(()=>{ go('volume'); openExpense(vol().expenses.find(e=>e.id==='x3')); }); await pg.waitForTimeout(200);
+   await pg.getByRole('button',{name:'Copy as new'}).click(); await pg.waitForTimeout(200);
+   const cp=await pg.evaluate(()=>({title:document.querySelector('.topbar h1').textContent,f:{...ui.form},focus:document.activeElement.id}));
+   await pg.getByRole('button',{name:'Save expense'}).click(); await pg.waitForTimeout(300);
+   const cs=await pg.evaluate(()=>{ const v=vol(), o=v.expenses.find(e=>e.id==='x3'), n=v.expenses.filter(e=>e.desc===o.desc); return {n:n.length,same:n.every(e=>e.amount===o.amount&&e.paidBy===o.paidBy&&e.category===o.category&&JSON.stringify(e.splits)===JSON.stringify(o.splits)),date:n.find(e=>e.id!=='x3').date,orig:o.date}; });
+   ok(cp.title==='New expense' && !cp.f.id && cp.f.date===seed.now && cp.focus==='f-amount','X6: Copy as new opens a new expense with the same fields, dated today, focus on the amount '+JSON.stringify(cp));
+   ok(cs.n===2 && cs.same && cs.date===seed.now && cs.orig!==seed.now,'X6: saving it adds a second expense with the same amount, payer, category and split; the original is untouched '+JSON.stringify(cs));
+   // X5 methods
+   await pg.evaluate(()=>{ go('volume'); settleSheet(null); }); await pg.waitForSelector('#s-via');
+   await pg.getByRole('button',{name:'GCash',exact:true}).click();
+   const h1=await pg.evaluate(()=>({v:$('#s-via').value,p:[...document.querySelectorAll('[data-how]')].map(b=>b.getAttribute('aria-pressed')).join()}));
+   await pg.getByRole('button',{name:'GCash',exact:true}).click();
+   const h2=await pg.evaluate(()=>$('#s-via').value);
+   await pg.getByRole('button',{name:'Cash',exact:true}).click(); await pg.locator('#s-via').fill('Cash ref 77');
+   const h3=await pg.evaluate(()=>[...document.querySelectorAll('[data-how]')].map(b=>b.getAttribute('aria-pressed')).join());
+   await pg.locator('#sheetForm button.primary').click(); await pg.waitForTimeout(300);
+   const h4=await pg.evaluate(()=>vol().settlements.slice(-1)[0].how);
+   ok(h1.v==='GCash' && h1.p==='false,true,false' && h2==='' && h3==='false,false,false' && h4==='Cash ref 77','X5: Cash / GCash / Bank fill "How" in one tap (tap again clears); typed words still save as typed '+JSON.stringify([h1,h2,h3,h4]));
+   ok(errs.length===0,'NEXT: no page errors '+JSON.stringify(errs)); await c.close(); }
 
  await b.close();
 })();
