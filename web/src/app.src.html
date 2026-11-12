@@ -44,6 +44,23 @@
   --frost-rim: color-mix(in srgb, var(--paper-l) 65%, transparent);
   --frost-lo: color-mix(in srgb, var(--ink-l) 8%, transparent);
   --sub-f: color-mix(in srgb, var(--sub) 80%, var(--fg));
+  /* MATTE GLASS (owner 2026-11-12): calm two-tone paper, matte glass slabs. --g-*: the slab; --a-*: accent glass. */
+  --page-a: color-mix(in srgb, var(--b2) 12%, var(--paper-l)); --page-b: color-mix(in srgb, var(--acc-l) 12%, var(--paper-l));
+  --g-top: color-mix(in srgb, var(--b2) 6%, var(--paper-l));
+  --g-foot: color-mix(in srgb, var(--b2) 16%, var(--paper-l));
+  --g-edge: color-mix(in srgb, var(--b2) 30%, color-mix(in srgb, var(--ink-l) 24%, var(--paper-l)));
+  --g-lip: color-mix(in srgb, var(--paper-l) 85%, transparent);
+  --g-rim: color-mix(in srgb, var(--paper-l) 70%, transparent);
+  --g-seam: color-mix(in srgb, var(--ink-l) 12%, transparent);
+  --g-foot-line: color-mix(in srgb, var(--ink-l) 22%, transparent);
+  --g-grain: color-mix(in srgb, var(--ink-l) 7%, transparent);
+  --a-top: color-mix(in srgb, var(--accent) 18%, var(--paper-l));
+  --a-foot: color-mix(in srgb, var(--accent) 32%, var(--paper-l));
+  --a-edge: color-mix(in srgb, var(--accent) 78%, var(--ink-l) 22%);
+  --b-top: color-mix(in srgb, var(--accent) 70%, var(--paper-l)); --b-foot: var(--accent);
+  --g-bar: color-mix(in srgb, color-mix(in srgb, var(--b2) 10%, var(--paper-l)) 80%, transparent);
+  --g-field-line: color-mix(in srgb, var(--ink-l) 58%, var(--paper-l));
+  --g-shadow: color-mix(in srgb, var(--ink-l) 30%, transparent); --g-contact: color-mix(in srgb, var(--ink-l) 16%, transparent);
   --haze: color-mix(in srgb, var(--rule) 50%, transparent);
   /* Strip under the iOS status bar: black-translucent draws white clock text, so it stays dark in every theme (an ink band). */
   --sbar: var(--ink-l);
@@ -112,6 +129,22 @@
   --frost-lo: color-mix(in srgb, #000 35%, transparent);
   --clay-hi: color-mix(in srgb, var(--fg) 10%, transparent); --clay-lo: color-mix(in srgb, #000 45%, transparent);
   --clay-sel: color-mix(in srgb, var(--bg) 10%, transparent);
+  --page-a: color-mix(in srgb, var(--b2) 16%, var(--bg)); --page-b: color-mix(in srgb, var(--acc-d) 7%, var(--bg));
+  --g-top: color-mix(in srgb, var(--b2) 5%, var(--panel));
+  --g-foot: color-mix(in srgb, var(--b2) 10%, var(--panel));
+  --g-edge: color-mix(in srgb, var(--b2) 22%, color-mix(in srgb, var(--fg) 26%, var(--bg)));
+  --g-lip: color-mix(in srgb, var(--fg) 24%, transparent);
+  --g-rim: color-mix(in srgb, var(--fg) 10%, transparent);
+  --g-seam: color-mix(in srgb, #000 40%, transparent);
+  --g-foot-line: color-mix(in srgb, #000 55%, transparent);
+  --g-grain: color-mix(in srgb, var(--fg) 5%, transparent);
+  --a-top: color-mix(in srgb, var(--accent) 12%, var(--panel));
+  --a-foot: color-mix(in srgb, var(--accent) 20%, var(--panel));
+  --a-edge: color-mix(in srgb, var(--accent) 70%, var(--bg));
+  --b-top: color-mix(in srgb, var(--accent) 88%, var(--fg)); --b-foot: var(--accent);
+  --g-bar: color-mix(in srgb, color-mix(in srgb, var(--b2) 6%, var(--panel)) 82%, transparent);
+  --g-field-line: color-mix(in srgb, var(--fg) 58%, var(--bg));
+  --g-shadow: color-mix(in srgb, #000 62%, transparent); --g-contact: color-mix(in srgb, #000 40%, transparent);
   color-scheme: dark;
 }
 /* Light fills (accent, chalk, pastel) take the light-mode shade strength: 45% black on them reads as an olive/brown edge */
@@ -653,6 +686,74 @@ hati-pick { display: block; min-width: 0; }
   .sync.in span { animation: ink-write 180ms var(--ease-out); }
   @keyframes ink-write { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
 }
+
+/* ── MATTE GLASS (owner 2026-11-12: "use the new design in the upcoming APK") ─────────────────────────────────
+   Replaces the ink-and-clay materials; layout, type and markup stay. One light, from above.
+   Page: calm two-tone paper (two plate tints, one soft diagonal), no art behind the glass.
+   Slab (owner's reference image, 2026-11-12): a clear matte pane, big round corners, a 1px lit top edge and a light
+   rim, and a soft shadow falling down and to the left (light from the top right), --t deep: cards 8px, controls 4px;
+   a press shrinks it to a contact shadow. This overrides the "no blurred shadows" rule for the glass build. Grain = three prime-sized micro-dot
+   layers (CSS only: the CSP allows no image data). Real blur only on what floats (top bar, sheets, toast), so long
+   lists scroll as fast as before; :root.lowfx drops it. Pressed / chosen = sinks onto its edge and inverts. */
+:root { --grain-l: radial-gradient(var(--g-grain) .6px, transparent .9px) 0 0 / 3px 3px, radial-gradient(var(--g-grain) .6px, transparent .9px) 1px 2px / 5px 5px, radial-gradient(var(--g-grain) .6px, transparent .9px) 2px 1px / 7px 7px;
+ }
+html { background: var(--page-a); }
+body { background: linear-gradient(170deg, var(--page-a) 0 min(52%, 900px), var(--page-b) min(52%, 900px)) 0 0 / 100% max(100%, 100vh) no-repeat, var(--page-b); }
+:root :is(#app, #layer) { --sub: var(--sub-f); }
+:root :is(#app, #layer) .sect { border-color: transparent; background: none; box-shadow: none; padding: 0; }
+:root :is(#app, #layer) .strip::after { border-top-color: var(--g-seam); background: none; height: 0; }
+/* cards */
+:root :is(#app, #layer) :is(.panel, .ledger, .amount-box, .share-sum, .vol, .hero, .dashed) {
+  --t: 8px; border-color: transparent; border-style: solid; border-radius: 16px;
+  background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), linear-gradient(180deg, var(--g-top), var(--g-foot));
+  background-color: var(--g-foot);
+  box-shadow: inset 0 1px 0 var(--g-lip), inset 1px 0 0 var(--g-rim), inset 0 0 0 1px var(--g-rim), calc(-1 * var(--t)) calc(1.4 * var(--t)) calc(2.6 * var(--t)) calc(-.5 * var(--t)) var(--g-shadow), -1px 2px 3px var(--g-contact); margin-bottom: 6px; }
+:root :is(#app, #layer) .stack > :is(.panel, .ledger, .vol, .hero, .dashed):last-child, :root :is(#app, #layer) .volw > .vol { margin-bottom: 0; }
+:root :is(#app, #layer) .volw { margin-bottom: 8px; }
+:root :is(#app, #layer) .hero { --g-e: var(--a-edge); padding: 16px;
+  background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), linear-gradient(180deg, var(--a-top), var(--a-foot)) var(--a-foot); }
+:root :is(#app, #layer) .hero::after, :root :is(#app, #layer) .vol-info::after, :root :is(#app, #layer) .vol-info::before { display: none; }
+:root :is(#app, #layer) .vol-info { background: none; }
+:root :is(#app, #layer) .vol .spine { background: linear-gradient(180deg, var(--b-top), var(--b-foot)) var(--b-foot); border-right: 1px solid var(--g-rim); box-shadow: inset 0 1px 0 var(--g-lip); }
+:root :is(#app, #layer) .vol.arch .spine { background: linear-gradient(180deg, var(--g-top), var(--g-foot)) var(--g-foot); color: var(--fg); }
+:root :is(#app, #layer) .amount-box { --g-e: var(--a-edge); background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), linear-gradient(180deg, var(--a-top), var(--a-foot)) var(--a-foot); }
+:root :is(#app, #layer) .dashed { --t: 4px; }
+:root :is(#app, #layer) :is(.ledger, .panel) > * + * { border-top-color: var(--g-rim); }
+:root :is(#app, #layer) .ledger > :is(.tx, .debt) + :is(.tx, .debt) { border-top: 1px solid color-mix(in srgb, var(--g-seam) 70%, transparent); }
+:root :is(#app, #layer) .hero .mine { border-top-color: var(--fg); }
+:root :is(#app, #layer) .hero :is(.meta, .sync) { color: color-mix(in srgb, var(--fg) 84%, var(--a-foot)); }
+/* controls: the same glass, 3px edge; the slab is the press distance */
+:root :is(#app, #layer) :is(.btn:not(.quiet):not(.text), .ico, .cat, button.chip:not(.add), .seg) {
+  --t: var(--c-x, 4px); border-color: transparent; border-radius: 12px;
+  background-color: var(--g-foot);
+  background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), linear-gradient(180deg, var(--g-top), var(--g-foot));
+  box-shadow: inset 0 1px 0 var(--g-lip), inset 1px 0 0 var(--g-rim), inset 0 0 0 1px var(--g-rim), calc(-1 * var(--t)) calc(1.4 * var(--t)) calc(2.6 * var(--t)) calc(-.5 * var(--t)) var(--g-shadow), -1px 2px 3px var(--g-contact); }
+:root :is(#app, #layer) .seg { --t: 4px; overflow: hidden; }
+:root :is(#app, #layer) .seg button { background: transparent; box-shadow: none; }
+:root :is(#app, #layer) .seg button + button { border-left: 1px solid var(--g-seam); }
+:root :is(#app, #layer) .btn.primary:not(.quiet):not(.text) { --g-e: var(--a-edge); background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), linear-gradient(180deg, var(--b-top), var(--b-foot)) var(--b-foot); color: var(--on-accent); }
+:root :is(#app, #layer) .btn.danger:not(.quiet):not(.text) { --g-e: var(--err); color: var(--err); background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), var(--panel); } /* untinted glass: red words need the plain paper */
+:root :is(#app, #layer) :is(.btn, .ico, .cat, button.chip):active:not(:disabled) { --c-x: 0px; }
+:root :is(#app, #layer) :is(.cat[aria-pressed="true"], .seg button:is([aria-pressed="true"], [aria-checked="true"]), .btn.pkg[aria-checked="true"], .qd .chip[aria-pressed="true"], .qh .chip[aria-pressed="true"]) {
+  background: var(--sel-bg); color: var(--sel-fg); box-shadow: inset 0 2px 0 var(--g-foot-line); --c-x: 0px; }
+:root :is(#app, #layer) .cat[aria-pressed="true"] { transform: translateY(3px); }
+:root :is(#app, #layer) .chip.add { border: 1.5px dashed var(--g-field-line); border-radius: 10px; }
+:root :is(#app, #layer) .chip:not(button) { border-color: transparent; border-radius: 10px; background: linear-gradient(180deg, var(--g-top), var(--g-foot)); box-shadow: inset 0 1px 0 var(--g-lip), inset 0 0 0 1px var(--g-rim); }
+/* fields keep a visible edge (non-text contrast), in the glass */
+:root :is(#app, #layer) .input { border: 1.5px solid var(--g-field-line); border-radius: 10px; background: linear-gradient(180deg, var(--g-top), var(--g-foot)); box-shadow: inset 0 1px 0 var(--g-lip); }
+:root :is(#app, #layer) .input:focus { border-color: var(--fg); }
+:root :is(#app, #layer) .input[aria-invalid="true"] { border-color: var(--err); }
+/* floating layers: real frosted glass */
+:root .topbar { background: linear-gradient(var(--g-lip), var(--g-lip)) 0 100% / 100% 1px no-repeat, var(--grain-l), var(--g-bar); border-bottom: 0; box-shadow: 0 1px 0 var(--g-seam);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3); }
+:root .topbar::after { display: none; }
+:root .sheet { border: 0; border-radius: 18px 18px 0 0; background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), color-mix(in srgb, var(--sheet) 94%, transparent);
+  box-shadow: inset 0 0 0 1px var(--g-rim), 0 -1px 0 var(--g-seam); -webkit-backdrop-filter: blur(24px) saturate(1.2); backdrop-filter: blur(24px) saturate(1.2); }
+:root .sheet::before, :root .sheet::after { display: none; }
+:root .scrim::before { background: none; height: 0; } /* the ink sheet band belongs to the old look */
+:root.lowfx :is(.topbar, .sheet) { -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root.lowfx .topbar { background: var(--nav); }
+@media (prefers-reduced-transparency: reduce) { :root :is(.topbar, .sheet) { -webkit-backdrop-filter: none; backdrop-filter: none; } :root .topbar { background: var(--nav); } }
 </style>
 
 <main id="app"></main>

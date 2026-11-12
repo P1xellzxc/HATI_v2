@@ -50,6 +50,13 @@ Apply this prompt to the specific assignment you were just given (not to the ski
 
 Write your four answers and the rewritten assignment (a few lines each) at the top of your entry in `brain/Team log.md`, then do the rewritten assignment. Deeper means more rigorous within your role and the goal, never more scope.
 
+## Matte glass (owner 2026-11-12, current material; overrides the clay, ink-slab and frosted-card rules below)
+
+- Page: calm two-tone paper from the plate (2nd swatch and accent at 12%, one soft diagonal). Never art, blobs or busy patterns behind glass.
+- One build for every card, the balance, buttons, chips, fields and sheets: opaque matte body (top → foot gradient + CSS micro-dot grain), 1px lit top edge and light rim, 16px corners on cards and 12px on controls, a soft shadow falling down and to the left (`--t`: 8px cards, 4px controls; pressed or chosen = shadow shrinks, chosen inverts). Accent glass only on the balance, the amount box and primary buttons.
+- Real blur only on floating layers (top bar, sheets); none on `:root.lowfx` or under `prefers-reduced-transparency`. Fields keep a visible 1.5px edge (≥3:1).
+- The rules below (clay, ink slabs, frosted section cards, screentone bands) describe the previous look; keep them only as history until the next design round rewrites them.
+
 ## Manga clay (owner request: claymorphism)
 
 The owner asked for claymorphism. Do it the manga way, so it reads as hand-made, not as a template:

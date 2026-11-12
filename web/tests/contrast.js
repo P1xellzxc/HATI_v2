@@ -31,9 +31,8 @@ const URL = process.env.URL || 'http://127.0.0.1:8765/';
     }, [id, mode, view]);
     for (const r of res) { if (r.ratio < 4.5) fail = true; worst.push({ palette: id, mode, view, ...r }); }
   }
-  // Depth (direction A): the ink lines that carry the raised panels hold 4.5:1 too, against the fill they are drawn on:
-  // the header's 3px edge on --nav and on the page, the hero's "Pay …" rule on the hero (the dark panel's top line), the
-  // hero slab's frame on the page, and the slab colour of cards and panels on the page.
+  // Depth (matte glass, owner 2026-11-12): the glass's own soft shadow is not a line, so what carries structure is
+  // measured instead: the hero's "Pay …" rule on the hero, and a field's edge on the field (inputs keep a visible edge).
   const lines = [];
   for (const id of ids) for (const mode of ['light', 'dark']) {
     const res = await p.evaluate(([id, mode]) => {
@@ -43,12 +42,12 @@ const URL = process.env.URL || 'http://127.0.0.1:8765/';
       const L = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
       const cr = (a, c) => { const x = L(parse(a)), y = L(parse(c)); return Math.round((Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05) * 100) / 100; };
       const cs = (s, pe) => getComputedStyle(document.querySelector(s), pe || null), page = getComputedStyle(document.body).backgroundColor;
-      const t = cs('.topbar'), h = cs('.hero'), off = cs('#app .ledger').boxShadow.split(/,(?![^(]*\))/).find(l => !/inset/.test(l)).trim().match(/^(rgba?|color)\([^)]*\)/)[0]; // the slab, not the frosted inset light line (owner 2026-11-11)
-      return [['topbar edge / --nav', cr(t.borderBottomColor, t.backgroundColor)], ['topbar edge / page', cr(t.borderBottomColor, page)],
-        ['hero "Pay" rule / hero', cr(cs('.hero .mine').borderTopColor, h.backgroundColor)], ['hero slab frame / page', cr(cs('.hero', '::after').borderTopColor, page)],
-        ['card slab / page', cr(off, page)]];
+      const h = cs('.hero'), rule = [['hero "Pay" rule / hero', cr(cs('.hero .mine').borderTopColor, h.backgroundColor)]];
+      openExpense(null); const f = cs('#f-desc'); const out = [...rule, ['field edge / field', cr(f.borderTopColor, f.backgroundColor)]]; go('volume');
+      return out;
     }, [id, mode]);
-    for (const [what, ratio] of res) { if (ratio < 4.5) fail = true; lines.push({ palette: id, mode, line: what, ratio }); }
+    // a field's edge is a UI boundary: WCAG 1.4.11 asks 3:1 there, 4.5:1 for the rest
+    for (const [what, ratio] of res) { if (ratio < (what.startsWith('field') ? 3 : 4.5)) fail = true; lines.push({ palette: id, mode, line: what, ratio }); }
   }
   lines.sort((x, y) => x.ratio - y.ratio);
   worst.sort((x, y) => x.ratio - y.ratio);

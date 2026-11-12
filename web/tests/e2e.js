@@ -1457,7 +1457,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
        const r=await q.evaluate(probe); geo.push({w,mode,name,...r}); low.push(...r.low.map(x=>({w,mode,name,...x})));
        const btn=await q.$('hati-pick[data-mode=list] .pick-btn'); if (btn) { await btn.click(); await q.waitForTimeout(250); const r2=await q.evaluate(probe); geo.push({w,mode,name:name+' list',...r2}); low.push(...r2.low.map(x=>({w,mode,name:name+' list',...x}))); await q.keyboard.press('Escape'); } }
      await c2.close(); }
-   const badGeo=geo.filter(g=>g.over||g.picks.some(p=>!p.inView||p.small||p.cut||p.rows>1));
+   const badGeo=geo.filter(g=>g.over||g.picks.some(p=>!p.inView||p.small||p.cut||(p.mode==='grid'?false:p.rows>1))); // X4: the Paid by grid wraps into even rows by design
    ok(badGeo.length===0 && geo.length>=30,'D0-5: all 7 pickers (and the sheet list) at 320/360/390, light and dark: no sideways scroll, in view, targets ≥44px, no cut labels, rows never wrap '+JSON.stringify(badGeo.slice(0,2)));
    ok(geo.filter(g=>g.w===320&&g.name==='volume sheet').every(g=>g.picks.find(p=>p.id==='s-type').mode==='list') && geo.filter(g=>g.w===390&&g.name==='volume sheet').every(g=>g.picks.find(p=>p.id==='s-type').mode==='seg') && geo.filter(g=>g.name==='join').every(g=>g.picks.find(p=>p.id==='s-who').mode==='list'),'D0-5: a row whose words do not fit becomes the button + list (Type at 320, a long member name), and stays a row where it fits (Type at 390)');
    { const {c:c3,pg:q}=await mk({viewport:{width:360,height:740}}); const ids=await q.evaluate(()=>PALETTES.map(x=>x.id));
@@ -1889,7 +1889,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    const f0=await pg.evaluate(()=>({d:$('#s-date').value,type:$('#s-date').type,q:[...document.querySelectorAll('#sheetForm [data-day]')].map(b=>b.textContent+':'+b.getAttribute('aria-pressed')+':'+(b.getBoundingClientRect().height>=44)),
      how:{label:document.querySelector('label[for=s-via]').textContent,ph:$('#s-via').placeholder,max:$('#s-via').maxLength,fs:getComputedStyle($('#s-via')).fontSize},dfs:getComputedStyle($('#s-date')).fontSize}));
    ok(f0.d===dayAgo(0) && f0.type==='date' && f0.q.join()==='Today:true:true,Yesterday:false:true' && f0.dfs==='16px','D3: the settle sheet has a native date field set to today, with Today (pressed) and Yesterday '+JSON.stringify(f0));
-   ok(f0.how.label==='How (optional)' && f0.how.ph==='GCash, cash' && f0.how.max===40 && f0.how.fs==='16px','D3: "How (optional)", placeholder "GCash, cash", up to 40 characters, 16px '+JSON.stringify(f0.how));
+   ok(f0.how.label==='How (optional)' && f0.how.ph==='GCash ref 1234' && f0.how.max===40 && f0.how.fs==='16px','D3/X5: "How (optional)", placeholder "GCash ref 1234", up to 40 characters, 16px '+JSON.stringify(f0.how));
    await pg.getByRole('button',{name:'Yesterday',exact:true}).click(); taps++;
    await pg.locator('#s-via').fill('GCash'); taps++;
    await pg.locator('#sheetForm button.primary').click(); taps++; await pg.waitForTimeout(400);
