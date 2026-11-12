@@ -18,7 +18,7 @@ Facts from the code that shaped the debate (`web/src/app.src.html`):
 
 ## 0. Current plan (2026-11-12, all skills)
 - **In the next APK:** X1–X6, matte glass, balanced Members.
-- **Now:** N4 + D8 (restore re-joins sync, backup you can trust) → N3 K3 (APK save survives process death) → glass pass on every view (shots, pixel, slop, reduced transparency).
+- **Now:** N4 + D8 (restore re-joins sync, backup you can trust) → N3 K3 (APK save survives process death) → glass pass on every view (shots, pixel, slop, reduced transparency) → G1 "Spent over time" line chart (lines per type + moving average of the total; owner: next APK).
 - **Next:** D4 Why this balance → D6 sync status in words → D7 odd centavo shown → Q1 "+ Expense" from the hub card → D5 changes from the other phone in words.
 - **Owner:** N2 two-phone real sync check after installing the APK.
 - Discussion: [[Team log]], "Feature review · all skills, one voice (2026-11-12)".

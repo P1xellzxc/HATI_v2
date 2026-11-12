@@ -1461,3 +1461,4 @@ Owner: "What are the current building features and any other features to add. De
 - Not built in the app yet; replaces the current ink-column "Spent over time" when approved.
 - **Owner (2026-11-12): "Reduce line thickness of line charts."** Type lines 2px → 1.25px, average 3px → 2px (dash 5/4, still the heaviest line), dot rings 2px → 1.5px.
 - **Decision (owner, 2026-11-12): the moving average is of the total of all types** (what the mock already draws). Open question closed.
+- **Owner (2026-11-12): line chart ships in the APK after this one.** Added to Now after the glass pass: build "Spent over time" as lines per type + moving average of the total (mock `docs/mockups/spent-graphs.html`).
