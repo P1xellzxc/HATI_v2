@@ -359,13 +359,34 @@ button { font: inherit; color: inherit; }
 
 /* the sheet rises from below: lit top edge and rim, a seam above, no slab face pointing up */
 .d-matte .bsheet { box-shadow: inset 0 1px 0 var(--g-lip), inset 0 0 0 1px var(--gl-rim), 0 -1px 0 var(--g-seam); }
+
+/* CARD = THE BALANCE SLAB (owner 2026-11-12: "I like this design. All cards should be designed
+   like this"). One build for every card: lit top edge, body deepening toward the foot, a 6px
+   glass edge in the card's own tint (clearly visible, lighter than a shadow), seam, lip and
+   contact line. No stacked sheets. Accent glass on the balance and the main button; neutral
+   plate-tinted glass on every other card. Controls (chips, icon buttons) keep a 3px edge. */
+.d-matte {
+  --c-edge: color-mix(in srgb, var(--s2) 30%, color-mix(in srgb, var(--fg) 22%, var(--bg)));
+  --c-top: var(--mat);
+  --c-foot: color-mix(in srgb, var(--mat) 78%, color-mix(in srgb, var(--s2) 40%, transparent));
+}
+.d-matte :is(.list, .field, .amount, .btn) { --t: 6px; --g-edge: var(--c-edge); border-radius: 10px;
+  background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain), linear-gradient(180deg, var(--c-top), var(--c-foot)); }
+.d-matte .bsheet .field[style] { background: none; }
+.d-matte .hero { margin-bottom: calc(var(--t) + 2px);
+  box-shadow: inset 0 1px 0 var(--g-lip), inset 1px 0 0 color-mix(in srgb, var(--g-lip) 60%, transparent), inset 0 0 0 1px var(--gl-rim),
+    0 1px 0 var(--g-seam), 0 var(--t) 0 var(--g-edge), 0 calc(var(--t) + 1px) 0 var(--g-lip), 0 calc(var(--t) + 2px) 0 var(--gl-foot); }
+.d-matte .btn.primary { --g-edge: var(--a-edge);
+  background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain), linear-gradient(180deg, var(--a-face-top), var(--a-face-foot)); }
+.d-matte .ico { --g-edge: var(--c-edge); }
+.d-matte .opt:not(.on) { --g-edge: var(--c-edge); }
 @media (max-width: 520px) { .phone, .screen { width: 320px; } }
 </style>
 
 <div class="sheetwrap">
   <header class="mast">
     <h1>HATI<sup>2</sup> matte glass</h1>
-    <p>A+C in matte glass: every slab really blurs what is behind it, with a fine grain and almost no shine, like sandblasted glass. Slab sides and the stacked balance stay, so nothing is flat. The page behind is a calm two-tone paper, so nothing competes with the money.</p>
+    <p>Matte glass cards: every card frosts what is behind it, with a fine grain, a lit top edge, a body that deepens toward the foot and a visible glass edge. One build for every card, so nothing is flat. The page behind is a calm two-tone paper, so nothing competes with the money.</p>
     <div class="controls">
       <div class="ctl"><span id="plateLbl">Plate</span>
         <div class="seg" role="group" aria-labelledby="plateLbl" id="plates">
@@ -394,8 +415,8 @@ const ICON = {
   plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>'
 };
 const DIRS = [
-  { id: 'matte', no: 'A+C', name: 'Matte glass slabs', badge: 'Owner pick',
-    tag: 'Sandblasted glass: each slab frosts the calm paper behind it, carries a fine grain and only a faint lit edge. The slab sides and the stacked balance stay, so it is soft but not flat.',
+  { id: 'matte', no: 'A+C', name: 'Matte glass cards', badge: 'Owner pick',
+    tag: 'Sandblasted glass: each card frosts the calm paper behind it, has a fine grain, a lit top edge and a 6px glass edge in its own tint. The balance and the main button are accent glass; every other card is the same build in a neutral tint.',
     notes: [
       ['hati-design', 'Grain is what makes it matte instead of shiny: the blur reads as a material, not a filter. The page stays calm: two plate tints, no art.'],
       ['hati-slop-rubric', 'Blur is tell #1 (score 2); the owner chose it on 2026-11-12, so it is an override. Grain and slab sides keep it from the stock frosted look.'],
