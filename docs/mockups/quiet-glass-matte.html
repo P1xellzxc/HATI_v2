@@ -389,6 +389,18 @@ button { font: inherit; color: inherit; }
   box-shadow: inset 0 1px 0 var(--g-lip), inset 0 0 0 1px var(--gl-rim), 0 2px 0 var(--a-edge), 0 3px 0 var(--gl-foot); }
 .d-matte .item.tx .s { grid-column: 2 / -1; }
 .d-matte .bsheet { gap: 10px; }
+
+/* Paid by (owner 2026-11-12: "balanced, whether there is one or more than one in the volume") */
+.d-matte .payers { display: grid; gap: 8px; margin-top: 6px; }
+.d-matte .prow { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 8px; }
+.d-matte .opt.payer { display: block; min-width: 0; text-align: center; padding: 8px 6px; font-size: .88rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: calc(var(--t) + 2px); }
+.d-matte .opt.payer.on { margin-bottom: 0; }
+.pdemo-wrap { display: grid; gap: 10px; }
+.pdemo-h { margin: 0; font: 700 .9rem/1.3 var(--font-body); color: var(--fg); }
+.pdemo { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.pcase { border-radius: 14px; border: 2px solid var(--fg); background: var(--page); padding: 14px 16px; }
+.pcase .pc-in { display: grid; gap: 2px; max-width: 328px; }
 @media (max-width: 520px) { .phone, .screen { width: 320px; } }
 </style>
 
@@ -435,6 +447,25 @@ const CAT_ICON = {
 const CATEGORIES = [["food", "Eating out"], ["groceries", "Groceries"], ["drinks", "Drinks"], ["transport", "Transport"],
   ["fuel", "Fuel"], ["lodging", "Stay & rent"], ["entertainment", "Fun"], ["shopping", "Shopping"],
   ["utilities", "Bills"], ["health", "Health"], ["gifts", "Gifts"], ["other", "Other"]];
+
+/* Paid by: one row of equal slabs that always fills the width. Up to 4 people = one row of n.
+   More = the fewest rows of at most 4, split as evenly as possible (5 = 3+2, 6 = 3+3, 7 = 4+3),
+   and each row's slabs share that row's width, so no row is ragged. */
+function payerRows(n) {
+  const rows = Math.ceil(n / 4), base = Math.floor(n / rows), extra = n % rows;
+  return Array.from({ length: rows }, (_, i) => base + (i < extra ? 1 : 0));
+}
+function payers(names, sel) {
+  let k = 0;
+  return `<div class="payers" role="radiogroup" aria-label="Paid by">${payerRows(names.length).map(c =>
+    `<div class="prow" style="--cols:${c}">${names.slice(k, k += c).map((nm, j) => {
+      const i = k - c + j;
+      return `<span class="opt payer${i === sel ? ' on' : ''}" role="radio" aria-checked="${i === sel}">${nm}</span>`;
+    }).join('')}</div>`).join('')}</div>`;
+}
+const PAYER_DEMO = [['You'], ['You', 'Ivy'], ['You', 'Ana', 'Ben'], ['You', 'Ana', 'Ben', 'Caro'],
+  ['You', 'Ana', 'Ben', 'Caro', 'Dino'], ['You', 'Ana', 'Ben', 'Caro', 'Dino', 'Eli'],
+  ['You', 'Ana', 'Ben', 'Caro', 'Dino', 'Eli', 'Francesca']];
 const ICON = {
   gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/></svg>',
   back: '<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>',
@@ -481,7 +512,7 @@ function volume(d, withSheet) {
       <div class="field" style="border:0;background:none;padding:0"><small>Category</small>
         <div class="cats" style="margin-top:6px">${CATEGORIES.map(c => `<span class="cat${c[0] === 'food' ? ' on' : ''}"><span aria-hidden="true">${CAT_ICON[c[0]]}</span>${c[1]}</span>`).join('')}</div></div>
       <div class="field" style="border:0;background:none;padding:0"><small>Paid by</small>
-        <div class="opts" style="margin-top:6px"><span class="opt on">You</span><span class="opt">Ana</span><span class="opt">Ben</span><span class="opt">Caro</span></div></div>
+        ${payers(['You', 'Ana', 'Ben', 'Caro'], 0)}</div>
       <div class="tabs"><span class="on">Split equally</span><span>Exact amounts</span><span>Shares</span></div>
       <div class="btn primary">Add expense</div>
     </div>` : '';
@@ -520,6 +551,8 @@ document.getElementById('board').innerHTML = DIRS.map(d => `
       <figure class="phone"><div class="screen qg d-quiet d-matte">${volume(d, true)}</div><figcaption class="cap">New expense</figcaption></figure>
     </div>
     <div class="notes">${d.notes.map(n => `<div><b>${n[0]}</b><p>${n[1]}</p></div>`).join('')}</div>
+    <div class="pdemo-wrap"><h3 class="pdemo-h">Paid by, from 1 to 7 people</h3>
+      <div class="pdemo">${PAYER_DEMO.map(ns => `<div class="pcase qg d-quiet d-matte"><div class="pc-in"><small class="lbl">${ns.length} ${ns.length === 1 ? 'person' : 'people'}</small>${payers(ns, 0)}</div></div>`).join('')}</div></div>
   </section>`).join('');
 
 const root = document.documentElement;
