@@ -43,7 +43,7 @@ const URL = process.env.URL || 'http://127.0.0.1:8765/';
       const L = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
       const cr = (a, c) => { const x = L(parse(a)), y = L(parse(c)); return Math.round((Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05) * 100) / 100; };
       const cs = (s, pe) => getComputedStyle(document.querySelector(s), pe || null), page = getComputedStyle(document.body).backgroundColor;
-      const t = cs('.topbar'), h = cs('.hero'), off = cs('#app .ledger').boxShadow.match(/^(rgba?|color)\([^)]*\)/)[0];
+      const t = cs('.topbar'), h = cs('.hero'), off = cs('#app .ledger').boxShadow.split(/,(?![^(]*\))/).find(l => !/inset/.test(l)).trim().match(/^(rgba?|color)\([^)]*\)/)[0]; // the slab, not the frosted inset light line (owner 2026-11-11)
       return [['topbar edge / --nav', cr(t.borderBottomColor, t.backgroundColor)], ['topbar edge / page', cr(t.borderBottomColor, page)],
         ['hero "Pay" rule / hero', cr(cs('.hero .mine').borderTopColor, h.backgroundColor)], ['hero slab frame / page', cr(cs('.hero', '::after').borderTopColor, page)],
         ['card slab / page', cr(off, page)]];
