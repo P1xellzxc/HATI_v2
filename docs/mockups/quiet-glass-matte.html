@@ -281,19 +281,7 @@ button { font: inherit; color: inherit; }
 
 /* MATTE — real blur, grain, low shine. Page = printed manga art (hard shapes)
    that the matte glass softens. Fallback on weak phones: the solid A slab. */
-.d-matte { --page:
-    repeating-conic-gradient(from 0deg at 84% 14%, color-mix(in srgb, var(--fg) 16%, transparent) 0 1.2deg, transparent 1.2deg 8deg),
-    radial-gradient(circle at 84% 14%, var(--acc) 0 70px, transparent 71px),
-    radial-gradient(circle at 6% 58%, color-mix(in srgb, var(--s3) 85%, transparent) 0 96px, transparent 97px),
-    radial-gradient(circle at 96% 82%, color-mix(in srgb, var(--s4) 90%, transparent) 0 80px, transparent 81px),
-    radial-gradient(color-mix(in srgb, var(--fg) 16%, transparent) 1.3px, transparent 1.7px) 0 0 / 9px 9px,
-    linear-gradient(160deg, var(--page-a) 0 46%, var(--page-b) 46%); }
-.d-matte .sec > .lbl, .d-matte .topbar h1, .d-matte .logo { justify-self: start; }
-.d-matte .sec > .lbl { display: inline-block; padding: 3px 9px; border-radius: 6px; color: var(--fg);
-  background: var(--grain), var(--mat); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: inset 0 0 0 1px var(--gl-rim), 0 2px 0 var(--gl-side); }
-.d-matte .topbar h1, .d-matte .logo { display: inline-block; flex: 0 1 auto; padding: 4px 10px; border-radius: 8px; background: var(--grain), var(--mat); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: inset 0 0 0 1px var(--gl-rim), 0 3px 0 var(--gl-side); }
-.d-matte .topbar h1 + .ico, .d-matte .logo + h1 + .ico { margin-left: auto; }
-.d-matte .topbar h1:empty { display: none; }
+.d-matte { --page: linear-gradient(170deg, var(--page-a) 0 52%, var(--page-b) 52%); }
 .d-matte :is(.list, .btn, .field, .amount, .opt:not(.on), .ico) {
   background: linear-gradient(var(--mat-hi), var(--mat-hi)) 0 0 / 100% 1px no-repeat, var(--grain), var(--mat);
   -webkit-backdrop-filter: blur(18px) saturate(1.25); backdrop-filter: blur(18px) saturate(1.25); }
@@ -311,7 +299,7 @@ button { font: inherit; color: inherit; }
 <div class="sheetwrap">
   <header class="mast">
     <h1>HATI<sup>2</sup> matte glass</h1>
-    <p>A+C in matte glass: every slab really blurs what is behind it, with a fine grain and almost no shine, like sandblasted glass. Slab sides and the stacked balance stay, so nothing is flat. The page behind is printed manga art so the blur has something to soften.</p>
+    <p>A+C in matte glass: every slab really blurs what is behind it, with a fine grain and almost no shine, like sandblasted glass. Slab sides and the stacked balance stay, so nothing is flat. The page behind is a calm two-tone paper, so nothing competes with the money.</p>
     <div class="controls">
       <div class="ctl"><span id="plateLbl">Plate</span>
         <div class="seg" role="group" aria-labelledby="plateLbl" id="plates">
@@ -341,9 +329,9 @@ const ICON = {
 };
 const DIRS = [
   { id: 'matte', no: 'A+C', name: 'Matte glass slabs', badge: 'Owner pick',
-    tag: 'Sandblasted glass: each slab blurs the printed page behind it, carries a fine grain and only a faint lit edge. The slab sides and the stacked balance stay, so it is soft but not flat.',
+    tag: 'Sandblasted glass: each slab frosts the calm paper behind it, carries a fine grain and only a faint lit edge. The slab sides and the stacked balance stay, so it is soft but not flat.',
     notes: [
-      ['hati-design', 'Grain is what makes it matte instead of shiny: the blur reads as a material, not a filter. Hard manga shapes behind give it something to soften.'],
+      ['hati-design', 'Grain is what makes it matte instead of shiny: the blur reads as a material, not a filter. The page stays calm: two plate tints, no art.'],
       ['hati-slop-rubric', 'Blur is tell #1 (score 2); the owner chose it on 2026-11-12, so it is an override. Grain and slab sides keep it from the stock frosted look.'],
       ['hati-ponytail', 'Blur on every scrolling slab is the cost (earlier trace ~1.4 s on 14 cards). Build with :root.lowfx falling back to the solid A slab.'],
       ['hati-a11y', 'Text sits on blurred art; slabs are ~58% matte. Grey words need a measured pass in 13 plates; raise opacity where it fails.']
