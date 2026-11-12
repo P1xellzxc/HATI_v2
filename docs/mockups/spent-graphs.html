@@ -73,6 +73,32 @@ p.v { margin: 0 0 12px; color: var(--sub); max-width: 70ch; }
 .chartslab { padding: 12px 10px 8px; }
 .keyslab { padding: 10px; }
 .keyslab .legend { margin-top: 0; }
+.screen { position: relative; }
+.open-all { margin-top: 8px; width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: .88rem;
+  background: linear-gradient(180deg, var(--g-top), var(--g-foot)) var(--g-foot); box-shadow: inset 0 1px 0 var(--g-lip), inset 0 0 0 1px var(--g-rim), 4px 6px 10px -2px var(--g-shadow); }
+.dimmer { position: absolute; inset: 0; background: rgba(10,10,14,.35); z-index: 5; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: 64px; z-index: 6; border-radius: 22px 22px 0 0; padding: 10px 14px 16px; overflow: auto;
+  display: grid; align-content: start; gap: 10px; transform: translateY(100%); transition: transform .22s cubic-bezier(.2,.8,.2,1);
+  -webkit-backdrop-filter: blur(22px) saturate(1.2); backdrop-filter: blur(22px) saturate(1.2); }
+.sheet-on .sheet { transform: none; }
+.sheet .grab { width: 40px; height: 4px; border-radius: 2px; background: var(--rule); justify-self: center; }
+.sh-head { display: flex; justify-content: space-between; align-items: center; }
+.sh-head h3 { margin: 0; font: 400 1.25rem/1.1 var(--font-disp); }
+.sh-head .close { border: 0; border-radius: 10px; min-height: 40px; padding: 0 14px; font-weight: 700; cursor: pointer; background: var(--fg); color: var(--g-foot); }
+.sheet h4 { margin: 6px 0 0; font-size: .82rem; color: var(--sub); }
+.sum { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.mini { padding: 8px 10px; border-radius: 12px; display: grid; gap: 2px; box-shadow: inset 0 0 0 1px var(--g-rim), 4px 6px 10px -3px var(--g-shadow); }
+.mini b { font-variant-numeric: tabular-nums; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.list { padding: 4px 12px; border-radius: 14px; box-shadow: inset 0 0 0 1px var(--g-rim), 5px 7px 14px -3px var(--g-shadow); }
+.list .li { display: grid; grid-template-columns: 1fr auto; gap: 0 10px; padding: 8px 0; font-size: .86rem; }
+.list .li + .li { border-top: 1px solid var(--rule); }
+.list .li .k { display: inline-flex; align-items: center; gap: 6px; }
+.list .li .num { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.list .li .small { grid-column: 1 / -1; }
+.sheet .tblw { padding: 6px 8px; border-radius: 14px; overflow-x: auto; box-shadow: inset 0 0 0 1px var(--g-rim), 5px 7px 14px -3px var(--g-shadow); font-size: .76rem; }
+.sheet table th[scope="row"] { text-align: left; font-weight: 500; }
+.sheet tfoot td, .sheet tfoot th { font-weight: 700; border-bottom: 0; }
+@media (prefers-reduced-motion: reduce) { .sheet { transition: none; } }
 .gh { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .gh h3 { margin: 0; font-size: .95rem; }
 .gh .range { font-size: .78rem; color: var(--sub); }
@@ -127,7 +153,7 @@ th:first-child, td:first-child { text-align: left; }
   <div class="row">
     <figure class="phone"><div class="screen" id="s1"></div><figcaption class="cap">At rest</figcaption></figure>
     <figure class="phone"><div class="screen" id="s2"></div><figcaption class="cap">Tapped on Nov 6</figcaption></figure>
-    <figure class="phone"><div class="screen" id="s3"></div><figcaption class="cap">Food only (others hidden), numbers open</figcaption></figure>
+    <figure class="phone"><div class="screen" id="s3"></div><figcaption class="cap">"All the numbers" opened: a glass sheet with every figure</figcaption></figure>
   </div>
 
   <h2 class="v">Household, month by month</h2>
@@ -199,11 +225,27 @@ function card(el, d, opt = {}) {
         ${d.series.map((s, i) => `<button type="button" class="lg" data-i="${i}" aria-pressed="${on[i]}"><span class="k"><span class="sw" style="background:${C[i]}"></span><span>${s.name}</span></span><span class="num">${k(sum[i], d.cur)}</span></button>`).join('')}
         <div class="lg avgchip"><span class="k"><span class="sw avgsw"></span><span>${d.avgName}</span></span><span class="num">${d.fmt(all)} total</span></div>
       </div>
-      <details class="tbl"${opt.table ? ' open' : ''}><summary>Show the numbers</summary><div class="tblw"><table>
-        <thead><tr><th>${d.unit === 'day' ? 'Day' : 'Month'}</th>${d.series.map(s => `<th>${s.name}</th>`).join('')}<th>Avg</th></tr></thead>
-        <tbody>${d.labels.map((l, i) => `<tr><td>${l}</td>${d.series.map(s => `<td>${k(s.v[i], d.cur)}</td>`).join('')}<td>${k(A[i], d.cur)}</td></tr>`).join('')}</tbody></table></div></details></div>
+      <button type="button" class="open-all">All the numbers <span aria-hidden="true">›</span></button></div>
     </section>
-    <div class="small">Tap or drag on the chart for one ${d.unit}'s numbers.</div>`;
+    <div class="small">Tap or drag on the chart for one ${d.unit}'s numbers. "All the numbers" opens every figure.</div>
+    <div class="dimmer" hidden></div>
+    <section class="glass sheet" role="dialog" aria-modal="true" aria-labelledby="${el.id}sh" hidden>
+      <span class="grab" aria-hidden="true"></span>
+      <div class="sh-head"><h3 id="${el.id}sh">Spent over time</h3><button type="button" class="close">Done</button></div>
+      <p class="small" style="margin:0">${d.labels[0]} – ${d.labels[d.labels.length - 1]} · ${d.labels.length} ${d.unit}s · ${d.avgName}</p>
+      <div class="sum">
+        <div class="glass mini"><span class="small">Total</span><b>${d.fmt(all)}</b></div>
+        <div class="glass mini"><span class="small">Per ${d.unit}</span><b>${d.fmt(all / d.labels.length)}</b></div>
+        <div class="glass mini"><span class="small">Most on</span><b>${d.labels[T.indexOf(Math.max(...T))]}</b></div>
+      </div>
+      <h4>By type</h4>
+      <div class="glass list">${d.series.map((s, i) => `<div class="li"><span class="k"><span class="sw" style="background:${C[i]}"></span>${s.name}</span><span class="num">${d.fmt(sum[i])}</span><span class="small num">${Math.round(sum[i] * 100 / all)}% · max ${d.fmt(Math.max(...s.v))}</span></div>`).join('')}</div>
+      <h4>Each ${d.unit}</h4>
+      <div class="glass tblw"><table>
+        <thead><tr><th scope="col">${d.unit === 'day' ? 'Day' : 'Month'}</th>${d.series.map(s => `<th scope="col">${s.name}</th>`).join('')}<th scope="col">Total</th><th scope="col">Avg</th></tr></thead>
+        <tbody>${d.labels.map((l, i) => `<tr><th scope="row">${l}</th>${d.series.map(s => `<td>${d.fmt(s.v[i])}</td>`).join('')}<td><b>${d.fmt(T[i])}</b></td><td>${d.fmt(A[i])}</td></tr>`).join('')}</tbody>
+        <tfoot><tr><th scope="row">Total</th>${sum.map(v => `<td>${d.fmt(v)}</td>`).join('')}<td><b>${d.fmt(all)}</b></td><td></td></tr></tfoot></table></div>
+    </section>`;
   const chart = el.querySelector('.chart'), tip = chart.querySelector('.tip'), g = chart.querySelector('.hover'), sv = chart.querySelector('svg');
   const show = i => {
     g.innerHTML = `<line class="x" x1="${x(i)}" x2="${x(i)}" y1="${Tp}" y2="${y(0)}"/>` +
@@ -220,12 +262,19 @@ function card(el, d, opt = {}) {
   chart.addEventListener('pointerleave', () => { if (opt.hold == null) { tip.hidden = true; g.innerHTML = ''; } });
   el.querySelectorAll('.lg[data-i]').forEach(b => b.addEventListener('click', () => {
     const n = on.slice(); n[+b.dataset.i] = !n[+b.dataset.i]; if (!n.some(Boolean)) return; card(el, d, { ...opt, on: n, hold: null }); }));
+  const sheet = el.querySelector('.sheet'), dim = el.querySelector('.dimmer'), opener = el.querySelector('.open-all');
+  const open = () => { sheet.hidden = dim.hidden = false; requestAnimationFrame(() => el.classList.add('sheet-on')); sheet.querySelector('.close').focus(); };
+  const close = () => { el.classList.remove('sheet-on'); sheet.hidden = dim.hidden = true; opener.focus(); };
+  opener.addEventListener('click', open);
+  sheet.querySelector('.close').addEventListener('click', close); dim.addEventListener('click', close);
+  sheet.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+  if (opt.sheet) { sheet.hidden = dim.hidden = false; el.classList.add('sheet-on'); }
   if (opt.hold != null) show(opt.hold);
 }
 function render() {
   card(document.getElementById('s1'), TRIP);
   card(document.getElementById('s2'), TRIP, { hold: 5 });
-  card(document.getElementById('s3'), TRIP, { on: [true, false, false, false], table: true });
+  card(document.getElementById('s3'), TRIP, { sheet: true });
   card(document.getElementById('s4'), HOME);
   card(document.getElementById('s5'), HOME, { hold: 3 });
 }
