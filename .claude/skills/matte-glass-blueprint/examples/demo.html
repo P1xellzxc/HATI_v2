@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Matte Glass Demo</title>
+<link rel="stylesheet" href="../references/tokens.css">
+<link rel="stylesheet" href="../references/components.css">
+<style>
+  main { max-width: 520px; margin: 0 auto; padding: 16px max(16px, env(safe-area-inset-right, 0px)) 32px max(16px, env(safe-area-inset-left, 0px)); }
+  h1 { flex: 1; margin: 0; font-size: 1.2rem; }
+  .big { font: 700 2.2rem/1.1 var(--font-body); font-variant-numeric: tabular-nums; margin: 4px 0; }
+  .muted { color: var(--sub); font-size: .85rem; }
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: var(--gap-block); }
+  .actions .is-primary { grid-column: 1 / -1; }
+  .stack { display: grid; gap: var(--gap-field); }
+</style>
+</head>
+<body>
+<header class="topbar"><button class="icon-btn" aria-label="Back">‹</button><h1>Weekend trip</h1>
+  <button class="icon-btn" id="theme" aria-label="Switch theme">◐</button></header>
+<main>
+  <div class="label">Balance</div>
+  <section class="card is-accent" aria-label="Your balance">
+    <div class="muted">4 people · ₱12,480.00 spent</div>
+    <div class="big">₱1,860.00</div>
+    <div>You're owed this in total.</div>
+  </section>
+  <div class="actions">
+    <button class="btn is-primary">+ Add expense</button>
+    <button class="btn">Settle up</button><button class="btn">Share</button>
+  </div>
+
+  <div class="label" style="margin-top:var(--gap-block)">Paid by</div>
+  <div id="payers"></div>
+
+  <div class="label" style="margin-top:var(--gap-block)">Who pays whom</div>
+  <section class="card ledger" style="padding-block:0">
+    <div><b>Ana → You</b><span class="num">₱960.00</span><span class="muted">Suggested payment</span></div>
+    <div><b>Ben → You</b><span class="num">₱900.00</span><span class="muted">Suggested payment</span></div>
+  </section>
+
+  <div class="label" style="margin-top:var(--gap-block)">Details</div>
+  <section class="card stack">
+    <div class="field"><label for="d">Description</label><input id="d" class="input" value="Dinner at the pier"></div>
+    <div class="seg" role="group" aria-label="Split"><button aria-pressed="true">Equal</button><button aria-pressed="false">Exact</button><button aria-pressed="false">Shares</button></div>
+  </section>
+</main>
+<script>
+function balancedRows(n, max = 4) { const rows = Math.max(1, Math.ceil(n / max)), base = Math.floor(n / rows), extra = n % rows; return Array.from({ length: rows }, (_, i) => base + (i < extra ? 1 : 0)); }
+const names = ['You', 'Ana', 'Ben', 'Carolina', 'Dino'];
+let k = 0, sel = 0;
+const draw = () => { k = 0; document.getElementById('payers').innerHTML = `<div class="rows" role="radiogroup" aria-label="Paid by">${balancedRows(names.length, 4).map(c => `<div class="row" style="--cols:${c}">${names.slice(k, k += c).map((n, j) => { const i = k - c + j; return `<button class="chip" role="radio" aria-checked="${i === sel}" tabindex="${i === sel ? 0 : -1}" data-i="${i}">${n}</button>`; }).join('')}</div>`).join('')}</div>`; };
+draw();
+document.getElementById('payers').addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b) { sel = +b.dataset.i; draw(); document.querySelector(`[data-i="${sel}"]`).focus(); } });
+document.querySelector('.seg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; [...e.currentTarget.children].forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
+window.setTheme = t => document.documentElement.setAttribute('data-theme', t);
+document.getElementById('theme').addEventListener('click', () => setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
+</script>
+</body>
+</html>

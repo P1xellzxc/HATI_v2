@@ -19,7 +19,7 @@ Everything the HATI² team knows and has decided, as linked notes. This vault is
 - [[Roadmap]]: what to build next (Now / Next / Later), from the 2026-11-09 all-skills discussion
 
 ## Team
-- [[Skills index]] (20 skills)
+- [[Skills index]] (21 skills)
 - Roles: [[hati-plan]] · [[hati-design]] · [[hati-code]] · [[hati-code-audit]] · [[hati-design-audit]] · [[hati-goal-judge]]
 - Specialists: [[hati-ios]] · [[hati-scenarios]] · [[hati-money-parity]] · [[hati-copy]] · [[hati-a11y]] · [[hati-pixel-perfectionist]] · [[hati-ponytail]] · [[hati-android-build]] · [[hati-ship]]
 - Shared checks: [[hati-lazy-check]] · [[hati-slop-rubric]] · [[hati-shots]]

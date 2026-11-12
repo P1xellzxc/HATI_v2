@@ -1,0 +1,88 @@
+/* Matte glass tokens. Set the five inputs; everything else derives from them.
+   Light values on :root; dark values in both dark blocks (system dark and an explicit toggle). */
+:root {
+  /* ── inputs (per project / per theme) ── */
+  --paper: #FFFFFF;
+  --ink: #111014;
+  --brand: #BFDBFE;      /* tints page and glass */
+  --accent: #FEF08A;     /* the one highlight; ink text must read on it */
+  --muted: #5B5F69;      /* grey text */
+
+  /* ── page: calm two-tone paper (7% ink so white cards separate) ── */
+  --bg: var(--paper);
+  --fg: var(--ink);
+  --sub: color-mix(in srgb, var(--muted) 80%, var(--ink));
+  --page-a: color-mix(in srgb, var(--brand) 14%, color-mix(in srgb, var(--ink) 7%, var(--paper)));
+  --page-b: color-mix(in srgb, var(--accent) 14%, color-mix(in srgb, var(--ink) 7%, var(--paper)));
+
+  /* ── glass ── */
+  --g-top: var(--paper);
+  --g-foot: color-mix(in srgb, var(--brand) 7%, var(--paper));
+  --g-lip: color-mix(in srgb, var(--paper) 85%, transparent);
+  --g-rim: color-mix(in srgb, var(--paper) 70%, transparent);
+  --g-line: color-mix(in srgb, var(--ink) 14%, transparent);
+  --g-seam: color-mix(in srgb, var(--ink) 12%, transparent);
+  --g-shadow: color-mix(in srgb, var(--ink) 38%, transparent);
+  --g-contact: color-mix(in srgb, var(--ink) 22%, transparent);
+  --g-grain: color-mix(in srgb, var(--ink) 7%, transparent);
+  --g-field-line: color-mix(in srgb, var(--ink) 58%, var(--paper));   /* ≥ 3:1 */
+  --g-bar: color-mix(in srgb, color-mix(in srgb, var(--brand) 10%, var(--paper)) 80%, transparent);
+
+  /* ── accent glass (main number, main action) ── */
+  --a-top: color-mix(in srgb, var(--accent) 18%, var(--paper));
+  --a-foot: color-mix(in srgb, var(--accent) 32%, var(--paper));
+  --a-btn-top: color-mix(in srgb, var(--accent) 70%, var(--paper));
+  --a-btn-foot: var(--accent);
+  --on-accent: var(--ink);
+
+  /* ── chosen (inverted) ── */
+  --sel-bg: var(--fg);
+  --sel-fg: var(--bg);
+
+  /* ── grain: CSS only (works under a strict CSP that forbids image data) ── */
+  --grain:
+    radial-gradient(var(--g-grain) .6px, transparent .9px) 0 0 / 3px 3px,
+    radial-gradient(var(--g-grain) .6px, transparent .9px) 1px 2px / 5px 5px,
+    radial-gradient(var(--g-grain) .6px, transparent .9px) 2px 1px / 7px 7px;
+
+  /* ── shape, type, motion ── */
+  --r-card: 16px; --r-ctl: 12px; --r-sheet: 18px;
+  --in: 16px;              /* inner inset for all card text */
+  --gap-block: 16px; --gap-label: 8px; --gap-field: 12px;
+  --dur-press: 90ms; --dur-in: 200ms; --dur-out: 160ms;
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --font-disp: 'Black Han Sans', 'Arial Black', Impact, sans-serif;   /* swap per brand */
+  --font-body: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color-scheme: light;
+}
+
+/* Dark: night paper, chalk ink, deeper accent glass for light text, near-full accent for buttons with dark text */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: color-mix(in srgb, var(--ink) 5%, #0E0D12); --fg: #EDEBE4; --sub: #C6C4CD;
+  --panel: color-mix(in srgb, #EDEBE4 11%, var(--bg));
+  --page-a: color-mix(in srgb, var(--brand) 16%, var(--bg)); --page-b: color-mix(in srgb, var(--accent) 7%, var(--bg));
+  --g-top: color-mix(in srgb, var(--brand) 5%, var(--panel)); --g-foot: color-mix(in srgb, var(--brand) 10%, var(--panel));
+  --g-lip: color-mix(in srgb, #EDEBE4 24%, transparent); --g-rim: color-mix(in srgb, #EDEBE4 10%, transparent);
+  --g-line: color-mix(in srgb, #EDEBE4 16%, transparent); --g-seam: color-mix(in srgb, #000 40%, transparent);
+  --g-shadow: color-mix(in srgb, #000 62%, transparent); --g-contact: color-mix(in srgb, #000 40%, transparent);
+  --g-grain: color-mix(in srgb, #EDEBE4 5%, transparent); --g-field-line: color-mix(in srgb, #EDEBE4 58%, var(--bg));
+  --g-bar: color-mix(in srgb, color-mix(in srgb, var(--brand) 6%, var(--panel)) 82%, transparent);
+  --a-top: color-mix(in srgb, var(--accent) 12%, var(--panel)); --a-foot: color-mix(in srgb, var(--accent) 20%, var(--panel));
+  --a-btn-top: color-mix(in srgb, var(--accent) 88%, #EDEBE4); --a-btn-foot: var(--accent); --on-accent: #131217;
+  --sel-bg: #EDEBE4; --sel-fg: #131217;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: color-mix(in srgb, var(--ink) 5%, #0E0D12); --fg: #EDEBE4; --sub: #C6C4CD;
+  --panel: color-mix(in srgb, #EDEBE4 11%, var(--bg));
+  --page-a: color-mix(in srgb, var(--brand) 16%, var(--bg)); --page-b: color-mix(in srgb, var(--accent) 7%, var(--bg));
+  --g-top: color-mix(in srgb, var(--brand) 5%, var(--panel)); --g-foot: color-mix(in srgb, var(--brand) 10%, var(--panel));
+  --g-lip: color-mix(in srgb, #EDEBE4 24%, transparent); --g-rim: color-mix(in srgb, #EDEBE4 10%, transparent);
+  --g-line: color-mix(in srgb, #EDEBE4 16%, transparent); --g-seam: color-mix(in srgb, #000 40%, transparent);
+  --g-shadow: color-mix(in srgb, #000 62%, transparent); --g-contact: color-mix(in srgb, #000 40%, transparent);
+  --g-grain: color-mix(in srgb, #EDEBE4 5%, transparent); --g-field-line: color-mix(in srgb, #EDEBE4 58%, var(--bg));
+  --g-bar: color-mix(in srgb, color-mix(in srgb, var(--brand) 6%, var(--panel)) 82%, transparent);
+  --a-top: color-mix(in srgb, var(--accent) 12%, var(--panel)); --a-foot: color-mix(in srgb, var(--accent) 20%, var(--panel));
+  --a-btn-top: color-mix(in srgb, var(--accent) 88%, #EDEBE4); --a-btn-foot: var(--accent); --on-accent: #131217;
+  --sel-bg: #EDEBE4; --sel-fg: #131217;
+  color-scheme: dark;
+}
