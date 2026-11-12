@@ -65,6 +65,14 @@ p.v { margin: 0 0 12px; color: var(--sub); max-width: 70ch; }
     radial-gradient(var(--grain) .6px, transparent .9px) 0 0 / 3px 3px, radial-gradient(var(--grain) .6px, transparent .9px) 1px 2px / 5px 5px,
     linear-gradient(180deg, var(--g-top), var(--g-foot)) var(--g-foot);
   box-shadow: inset 0 0 0 1px var(--g-rim), 8px 11px 21px -4px var(--g-shadow), 1px 2px 3px var(--g-contact); }
+/* the chart stands on its own glass slab (owner 2026-11-12); title and sentence sit on the page above it, the key and
+   numbers on a second slab below */
+.block { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; min-width: 0; }
+.block > * { min-width: 0; }
+.block > .say { margin: -4px 0 0; }
+.chartslab { padding: 12px 10px 8px; }
+.keyslab { padding: 10px; }
+.keyslab .legend { margin-top: 0; }
 .gh { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .gh h3 { margin: 0; font-size: .95rem; }
 .gh .range { font-size: .78rem; color: var(--sub); }
@@ -183,17 +191,17 @@ function card(el, d, opt = {}) {
     <circle class="dot" r="4.5" fill="var(--avg)" cx="${x(A.length - 1)}" cy="${y(last)}"/>
     <g class="hover"></g></svg>`;
   el.innerHTML = `<div class="label">At a glance</div>
-    <section class="glass" aria-labelledby="${el.id}h">
+    <section class="block" aria-labelledby="${el.id}h">
       <div class="gh"><h3 id="${el.id}h">Spent over time</h3><span class="range">${d.labels[0]} – ${d.labels[d.labels.length - 1]}</span></div>
       <p class="say">Average ${d.cur === '¥' ? 'per day' : 'per month'} <b>${d.fmt(last)}</b>, ${trend}. Most on <b>${d.labels[T.indexOf(Math.max(...T))]}</b> (${d.fmt(Math.max(...T))}).</p>
-      <div class="chart${on.every(Boolean) ? '' : ' dim'}">${svg}<div class="tip" hidden></div></div>
-      <div class="legend" role="group" aria-label="Show or hide a type">
+      <div class="glass chartslab"><div class="chart${on.every(Boolean) ? '' : ' dim'}">${svg}<div class="tip" hidden></div></div></div>
+      <div class="glass keyslab"><div class="legend" role="group" aria-label="Show or hide a type">
         ${d.series.map((s, i) => `<button type="button" class="lg" data-i="${i}" aria-pressed="${on[i]}"><span class="k"><span class="sw" style="background:${C[i]}"></span><span>${s.name}</span></span><span class="num">${k(sum[i], d.cur)}</span></button>`).join('')}
         <div class="lg avgchip"><span class="k"><span class="sw avgsw"></span><span>${d.avgName}</span></span><span class="num">${d.fmt(all)} total</span></div>
       </div>
       <details class="tbl"${opt.table ? ' open' : ''}><summary>Show the numbers</summary><div class="tblw"><table>
         <thead><tr><th>${d.unit === 'day' ? 'Day' : 'Month'}</th>${d.series.map(s => `<th>${s.name}</th>`).join('')}<th>Avg</th></tr></thead>
-        <tbody>${d.labels.map((l, i) => `<tr><td>${l}</td>${d.series.map(s => `<td>${k(s.v[i], d.cur)}</td>`).join('')}<td>${k(A[i], d.cur)}</td></tr>`).join('')}</tbody></table></div></details>
+        <tbody>${d.labels.map((l, i) => `<tr><td>${l}</td>${d.series.map(s => `<td>${k(s.v[i], d.cur)}</td>`).join('')}<td>${k(A[i], d.cur)}</td></tr>`).join('')}</tbody></table></div></details></div>
     </section>
     <div class="small">Tap or drag on the chart for one ${d.unit}'s numbers.</div>`;
   const chart = el.querySelector('.chart'), tip = chart.querySelector('.tip'), g = chart.querySelector('.hover'), sv = chart.querySelector('svg');
