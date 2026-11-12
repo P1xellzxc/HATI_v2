@@ -317,6 +317,48 @@ button { font: inherit; color: inherit; }
 .d-matte .hero .mini { gap: 4px; }
 .d-matte .bsheet { gap: 12px; }
 .d-matte .bsheet .field[style] { padding: 0; background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; } /* label groups, not slabs: label on the slab edge, chips below */
+
+/* GLASS MODEL v2 (owner 2026-11-12: "doesn't look like glass"). One light, from above.
+   A slab = body (deeper at the foot) + bright 1px top and left edges + a 1px rim + the edge
+   face below it: the same glass, a little denser, with a dark seam where it meets the face,
+   a bright lip where light exits, then a contact line. No dark olive bars. The balance stack
+   = two more sheets of the same glass, each set in 8px and peeking below the one above:
+   they share the edge direction, so they read as a stack, not as tabs. */
+.d-matte {
+  --g-edge: color-mix(in srgb, color-mix(in srgb, var(--s2) 40%, var(--fg) 14%) 46%, transparent);
+  --g-lip: var(--mat-hi);
+  --g-seam: color-mix(in srgb, var(--gl-foot) 55%, transparent);
+  --a-edge: color-mix(in srgb, var(--acc) 82%, var(--fg) 18%);
+  --a-face-top: color-mix(in srgb, var(--acc) 52%, transparent);
+  --a-face-foot: color-mix(in srgb, var(--acc) 74%, transparent);
+}
+.d-matte :is(.list, .btn, .field, .amount, .ico, .hero), .d-matte .opt:not(.on) {
+  box-shadow: inset 0 1px 0 var(--g-lip), inset 1px 0 0 color-mix(in srgb, var(--g-lip) 60%, transparent), inset 0 0 0 1px var(--gl-rim),
+    0 1px 0 var(--g-seam), 0 var(--t) 0 var(--g-edge), 0 calc(var(--t) + 1px) 0 var(--g-lip), 0 calc(var(--t) + 2px) 0 var(--gl-foot);
+}
+.d-matte :is(.list, .btn, .field, .amount, .opt:not(.on), .ico) { margin-bottom: calc(var(--t) + 2px); }
+.d-matte .bsheet .field[style] { box-shadow: none; margin-bottom: 0; }
+.d-matte .ico { --t: 3px; }
+
+/* the balance: accent glass, deeper toward the foot. Its stack is two more sheets of the same
+   size, drawn as shadows so they only ever sit behind it: each shows 4px of face, its edge,
+   lip and contact line below the one above. Same radius, same light, same edge direction. */
+.d-matte .hero { --t: 6px; --g-edge: var(--a-edge); margin: 16px 0 calc(var(--t) + 20px); border-radius: 10px;
+  --p1: color-mix(in srgb, var(--acc) 50%, var(--mat)); --p2: color-mix(in srgb, var(--acc) 32%, var(--mat));
+  background:
+    linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat,
+    var(--grain),
+    linear-gradient(180deg, var(--a-face-top), var(--a-face-foot));
+  box-shadow: inset 0 1px 0 var(--g-lip), inset 1px 0 0 color-mix(in srgb, var(--g-lip) 60%, transparent), inset 0 0 0 1px var(--gl-rim),
+    0 1px 0 var(--g-seam), 0 var(--t) 0 var(--g-edge), 0 calc(var(--t) + 1px) 0 var(--g-lip), 0 calc(var(--t) + 2px) 0 var(--gl-foot),
+    0 calc(var(--t) + 6px) 0 var(--p1), 0 calc(var(--t) + 9px) 0 var(--a-edge), 0 calc(var(--t) + 10px) 0 var(--g-lip), 0 calc(var(--t) + 11px) 0 var(--gl-foot),
+    0 calc(var(--t) + 15px) 0 var(--p2), 0 calc(var(--t) + 18px) 0 var(--a-edge), 0 calc(var(--t) + 19px) 0 var(--g-lip), 0 calc(var(--t) + 20px) 0 var(--gl-foot); }
+.d-matte .hero::before, .d-matte .hero::after { content: none; }
+.d-matte .btn.primary { --g-edge: var(--a-edge);
+  background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain), linear-gradient(180deg, var(--a-face-top), var(--a-face-foot)); }
+
+/* the sheet rises from below: lit top edge and rim, a seam above, no slab face pointing up */
+.d-matte .bsheet { box-shadow: inset 0 1px 0 var(--g-lip), inset 0 0 0 1px var(--gl-rim), 0 -1px 0 var(--g-seam); }
 @media (max-width: 520px) { .phone, .screen { width: 320px; } }
 </style>
 
