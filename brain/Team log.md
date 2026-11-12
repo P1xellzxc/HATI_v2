@@ -1382,3 +1382,6 @@ Second run on f5faf76 failed 13 checks and crashed. Causes and fixes (app fixed;
 - **B Frosted slabs:** same slabs with `backdrop-filter` over printed halftone/sun/speed lines. *slop-rubric:* 2 (owner override). *ponytail:* blur on every scrolling block, needs lowfx fallback to A.
 - **C Stacked glass:** balance as three stacked panes, thicker slabs, keycap buttons. *lazy-check:* reads pressable at once, costs ~20px height per screen. *motion:* press sinks onto the side in 90 ms, transform only.
 - **hati-design recommendation:** A, borrowing C's stacked balance. Not built; waits for the owner's pick. Building retires direction A ink slabs/clay/frosted cards; contrast.js (13 plates × 2 themes) and e2e come with it.
+
+### Quiet glass A+C mock · hati-design (2026-11-12)
+- Owner: "I wanna see the A with C mock design." File: `docs/mockups/quiet-glass-ac.html`: A's printed glass slabs + C's stacked balance (two panes behind the hero), corners cut to 8px (*slop-rubric:* big-radius tell → 0), rows tightened so the volume screen fits at 360 px. Checked by screenshot in Classic light and Persimmon dark. Still mocks only; build waits for the owner's go.
