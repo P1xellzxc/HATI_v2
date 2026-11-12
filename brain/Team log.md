@@ -1429,3 +1429,23 @@ Second run on f5faf76 failed 13 checks and crashed. Causes and fixes (app fixed;
 - *hati-ponytail:* bodies are opaque (calm page: same look) and blur is only on the top bar and sheets, so long History lists cost what they did before.
 - *hati-slop-rubric:* blur and soft shadows are an owner override (2026-11-12); kept off reading text, no glow, no gradient blobs, no art behind glass.
 - Owner reference image honoured: soft shadow down-left, big round corners, thin bright rim; matte via grain.
+
+### Feature review · all skills, one voice (2026-11-12)
+Owner: "What are the current building features and any other features to add. Decide with other personas." Also: shadow on the right; Members balanced like Paid by (both built, see below).
+- **Built and waiting for the APK (this PR):** X1 At a glance, X2 month totals, X3 search/filter, X4 balanced Paid by, X5 Cash/GCash/Bank, X6 Copy as new, matte glass design (soft shadow now falls down-right), balanced Members grid (equal chips, rows of 2, "+ Add" counted; 3 per row cut "settled" at 360px).
+- **Already shipped before:** volumes, members, 4 split types, 12 categories, paste a receipt (D9), quick dates + Set dates (N5), undo (D2), payment date + how (D3), suggestions from the volume (D1), fewest-payments/pairwise, invite link + QR, live E2E sync, backup/restore, share code, 13 Wada themes, offline PWA + APK.
+- **Voices:**
+  - *hati-plan:* data safety before new screens: N4 (restore re-joins sync) + D8 (backup age, honest toast) first; then trust features that reuse `glance()`.
+  - *hati-sync:* N4 is the one silent-fork risk left; D6 "Synced 2 min ago / 3 changes waiting" makes offline merges visible.
+  - *hati-code-audit:* a restored phone that silently stops syncing is the worst real-use bug open; N4 needs a data-io reproduction first.
+  - *hati-android-build:* K3 (N3): a save is lost if Android kills the app during the file picker; small, Android-only, do it with N4.
+  - *hati-money-parity:* D7 (the odd centavo goes to the payer and the preview says so) and D4 (why this balance: paid − share ± payments = balance) both reuse integer-cent sums; fuzz them.
+  - *hati-design:* D4 as a glass sheet from a member chip; no new screen. A full glass pass on every view and sheet with fresh shots (G3).
+  - *hati-lazy-check:* "+ Expense" on the hub card goes straight to that volume's form (one tap fewer for the household). *hati-ponytail:* fine, it is one button, no new data.
+  - *hati-copy:* D6 and D8 wording: "Synced 2 min ago", "3 changes waiting", "Last backup 12 days ago".
+  - *hati-a11y / hati-ios:* check the glass under iOS "Reduce Transparency" and at 200% zoom; sheets must stay readable without blur.
+  - *hati-slop-rubric:* glass is an owner override; keep it off charts and reading text, no glow; re-score from fresh shots.
+  - *hati-scenarios:* new scenarios "restore and keep syncing", "why do I owe this?", "add from the hub".
+  - *hati-motion:* the glass press (shadow shrinks) at 90 ms, transform only; no new animation for D4/D6.
+  - *hati-goal-judge:* G2 is served most by N4, D4, D6; G1 by K3; G3 by the glass pass.
+- **Decided (hati-plan):** **Now** = N4 + D8 (re-join + backup you can trust) → N3 K3 → glass pass (shots, pixel, slop re-score, reduced transparency). **Next** = D4 Why this balance → D6 sync status in words → D7 odd centavo → Q1 "+ Expense" from the hub card → D5 changes from the other phone in words. **Owner action** = N2 two-phone real sync check once this APK is installed. **Later/no** unchanged (recurring engine, CSV export, custom categories later; multi-currency, receipt photos, reminders, widget, comments no).

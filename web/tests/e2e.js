@@ -199,7 +199,8 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      const c=await b.newContext({viewport:{width:360,height:780},colorScheme:os}); const pg=await c.newPage(); await pg.goto(URL);
      await pg.evaluate(a=>{ S.settings.mode=a; applyTheme(); ui.volId=S.volumes[0].id; go('volume'); scrollTo(0,1e5); },app);
      const bg=await pg.evaluate(()=>[getComputedStyle(document.documentElement).backgroundColor,getComputedStyle(document.body).backgroundColor,document.body.offsetHeight>=document.scrollingElement.scrollHeight-1]);
-     ok(bg[0]===bg[1] && bg[2],`OS ${os} + app ${app}: page background is one colour to the bottom (${bg[0]} / ${bg[1]}, body covers page: ${bg[2]})`);
+     const lum=c=>{ const n=(c.match(/[\d.]+/g)||[]).map(Number); const k=/^color\(srgb/.test(c)?1:1/255; return (0.2126*n[0]+0.7152*n[1]+0.0722*n[2])*k; };
+     ok(bg.slice(0,2).every(x=>app==='dark'?lum(x)<0.3:lum(x)>0.8) && bg[2],`OS ${os} + app ${app}: the page (two-tone glass paper) follows the app theme to the bottom (${bg[0]} / ${bg[1]}, body covers page: ${bg[2]})`);
      // R2 revise (iOS): native controls (checkbox, date picker, keyboard) follow the app theme, not the OS
      const cs=await pg.evaluate(()=>{ const o=[getComputedStyle(document.documentElement).colorScheme]; S.settings.mode='system'; applyTheme(); o.push(getComputedStyle(document.documentElement).colorScheme); return o; });
      ok(cs[0]===app && cs[1]===os,`OS ${os} + app ${app}: color-scheme is ${app}, and ${os} on System ${JSON.stringify(cs)}`);
@@ -493,65 +494,36 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      ok(await Q.pg.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith('hati2.corrupt.')).length)===1,'loading the same damaged data again does not write a second copy'); }
    const errs2=all.flatMap(x=>x.e); ok(errs2.length===0,'no console errors in revise (code) checks '+JSON.stringify(errs2));
    for (const x of all) await x.c.close(); }
- // R1-clay / R1-share / R1-ioshint (design): manga clay on pressable controls only, one-tap Share, short iOS hint
- { const layers=s=>s==='none'?[]:s.split(/,(?![^(]*\))/).map(x=>x.trim());
-   const nums=l=>(l.replace(/(rgba?|color)\([^)]*\)/g,'').match(/-?[\d.]+px/g)||[]).map(parseFloat);
-   const offLayer=s=>layers(s).find(l=>!/inset/.test(l));
-   const isClay=cs=>{ const o=offLayer(cs.boxShadow); const n=o?nums(o):[]; const r=parseFloat(cs.borderTopLeftRadius); return cs.borderTopWidth==='2px' && r>=6 && r<=10 && /inset/.test(cs.boxShadow) && !!o && n[2]===0; };
-   const st=(pg,sel)=>pg.evaluate(sel=>{ const e=document.querySelector(sel); if(!e) return null; const c=getComputedStyle(e); return {boxShadow:c.boxShadow,borderTopWidth:c.borderTopWidth,borderTopLeftRadius:c.borderTopLeftRadius,borderTopRightRadius:c.borderTopRightRadius,backgroundImage:c.backgroundImage,transform:c.transform,outlineWidth:c.outlineWidth}; },sel);
-   const c=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780}}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())});
+ // GLASS (owner 2026-11-12): matte glass replaces ink-and-clay. Cards 16px and controls 12px corners, no ink border,
+ // a soft shadow falling down and to the right, an opaque matte body; blur only on the top bar and sheets (none on lowfx);
+ // fields keep a visible 1.5px edge; a chosen category / segment inverts. 13 palettes x light/dark. Then R1-share.
+ { const c=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780}}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())});
    await pg.goto(URL);
    const ids=await pg.evaluate(()=>PALETTES.map(x=>x.id)); const bad=[];
-   const CLAY_SET='.btn:not(.quiet):not(.text), .ico, .cat, .seg button, .vol, button.chip:not(.add)';
    for (const id of ids) for (const mode of ['light','dark']) {
-     const set=async v=>pg.evaluate(([id,mode,v])=>{ S.settings.palette=id; S.settings.mode=mode; applyTheme(); dropSheet&&dropSheet(); if(v==='expense'){ ui.volId=S.volumes[0].id; ui.view='volume'; openExpense(null); } else { if(v==='volume') ui.volId=S.volumes[0].id; go(v); } },[id,mode,v]);
-     const want=async(sel,clay,tag)=>{ const s=await st(pg,sel); if(!s) { bad.push(`${id}/${mode} ${tag||sel}: missing`); return; } if(clay? !isClay(s) : (layers(s.boxShadow).some(l=>/inset/.test(l)&&nums(l)[2]>0)||s.borderTopLeftRadius!==(tag==='sheet'?'6px':'3px'))) bad.push(`${id}/${mode} ${tag||sel}: ${s.borderTopWidth} r${s.borderTopLeftRadius} ${s.boxShadow}`); };
-     await set('hub'); await want('.vol',true); await want('.topbar [data-act=settings]',true,'hub gear');
-     await set('volume'); await want('.btn.primary',true); await want('.ico',true); await want('button.chip:not(.add)',true); await want('.ledger',false); await want('.hero',false);
-     await want('.chip.add',false,'chip.add (flat, 3px)');
-     await set('expense'); await want('.cat[aria-pressed="false"]',true); await want('.cat[aria-pressed="true"]',true); await want('.input',false);
-     const pc=await st(pg,'.cat[aria-pressed="true"]'); if(!/^0px 0px 0px/.test(nums(offLayer(pc.boxShadow)).slice(0,3).map(x=>x+'px').join(' '))) bad.push(`${id}/${mode} selected cat not pushed in: ${pc.boxShadow}`);
-     await set('settings'); await want('.panel',false); await want('.pal',false,'pal (flat swatch)');
-     const pal=await st(pg,'.pal'); if(/inset/.test(pal.boxShadow)) bad.push(`${id}/${mode} .pal has inset`);
-     await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); volMenuSheet(); }); await want('.sheet',false,'sheet');
-     const grad=await pg.evaluate(sel=>[...document.querySelectorAll(sel)].filter(x=>getComputedStyle(x).backgroundImage!=='none').map(x=>x.className),CLAY_SET); if(grad.length) bad.push(`${id}/${mode} gradient on clay: ${grad}`);
-     await pg.evaluate(()=>dropSheet()); }
-   ok(bad.length===0,'clay: clay set has 2px ink, 6-10px corners, inset light/shade and a 0-blur offset; reading surfaces stay 3px with no clay shading (frosted light lines are 0-blur); no gradients on clay; .pal and .chip.add flat, in 13 palettes x light/dark '+JSON.stringify(bad.slice(0,4)));
-   // Disabled clay is flat
-   await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); go('hub'); $('#app').insertAdjacentHTML('beforeend','<button class="btn primary" id="__dis" disabled>x</button>'); });
-   ok((await st(pg,'#__dis')).boxShadow==='none','clay: a disabled .btn has no shadow at all');
-   // Pressed: squash (normal motion) and squash shading without movement (reduced motion)
-   const press=async(P,sel)=>{ await P.evaluate(sel=>document.querySelector(sel).scrollIntoView({block:'center'}),sel); const r=await P.locator(sel).first().boundingBox(); const rest=await st(P,sel); await P.mouse.move(r.x+r.width/2,r.y+r.height/2); await P.mouse.down(); await P.waitForTimeout(150); const held=await st(P,sel); await P.mouse.move(1,1); await P.mouse.up(); return {rest,held}; };
-   const shade=s=>{ const ins=layers(s).filter(l=>/inset/.test(l)); return ins.reduce((a,l)=>a+Math.abs(nums(l)[2]||0),0); };
-   for (const [sel,view] of [['.btn.primary','volume'],['.vol','hub']]) {
-     await pg.evaluate(v=>{ ui.volId=S.volumes[0].id; go(v); },view);
-     const {rest,held}=await press(pg,sel); const m=/matrix\(1, 0, 0, 1, ([\d.]+), ([\d.]+)\)/.exec(held.transform)||[];
-     { const lift=nums(offLayer(rest.boxShadow))[0]; ok(+m[1]===lift && +m[2]===lift && lift===3 && nums(offLayer(held.boxShadow)).slice(0,3).every(x=>x===0) && shade(held.boxShadow)>shade(rest.boxShadow),`clay: held ${sel} moves exactly onto its ${lift}px slab (controls 3, volume cards are inner cards: 3), loses its offset and its inner shade grows (${held.transform}; ${held.boxShadow})`); } }
-   { const rc=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780},reducedMotion:'reduce'}); const R=await rc.newPage(); await R.goto(URL);
-     for (const [sel,view] of [['.btn.primary','volume'],['.vol','hub']]) {
-       await R.evaluate(v=>{ ui.volId=S.volumes[0].id; go(v); },view);
-       const {rest,held}=await press(R,sel);
-       ok(held.transform==='none' && held.boxShadow!==rest.boxShadow,`clay, reduced motion: held ${sel} does not move but still squashes (${held.transform})`); }
-     await rc.close(); }
-   // Focus ring survives clay (classic light and dark)
-   for (const mode of ['light','dark']) {
-     await pg.evaluate(m=>{ S.settings.palette='classic'; S.settings.mode=m; applyTheme(); },mode);
-     for (const [sel,view] of [['.btn.primary','volume'],['.cat','expense'],['.vol','hub']]) {
-       await pg.evaluate(v=>{ if(v==='expense'){ ui.volId=S.volumes[0].id; ui.view='volume'; openExpense(null); } else { ui.volId=S.volumes[0].id; go(v); } },view);
-       await pg.evaluate(sel=>document.querySelector(sel).focus(),sel); await pg.keyboard.press('Tab'); await pg.keyboard.press('Shift+Tab'); await pg.waitForTimeout(200);
-       const s=await st(pg,sel); const vis=await pg.evaluate(sel=>document.querySelector(sel).matches(':focus-visible'),sel);
-       ok(vis && s.outlineWidth==='3px' && /0px 0px 0px 6px/.test(s.boxShadow) && /inset/.test(s.boxShadow),`clay focus (${mode}) on ${sel}: 3px outline plus the 6px accent ring on top of the clay `+JSON.stringify([vis,s.outlineWidth,s.boxShadow])); } }
-   await pg.evaluate(()=>{ S.settings.mode='light'; applyTheme(); });
-   // Rows of clay buttons share height and text baseline (±1px)
-   for (const w of [360,390]) { await pg.setViewportSize({width:w,height:780});
-     const row=async sels=>pg.evaluate(sels=>sels.map(s=>{ const el=document.querySelector(s); const r=el.getBoundingClientRect(); const t=[...el.childNodes].filter(n=>n.nodeType===3&&n.textContent.trim()).pop(); const rg=document.createRange(); rg.selectNodeContents(t); const tr=rg.getBoundingClientRect(); return {h:r.height,base:tr.bottom-r.top,top:r.top}; }),sels);
-     await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); });
-     const a=await row(['[data-act=addExpense]','[data-act=settle]','.acts [data-act=share]']);
-     ok(Math.max(...a.map(x=>x.h))-Math.min(...a.map(x=>x.h))<=1 && Math.max(...a.map(x=>x.base))-Math.min(...a.map(x=>x.base))<=1 && Math.abs(a[1].top-a[2].top)<=1,`clay rows at ${w}: Add expense, Settle up and Share share height and baseline ${JSON.stringify(a)}`);
-     await pg.evaluate(()=>go('settings'));
-     const d=await row(['[data-act=backup]','[data-act=restore]','[data-act=seed]','[data-act=reset]']);
-     ok(Math.max(...d.map(x=>x.h))-Math.min(...d.map(x=>x.h))<=1 && Math.abs(d[0].base-d[1].base)<=1 && Math.abs(d[2].base-d[3].base)<=1 && Math.abs(d[0].top-d[1].top)<=1,`clay rows at ${w}: Settings Data pairs share height and baseline`); }
-   // R1-share: one tap from the volume page, menu entry still there
+     const r=await pg.evaluate(([id,mode])=>{ S.settings.palette=id; S.settings.mode=mode; applyTheme(); dropSheet&&dropSheet(); const out=[];
+       const outer=sh=>sh.split(/,(?![^(]*\))/).map(x=>x.trim()).filter(l=>!/inset/.test(l)).map(l=>(l.replace(/(rgba?|color)\([^)]*\)/g,'').match(/-?[\d.]+px/g)||[]).map(parseFloat));
+       const pane=(sel,r)=>{ const el=document.querySelector(sel); if(!el) return out.push(sel+' missing'); const cs=getComputedStyle(el), o=outer(cs.boxShadow);
+         if (cs.borderTopLeftRadius!==r+'px') out.push(sel+' radius '+cs.borderTopLeftRadius);
+         if (!o.some(n=>n[0]>0&&n[1]>0&&n[2]>0)) out.push(sel+' no soft down-right shadow '+cs.boxShadow);
+         if (o.some(n=>n[0]<0)) out.push(sel+' shadow falls left');
+         if (cs.borderTopWidth!=='0px' && !/rgba\(0, 0, 0, 0\)|transparent/.test(cs.borderTopColor)) out.push(sel+' ink border '+cs.borderTopColor);
+         if (/rgba\(0, 0, 0, 0\)/.test(cs.backgroundColor)) out.push(sel+' see-through body'); };
+       ui.volId=S.volumes.find(v=>!v.archived).id; go('volume');
+       pane('#app .hero',16); pane('#app .ledger',16); pane('#app .btn.primary',12); pane('#app .ico',12); pane('#app .btn:not(.primary):not(.quiet)',12);
+       if (getComputedStyle($('#app .ledger')).backdropFilter!=='none') out.push('ledger blurs (scroll cost)');
+       go('hub'); pane('#app .vol',16);
+       openExpense(null); ui.volId=S.volumes.find(v=>!v.archived).id; ui.view='volume'; openExpense(null);
+       pane('#app .cat[aria-pressed="false"]',12);
+       const sel=getComputedStyle($('#app .cat[aria-pressed="true"]')), root=getComputedStyle(document.documentElement);
+       if (sel.backgroundColor!==getComputedStyle(document.body).getPropertyValue('--sel-bg').trim() && sel.color===getComputedStyle($('#app .cat[aria-pressed="false"]')).color) out.push('chosen category does not invert');
+       const inp=getComputedStyle($('#f-desc')); if (inp.borderTopWidth!=='1.5px') out.push('field edge '+inp.borderTopWidth);
+       const tb=getComputedStyle($('.topbar')); if (!document.documentElement.classList.contains('lowfx') && !/blur/.test(tb.backdropFilter)) out.push('top bar not frosted');
+       return out; },[id,mode]);
+     bad.push(...r.map(x=>`${id}/${mode} ${x}`)); }
+   ok(bad.length===0,'GLASS: cards 16px and controls 12px glass panes, no ink border, soft shadow down-right, opaque matte body, no blur on lists, chosen inverts, fields keep a 1.5px edge, frosted top bar; 13 palettes x 2 themes '+JSON.stringify(bad.slice(0,12)));
+   const low=await pg.evaluate(()=>{ document.documentElement.classList.add('lowfx'); const t=getComputedStyle($('.topbar')).backdropFilter; document.documentElement.classList.remove('lowfx'); return t; });
+   ok(low==='none','GLASS: low-end phones (:root.lowfx) get no blur on the top bar '+low);
    await pg.setViewportSize({width:360,height:780}); await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); });
    const sb=pg.getByRole('button',{name:'Share volume',exact:true});
    ok(await sb.count()===1 && await sb.isVisible(),'Share volume is a visible button on the volume page, without opening a menu');
@@ -587,96 +559,6 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      const t=await pg.evaluate(()=>{ const el=$('.tagline'); return {lines:Math.round(el.getBoundingClientRect().height/parseFloat(getComputedStyle(el).lineHeight)),text:el.textContent,gloss:/trip or group/.test($('[data-act=newVolume]').textContent)}; });
      ok(t.lines===1 && t.gloss,`R2-4: hub tagline is one line at ${w} and "New volume" still says what a volume is ${JSON.stringify(t)}`); }
    ok(e.length===0,'no page errors in R2-4 checks '+JSON.stringify(e));
-   await c.close(); }
- // DEPTH (owner 2026-11-09, direction A "layered"): hard 0-blur ink slabs by rank (controls 3px, cards and page panels 5px,
- // the hero an 8px dotted slab), a dotted L shade on the card's far edges, a stepped dot ramp on the hero only, and a header
- // with a 3px ink edge and an 8px screentone band that stays the same while the page scrolls. 13 palettes x light/dark.
- { const c=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780},deviceScaleFactor:1}); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message)); pg.on('console',m=>{if(m.type()==='error')e.push(m.text())});
-   await pg.goto(URL);
-   const ids=await pg.evaluate(()=>PALETTES.map(x=>x.id)); const bad=[], band=[], flat=[];
-   for (const id of ids) for (const mode of ['light','dark']) {
-     const r=await pg.evaluate(([id,mode])=>{ S.settings.palette=id; S.settings.mode=mode; applyTheme(); dropSheet(); const out={};
-       const lay=s=>s==='none'?[]:s.split(/,(?![^(]*\))/).map(x=>x.trim());
-       const off=el=>{ const l=lay(getComputedStyle(el).boxShadow).find(x=>!/inset/.test(x)); if(!l) return null; const n=(l.replace(/(rgba?|color)\([^)]*\)/g,'').match(/-?[\d.]+px/g)||[]).map(parseFloat); return n.slice(0,3).join('/'); };
-       const blurs=el=>lay(getComputedStyle(el).boxShadow).filter(x=>!/inset/.test(x)).map(l=>(l.replace(/(rgba?|color)\([^)]*\)/g,'').match(/-?[\d.]+px/g)||[]).map(parseFloat)[2]).filter(x=>x>0).length;
-       go('hub'); out.vol=off($('.vol')); out.gear=off($('.topbar [data-act=settings]')); const vi=getComputedStyle($('.vol-info'));
-       out.strip=[(vi.backgroundImage.match(/radial-gradient/g)||[]).length, /repeat-x/.test(vi.backgroundRepeat)&&/repeat-y/.test(vi.backgroundRepeat), /linear-gradient/.test(vi.backgroundImage)];
-       const tb=getComputedStyle($('.topbar')), ta=getComputedStyle($('.topbar'),'::after');
-       out.head=[tb.borderBottomWidth, getComputedStyle($('.vol')).borderTopWidth, ta.content, ta.height, ta.position, /radial-gradient/.test(ta.backgroundImage), /(\/ 0\.[0-9]+\)|rgba\([^)]*, 0\.[0-9]+\))/.test(tb.backgroundColor), tb.boxShadow, tb.filter, tb.backdropFilter];
-       ui.volId=S.volumes[0].id; go('volume');
-       out.sect=off($('#app .sect')); out.btn=off($('.btn.primary')); out.ico=off($('.topbar .ico')); out.chip=off($('button.chip:not(.add)')); out.ledger=off($('#app .ledger'));
-       const h=$('.hero'), hs=getComputedStyle(h), ha=getComputedStyle(h,'::after');
-       const z=l=>(l.replace(/(rgba?|color)\([^)]*\)/g,'').match(/-?[\d.]+px/g)||[]).map(parseFloat);
-       out.hero=[lay(hs.boxShadow).every(l=>/inset/.test(l)&&z(l)[2]===0)?'none':hs.boxShadow, hs.marginBottom, ha.top, ha.left, ha.right, ha.bottom, ha.borderTopWidth, /radial-gradient/.test(ha.backgroundImage), /8px/.test(ha.clipPath), (hs.backgroundImage.match(/radial-gradient/g)||[]).length, (hs.backgroundImage.match(/linear-gradient/g)||[]).length>1||/conic/.test(hs.backgroundImage), hs.maskImage||hs.webkitMaskImage];
-       // the heavy end of the ramp (the 5 columns with dots over 1.2px: the right 30px of the padding box) holds no text
-       const hr=h.getBoundingClientRect(), heavyL=hr.right-2-30; out.heavy=[...h.querySelectorAll('*')].filter(x=>[...x.childNodes].some(n=>n.nodeType===3&&n.textContent.trim())).map(x=>{ const g=document.createRange(); g.selectNodeContents(x); return g.getBoundingClientRect().right; }).filter(x=>x>heavyL).length;
-       out.rows=[...document.querySelectorAll('#app .ledger, #app .ledger > *, #app .tx, #app .debt')].reduce((a,x)=>a+blurs(x),0);
-       out.filters=[...document.querySelectorAll('#app *')].filter(x=>{ const s=getComputedStyle(x); return s.filter!=='none'||s.backdropFilter!=='none'; }).length;
-       go('settings'); out.panel=off($('#app .panel')); ui.volId=S.volumes[0].id; ui.view='volume'; openExpense(null); out.cat=off($('.cat[aria-pressed="false"]')); out.seg=off($('.seg')); dropSheet();
-       return out; },[id,mode]);
-     const why=[];
-     for (const k of ['gear','btn','ico','chip','cat','seg']) if (r[k]!=='3/3/0') why.push(`${k} ${r[k]}`);
-     for (const k of ['vol','ledger','panel']) if (r[k]!=='3/3/0') why.push(`${k} ${r[k]}`);
-     if (r.sect!=='5/5/0') why.push(`sect ${r.sect}`);
-     const H=r.hero; if (H[0]!=='none'||H[1]!=='8px'||H[2]!=='6px'||H[3]!=='6px'||H[4]!=='-10px'||H[5]!=='-10px'||H[6]!=='2px'||!H[7]||!H[8]||H[9]!==9||H[10]||(H[11]&&H[11]!=='none')) why.push('hero '+JSON.stringify(H));
-     if (r.heavy) why.push(`${r.heavy} text runs reach the heavy end`);
-     if (r.strip[0]!==4||!r.strip[1]||r.strip[2]) why.push('card strip '+JSON.stringify(r.strip));
-     if (why.length) bad.push(`${id}/${mode}: ${why.join(', ')}`);
-     const T=r.head; if (T[0]!=='2px'||T[1]!=='2px'||T[2]!=='""'||T[3]!=='10px'||T[4]!=='absolute'||!T[5]||!T[6]||!/0px 3px 0px/.test(T[7])||/\d+px \d+px [1-9]/.test(T[7].replace(/inset[^,]*/g,''))||T[8]!=='none'||T[9]!=='none') band.push(`${id}/${mode} ${JSON.stringify(T)}`);
-     if (r.rows||r.filters) flat.push(`${id}/${mode} rows with blur ${r.rows}, filters ${r.filters}`); }
-   ok(bad.length===0,'DEPTH: offsets by rank — controls 3px (gear, primary, icon, chip, category, segmented), section cards 5px, inner cards 3px (volume card, ledger, panel), hero 8px dotted slab (frosted: 0-blur light lines, one sheen) (pseudo-element, 8px margin under it, 9-column dot ramp, no gradient fade or mask), heavy ramp end free of text, card shade is an L (right and bottom), all 0-blur, 13 palettes x light/dark '+JSON.stringify(bad.slice(0,3)));
-   ok(band.length===0,'DEPTH: header is manga acetate in both themes — translucent cel (alpha < 1), 2px ink edge, a 3px 0-blur slab, a second dotted cel (10px) behind it, no filter or backdrop-filter, 13 palettes x light/dark '+JSON.stringify(band.slice(0,3)));
-   ok(flat.length===0,'DEPTH: paint cost — no blurred box-shadow on ledgers or list rows and no filter/backdrop-filter anywhere in the volume page, 13 palettes x light/dark '+JSON.stringify(flat.slice(0,3)));
-   // The header is static: scrolling a long history changes neither its edge, its band nor where they are drawn
-   await pg.evaluate(()=>{ S.settings.palette='classic'; S.settings.mode='light'; applyTheme(); const v=S.volumes[0], ids=v.members.map(m=>m.id); for (let i=0;i<40;i++) v.expenses.push({id:'dp'+i,desc:'Lunch '+i,amount:1000,paidBy:ids[0],category:'food',date:'2026-01-01',splitType:'equal',splits:splitEqual(1000,ids),inputs:{},note:'',upd:1}); ui.volId=v.id; go('history'); scrollTo(0,0); });
-   const hs=async()=>pg.evaluate(()=>{ const t=$('.topbar'), s=getComputedStyle(t), a=getComputedStyle(t,'::after'); return JSON.stringify([Math.round(t.getBoundingClientRect().top),Math.round(t.getBoundingClientRect().bottom),s.borderBottom,s.boxShadow,s.background,a.background,a.height,a.top,a.opacity]); });
-   const top0=await hs(); await pg.mouse.move(180,500); await pg.mouse.wheel(0,900); await pg.waitForTimeout(300); const sy=await pg.evaluate(()=>scrollY); const top1=await hs();
-   ok(sy>300 && top0===top1,`DEPTH: the header and its band look and sit the same after scrolling ${sy}px (no scroll-linked shadow) ${top0===top1?'':top0+' vs '+top1}`);
-   await pg.evaluate(()=>{ S.volumes[0].expenses=S.volumes[0].expenses.filter(x=>!/^dp/.test(x.id)); scrollTo(0,0); });
-   // Slabs stay on the screen at phone widths: nothing scrolls sideways and the hero's slab ends inside the gutter
-   for (const w of [320,360,390]) { await pg.setViewportSize({width:w,height:780});
-     const m=await pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); const h=$('.hero').getBoundingClientRect(); return {sw:document.scrollingElement.scrollWidth,cw:document.scrollingElement.clientWidth,slabR:h.right+8,vw:innerWidth}; });
-     ok(m.sw<=m.cw && m.slabR<=m.vw-8,`DEPTH: at ${w}px no sideways scroll and the hero slab ends ≥8px from the screen edge ${JSON.stringify(m)}`); }
-   ok(e.length===0,'no page errors in DEPTH checks '+JSON.stringify(e));
-   await c.close(); }
- // ALL-OUT (design, 2026-11-11): every card-like block on every view and sheet stands on a non-zero 0-blur ink offset;
- // no filter, backdrop-filter or blurred outer shadow anywhere; the header cel is translucent and its grey words hold 4.5:1.
- { const c=await b.newContext({...devices['iPhone 13'],viewport:{width:360,height:780},deviceScaleFactor:1}); await c.addInitScript(noSync); const pg=await c.newPage(); const e=[]; pg.on('pageerror',x=>e.push(x.message));
-   await pg.goto(URL); const bad=[], blur=[], head=[];
-   const scenes=[['hub',()=>go('hub')],['volume',()=>{ ui.volId=S.volumes[0].id; go('volume'); }],['history',()=>{ ui.volId=S.volumes[0].id; go('history'); }],
-     ['expense',()=>{ ui.volId=S.volumes[0].id; ui.view='volume'; openExpense(null); }],['settings',()=>go('settings')],
-     ['empty volume',()=>{ S.volumes=S.volumes.filter(v=>v.id!=='ao1'); S.volumes.push({id:'ao1',title:'Flat',type:'home',currency:'$',meId:'a',created:Date.now(),members:[{id:'a',name:'Ana'},{id:'b',name:'Rio'}],expenses:[],settlements:[]}); ui.volId='ao1'; go('volume'); }],
-     ['settle sheet',()=>{ ui.volId=S.volumes[0].id; go('volume'); settleSheet(null); }],['edit volume sheet',()=>{ ui.volId=S.volumes[0].id; go('volume'); volumeSheet(S.volumes[0]); }],
-     ['toast',()=>{ go('hub'); toast('Expense saved'); }]];
-   for (const mode of ['light','dark']) for (const [name,open] of scenes) {
-     await pg.evaluate(([mode,name])=>{ S.settings.palette='classic'; S.settings.mode=mode; applyTheme(); dropSheet(); document.querySelectorAll('.toast').forEach(n=>n.remove()); },[mode,name]);
-     await pg.evaluate(`(${open.toString()})()`);
-     const r=await pg.evaluate(()=>{ const lay=s=>s==='none'?[]:s.split(/,(?![^(]*\))/).map(x=>x.trim()), num=l=>(l.replace(/(rgba?|color)\([^)]*\)/g,'').match(/-?[\d.]+px/g)||[]).map(parseFloat);
-       const cards=[...document.querySelectorAll('#app :is(.sect, .panel, .ledger, .vol, .amount-box), .sheet :is(.panel, .ledger, .share-sum), .toast')].filter(x=>x.getClientRects().length);
-       const flat=cards.filter(x=>{ const o=lay(getComputedStyle(x).boxShadow).filter(l=>!/inset/.test(l)).map(num); return !o.some(n=>(n[0]>0||n[1]>0)&&!n[2]); }).map(x=>x.className);
-       const blurred=[...document.querySelectorAll('*')].flatMap(x=>[null,'::before','::after'].map(pe=>{ const s=getComputedStyle(x,pe); const o=lay(s.boxShadow).filter(l=>!/inset/.test(l)).some(l=>num(l)[2]>0);
-         const dof=!pe&&x.id==='app'&&x.inert&&/^blur\(([0-2](\.\d+)?|3)px\)$/.test(s.filter);
-         return (s.filter!=='none'&&!dof)||s.backdropFilter!=='none'||o||(s.textShadow!=='none')?(x.id||x.className)+(pe||''):null; })).filter(Boolean);
-       return {n:cards.length,flat,blurred}; });
-     if (!r.n||r.flat.length) bad.push(`${mode}/${name}: ${r.n} cards, flat: ${r.flat.slice(0,3)}`);
-     if (r.blurred.length) blur.push(`${mode}/${name}: ${r.blurred.slice(0,3)}`); }
-   // header cel: translucent, its grey text 4.5:1 composited over the page and over ink scrolling under it, 13 plates x 2 themes
-   const ids=await pg.evaluate(()=>PALETTES.map(x=>x.id));
-   for (const id of ids) for (const mode of ['light','dark']) {
-     const r=await pg.evaluate(([id,mode])=>{ S.settings.palette=id; S.settings.mode=mode; applyTheme(); dropSheet(); go('settings');
-       const t=$('.topbar'); t.insertAdjacentHTML('beforeend','<span class="muted" id="__celsub">x</span>');
-       const P=c=>{ const n=(c.match(/[\d.]+/g)||[0,0,0]).map(Number); if (/^color\(srgb/.test(c)) { n[0]*=255; n[1]*=255; n[2]*=255; } if (n.length<4) n[3]=1; return n; };
-       const lin=v=>{ v/=255; return v<=0.03928?v/12.92:((v+0.055)/1.055)**2.4; }, L=([r,g,b])=>0.2126*lin(r)+0.7152*lin(g)+0.0722*lin(b);
-       const over=(a,u)=>[0,1,2].map(i=>a[i]*a[3]+u[i]*(1-a[3]));
-       const cel=P(getComputedStyle(t).backgroundColor), page=P(getComputedStyle(document.body).backgroundColor), ink=P(getComputedStyle(document.body).color);
-       const cr=(f,g)=>{ const x=L(f), y=L(g); return (Math.max(x,y)+0.05)/(Math.min(x,y)+0.05); };
-       const sub=P(getComputedStyle($('#__celsub')).color), h1=P(getComputedStyle($('.topbar h1')).color); $('#__celsub').remove();
-       return {a:cel[3],sub:Math.min(cr(sub,over(cel,page)),cr(sub,over(cel,ink))),h1:Math.min(cr(h1,over(cel,page)),cr(h1,over(cel,ink))),bf:getComputedStyle(t).backdropFilter}; },[id,mode]);
-     if (!(r.a>=0.85&&r.a<=0.92)||r.sub<4.5||r.h1<4.5||r.bf!=='none') head.push(`${id}/${mode} ${JSON.stringify(r)}`); }
-   ok(bad.length===0,'ALL-OUT: every card-like block (cards, panels, ledgers, amount box, sheet ledgers and summaries, toast) on 9 views and sheets has a non-zero 0-blur ink offset, light and dark '+JSON.stringify(bad.slice(0,3)));
-   ok(blur.length===0,'ALL-OUT: no filter, backdrop-filter, text-shadow or blurred outer shadow on any element or pseudo-element, 9 views and sheets, light and dark '+JSON.stringify(blur.slice(0,3)));
-   ok(head.length===0,'ALL-OUT: header acetate cel is 85-92% opaque with no backdrop-filter; its title and grey words hold 4.5:1 over the page and over ink under it, 13 palettes x light/dark '+JSON.stringify(head.slice(0,3)));
-   ok(e.length===0,'no page errors in ALL-OUT checks '+JSON.stringify(e));
    await c.close(); }
  // L3-dark (design): ink on night paper. Layer steps, chalk frames quieter than text, a chalk-ink offset slab (R2 revise), plate-tinted hero, selected
  // states mixed from chalk (never diluted accent), sheet lifts off a darker scrim, one dark source (no drift), status bar

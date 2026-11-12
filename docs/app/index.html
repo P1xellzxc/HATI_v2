@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-SZgVjyOjpWJV673CSHbDqN3/++pDWNymgwuzWXJE1Ik='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://hati-sync.gerymefernando.workers.dev wss://hati-sync.gerymefernando.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JIC1uM3GqrnOUq+EyP2Oxmrs+EMU04PuEvyjXA049Oo='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://hati-sync.gerymefernando.workers.dev wss://hati-sync.gerymefernando.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>HATI²</title>
@@ -441,6 +441,12 @@ section > .label, section > .row > .label { margin-top: 6px; }
 .sync[data-s="bad"] i, .sync[data-s="big"] i { border-color: var(--neg); background: var(--neg); }
 
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.mem-grid { display: grid; gap: 8px; }
+.chips.mem-row { padding: 0; margin: 0; display: grid; grid-template-columns: repeat(var(--cols, 1), minmax(0, 1fr)); gap: 8px; }
+.mem-row > .chip { min-width: 0; width: 100%; margin: 0; }
+.mem-row > .chip:has(> .av) { grid-template-columns: auto minmax(0, 1fr); } /* name column right after the avatar in every chip */
+.mem-row > .chip.add { justify-content: center; }
+.mem-row > .chip > :not(.av) { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 8px 4px 4px; border-radius: var(--r); border: 1.5px solid var(--line); background: var(--panel); font-size: .9rem; font-weight: 600; }
 .chip .num { font-weight: 500; }
 .chip.add { padding: 4px 14px; min-height: 44px; border: 2px dashed var(--line); background: transparent; }
@@ -765,7 +771,7 @@ hati-pick { display: block; min-width: 0; }
    Replaces the ink-and-clay materials; layout, type and markup stay. One light, from above.
    Page: calm two-tone paper (two plate tints, one soft diagonal), no art behind the glass.
    Slab (owner's reference image, 2026-11-12): a clear matte pane, big round corners, a 1px lit top edge and a light
-   rim, and a soft shadow falling down and to the left (light from the top right), --t deep: cards 8px, controls 4px;
+   rim, and a soft shadow falling down and to the right (light from the top left; owner 2026-11-12), --t deep: cards 8px, controls 4px;
    a press shrinks it to a contact shadow. This overrides the "no blurred shadows" rule for the glass build. Grain = three prime-sized micro-dot
    layers (CSS only: the CSP allows no image data). Real blur only on what floats (top bar, sheets, toast), so long
    lists scroll as fast as before; :root.lowfx drops it. Pressed / chosen = sinks onto its edge and inverts. */
@@ -781,7 +787,7 @@ body { background: linear-gradient(170deg, var(--page-a) 0 min(52%, 900px), var(
   --t: 8px; border-color: transparent; border-style: solid; border-radius: 16px;
   background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), linear-gradient(180deg, var(--g-top), var(--g-foot));
   background-color: var(--g-foot);
-  box-shadow: inset 0 1px 0 var(--g-lip), inset 1px 0 0 var(--g-rim), inset 0 0 0 1px var(--g-rim), calc(-1 * var(--t)) calc(1.4 * var(--t)) calc(2.6 * var(--t)) calc(-.5 * var(--t)) var(--g-shadow), -1px 2px 3px var(--g-contact); margin-bottom: 6px; }
+  box-shadow: inset 0 1px 0 var(--g-lip), inset 1px 0 0 var(--g-rim), inset 0 0 0 1px var(--g-rim), var(--t) calc(1.4 * var(--t)) calc(2.6 * var(--t)) calc(-.5 * var(--t)) var(--g-shadow), 1px 2px 3px var(--g-contact); margin-bottom: 6px; }
 :root :is(#app, #layer) .stack > :is(.panel, .ledger, .vol, .hero, .dashed):last-child, :root :is(#app, #layer) .volw > .vol { margin-bottom: 0; }
 :root :is(#app, #layer) .volw { margin-bottom: 8px; }
 :root :is(#app, #layer) .hero { --g-e: var(--a-edge); padding: 16px;
@@ -801,7 +807,7 @@ body { background: linear-gradient(170deg, var(--page-a) 0 min(52%, 900px), var(
   --t: var(--c-x, 4px); border-color: transparent; border-radius: 12px;
   background-color: var(--g-foot);
   background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), linear-gradient(180deg, var(--g-top), var(--g-foot));
-  box-shadow: inset 0 1px 0 var(--g-lip), inset 1px 0 0 var(--g-rim), inset 0 0 0 1px var(--g-rim), calc(-1 * var(--t)) calc(1.4 * var(--t)) calc(2.6 * var(--t)) calc(-.5 * var(--t)) var(--g-shadow), -1px 2px 3px var(--g-contact); }
+  box-shadow: inset 0 1px 0 var(--g-lip), inset 1px 0 0 var(--g-rim), inset 0 0 0 1px var(--g-rim), var(--t) calc(1.4 * var(--t)) calc(2.6 * var(--t)) calc(-.5 * var(--t)) var(--g-shadow), 1px 2px 3px var(--g-contact); }
 :root :is(#app, #layer) .seg { --t: 4px; overflow: hidden; }
 :root :is(#app, #layer) .seg button { background: transparent; box-shadow: none; }
 :root :is(#app, #layer) .seg button + button { border-left: 1px solid var(--g-seam); }
@@ -1179,6 +1185,12 @@ function banner() {
   if (recovered && ui.view === "hub") return `<div class="banner panel row between" role="status"><span>Some saved data couldn't be read, so it was set aside. A backup is kept on this device.</span><button class="btn quiet" data-act="dismissRecovered">OK</button></div>`;
   return "";
 }
+// Members (owner 2026-11-12: "balanced space like Who pays"): equal chips filling even rows of at most 2 (3 cut "settled" at 360px), "+ Add" counted
+// as one, the same row rule as Paid by (pickRows).
+function memberGrid(items) {
+  let k = 0;
+  return `<div class="mem-grid">${pickRows(items.length, 2).map(c => `<div class="chips mem-row" style="--cols:${c}">${items.slice(k, k += c).join("")}</div>`).join("")}</div>`;
+}
 function memberChip(v, m, c) {
   const say = Math.abs(c) <= 1 ? "is settled" : c > 0 ? `is owed ${fmt(c, v.currency)}` : `owes ${fmt(-c, v.currency)}`;
   const show = Math.abs(c) <= 1 ? "settled" : signed(c, v.currency);
@@ -1208,8 +1220,8 @@ function pickField(id, label, opts, value, ph = "", grid = false) {
 // X4 Paid by (owner 2026-11-12: "balanced, whether there is one or more than one in the volume"): equal buttons that always
 // fill the row. Up to 4 people is one row of n; more is the fewest rows of at most 4, split as evenly as possible
 // (5 = 3+2, 6 = 3+3, 7 = 4+3), each row's buttons sharing that row's width. Long names end in "…".
-function pickRows(n) {
-  const rows = Math.max(1, Math.ceil(n / 4)), base = Math.floor(n / rows), extra = n % rows;
+function pickRows(n, max = 4) {
+  const rows = Math.max(1, Math.ceil(n / max)), base = Math.floor(n / rows), extra = n % rows;
   return Array.from({ length: rows }, (_, i) => base + (i < extra ? 1 : 0));
 }
 function pickGridHtml(id, opts, val) {
@@ -1470,9 +1482,7 @@ const views = {
         <button class="btn" data-act="share" aria-label="Share volume">${I.share} Share</button>
       </div>`}
       ${v.members.length < 2 && !v.archived ? `<div class="panel pad row between"><span class="small">You're the only member so far.</span><button class="btn quiet" data-act="addMember">Add someone</button></div>` : ""}
-      <div class="strip"><h2 class="label">Members</h2></div><div class="chips">
-        ${v.members.map(m => memberChip(v, m, b[m.id] || 0)).join("")}
-        ${v.archived ? "" : `<button class="chip add" data-act="addMember">+ Add</button>`}</div></section>
+      <div class="strip"><h2 class="label">Members</h2></div>${memberGrid([...v.members.map(m => memberChip(v, m, b[m.id] || 0)), ...(v.archived ? [] : [`<button class="chip add" data-act="addMember">+ Add</button>`])])}</section>
       <section class="sect"><div class="strip"><h2 class="label">Who pays whom <span class="muted small" style="font-family:var(--font-body)">${S.settings.strategy === "pairwise" ? "pairwise" : "fewest payments"}</span></h2></div>
         ${ds.length ? `<div class="ledger">${ds.map(d => debtRow(v, d)).join("")}</div>` : emptyCard("(＾▽＾)", "Nobody owes anything.")}</section>
       ${glanceHtml(v)}
