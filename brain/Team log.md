@@ -1385,3 +1385,9 @@ Second run on f5faf76 failed 13 checks and crashed. Causes and fixes (app fixed;
 
 ### Quiet glass A+C mock · hati-design (2026-11-12)
 - Owner: "I wanna see the A with C mock design." File: `docs/mockups/quiet-glass-ac.html`: A's printed glass slabs + C's stacked balance (two panes behind the hero), corners cut to 8px (*slop-rubric:* big-radius tell → 0), rows tightened so the volume screen fits at 360 px. Checked by screenshot in Classic light and Persimmon dark. Still mocks only; build waits for the owner's go.
+
+### Matte glass A+C mock · hati-design with slop, ponytail, a11y (2026-11-12)
+- **Decision (owner, 2026-11-12): blur is allowed as matte glass.** "Use matte glass design for blur." Overrides the rubric's blur tell for this direction; recorded so the rubric scores it as an override, not a regression.
+- Mock: `docs/mockups/quiet-glass-matte.html` = A+C slabs where every slab (lists, buttons, fields, chips, icons, sheet, section labels, title plates) uses `backdrop-filter: blur(18px) saturate(1.25)` (sheet 26px), a fine SVG grain (`--grain`, black 11% light / white 4.5% dark), a 1px soft top edge, matte body `--mat` (66% light, 80% dark), accent matte `--mat-acc` on the balance and main button. Slab sides and stacked balance kept: soft, not flat. Page art behind (speed-line sun, plate circles, dots) softened so labels read; section labels and titles sit on small matte plates.
+- *hati-design:* grain is what makes it matte rather than shiny. *hati-slop-rubric:* blur = owner override; grain + slab sides keep it off the stock frosted look. *hati-ponytail:* blur on every scrolling slab is the cost; build needs `:root.lowfx` → solid A slab. *hati-a11y:* text on blurred art; dark matte raised to 80% after the first screenshot showed grey slabs; 13-plate contrast pass required before build.
+- Checked by screenshot in Classic light and Persimmon dark. Not built.
