@@ -8,10 +8,11 @@
    toggle lines, a tap crosshair with that day's numbers, and a numbers table. Matte glass on calm two-tone paper. */
 :root {
   --paper: #FFFFFF; --ink: #000000; --acc: #FEF08A; --s2: #BFDBFE;
-  --bg: color-mix(in srgb, var(--s2) 12%, var(--paper)); --bg2: color-mix(in srgb, var(--acc) 12%, var(--paper));
+  --bg: color-mix(in srgb, var(--s2) 14%, color-mix(in srgb, var(--ink) 7%, var(--paper))); --bg2: color-mix(in srgb, var(--acc) 14%, color-mix(in srgb, var(--ink) 7%, var(--paper)));
+  --g-line: rgba(0,0,0,.14);
   --fg: #111014; --sub: #4D4F57; --rule: color-mix(in srgb, var(--fg) 14%, transparent);
-  --g-top: color-mix(in srgb, var(--s2) 6%, var(--paper)); --g-foot: color-mix(in srgb, var(--s2) 16%, var(--paper));
-  --g-lip: rgba(255,255,255,.85); --g-rim: rgba(255,255,255,.7); --g-shadow: rgba(0,0,0,.28); --g-contact: rgba(0,0,0,.14);
+  --g-top: var(--paper); --g-foot: color-mix(in srgb, var(--s2) 7%, var(--paper));
+  --g-lip: rgba(255,255,255,.85); --g-rim: rgba(255,255,255,.7); --g-shadow: rgba(0,0,0,.36); --g-contact: rgba(0,0,0,.2);
   --grain: rgba(0,0,0,.07);
   --surface: #f4f7fd; --desk: #E4E2DC;
   /* categorical slots (validated: CVD ΔE ≥ 9.1, normal ≥ 19.6; light marks < 3:1 → legend + tap values + table) */
@@ -24,12 +25,12 @@
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #17181d; --bg2: #18171a; --fg: #EDEBE4; --sub: #B4B2BB; --rule: rgba(237,235,228,.14);
   --g-top: #26272d; --g-foot: #2a2b32; --g-lip: rgba(237,235,228,.24); --g-rim: rgba(237,235,228,.10); --g-shadow: rgba(0,0,0,.62); --g-contact: rgba(0,0,0,.40);
-  --grain: rgba(237,235,228,.05); --surface: #2a2b32; --desk: #0A0A0D;
+  --grain: rgba(237,235,228,.05); --surface: #2a2b32; --desk: #0A0A0D; --g-line: rgba(237,235,228,.16);
   --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; color-scheme: dark; } }
 :root[data-theme="dark"] {
   --bg: #17181d; --bg2: #18171a; --fg: #EDEBE4; --sub: #B4B2BB; --rule: rgba(237,235,228,.14);
   --g-top: #26272d; --g-foot: #2a2b32; --g-lip: rgba(237,235,228,.24); --g-rim: rgba(237,235,228,.10); --g-shadow: rgba(0,0,0,.62); --g-contact: rgba(0,0,0,.40);
-  --grain: rgba(237,235,228,.05); --surface: #2a2b32; --desk: #0A0A0D;
+  --grain: rgba(237,235,228,.05); --surface: #2a2b32; --desk: #0A0A0D; --g-line: rgba(237,235,228,.16);
   --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; color-scheme: dark; }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -64,7 +65,7 @@ p.v { margin: 0 0 12px; color: var(--sub); max-width: 70ch; }
   background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat,
     radial-gradient(var(--grain) .6px, transparent .9px) 0 0 / 3px 3px, radial-gradient(var(--grain) .6px, transparent .9px) 1px 2px / 5px 5px,
     linear-gradient(180deg, var(--g-top), var(--g-foot)) var(--g-foot);
-  box-shadow: inset 0 0 0 1px var(--g-rim), 8px 11px 21px -4px var(--g-shadow), 1px 2px 3px var(--g-contact); }
+  box-shadow: inset 0 0 0 1px var(--g-rim), 0 0 0 1px var(--g-line), 8px 11px 21px -4px var(--g-shadow), 1px 2px 3px var(--g-contact); }
 /* the chart stands on its own glass slab (owner 2026-11-12); title and sentence sit on the page above it, the key and
    numbers on a second slab below */
 .block { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; min-width: 0; }
@@ -78,7 +79,7 @@ p.v { margin: 0 0 12px; color: var(--sub); max-width: 70ch; }
   background: linear-gradient(180deg, var(--g-top), var(--g-foot)) var(--g-foot); box-shadow: inset 0 1px 0 var(--g-lip), inset 0 0 0 1px var(--g-rim), 4px 6px 10px -2px var(--g-shadow); }
 .dimmer { position: absolute; inset: 0; background: rgba(10,10,14,.35); z-index: 5; }
 .sheet { position: absolute; left: 0; right: 0; bottom: 0; top: 64px; z-index: 6; border-radius: 22px 22px 0 0; padding: 10px 14px 16px; overflow: auto;
-  display: grid; align-content: start; gap: 10px; transform: translateY(100%); transition: transform .22s cubic-bezier(.2,.8,.2,1);
+  display: grid; align-content: start; gap: 10px; transform: translateY(100%); background: var(--bg) !important; transition: transform .22s cubic-bezier(.2,.8,.2,1);
   -webkit-backdrop-filter: blur(22px) saturate(1.2); backdrop-filter: blur(22px) saturate(1.2); }
 .sheet-on .sheet { transform: none; }
 .sheet .grab { width: 40px; height: 4px; border-radius: 2px; background: var(--rule); justify-self: center; }
@@ -87,9 +88,9 @@ p.v { margin: 0 0 12px; color: var(--sub); max-width: 70ch; }
 .sh-head .close { border: 0; border-radius: 10px; min-height: 40px; padding: 0 14px; font-weight: 700; cursor: pointer; background: var(--fg); color: var(--g-foot); }
 .sheet h4 { margin: 6px 0 0; font-size: .82rem; color: var(--sub); }
 .sum { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.mini { padding: 8px 10px; border-radius: 12px; display: grid; gap: 2px; box-shadow: inset 0 0 0 1px var(--g-rim), 4px 6px 10px -3px var(--g-shadow); }
+.mini { padding: 8px 10px; border-radius: 12px; display: grid; gap: 2px; box-shadow: inset 0 0 0 1px var(--g-rim), 0 0 0 1px var(--g-line), 4px 6px 10px -3px var(--g-shadow); }
 .mini b { font-variant-numeric: tabular-nums; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.list { padding: 4px 12px; border-radius: 14px; box-shadow: inset 0 0 0 1px var(--g-rim), 5px 7px 14px -3px var(--g-shadow); }
+.list { padding: 4px 12px; border-radius: 14px; box-shadow: inset 0 0 0 1px var(--g-rim), 0 0 0 1px var(--g-line), 5px 7px 14px -3px var(--g-shadow); }
 .list .li { display: grid; grid-template-columns: 1fr auto; gap: 0 10px; padding: 8px 0; font-size: .86rem; }
 .list .li + .li { border-top: 1px solid var(--rule); }
 .list .li .k { display: inline-flex; align-items: center; gap: 6px; }

@@ -45,9 +45,10 @@
   --frost-lo: color-mix(in srgb, var(--ink-l) 8%, transparent);
   --sub-f: color-mix(in srgb, var(--sub) 80%, var(--fg));
   /* MATTE GLASS (owner 2026-11-12): calm two-tone paper, matte glass slabs. --g-*: the slab; --a-*: accent glass. */
-  --page-a: color-mix(in srgb, var(--b2) 12%, var(--paper-l)); --page-b: color-mix(in srgb, var(--acc-l) 12%, var(--paper-l));
-  --g-top: color-mix(in srgb, var(--b2) 6%, var(--paper-l));
-  --g-foot: color-mix(in srgb, var(--b2) 16%, var(--paper-l));
+  --page-a: color-mix(in srgb, var(--b2) 14%, color-mix(in srgb, var(--ink-l) 7%, var(--paper-l))); --page-b: color-mix(in srgb, var(--acc-l) 14%, color-mix(in srgb, var(--ink-l) 7%, var(--paper-l)));
+  --g-top: var(--paper-l);
+  --g-foot: color-mix(in srgb, var(--b2) 7%, var(--paper-l));
+  --g-line: color-mix(in srgb, var(--ink-l) 14%, transparent);
   --g-edge: color-mix(in srgb, var(--b2) 30%, color-mix(in srgb, var(--ink-l) 24%, var(--paper-l)));
   --g-lip: color-mix(in srgb, var(--paper-l) 85%, transparent);
   --g-rim: color-mix(in srgb, var(--paper-l) 70%, transparent);
@@ -60,7 +61,7 @@
   --b-top: color-mix(in srgb, var(--accent) 70%, var(--paper-l)); --b-foot: var(--accent);
   --g-bar: color-mix(in srgb, color-mix(in srgb, var(--b2) 10%, var(--paper-l)) 80%, transparent);
   --g-field-line: color-mix(in srgb, var(--ink-l) 58%, var(--paper-l));
-  --g-shadow: color-mix(in srgb, var(--ink-l) 30%, transparent); --g-contact: color-mix(in srgb, var(--ink-l) 16%, transparent);
+  --g-shadow: color-mix(in srgb, var(--ink-l) 38%, transparent); --g-contact: color-mix(in srgb, var(--ink-l) 22%, transparent);
   --haze: color-mix(in srgb, var(--rule) 50%, transparent);
   /* Strip under the iOS status bar: black-translucent draws white clock text, so it stays dark in every theme (an ink band). */
   --sbar: var(--ink-l);
@@ -145,6 +146,7 @@
   --g-bar: color-mix(in srgb, color-mix(in srgb, var(--b2) 6%, var(--panel)) 82%, transparent);
   --g-field-line: color-mix(in srgb, var(--fg) 58%, var(--bg));
   --g-shadow: color-mix(in srgb, #000 62%, transparent); --g-contact: color-mix(in srgb, #000 40%, transparent);
+  --g-line: color-mix(in srgb, var(--fg) 16%, transparent);
   color-scheme: dark;
 }
 /* Light fills (accent, chalk, pastel) take the light-mode shade strength: 45% black on them reads as an olive/brown edge */
@@ -713,7 +715,7 @@ body { background: linear-gradient(170deg, var(--page-a) 0 min(52%, 900px), var(
   --t: 8px; border-color: transparent; border-style: solid; border-radius: 16px;
   background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), linear-gradient(180deg, var(--g-top), var(--g-foot));
   background-color: var(--g-foot);
-  box-shadow: inset 0 1px 0 var(--g-lip), inset 1px 0 0 var(--g-rim), inset 0 0 0 1px var(--g-rim), var(--t) calc(1.4 * var(--t)) calc(2.6 * var(--t)) calc(-.5 * var(--t)) var(--g-shadow), 1px 2px 3px var(--g-contact); margin-bottom: 6px; }
+  box-shadow: inset 0 1px 0 var(--g-lip), inset 1px 0 0 var(--g-rim), inset 0 0 0 1px var(--g-rim), 0 0 0 1px var(--g-line), var(--t) calc(1.4 * var(--t)) calc(2.6 * var(--t)) calc(-.5 * var(--t)) var(--g-shadow), 1px 2px 3px var(--g-contact); margin-bottom: 6px; }
 :root :is(#app, #layer) .stack > :is(.panel, .ledger, .vol, .hero, .dashed):last-child, :root :is(#app, #layer) .volw > .vol { margin-bottom: 0; }
 :root :is(#app, #layer) .volw { margin-bottom: 8px; }
 :root :is(#app, #layer) .hero { --g-e: var(--a-edge); padding: 16px;
@@ -733,7 +735,7 @@ body { background: linear-gradient(170deg, var(--page-a) 0 min(52%, 900px), var(
   --t: var(--c-x, 4px); border-color: transparent; border-radius: 12px;
   background-color: var(--g-foot);
   background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), linear-gradient(180deg, var(--g-top), var(--g-foot)) var(--g-foot);
-  box-shadow: inset 0 1px 0 var(--g-lip), inset 1px 0 0 var(--g-rim), inset 0 0 0 1px var(--g-rim), var(--t) calc(1.4 * var(--t)) calc(2.6 * var(--t)) calc(-.5 * var(--t)) var(--g-shadow), 1px 2px 3px var(--g-contact); }
+  box-shadow: inset 0 1px 0 var(--g-lip), inset 1px 0 0 var(--g-rim), inset 0 0 0 1px var(--g-rim), 0 0 0 1px var(--g-line), var(--t) calc(1.4 * var(--t)) calc(2.6 * var(--t)) calc(-.5 * var(--t)) var(--g-shadow), 1px 2px 3px var(--g-contact); }
 :root :is(#app, #layer) .seg { --t: 4px; overflow: hidden; }
 :root :is(#app, #layer) .seg button { background: var(--g-foot); box-shadow: none; }
 :root :is(#app, #layer) .seg button + button { border-left: 1px solid var(--g-seam); }
@@ -746,14 +748,14 @@ body { background: linear-gradient(170deg, var(--page-a) 0 min(52%, 900px), var(
 :root :is(#app, #layer) .chip.add { border: 1.5px dashed var(--g-field-line); border-radius: 10px; }
 :root :is(#app, #layer) .chip:not(button) { border-color: transparent; border-radius: 10px; background: linear-gradient(180deg, var(--g-top), var(--g-foot)); box-shadow: inset 0 1px 0 var(--g-lip), inset 0 0 0 1px var(--g-rim); }
 /* fields keep a visible edge (non-text contrast), in the glass */
-:root :is(#app, #layer) .input { border: 2px solid var(--g-field-line); border-radius: 10px; background: linear-gradient(180deg, var(--g-top), var(--g-foot)); box-shadow: inset 0 1px 0 var(--g-lip); }
+:root :is(#app, #layer) .input { border: 2px solid var(--g-field-line); border-radius: 10px; background: linear-gradient(180deg, var(--g-top), var(--g-foot)) var(--g-top); box-shadow: inset 0 1px 0 var(--g-lip); }
 :root :is(#app, #layer) .input:focus { border-color: var(--fg); }
 :root :is(#app, #layer) .input[aria-invalid="true"] { border-color: var(--err); }
 /* floating layers: real frosted glass */
 :root .topbar { background: linear-gradient(var(--g-lip), var(--g-lip)) 0 100% / 100% 1px no-repeat, var(--grain-l), var(--g-bar); border-bottom: 0; box-shadow: 0 1px 0 var(--g-seam);
   -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3); }
 :root .topbar::after { display: none; }
-:root .sheet { border: 0; border-radius: 18px 18px 0 0; background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), color-mix(in srgb, var(--sheet) 94%, transparent);
+:root .sheet { border: 0; border-radius: 18px 18px 0 0; background: linear-gradient(var(--g-lip), var(--g-lip)) 0 0 / 100% 1px no-repeat, var(--grain-l), color-mix(in srgb, var(--page-a) 96%, transparent);
   box-shadow: inset 0 0 0 1px var(--g-rim), 0 -1px 0 var(--g-seam); -webkit-backdrop-filter: blur(24px) saturate(1.2); backdrop-filter: blur(24px) saturate(1.2); }
 :root .sheet::before, :root .sheet::after { display: none; }
 :root .scrim::before { background: none; height: 0; } /* the ink sheet band belongs to the old look */
