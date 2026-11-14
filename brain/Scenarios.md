@@ -75,5 +75,11 @@ Given "Bebetime" where You owe Ivy. When You tap Settle up, tap Yesterday under 
 ## 22. Offset two volumes with the same person (XV)
 Given "Baguio 2026" (Ivy owes You ₱4,200.00) and "Bebetime" (You owe Ivy ₱1,065.00), both in ₱, plus "Tokyo" in $ with an Ivy and "Group" with two members named Ivy. When You open the hub, tap Same person on "ivy in Bebetime and Ivy in Baguio 2026", tap Offset ₱1,065.00, then Record offset. Then the hub said "ivy owes you ₱3,135.00" before the offset; Baguio now shows You're owed ₱3,135.00 and Bebetime All settled; each volume has one payment "Offset with <other volume>" pointing at the other; Tokyo was never asked about; once one Group Ivy is linked the other is never offered; editing the offset's amount in one volume changes the other; deleting it in one deletes both, and Undo brings both back. Budget: 3 taps from the hub. Check: e2e "XV: …".
 
+## 23. One invite for Ivy's volumes (XV2)
+Given Ivy is linked as one person in "Baguio 2026" and "Bebetime" on Geryme's phone. When Geryme taps "Invite Ivy to 2 volumes" on the hub and sends the link, and Ivy opens it on her phone and taps Join all. Then Ivy has both volumes, is Ivy in each (no "which member are you" step), both sync live, Geryme is linked as one person on her phone, and her hub says "You owe Geryme ₱3,135.00". Budget: 2 taps for Geryme (Invite, Send), 1 for Ivy (Join all). Check: e2e "XV2: …".
+
+## 24. Android Back inside a volume (AB)
+Given the Android app, a volume just created from the hub (or opened with nothing under it in history). When You press Back. Then a picker or sheet closes first, then the volume goes back to the hub; only Back on the hub leaves the app. Check: e2e "AB: …", instrumented `backInsideAVolumeGoesToTheHubNotOut`.
+
 
 Run by [[hati-scenarios]]. Back to [[HATI Brain]]

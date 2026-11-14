@@ -1916,7 +1916,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(pre.amt==='1065.00' && pre.pickers===0 && /more than the overlap/.test(over.msg) && over.n===0,'XV: the offset is prefilled with the full overlap and can\'t go over it; one volume per side is stated, not a picker '+JSON.stringify([pre,over]));
    await pg.fill('#o-amt','1065'); await pg.locator('#sheetForm button.primary').click(); await pg.waitForTimeout(300);
    const o1=await pg.evaluate(()=>{ const A=volById('xa'),B=volById('xb'),a=A.settlements[0],b=B.settlements[0];
-     return {a:balances(A).g1,b:balances(B).g2,link:a.twinVol==='xb'&&a.twinId===b.id&&b.twinVol==='xa'&&b.twinId===a.id,dir:a.from==='i1'&&a.to==='g1'&&b.from==='g2'&&b.to==='i2',amt:[a.amount,b.amount],how:[a.how,b.how],row:document.querySelector('.xv-row')?1:0}; });
+     return {a:balances(A).g1,b:balances(B).g2,link:a.twinVol==='xb'&&a.twinId===b.id&&b.twinVol==='xa'&&b.twinId===a.id,dir:a.from==='i1'&&a.to==='g1'&&b.from==='g2'&&b.to==='i2',amt:[a.amount,b.amount],how:[a.how,b.how],row:document.querySelector('[data-act=offset]')?1:0}; });
    ok(o1.a===313500 && o1.b===0 && o1.link && o1.dir && o1.amt.join()==='106500,106500' && o1.how.join()==='Offset with Bebetime,Offset with Baguio 2026' && o1.row===0,'XV: Record offset writes one payment in each volume, opposite ways, linked to each other; Baguio is left at +₱3,135.00 and Bebetime at 0 '+JSON.stringify(o1));
    // editing the amount on one side changes the other
    await pg.evaluate(()=>{ ui.volId='xb'; go('volume'); settleSheet(volById('xb').settlements[0]); }); await pg.waitForSelector('#s-amt');
@@ -1952,6 +1952,52 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(no.no===1 && no.first!=='xb.i2~xa.i1','XV: "Not the same" is remembered on this phone '+JSON.stringify(no));
    const zs=await pg.evaluate(()=>S.volumes.every(v=>Object.values(balances(v)).reduce((a,b)=>a+b,0)===0));
    ok(zs && errs.length===0,'XV: balances still sum to zero in every volume; no page errors '+JSON.stringify(errs)); await c.close(); }
+
+ // AB Android Back (owner 2026-11-14: "Back sometimes exits the app even inside a volume"): the APK asks hatiBack()
+ // first; it closes a sheet, else goes one screen up, and says false only on the hub. A new volume is a pushed entry.
+ { const c=await b.newContext({...devices['Pixel 7']}); await c.addInitScript(noSync); const pg=await c.newPage(); const errs=[];
+   pg.on('pageerror',e=>errs.push(e.message)); pg.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
+   await pg.goto(URL); await pg.evaluate(()=>{ localStorage.clear(); }); await pg.reload(); await pg.waitForSelector('[data-act=newVolume]');
+   const len0=await pg.evaluate(()=>history.length);
+   await pg.locator('[data-act=newVolume]').click(); await pg.fill('#s-title','Trip'); await pg.fill('#s-others','Ivy'); await pg.locator('#sheetForm button.primary').click();
+   await pg.waitForFunction(()=>ui.view==='volume');
+   const nv=await pg.evaluate(l=>({grew:history.length>l,depth:depth()}),len0);
+   await pg.evaluate(()=>settleSheet(null)); await pg.waitForSelector('#s-amt');
+   const b1=await pg.evaluate(()=>({r:hatiBack(),sheet:sheetOpen(),view:ui.view}));
+   const b2=await pg.evaluate(()=>hatiBack()); await pg.waitForFunction(()=>ui.view==='hub',null,{timeout:2000}).catch(()=>{});
+   const b3=await pg.evaluate(()=>({view:ui.view,r:hatiBack()}));
+   ok(nv.grew && nv.depth>0 && b1.r && !b1.sheet && b1.view==='volume' && b2===true && b3.view==='hub' && b3.r===false,'AB: a new volume is a new history entry; Back closes a sheet first, then goes to the hub; on the hub it says false so the app may close '+JSON.stringify([nv,b1,b2,b3]));
+   // a volume opened with no history under it (deep link, restored or restarted page): Back still goes to the hub
+   const id=await pg.evaluate(()=>S.volumes[0].id); await pg.goto(URL+'#v-'+id); await pg.waitForFunction(()=>ui.view==='volume');
+   const d0=await pg.evaluate(()=>depth());
+   const r=await pg.evaluate(()=>hatiBack()); await pg.waitForFunction(()=>ui.view==='hub',null,{timeout:2000}).catch(()=>{});
+   const v=await pg.evaluate(()=>ui.view);
+   ok(d0===0 && r===true && v==='hub','AB: Back from a volume with nothing under it in history goes to the hub instead of leaving the app '+JSON.stringify({d0,r,v}));
+   ok(errs.length===0,'AB: no page errors '+JSON.stringify(errs)); await c.close(); }
+
+ // XV2 One invite for a linked person (owner 2026-11-14: "I just need one invite for them")
+ { const mk=async dev=>{ const c=await b.newContext({...devices[dev]}); const pg=await c.newPage(); const errs=[];
+     pg.on('pageerror',e=>errs.push(e.message)); pg.on('console',m=>{if(m.type()==='error')errs.push(m.text())}); return {c,pg,errs}; };
+   const A=await mk('Pixel 7'), B=await mk('iPhone 13');
+   const d='2026-11-12', eq=(id,desc,amt,by,sp)=>({id,desc,amount:amt,paidBy:by,category:'food',date:d,splitType:'exact',splits:sp,inputs:{},note:'',upd:1});
+   const vols=[
+     {id:'ya',title:'Baguio 2026',type:'travel',currency:'₱',meId:'g1',created:2,members:[{id:'g1',name:'Geryme'},{id:'i1',name:'Ivy'}],expenses:[eq('ea','Airbnb',840000,'g1',{g1:420000,i1:420000})],settlements:[]},
+     {id:'yb',title:'Bebetime',type:'household',currency:'₱',meId:'g2',created:1,members:[{id:'g2',name:'Geryme'},{id:'i2',name:'Ivy'}],expenses:[eq('eb','Ramen',213000,'i2',{g2:106500,i2:106500})],settlements:[]}];
+   await A.pg.goto(URL); await A.pg.evaluate(vs=>{ localStorage.setItem('hati2.mock.v1',JSON.stringify({volumes:vs,settings:{palette:'classic',mode:'light',strategy:'simplify'}})); localStorage.setItem('hati2.links.v1',JSON.stringify({groups:[['yb.i2','ya.i1']],no:[]})); },vols);
+   await A.pg.reload(); await A.pg.waitForSelector('[data-act=xInvite]');
+   const lbl=await A.pg.locator('[data-act=xInvite]').textContent();
+   await A.pg.locator('[data-act=xInvite]').click(); await A.pg.waitForSelector('#s-link',{state:'attached',timeout:10000});
+   const inv=await A.pg.evaluate(()=>({link:$('#s-link').value,qr:!!document.querySelector('#sheetForm .qr-frame svg'),h:$('#sheetTitle').textContent}));
+   ok(/Invite Ivy to 2 volumes/.test(lbl) && /#join=m\.[\w-]+\.[\w-]{43}\.i[12]\.g[12]\.[\w-]+\.[\w-]{43}\.i[12]\.g[12]$/.test(inv.link) && inv.qr && inv.h==='Invite Ivy','XV2: a linked person gets one "Invite Ivy to 2 volumes" link (and QR) that carries both live volumes '+JSON.stringify({lbl,h:inv.h,len:inv.link.length}));
+   await B.pg.goto(URL); await B.pg.evaluate(()=>localStorage.clear()); await B.pg.goto(inv.link); await B.pg.waitForSelector('#sheetForm button.primary',{timeout:10000});
+   const js=await B.pg.evaluate(()=>({h:$('#sheetTitle').textContent,who:!!$('#s-who'),txt:$('#sheetForm').textContent.replace(/\s+/g,' ')}));
+   await B.pg.locator('#sheetForm button.primary').click(); await B.pg.waitForTimeout(500);
+   const got=await B.pg.evaluate(()=>{ const a=volById('ya'),bb=volById('yb'); return {a:a&&a.meId,b:bb&&bb.meId,bal:a&&balances(a)[a.meId],sync:!!(SY.ya&&SY.yb),link:XL.groups.some(g=>g.includes('ya.g1')&&g.includes('yb.g2')),view:ui.view,row:$('.xv-row')&&$('.xv-row').textContent.replace(/\s+/g,' ')}; });
+   ok(js.h==='Join 2 volumes' && !js.who && /You're Ivy in each one/.test(js.txt) && got.a==='i1' && got.b==='i2' && got.bal===-420000 && got.sync && got.link && got.view==='hub','XV2: opening it joins both volumes as Ivy with no "which member are you" step, both kept in sync, and Geryme is linked as one person on her phone '+JSON.stringify([js.h,got]));
+   ok(/You owe Geryme/.test(got.row||'') && /₱3,135.00/.test(got.row||''),'XV2: her hub shows the same net from her side: You owe Geryme ₱3,135.00 '+JSON.stringify(got.row));
+   const bad=await B.pg.evaluate(async()=>(await readInvite('m.'+'a'.repeat(22)+'.'+'b'.repeat(43)+'.x.y')).error===JOIN_BROKEN);
+   ok(bad,'XV2: a one-volume or malformed bundle reads as a broken link '+bad);
+   ok(A.errs.length===0 && B.errs.length===0,'XV2: no page errors '+JSON.stringify([A.errs,B.errs])); await A.c.close(); await B.c.close(); }
 
  await b.close();
 })();
