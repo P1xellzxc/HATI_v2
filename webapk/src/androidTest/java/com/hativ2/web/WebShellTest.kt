@@ -63,6 +63,33 @@ class WebShellTest {
         }
     }
 
+    /** Polls a JS condition for up to 10 s. */
+    private fun waitFor(s: ActivityScenario<MainActivity>, cond: String): Boolean {
+        val deadline = System.currentTimeMillis() + 10_000
+        while (System.currentTimeMillis() < deadline) {
+            if (js(s, cond) == "true") return true
+            Thread.sleep(200)
+        }
+        return false
+    }
+
+    /** Owner 2026-11-14: Back closed the app from inside a volume. A volume with no history under it goes to the hub. */
+    @Test
+    fun backInsideAVolumeGoesToTheHubNotOut() {
+        launch().use { s ->
+            awaitApp(s)
+            val opened = "(function(){ if (!S.volumes.length) S.volumes.push(exampleVolume()); history.replaceState(null, '', '#v-' + S.volumes[0].id);" +
+                " dispatchEvent(new PopStateEvent('popstate')); return ui.view; })()"
+            assertEquals("\"volume\"", js(s, opened))
+            assertEquals("false", js(s, "history.length > 1 && depth() > 0"))
+            s.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+            assertEquals(true, waitFor(s, "ui.view === 'hub'"))
+            var finishing = true
+            s.onActivity { finishing = it.isFinishing }
+            assertEquals(false, finishing)
+        }
+    }
+
     @Test
     fun startUrlMapping() {
         val index = MainActivity.INDEX

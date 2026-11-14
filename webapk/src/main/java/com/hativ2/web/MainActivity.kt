@@ -41,9 +41,19 @@ class MainActivity : ComponentActivity() {
             .build()
     }
 
-    private val backCallback = object : OnBackPressedCallback(false) {
+    /**
+     * Back asks the page first (window.hatiBack: close a picker or sheet, else go up one screen) and leaves the
+     * app only when the page says it is on its home screen. WebView history alone can't be trusted for this: a
+     * screen reached by a replaced entry (after a sheet, a restored state or a renderer restart) has nothing
+     * to go back to, and Back used to close the app from inside a volume.
+     */
+    private val backCallback = object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
-            if (webView.canGoBack()) webView.goBack() else finish()
+            val view = webView
+            view.evaluateJavascript(BACK_JS) { handled ->
+                if (view !== webView || handled == "true") return@evaluateJavascript
+                if (view.canGoBack()) view.goBack() else finish()
+            }
         }
     }
 
@@ -133,7 +143,6 @@ class MainActivity : ComponentActivity() {
         root.removeView(dead)
         dead.destroy()
         attachWebView()
-        backCallback.isEnabled = false
         webView.loadUrl(INDEX)
     }
 
@@ -211,9 +220,6 @@ class MainActivity : ComponentActivity() {
             return true
         }
 
-        override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
-            backCallback.isEnabled = view.canGoBack()
-        }
     }
 
     private inner class Chrome : WebChromeClient() {
@@ -242,6 +248,9 @@ class MainActivity : ComponentActivity() {
         const val HOST = WebViewAssetLoader.DEFAULT_DOMAIN
         const val ORIGIN = "https://$HOST"
         const val INDEX = "$ORIGIN/assets/app/index.html"
+
+        /** True when the page handled Back itself; anything else (no app loaded, an error) falls back. */
+        const val BACK_JS = "(function(){try{return !!(window.hatiBack&&window.hatiBack())}catch(e){return false}})()"
 
         /** https://p1xellzxc.github.io/HATI_v2/app/… (the published web app). */
         fun isAppLink(uri: Uri): Boolean =

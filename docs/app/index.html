@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wcmkSddu2lJGsPrfzHbbfPEO346u2yoimXuRRRXaKw0='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://hati-sync.gerymefernando.workers.dev wss://hati-sync.gerymefernando.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-FYJYmsH2T+dncipUAATsiuYjpeOOySYk/u0fxWsGOOw='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://hati-sync.gerymefernando.workers.dev wss://hati-sync.gerymefernando.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>HATI²</title>
@@ -1840,15 +1840,96 @@ function xRows() {
 }
 const xPart = (p, name) => p.d > 0 ? `${name} owes you ${fmt(p.d, p.v.currency)}` : `you owe ${name} ${fmt(-p.d, p.v.currency)}`;
 function acrossHtml() {
-  const sug = xSuggestions()[0], rows = xRows();
-  if (!sug && !rows.length) return "";
+  const sug = xSuggestions()[0], rows = xRows(), groups = xGroups();
+  if (!sug && !rows.length && !groups.length) return "";
   const dup = (v, m) => v.members.filter(x => xName(x.name) === xName(m.name)).length > 1 ? ` (${v.title} has more than one ${m.name}: check who)` : "";
   const ask = sug ? `<div class="panel pad stack xv-ask" role="group" aria-labelledby="xvAsk"><p class="small" id="xvAsk" style="margin:0">Same person? <b>${esc(sug.m1.name)}</b> in ${esc(sug.v1.title)} and <b>${esc(sug.m2.name)}</b> in ${esc(sug.v2.title)}.${esc(dup(sug.v1, sug.m1) || dup(sug.v2, sug.m2))}</p>
     <div class="btns pair"><button class="btn quiet" data-act="xNo" data-a="${esc(sug.a)}" data-b="${esc(sug.b)}">Not the same</button><button class="btn" data-act="xYes" data-a="${esc(sug.a)}" data-b="${esc(sug.b)}">Same person</button></div></div>` : "";
   const row = (r, i) => `<div class="panel pad stack xv-row"><div class="row between"><b>${esc(Math.abs(r.net) <= 1 ? `You and ${r.name} are even` : r.net > 0 ? `${r.name} owes you` : `You owe ${r.name}`)}</b><b class="num ${r.net > 0 ? "pos" : "neg"}">${esc(fmt(Math.abs(r.net), r.cur))}</b></div>
     <ul class="xv-parts small muted">${r.ps.map(p => `<li class="row between"><span>${esc(p.v.title)}</span><span>${esc(xPart(p, r.name))}</span></li>`).join("")}</ul>
-    ${r.overlap ? `<button class="btn primary" data-act="offset" data-i="${i}">Offset ${esc(fmt(r.overlap, r.cur))}</button>` : ""}</div>`;
-  return `<section class="sect" id="across"><div class="strip"><h2 class="label">Across volumes</h2></div>${ask}${rows.map(row).join("")}</section>`;
+    ${r.overlap ? `<button class="btn primary" data-act="offset" data-i="${i}">Offset ${esc(fmt(r.overlap, r.cur))}</button>` : ""}${inv(r.gi, r)}</div>`;
+  // XV2: one invite per linked person, on their last money row, or on a row of its own when nothing is owed
+  const last = new Map(); rows.forEach((r, i) => last.set(r.gi, i));
+  const inv = (gi, r) => { const g = groups.find(x => x.gi === gi); return g && (!r || last.get(gi) === rows.indexOf(r)) ? `<button class="btn" data-act="xInvite" data-gi="${gi}">${I.share} Invite ${esc(g.name)} to ${g.ms.length} volumes</button>` : ""; };
+  const solo = groups.filter(g => !rows.some(r => r.gi === g.gi)).map(g => `<div class="panel pad stack xv-row"><div class="row between"><b>${esc(g.name)}</b><span class="small muted">${plural(g.ms.length, "volume")}</span></div>
+    <p class="small muted" style="margin:0">${esc(g.ms.map(p => p.v.title).join(" · "))}</p>${inv(g.gi)}</div>`).join("");
+  return `<section class="sect" id="across"><div class="strip"><h2 class="label">Across volumes</h2></div>${ask}${rows.map(row).join("")}${solo}</section>`;
+}
+// Linked people in two or more live volumes: { gi, name, ms: [{ v, id }] }.
+const xGroups = () => XL.groups.map((g, gi) => ({ gi, ms: g.map(xMember).filter(p => p && !p.v.archived) })).filter(g => g.ms.length > 1)
+  .map(g => ({ ...g, name: nameOf(g.ms[0].v, g.ms[0].id) }));
+
+// ── One invite for a linked person (XV2, owner 2026-11-14) ──
+// #join=m.<room>.<key>.<their member id>.<my member id> repeated per volume: every volume must be live (shared with
+// a sync room). Opening it joins each volume as that member, with no "which one are you" step, and links the
+// sender as one person on the receiver's phone. An older HATI² reads it as a broken link and changes nothing.
+const BUNDLE_RE = /^m(?:\.[\w-]{22,64}\.[\w-]{43}\.[A-Za-z0-9]{1,40}\.[A-Za-z0-9]{1,40}){2,20}$/;
+let shareTitle = "";
+async function groupInviteSheet(gi) {
+  const g = xGroups().find(x => x.gi === gi); if (!g) return;
+  const nl = g.ms.find(p => nameless(p.v)); if (nl) return nameFirstSheet(nl.v, () => groupInviteSheet(gi));
+  sheet(`<h2>Invite ${esc(g.name)}</h2><p class="muted" id="s-wait">Making one link for ${plural(g.ms.length, "volume")}…</p>`);
+  const sts = [];
+  for (const p of g.ms) sts.push(await shareRoom(p.v));
+  if (!$("#s-wait")) return; // closed meanwhile
+  if (sts.some(st => !st || !(st.version > 0))) {
+    sheet(`<h2>Invite ${esc(g.name)}</h2><div class="stack"><div class="msg" id="sheetMsg" role="alert">Can't reach the sync server. Go online, then try again.</div>
+      <button type="button" class="btn primary block" data-act="closeSheet">OK</button></div>`); return;
+  }
+  const link = appBase() + "#join=m." + g.ms.map((p, i) => [sts[i].room, sts[i].key, p.id, p.v.meId].join(".")).join(".");
+  const send = !!sendFn(), qr = qrSvg(link);
+  shareLink = link; shareTitle = `HATI² · ${g.ms.map(p => p.v.title).join(", ")}`;
+  sheet(`<h2>Invite ${esc(g.name)}</h2><div class="stack">
+    <ul class="xv-parts share-sum">${g.ms.map(p => `<li class="row between"><b class="ellip">${esc(p.v.title)}</b><span class="muted small">${plural(p.v.members.length, "member")}</span></li>`).join("")}</ul>
+    <p class="small" style="margin:0" id="s-how">One link for all ${g.ms.length}. ${esc(g.name)} opens it and joins each volume as ${esc(g.name)}, kept in sync on every phone.</p>
+    <p class="muted small" style="margin:0">Anyone with the link can see and change these volumes.</p>
+    <div class="btns">${send ? `<button type="button" class="btn primary" data-act="sendLink">${I.share} Send invite</button><button type="button" class="btn" data-act="copyLink">Copy link</button>`
+      : `<button type="button" class="btn primary" data-act="copyLink" style="grid-column:1/-1">Copy link</button>`}</div>
+    <label class="sr" for="s-link">Invite link</label><input id="s-link" class="input" readonly hidden value="${esc(link)}">
+    <div class="msg ok" id="sheetMsg" role="status"></div>
+    ${qr ? `<div class="legend">Or scan it in the same room</div><div class="qr-frame">${qr}</div>` : ""}
+    <button type="button" class="btn text block" data-act="closeSheet">Done</button></div>`);
+}
+// Never throws: { bundle: [{ p, who, from }] } or { error }.
+async function readBundle(payload) {
+  if (!BUNDLE_RE.test(payload)) return { error: JOIN_BROKEN };
+  const f = payload.split(".").slice(1), out = [];
+  for (let i = 0; i < f.length; i += 4) {
+    const p = await readLiveInvite(f[i], f[i + 1]); if (p.error) return p;
+    const has = id => p.volume.members.some(m => m.id === id);
+    if (!has(f[i + 2]) || !has(f[i + 3]) || out.some(o => o.p.volume.id === p.volume.id)) return { error: JOIN_BROKEN };
+    out.push({ p, who: f[i + 2], from: f[i + 3] });
+  }
+  return { bundle: out };
+}
+function bundleJoinSheet(items) {
+  const who = items[0].p.volume.members.find(m => m.id === items[0].who).name;
+  sheet(`<h2>Join ${plural(items.length, "volume")}</h2><div class="stack">
+    <p class="small" style="margin:0">You're <b>${esc(who)}</b> in each one. They stay in sync with the others.</p>
+    <ul class="xv-parts share-sum">${items.map(it => `<li class="row between"><b class="ellip">${esc(it.p.volume.title)}</b><span class="muted small">${volById(it.p.volume.id) ? "Already here: merge" : countLine(it.p.volume)}</span></li>`).join("")}</ul>
+    <div class="msg" id="sheetMsg" role="alert"></div>
+    ${sheetButtons("Join all")}</div>`, () => joinBundle(items));
+}
+function joinBundle(items) {
+  const before = JSON.stringify(S), rooms = [];
+  for (const it of items) {
+    const x = it.p.volume, local = volById(x.id);
+    if (local) {
+      const r = mergeVolumes(local, x);
+      if (r.error) { S = JSON.parse(before); return sheetMsg(`${x.title}: ${r.error}`); }
+      S.volumes = S.volumes.map(v => v.id === x.id ? r.vol : v);
+    } else {
+      const nv = cleanVolume(x); nv.meId = it.who; delete nv.archived;
+      S.gone = goneIds().filter(id => id !== nv.id); S.volumes.unshift(nv);
+    }
+    rooms.push([x.id, it.p.room, it.p.seen]);
+  }
+  if (!save()) { S = JSON.parse(before); return sheetMsg(saveGone ? SAVE_GONE : "Couldn't save on this device. Nothing was changed."); }
+  rooms.forEach(([id, room, seen]) => attachRoom(id, room, seen));
+  // the sender is one person in all of them on this phone too
+  const ks = items.filter(it => volById(it.p.volume.id).meId !== it.from).map(it => xk(it.p.volume.id, it.from));
+  ks.slice(1).forEach(k => xLink(ks[0], k));
+  closeSheet(); go("hub"); toast(`You joined ${plural(items.length, "volume")}`);
 }
 // The offset sheet for row r (from xRows()). `here`: the volume the Settle up sheet came from, picked first.
 function offsetSheet(r, here) {
@@ -1956,7 +2037,8 @@ function volumeSheet(v) {
         if (nv.members.length >= 200) return sheetMsg("A volume can have up to 200 members.");
         nv.members.push({ id: uid(), name: n, upd: Date.now() });
       }
-      S.volumes.unshift(nv); if (!commit()) return; ui.volId = nv.id; go("volume"); toast(`${title} created`);
+      // the sheet goes first, so the new volume is a new history entry on top of the hub (Back returns there)
+      S.volumes.unshift(nv); if (!commit()) return; dropSheet(); ui.volId = nv.id; go("volume"); toast(`${title} created`);
     });
 }
 const lastCurrency = () => (S.volumes[0] && S.volumes[0].currency) || "$";
@@ -2219,7 +2301,7 @@ const sendFn = () => typeof navigator.share === "function" ? d => navigator.shar
 const ANDROID_SHARE_MAX = 100000;
 const countLine = v => `${plural(v.members.length, "member")} · ${plural(v.expenses.length, "expense")} · ${plural(v.settlements.length, "payment")}`;
 let shareLink = "";
-function nameFirstSheet(v) {
+function nameFirstSheet(v, next = shareSheet) {
   sheet(`<h2>Share volume</h2><div class="stack">
     <p class="small" style="margin:0">First, your name, so the others know which member is you.</p>
     <div class="field"><label for="s-name">Your name</label><input id="s-name" class="input" maxlength="40" placeholder="Ana" autocomplete="off"></div>
@@ -2230,7 +2312,7 @@ function nameFirstSheet(v) {
       if (bad) return sheetMsg(bad);
       const m = v.members.find(x => x.id === v.meId); if (!m) return;
       m.name = n; m.upd = Date.now(); if (!commit()) return;
-      render(); shareSheet();
+      render(); next();
     });
 }
 async function shareSheet() {
@@ -2247,7 +2329,7 @@ async function shareSheet() {
   if (!vol() || vol().id !== id) return;
   v = vol();
   const send = !!sendFn(), qr = link ? qrSvg(link) : "";
-  shareLink = link;
+  shareLink = link; shareTitle = "";
   const codeBox = `<details class="codebox" id="s-codebox"><summary>Show code</summary><div class="stack">
       <p class="muted small" style="margin:0">For someone on an older HATI²: they tap <b>Import</b> on Volumes and paste it.</p>
       <label class="sr" for="s-code">Share code</label><textarea id="s-code" class="input num" rows="5" readonly>${esc(code)}</textarea>
@@ -2316,6 +2398,7 @@ async function inflateCapped(bytes, cap) {
 const joinPayloadIn = t => { const m = /#join=([\w.-]*)/.exec(String(t)); return m ? m[1].replace(/\.+$/, "") : null; };
 // Never throws: { volume } (already through parseCode → validVolume) or { error }.
 async function readInvite(payload) {
+  if (/^m\./.test(payload || "")) return readBundle(payload);
   const live = LIVE_RE.exec(payload || "");
   if (live) return readLiveInvite(live[1], live[2]);
   if (/^[\w-]+\.[\w-]+$/.test(payload)) return { error: JOIN_NEWER };
@@ -2356,7 +2439,7 @@ async function startJoin(payload) {
       <button type="button" class="btn primary block" data-act="closeSheet">OK</button></div>`);
     return;
   }
-  joinSheet(p, appBase() + "#join=" + payload);
+  if (p.bundle) bundleJoinSheet(p.bundle); else joinSheet(p, appBase() + "#join=" + payload);
 }
 function joinFromHash() {
   if (!location.hash.startsWith("#join=")) return false;
@@ -3116,6 +3199,14 @@ function leave() {
   else go(parentOf(), { replace: true });
 }
 function focusTitle() { const h = $("#app h1"); if (h) h.focus({ preventScroll: true }); }
+// Android app Back (MainActivity asks this first): a picker list, then a sheet, then one screen up; false on the
+// hub, where Back leaves the app. Doesn't rely on the WebView's history, which a replaced entry can leave empty.
+window.hatiBack = () => {
+  if ($("#pickLayer")) { $("#pickLayer").close(null); return true; }
+  if (sheetOpen()) { closeSheet(); return true; }
+  if (ui.view === "hub") return false;
+  leave(); return true;
+};
 // An invite opened while the app is running (a tapped link in the APK, a pasted address) arrives as a fragment change.
 addEventListener("popstate", () => {
   if (skipPop && !location.hash.startsWith("#join=")) { skipPop = false; return; } // startJoin's own step back
@@ -3280,7 +3371,7 @@ document.addEventListener("click", async ev => {
     case "copyCode": await copyShareCode(); break;
     case "sendLink": {
       const send = sendFn(); if (!send) { await copyShareLink(); break; }
-      try { await send({ title: `HATI² · ${v.title}`, url: shareLink }); }
+      try { await send({ title: shareTitle || `HATI² · ${v.title}`, url: shareLink }); }
       catch (e) { if (!(e && e.name === "AbortError")) await copyShareLink(); }
       break;
     }
@@ -3303,6 +3394,7 @@ document.addEventListener("click", async ev => {
     case "xYes": if (xLink(el.dataset.a, el.dataset.b)) { render(); announce("Linked."); const n = $("#across button"); if (n) n.focus(); } break;
     case "xNo": XL.no = [...new Set([...XL.no, xNo(el.dataset.a, el.dataset.b)])]; saveLinks(); render(); { const n = $("#across button") || $("#app h1"); if (n) n.focus(); } break;
     case "xUnlink": { const g = XL.groups[+el.dataset.gi]; if (g) { XL.no = [...new Set([...XL.no, ...g.flatMap((a, i) => g.slice(i + 1).map(b => xNo(a, b)))])]; XL.groups = XL.groups.filter(x => x !== g); saveLinks(); } closeSheet(); render(); toast("Unlinked."); break; }
+    case "xInvite": groupInviteSheet(+el.dataset.gi); break;
     case "offset": { const r = xRows()[+el.dataset.i]; if (r && r.overlap) offsetSheet(r, el.dataset.here); break; }
     case "editMember": { const m = v.members.find(x => x.id === el.dataset.id); if (m) editMemberSheet(m); break; }
     case "removeMember": removeMember(el.dataset.id); break;
