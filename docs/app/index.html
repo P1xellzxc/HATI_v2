@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-FYJYmsH2T+dncipUAATsiuYjpeOOySYk/u0fxWsGOOw='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://hati-sync.gerymefernando.workers.dev wss://hati-sync.gerymefernando.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-n4fpDVq1ku1gbZrZx4VzN6+fHGu+rzfnrPESmtsqMlA='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://hati-sync.gerymefernando.workers.dev wss://hati-sync.gerymefernando.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>HATI²</title>
@@ -2443,7 +2443,31 @@ async function startJoin(payload) {
 }
 function joinFromHash() {
   if (!location.hash.startsWith("#join=")) return false;
-  startJoin(joinPayloadIn(location.hash)); return true;
+  const p = joinPayloadIn(location.hash);
+  if (inAndroidBrowser() && p && p.length <= APP_HANDOFF_MAX) { appHandoff(p); return true; }
+  startJoin(p); return true;
+}
+// ── Invite opened in Chrome on Android (owner 2026-11-14) ──
+// github.io links can't open the installed app by themselves (Android 12+ needs a verified domain), so Chrome
+// hands the invite to the app at once: an intent: URL to hati2://join?j=<payload>. Without the app, Chrome's
+// fallback reopens this page with ?noapp=1, which joins in the browser as before. If Chrome blocks the jump
+// (no tap behind it), the sheet's button does it with one tap; "Use in browser instead" stays possible.
+const APK_PAGE = "https://github.com/P1xellzxc/HATI_v2/releases/tag/latest", APP_HANDOFF_MAX = 60000;
+const inAndroidBrowser = () => /Android/i.test(navigator.userAgent) && !window.HatiAndroid && location.hostname !== "appassets.androidplatform.net" &&
+  !/[?&]noapp=1/.test(location.search) && !(window.matchMedia && matchMedia("(display-mode: standalone)").matches);
+const appIntent = p => `intent://join?j=${p}#Intent;scheme=hati2;package=com.hativ2.web;S.browser_fallback_url=${encodeURIComponent(location.origin + location.pathname + "?noapp=1#join=" + p)};end`;
+function appHandoff(p) {
+  const url = appIntent(p);
+  sheet(`<h2>Open in HATI² app</h2><div class="stack">
+    <p class="small" style="margin:0" id="s-handoff">Opening the invite in the HATI² app…</p>
+    <a class="btn primary block" id="s-openapp" href="${esc(url)}">Open in HATI² app</a>
+    <p class="muted small" style="margin:0">No app yet? <a href="${esc(APK_PAGE)}" target="_blank" rel="noopener">Get the app</a>, install it, then tap the invite again.</p>
+    <button type="button" class="btn quiet block" data-act="joinHere">Use in browser instead</button></div>`);
+  $("#sheetForm").addEventListener("click", ev => { if (ev.target.closest("[data-act=joinHere]")) { dropSheet(); startJoin(p); } });
+  // after load, so a page still loading never waits on the jump
+  const jump = () => setTimeout(() => { const b = $("#s-openapp"); if (b) b.click(); }, 50);
+  if (document.readyState === "complete") jump(); else addEventListener("load", jump, { once: true });
+  setTimeout(() => { const t = $("#s-handoff"); if (t && document.visibilityState === "visible") t.textContent = "Tap Open in HATI² app to join there."; }, 1500);
 }
 function joinSheet(p, link) {
   const x = p.volume, local = S.volumes.find(v => v.id === x.id), safari = isIOS() && !navigator.standalone;

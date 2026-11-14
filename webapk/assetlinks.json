@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.hativ2.web",
+      "sha256_cert_fingerprints": ["EC:AB:7F:8B:2B:91:46:5D:03:F1:B0:93:40:B1:AD:E9:FC:0B:E1:B8:DF:95:CA:D0:D0:3C:E2:BC:B7:97:A2:DF"]
+    }
+  }
+]

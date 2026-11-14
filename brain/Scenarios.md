@@ -81,5 +81,8 @@ Given Ivy is linked as one person in "Baguio 2026" and "Bebetime" on Geryme's ph
 ## 24. Android Back inside a volume (AB)
 Given the Android app, a volume just created from the hub (or opened with nothing under it in history). When You press Back. Then a picker or sheet closes first, then the volume goes back to the hub; only Back on the hub leaves the app. Check: e2e "AB: …", instrumented `backInsideAVolumeGoesToTheHubNotOut`.
 
+## 25. Invite tapped on Android with the app installed (HO)
+Given Ivy has the HATI² APK and gets Geryme's invite link in Messenger. When she taps it. Then Chrome opens it and hands it to the app straight away (hati2://join?j=…); if Chrome blocks that, one tap on "Open in HATI² app" does it, and the join sheet opens in the app. Without the app, Chrome's fallback (?noapp=1) joins in the browser as before; "Use in browser instead" is always there. Budget: 0–1 extra tap. Check: e2e "HO: …", instrumented `startUrlMapping`.
+
 
 Run by [[hati-scenarios]]. Back to [[HATI Brain]]

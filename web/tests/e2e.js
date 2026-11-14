@@ -33,7 +33,11 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
  };
  // Service workers are blocked: Playwright can't route a request that a service worker lets through to the network,
  // and that request would reach the real Worker. Only the offline check below, which never syncs, allows one.
- const newContext0=b.newContext.bind(b); b.newContext=async o=>{ const c=await newContext0({serviceWorkers:'block',...o}); await wire(c); return c; };
+ const newContext0=b.newContext.bind(b); b.newContext=async (o={})=>{ const {handoff,...rest}=o; const c=await newContext0({serviceWorkers:'block',...rest}); await wire(c);
+   // A phone browser here has no HATI² app, so Android Chrome pages carry ?noapp=1, as after Chrome's fallback for an
+   // invite (the browser join). The hand-off to the app itself is checked in block HO (handoff:true).
+   if (!handoff) await c.addInitScript(()=>{ if (/Android/.test(navigator.userAgent) && !/noapp=1/.test(location.search)) history.replaceState(history.state,'',location.pathname+'?noapp=1'+location.hash); });
+   return c; };
  // An init script for a phone that can't reach the sync server, quietly (no failed requests in the console): for the
  // checks of manual share codes, merges and snapshot links, which live sync would otherwise do for them.
  const noSync=()=>{ const f=window.fetch; window.fetch=function(u){ return String(u&&u.url||u).startsWith('https://hati-sync.')?Promise.reject(new TypeError('Failed to fetch')):f.apply(this,arguments); }; window.WebSocket=undefined; };
@@ -765,7 +769,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await B.pg.locator('#sheetForm button.primary').click();
    ok(await B.pg.evaluate(id=>S.volumes.filter(x=>x.id===id).length===1 && nameOf(vol(),vol().meId)==='Mira',exId),'merging the same link adds no copy and keeps Mira as you');
    // a running page whose hash is set to the link (APK onNewIntent, address bar)
-   const C=await fresh(devices['Pixel 7']); all.push(C);
+   const C=await fresh(devices['Pixel 7'],{init:()=>{ window.HatiAndroid={share(){},saveFile(){}}; }}); all.push(C); // the APK (Android Chrome hands links to it, block HO)
    await C.pg.evaluate(()=>{ ui.volId=S.volumes[0].id; go('volume'); });
    await C.pg.evaluate(p=>{ location.hash='join='+p; },pay); await C.pg.waitForSelector('#s-who');
    ok(await C.pg.evaluate(()=>/Tokyo Trip/.test($('#sheetForm').innerText) && !/join/.test(location.hash) && ui.view==='volume'),'setting location.hash to the link in an open page opens the join sheet over the current page');
@@ -1998,6 +2002,24 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    const bad=await B.pg.evaluate(async()=>(await readInvite('m.'+'a'.repeat(22)+'.'+'b'.repeat(43)+'.x.y')).error===JOIN_BROKEN);
    ok(bad,'XV2: a one-volume or malformed bundle reads as a broken link '+bad);
    ok(A.errs.length===0 && B.errs.length===0,'XV2: no page errors '+JSON.stringify([A.errs,B.errs])); await A.c.close(); await B.c.close(); }
+
+ // HO Invite opened in Chrome on Android (owner 2026-11-14: Ivy's invite opened in Chrome and joined there, the app stayed empty)
+ { const mk=async(dev,init)=>{ const c=await b.newContext({...devices[dev],handoff:true}); await c.addInitScript(noSync); if (init) await c.addInitScript(init); const pg=await c.newPage(); const errs=[];
+     pg.on('pageerror',e=>errs.push(e.message)); pg.on('console',m=>{if(m.type()==='error')errs.push(m.text())}); return {c,pg,errs}; };
+   const pay='m.'+'a'.repeat(22)+'.'+'b'.repeat(43)+'.i1.g1.'+'c'.repeat(22)+'.'+'d'.repeat(43)+'.i2.g2';
+   const A=await mk('Pixel 7'); await A.pg.goto(URL+'#join='+pay); await A.pg.waitForTimeout(1800);
+   const h=await A.pg.evaluate(()=>({t:$('#sheetTitle')&&$('#sheetTitle').textContent,msg:$('#s-handoff').textContent,href:$('#s-openapp').getAttribute('href'),get:!!document.querySelector('#sheetForm a[href*="releases/tag/latest"]'),browser:!!document.querySelector('[data-act=joinHere]')}));
+   const m=/^intent:\/\/join\?j=([\w.-]+)#Intent;scheme=hati2;package=com\.hativ2\.web;S\.browser_fallback_url=([^;]+);end$/.exec(h.href)||[];
+   ok(h.t==='Open in HATI² app' && m[1]===pay && decodeURIComponent(m[2]||'')===URL+'?noapp=1#join='+pay && h.get && h.browser && /Tap Open in HATI² app/.test(h.msg),'HO: an invite opened in Chrome on Android hands itself to the installed app (hati2://join?j=…), falls back to the browser with ?noapp=1, and offers Get the app and Use in browser instead '+JSON.stringify({t:h.t,msg:h.msg,len:h.href.length}));
+   await A.pg.getByRole('button',{name:'Use in browser instead'}).click(); await A.pg.waitForTimeout(600);
+   const u=await A.pg.evaluate(()=>({t:$('#sheetTitle')&&$('#sheetTitle').textContent,hash:location.hash}));
+   ok(u.t!=='Open in HATI² app' && u.hash==='','HO: "Use in browser instead" goes on with the normal join in Chrome '+JSON.stringify(u));
+   const N=await mk('Pixel 7'); await N.pg.goto(URL+'?noapp=1#join='+pay); await N.pg.waitForTimeout(800);
+   const I=await mk('iPhone 13'); await I.pg.goto(URL+'#join='+pay); await I.pg.waitForTimeout(800);
+   const W=await mk('Pixel 7',()=>{ window.HatiAndroid={share(){},saveFile(){}}; }); await W.pg.goto(URL+'#join='+pay); await W.pg.waitForTimeout(800);
+   const no=await Promise.all([N,I,W].map(x=>x.pg.evaluate(()=>!$('#s-openapp'))));
+   ok(no.every(Boolean),'HO: no hand-off after the browser fallback (?noapp=1), on iPhone, or inside the app itself '+JSON.stringify(no));
+   ok([A,N,I,W].every(x=>x.errs.length===0),'HO: no page errors '+JSON.stringify([A,N,I,W].map(x=>x.errs))); for (const x of [A,N,I,W]) await x.c.close(); }
 
  await b.close();
 })();
