@@ -72,5 +72,8 @@ Given "Bebetime" with "House of Bagnet" ₱334.13 and a ₱500.00 payment to Ivy
 ## 21. Yesterday's GCash payment (D3)
 Given "Bebetime" where You owe Ivy. When You tap Settle up, tap Yesterday under Date, type "GCash" in How (optional) and tap Record payment. Then the payment is saved with yesterday's date and `how: "GCash"`, History shows "Payment · via GCash" and "Yesterday", editing it opens on that date and how, and the balances are the same as without a how. The how survives a reload, a backup, a share code and a merge with a phone on an older version (which drops it without harm). Budget: 4 taps (Settle up, Yesterday, How, Record payment). Check: e2e "D3 …".
 
+## 22. Offset two volumes with the same person (XV)
+Given "Baguio 2026" (Ivy owes You ₱4,200.00) and "Bebetime" (You owe Ivy ₱1,065.00), both in ₱, plus "Tokyo" in $ with an Ivy and "Group" with two members named Ivy. When You open the hub, tap Same person on "ivy in Bebetime and Ivy in Baguio 2026", tap Offset ₱1,065.00, then Record offset. Then the hub said "ivy owes you ₱3,135.00" before the offset; Baguio now shows You're owed ₱3,135.00 and Bebetime All settled; each volume has one payment "Offset with <other volume>" pointing at the other; Tokyo was never asked about; once one Group Ivy is linked the other is never offered; editing the offset's amount in one volume changes the other; deleting it in one deletes both, and Undo brings both back. Budget: 3 taps from the hub. Check: e2e "XV: …".
+
 
 Run by [[hati-scenarios]]. Back to [[HATI Brain]]

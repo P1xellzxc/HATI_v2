@@ -1891,5 +1891,67 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(h1.v==='GCash' && h1.p==='false,true,false' && h2==='' && h3==='false,false,false' && h4==='Cash ref 77','X5: Cash / GCash / Bank fill "How" in one tap (tap again clears); typed words still save as typed '+JSON.stringify([h1,h2,h3,h4]));
    ok(errs.length===0,'NEXT: no page errors '+JSON.stringify(errs)); await c.close(); }
 
+ // XV Across volumes (owner 2026-11-14): confirmed links, direct pair debts, offsets as twin payments in both volumes
+ { const c=await b.newContext({...devices['iPhone 13']}); await c.addInitScript(noSync); const pg=await c.newPage(); const errs=[];
+   pg.on('pageerror',e=>errs.push(e.message)); pg.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
+   await pg.goto(URL);
+   const d='2026-11-12', eq=(id,desc,amt,by,sp)=>({id,desc,amount:amt,paidBy:by,category:'food',date:d,splitType:'exact',splits:sp,inputs:{},note:'',upd:1});
+   const vols=[
+     {id:'xa',title:'Baguio 2026',type:'travel',currency:'₱',meId:'g1',created:3,members:[{id:'g1',name:'Geryme'},{id:'i1',name:'Ivy'}],expenses:[eq('ea','Airbnb',840000,'g1',{g1:420000,i1:420000})],settlements:[]},
+     {id:'xb',title:'Bebetime',type:'household',currency:'₱',meId:'g2',created:1,members:[{id:'g2',name:'Geryme'},{id:'i2',name:'ivy '}],expenses:[eq('eb','Ramen',213000,'i2',{g2:106500,i2:106500})],settlements:[]},
+     {id:'xd',title:'Tokyo',type:'travel',currency:'$',meId:'g3',created:2,members:[{id:'g3',name:'Geryme'},{id:'i3',name:'Ivy'}],expenses:[eq('ed','Sushi',10000,'i3',{g3:5000,i3:5000})],settlements:[]},
+     {id:'xc',title:'Group',type:'event',currency:'₱',meId:'g4',created:4,members:[{id:'g4',name:'Geryme'},{id:'c1',name:'Ivy'},{id:'c2',name:'Ivy'},{id:'bn',name:'Ben'}],
+       expenses:[eq('e1','Food',60000,'g4',{bn:30000,c1:30000}),eq('e2','Taxi',60000,'bn',{c1:60000})],settlements:[]}];
+   await pg.evaluate(vs=>{ localStorage.setItem('hati2.mock.v1',JSON.stringify({volumes:vs,settings:{palette:'classic',mode:'light',strategy:'simplify'}})); localStorage.removeItem('hati2.links.v1'); },vols);
+   await pg.reload(); await pg.waitForSelector('#across');
+   const s0=await pg.evaluate(()=>({all:xSuggestions().map(x=>x.a+'~'+x.b),ask:document.querySelector('.xv-ask').textContent.replace(/\s+/g,' ').trim(),rows:document.querySelectorAll('.xv-row').length}));
+   ok(s0.all[0]==='xb.i2~xa.i1' && !s0.all.some(k=>k.includes('xd.')) && s0.rows===0 && /^Same person\? ivy in Bebetime and Ivy in Baguio 2026\./.test(s0.ask),'XV: a same-name member (trim, any case) in another volume of the same currency is only a question; another currency is never asked; nothing is netted before Yes '+JSON.stringify(s0));
+   await pg.getByRole('button',{name:'Same person'}).click(); await pg.waitForTimeout(200);
+   const r1=await pg.evaluate(()=>{ const r=document.querySelector('.xv-row'); return {head:r.querySelector('.row b').textContent,net:r.querySelector('.num').textContent,btn:r.querySelector('[data-act=offset]').textContent,links:JSON.parse(localStorage.getItem('hati2.links.v1')).groups}; });
+   ok(r1.head==='ivy owes you' && r1.net==='₱3,135.00' && r1.btn==='Offset ₱1,065.00' && r1.links.length===1,'XV: after Yes the hub shows the net across both volumes and the overlap to offset; the link is kept on this phone '+JSON.stringify(r1));
+   await pg.locator('.xv-row [data-act=offset]').click(); await pg.waitForSelector('#o-amt');
+   const pre=await pg.evaluate(()=>({amt:$('#o-amt').value,pickers:document.querySelectorAll('#sheetForm hati-pick').length}));
+   await pg.fill('#o-amt','1065.01'); await pg.locator('#sheetForm button.primary').click();
+   const over=await pg.evaluate(()=>({msg:$('#sheetMsg').textContent,n:S.volumes.reduce((a,v)=>a+v.settlements.length,0)}));
+   ok(pre.amt==='1065.00' && pre.pickers===0 && /more than the overlap/.test(over.msg) && over.n===0,'XV: the offset is prefilled with the full overlap and can\'t go over it; one volume per side is stated, not a picker '+JSON.stringify([pre,over]));
+   await pg.fill('#o-amt','1065'); await pg.locator('#sheetForm button.primary').click(); await pg.waitForTimeout(300);
+   const o1=await pg.evaluate(()=>{ const A=volById('xa'),B=volById('xb'),a=A.settlements[0],b=B.settlements[0];
+     return {a:balances(A).g1,b:balances(B).g2,link:a.twinVol==='xb'&&a.twinId===b.id&&b.twinVol==='xa'&&b.twinId===a.id,dir:a.from==='i1'&&a.to==='g1'&&b.from==='g2'&&b.to==='i2',amt:[a.amount,b.amount],how:[a.how,b.how],row:document.querySelector('.xv-row')?1:0}; });
+   ok(o1.a===313500 && o1.b===0 && o1.link && o1.dir && o1.amt.join()==='106500,106500' && o1.how.join()==='Offset with Bebetime,Offset with Baguio 2026' && o1.row===0,'XV: Record offset writes one payment in each volume, opposite ways, linked to each other; Baguio is left at +₱3,135.00 and Bebetime at 0 '+JSON.stringify(o1));
+   // editing the amount on one side changes the other
+   await pg.evaluate(()=>{ ui.volId='xb'; go('volume'); settleSheet(volById('xb').settlements[0]); }); await pg.waitForSelector('#s-amt');
+   const ed=await pg.evaluate(()=>({h:$('#sheetTitle').textContent,pick:!!document.querySelector('#sheetForm hati-pick#s-from')}));
+   await pg.fill('#s-amt','1000'); await pg.locator('#sheetForm button.primary').click(); await pg.waitForTimeout(300);
+   const e1=await pg.evaluate(()=>({a:volById('xa').settlements[0].amount,b:volById('xb').settlements[0].amount,toast:[...document.querySelectorAll('.toast')].pop().textContent}));
+   ok(ed.h==='Edit offset' && !ed.pick && e1.a===100000 && e1.b===100000 && /Offset changed here and in Baguio 2026/.test(e1.toast),'XV: editing an offset\'s amount changes its twin too; its two people stay fixed '+JSON.stringify([ed,e1]));
+   // deleting one side deletes the other; Undo brings both back, linked
+   await pg.evaluate(()=>{ ui.volId='xa'; go('volume'); settleSheet(volById('xa').settlements[0]); }); await pg.waitForSelector('#s-amt');
+   await pg.getByRole('button',{name:'Delete offset'}).click(); await pg.locator('#sheetForm button.danger').click(); await pg.waitForTimeout(300);
+   const d1=await pg.evaluate(()=>({a:volById('xa').settlements.length,b:volById('xb').settlements.length,ta:volById('xa').deleted.length,tb:volById('xb').deleted.length,toast:[...document.querySelectorAll('.toast')].pop().textContent}));
+   await pg.locator('.toast button.undo').last().click(); await pg.waitForTimeout(300);
+   const u1=await pg.evaluate(()=>{ const a=volById('xa').settlements[0],b=volById('xb').settlements[0]; return {both:!!(a&&b),link:!!(a&&b)&&a.twinId===b.id&&b.twinId===a.id,amt:a&&b&&[a.amount,b.amount].join()}; });
+   ok(d1.a===0 && d1.b===0 && d1.ta===1 && d1.tb===1 && /deleted here and in Bebetime/.test(d1.toast) && u1.both && u1.link && u1.amt==='100000,100000','XV: deleting one offset deletes its twin (both tombstoned); Undo brings both back, linked by their new ids '+JSON.stringify([d1,u1]));
+   // a twin deleted on another phone (arrives as a tombstone) takes this side with it at the next save
+   const rm=await pg.evaluate(()=>{ const B=volById('xb'), id=B.settlements[0].id; B.settlements=[]; tombstone(B,id); save(); return {a:volById('xa').settlements.length,stored:JSON.parse(localStorage.getItem('hati2.mock.v1')).volumes.find(v=>v.id==='xa').settlements.length}; });
+   ok(rm.a===0 && rm.stored===0,'XV: when the twin was deleted elsewhere, this side goes too '+JSON.stringify(rm));
+   // an older phone sends a payment back without the link at the same edit time: the link is kept; a newer edit still wins
+   const mg=await pg.evaluate(()=>{ const base={id:'xx',title:'T',currency:'₱',meId:'a',members:[{id:'a',name:'A'},{id:'b',name:'B'}],expenses:[],settlements:[{id:'p1',from:'a',to:'b',amount:500,date:'2026-11-14',upd:5,how:'Offset with X',twinVol:'xq',twinId:'p2'}]};
+     const old={...base,settlements:[{id:'p1',from:'a',to:'b',amount:500,date:'2026-11-14',upd:5}]}, newer={...base,settlements:[{id:'p1',from:'a',to:'b',amount:700,date:'2026-11-14',upd:6}]};
+     const k=mergeVolumes(base,old).vol.settlements[0], n=mergeVolumes(base,newer).vol.settlements[0]; return {kept:k.twinId==='p2'&&k.how==='Offset with X',newer:n.amount===700}; });
+   ok(mg.kept && mg.newer,'XV: a merge keeps the twin link that an older phone drops at the same edit time '+JSON.stringify(mg));
+   // group volume: direct pair debt, not the simplified route; two members with one name in a volume can't both be linked
+   const g=await pg.evaluate(()=>{ const C=volById('xc'), simp=simplify(balances(C)).find(x=>x.from==='c1'&&x.to==='g4');
+     const sug=()=>xSuggestions().filter(x=>x.a.startsWith('xc.')||x.b.startsWith('xc.')).map(x=>x.a+'~'+x.b);
+     const before=sug(); xLink('xa.i1','xc.c1'); const after=sug();
+     return {pair:xPair(C,'c1'),simp:simp&&simp.amount,before:before.filter(k=>k.includes('xc.c2')).length,after:after.length,can:xCanLink('xb.i2','xc.c2')}; });
+   ok(g.pair===30000 && g.simp===60000 && g.before>0 && g.after===0 && !g.can,'XV: a group volume counts only what that person owes you directly (₱300, not the simplified ₱600); once one Ivy there is linked, the other Ivy is not offered '+JSON.stringify(g));
+   // Not the same: the question doesn't come back
+   await pg.evaluate(()=>{ XL={groups:[],no:[]}; saveLinks(); go('hub'); }); await pg.waitForSelector('.xv-ask');
+   await pg.getByRole('button',{name:'Not the same'}).click(); await pg.reload(); await pg.waitForTimeout(300);
+   const no=await pg.evaluate(()=>{ const f=xSuggestions()[0]||{}; return {first:f.a+'~'+f.b,no:XL.no.length}; });
+   ok(no.no===1 && no.first!=='xb.i2~xa.i1','XV: "Not the same" is remembered on this phone '+JSON.stringify(no));
+   const zs=await pg.evaluate(()=>S.volumes.every(v=>Object.values(balances(v)).reduce((a,b)=>a+b,0)===0));
+   ok(zs && errs.length===0,'XV: balances still sum to zero in every volume; no page errors '+JSON.stringify(errs)); await c.close(); }
+
  await b.close();
 })();
