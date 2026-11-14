@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-dpNbLlwSiZxONrnfZBhQedtc7sVsdHfRwPcoij0OFqo='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://hati-sync.gerymefernando.workers.dev wss://hati-sync.gerymefernando.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wcmkSddu2lJGsPrfzHbbfPEO346u2yoimXuRRRXaKw0='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://hati-sync.gerymefernando.workers.dev wss://hati-sync.gerymefernando.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>HATI²</title>
@@ -377,6 +377,10 @@ section > .label, section > .row > .label { margin-top: 6px; }
 .vol-bal { font-weight: 700; font-size: .95rem; }
 .vol-info .vol-bal { white-space: normal; }
 .vol-bal.pos { color: var(--pos); } .vol-bal.neg { color: var(--neg); } .vol-bal.even { color: var(--sub); }
+/* XV Across volumes: one panel per linked person; the volume lines are a plain two-column list */
+.xv-row .num.pos { color: var(--pos); } .xv-row .num.neg { color: var(--neg); }
+.xv-parts { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.xv-parts li { gap: 12px; } .xv-parts li > span:first-child { min-width: 0; overflow-wrap: anywhere; } .xv-parts li > span:last-child { text-align: right; }
 .dashed { border: 2px dashed var(--line); border-radius: var(--r); background: transparent; padding: 16px; width: 100%; display: flex; align-items: center; gap: 12px; text-align: left; }
 .dashed b { font-size: 1rem; display: block; }
 /* No volumes yet: the one action on the first screen is drawn as the panel the page points at */
@@ -993,6 +997,7 @@ let persistAsked = false;
 // to the last good copy and saveGone tells commit() to say the data is not kept. With storage off from the
 // start, changes live in memory (see banner()).
 function save() {
+  reconcileTwins();
   if (!storageOk) return true;
   try {
     const json = JSON.stringify(S);
@@ -1301,7 +1306,7 @@ function debtRow(v, d, tag = "div", extra = "", tail = "") {
 function itemRow(v, it) {
   if (it.k === "e") return expenseRow(v, it.x);
   const s = it.x;
-  return `${txOpen(v, "editSettle", s.id)}<span class="tx-ic" aria-hidden="true">${CAT_ICON.settle}</span><span class="grow"><b class="tx-t">${esc(meName(v, s.from))} paid ${esc(meObj(v, s.to))}</b><span class="muted small tx-m">Payment${s.how ? ` · via ${esc(s.how)}` : ""}</span></span><span class="tx-r"><span class="tx-a num">${esc(fmt(s.amount, v.currency))}</span><span class="muted small date">${esc(niceDate(s.date))}</span></span>${txClose(v)}`;
+  return `${txOpen(v, "editSettle", s.id)}<span class="tx-ic" aria-hidden="true">${CAT_ICON.settle}</span><span class="grow"><b class="tx-t">${esc(meName(v, s.from))} paid ${esc(meObj(v, s.to))}</b><span class="muted small tx-m">${s.twinVol ? esc(s.how || "Offset") : `Payment${s.how ? ` · via ${esc(s.how)}` : ""}`}</span></span><span class="tx-r"><span class="tx-a num">${esc(fmt(s.amount, v.currency))}</span><span class="muted small date">${esc(niceDate(s.date))}</span></span>${txClose(v)}`;
 }
 function expenseRow(v, e) {
   const c = catOf(e.category), mineShare = e.splits[v.meId] || 0;
@@ -1451,7 +1456,7 @@ const views = {
     };
     const live = S.volumes.filter(v => !v.archived), arch = S.volumes.filter(v => v.archived);
     return topbar("HATI²", { right: `<button class="btn quiet" data-act="import">${I.import} Import</button><button class="ico" data-act="settings" aria-label="Settings">${I.gear}</button>` }) +
-      `<p class="tagline">Split trip and home costs with your group.</p>${iosHint()}
+      `<p class="tagline">Split trip and home costs with your group.</p>${iosHint()}${acrossHtml()}
       <section class="sect"><div class="strip"><h2 class="label">Your volumes</h2></div><div class="stack">${live.map(card).join("")}
       <button class="dashed" data-act="newVolume"><span class="logo" aria-hidden="true">${I.plus}</span><span><b>New volume</b><span class="muted small">One for each trip or group</span></span></button></div>
       ${arch.length ? `<details class="arch-box" id="archBox"${ui.archOpen ? " open" : ""}><summary class="label">Archived (${arch.length})</summary><div class="stack">${arch.map(card).join("")}</div></details>` : ""}</section>
@@ -1750,18 +1755,148 @@ function applyDates() {
 // steps: { list: "expenses" | "settlements", id, was: the record before (null: it was new), upd: what we wrote (0: deleted) }.
 // An entry changed since (another phone, another tab) is left alone. A deleted one comes back under a new id: its
 // tombstone wins every merge, so with the old id the other phone would delete it again.
+// A step may name another volume in `vol` (XV: an offset and its twin are undone together).
 function undoSteps(volId, steps) {
-  const v = volById(volId); if (!v) return;
-  const now = Date.now(); let n = 0;
+  if (!volById(volId)) return;
+  const now = Date.now(), moved = {}, back = []; let n = 0;
   for (const s of steps) {
+    const v = volById(s.vol || volId); if (!v) continue;
     const L = v[s.list], i = L.findIndex(x => x.id === s.id);
-    if (!s.upd) { if (i < 0 && s.was) { L.push({ ...s.was, id: uid(), upd: now }); n++; } }
+    if (!s.upd) { if (i < 0 && s.was) { const r = { ...s.was, id: uid(), upd: now }; moved[s.id] = r.id; L.push(r); back.push(r); n++; } }
     else if (i >= 0 && L[i].upd === s.upd) { if (s.was) L[i] = { ...s.was, upd: now }; else { L.splice(i, 1); tombstone(v, s.id); } n++; }
   }
+  for (const r of back) if (r.twinId && moved[r.twinId]) r.twinId = moved[r.twinId]; // twins come back linked by their new ids
   if (!n) return toast("It was changed since, so nothing was undone.");
   if (!commit()) return;
-  if (ui.volId === volId && (ui.view === "volume" || ui.view === "history") && !sheetOpen()) { render(); focusTitle(); }
+  const here = steps.some(s => (s.vol || volId) === ui.volId);
+  if (!sheetOpen() && (ui.view === "hub" || (here && (ui.view === "volume" || ui.view === "history")))) { render(); focusTitle(); }
   toast("Undone.");
+}
+
+// ── Across volumes (XV, owner 2026-11-14) ─────────────────
+// The same person in two volumes is linked only when the user says so (a name match is a suggestion). Links are this
+// phone's own (hati2.links.v1): groups of "volId.memberId", at most one member per volume in a group; "me" (meId) is
+// linked in every volume without being stored. What a person owes is the direct (pairwise) debt between me and that
+// member in each volume, never the simplified group route, and only volumes of one currency are added up.
+// An offset is two payments, one per volume in opposite directions, each naming its twin (twinVol, twinId).
+const LINKS = "hati2.links.v1";
+let XL = (() => { try { const j = JSON.parse(localStorage.getItem(LINKS) || "null"); if (j && Array.isArray(j.groups) && Array.isArray(j.no)) return { groups: j.groups.filter(g => Array.isArray(g) && g.every(k => typeof k === "string")), no: j.no.filter(k => typeof k === "string") }; } catch (e) {} return { groups: [], no: [] }; })();
+const saveLinks = () => { try { localStorage.setItem(LINKS, JSON.stringify(XL)); } catch (e) {} };
+const xk = (volId, id) => volId + "." + id;
+const xVolOf = k => k.slice(0, k.indexOf("."));
+const xMember = k => { const v = volById(xVolOf(k)), id = k.slice(k.indexOf(".") + 1); return v && id !== v.meId && v.members.some(m => m.id === id) ? { v, id } : null; };
+const xGroup = k => XL.groups.findIndex(g => g.includes(k));
+const xNo = (a, b) => [a, b].sort().join("|");
+const xName = n => n.trim().toLowerCase();
+// Can a and b be one person? Not when that would put two members of one volume in one group.
+function xCanLink(a, b) {
+  const ga = xGroup(a), gb = xGroup(b);
+  if (ga >= 0 && ga === gb) return false;
+  const A = ga >= 0 ? XL.groups[ga] : [a], B = gb >= 0 ? XL.groups[gb] : [b];
+  const vols = new Set(A.filter(xMember).map(xVolOf));
+  return !B.filter(xMember).some(k => vols.has(xVolOf(k)));
+}
+function xLink(a, b) {
+  if (!xCanLink(a, b)) return false;
+  const ga = xGroup(a), gb = xGroup(b), A = ga >= 0 ? XL.groups[ga] : [a], B = gb >= 0 ? XL.groups[gb] : [b];
+  XL.groups = XL.groups.filter((g, i) => i !== ga && i !== gb).concat([[...new Set([...A, ...B])]]);
+  XL.no = XL.no.filter(k => k !== xNo(a, b)); saveLinks(); return true;
+}
+function xUnlink(k) { XL.groups = XL.groups.map(g => g.filter(x => x !== k)).filter(g => g.length > 1); saveLinks(); }
+const xLive = () => S.volumes.filter(v => !v.archived);
+// Same-name pairs in two live volumes of one currency that aren't linked, refused, or impossible. Oldest volume first.
+function xSuggestions() {
+  const vs = xLive().slice().sort((a, b) => (a.created || 0) - (b.created || 0)), out = [];
+  for (let i = 0; i < vs.length; i++) for (let j = i + 1; j < vs.length; j++) {
+    const v1 = vs[i], v2 = vs[j]; if (v1.currency !== v2.currency) continue;
+    for (const m1 of v1.members) for (const m2 of v2.members) {
+      if (m1.id === v1.meId || m2.id === v2.meId || xName(m1.name) !== xName(m2.name)) continue;
+      const a = xk(v1.id, m1.id), b = xk(v2.id, m2.id);
+      if (XL.no.includes(xNo(a, b)) || !xCanLink(a, b)) continue;
+      out.push({ a, b, v1, v2, m1, m2 });
+    }
+  }
+  return out;
+}
+// What member `id` owes me in v directly, in cents: + they owe me, − I owe them (pairwise, payments included).
+function xPair(v, id) {
+  const d = pairwise(v).find(x => (x.from === id && x.to === v.meId) || (x.from === v.meId && x.to === id));
+  return !d ? 0 : d.from === id ? d.amount : -d.amount;
+}
+// One row per linked person and currency with a debt in two or more volumes: parts (per volume), net, and whether
+// there is something to offset (they owe me in one volume and I owe them in another).
+function xRows() {
+  const rows = [];
+  XL.groups.forEach((g, gi) => {
+    const parts = g.map(xMember).filter(p => p && !p.v.archived).map(p => ({ ...p, d: xPair(p.v, p.id) })).filter(p => Math.abs(p.d) > 1);
+    for (const cur of [...new Set(parts.map(p => p.v.currency))]) {
+      const ps = parts.filter(p => p.v.currency === cur); if (ps.length < 2) continue;
+      const name = nameOf(ps[0].v, ps[0].id), net = ps.reduce((a, p) => a + p.d, 0);
+      const pos = ps.filter(p => p.d > 1).sort((a, b) => b.d - a.d), neg = ps.filter(p => p.d < -1).sort((a, b) => a.d - b.d);
+      rows.push({ gi, cur, name, ps, net, pos, neg, overlap: pos.length && neg.length ? Math.min(pos[0].d, -neg[0].d) : 0 });
+    }
+  });
+  return rows;
+}
+const xPart = (p, name) => p.d > 0 ? `${name} owes you ${fmt(p.d, p.v.currency)}` : `you owe ${name} ${fmt(-p.d, p.v.currency)}`;
+function acrossHtml() {
+  const sug = xSuggestions()[0], rows = xRows();
+  if (!sug && !rows.length) return "";
+  const dup = (v, m) => v.members.filter(x => xName(x.name) === xName(m.name)).length > 1 ? ` (${v.title} has more than one ${m.name}: check who)` : "";
+  const ask = sug ? `<div class="panel pad stack xv-ask" role="group" aria-labelledby="xvAsk"><p class="small" id="xvAsk" style="margin:0">Same person? <b>${esc(sug.m1.name)}</b> in ${esc(sug.v1.title)} and <b>${esc(sug.m2.name)}</b> in ${esc(sug.v2.title)}.${esc(dup(sug.v1, sug.m1) || dup(sug.v2, sug.m2))}</p>
+    <div class="btns pair"><button class="btn quiet" data-act="xNo" data-a="${esc(sug.a)}" data-b="${esc(sug.b)}">Not the same</button><button class="btn" data-act="xYes" data-a="${esc(sug.a)}" data-b="${esc(sug.b)}">Same person</button></div></div>` : "";
+  const row = (r, i) => `<div class="panel pad stack xv-row"><div class="row between"><b>${esc(Math.abs(r.net) <= 1 ? `You and ${r.name} are even` : r.net > 0 ? `${r.name} owes you` : `You owe ${r.name}`)}</b><b class="num ${r.net > 0 ? "pos" : "neg"}">${esc(fmt(Math.abs(r.net), r.cur))}</b></div>
+    <ul class="xv-parts small muted">${r.ps.map(p => `<li class="row between"><span>${esc(p.v.title)}</span><span>${esc(xPart(p, r.name))}</span></li>`).join("")}</ul>
+    ${r.overlap ? `<button class="btn primary" data-act="offset" data-i="${i}">Offset ${esc(fmt(r.overlap, r.cur))}</button>` : ""}</div>`;
+  return `<section class="sect" id="across"><div class="strip"><h2 class="label">Across volumes</h2></div>${ask}${rows.map(row).join("")}</section>`;
+}
+// The offset sheet for row r (from xRows()). `here`: the volume the Settle up sheet came from, picked first.
+function offsetSheet(r, here) {
+  const opt = ps => ps.map(p => [p.v.id, `${p.v.title} · ${fmt(Math.abs(p.d), p.v.currency)}`]);
+  // one volume on a side is stated, not offered as a choice
+  const field = (id, label, ps, val) => ps.length > 1 ? `<div class="field">${pickField(id, label, opt(ps), val)}</div>`
+    : `<div class="field"><span class="legend">${esc(label)}</span><p style="margin:0"><b>${esc(opt(ps)[0][1])}</b></p><input type="hidden" id="${id}" value="${esc(val)}"></div>`;
+  const pos0 = (r.pos.find(p => p.v.id === here) || r.pos[0]).v.id, neg0 = (r.neg.find(p => p.v.id === here) || r.neg[0]).v.id;
+  const capOf = (pa, pb) => { const a = r.pos.find(p => p.v.id === pa), b = r.neg.find(p => p.v.id === pb); return a && b ? Math.min(a.d, -b.d) : 0; };
+  const cap = () => capOf($("#o-pos").value, $("#o-neg").value), cap0 = capOf(pos0, neg0);
+  sheet(`<h2>Offset with ${esc(r.name)}</h2><div class="stack">
+    <p class="muted small" style="margin:0">No money changes hands. The same amount is recorded in both volumes: ${esc(r.name)} paid you in one, you paid ${esc(r.name)} in the other.</p>
+    ${field("o-pos", `${r.name} owes you in`, r.pos, pos0)}${field("o-neg", `You owe ${r.name} in`, r.neg, neg0)}
+    <div class="field"><label for="o-amt">Amount to offset (${esc(r.cur)})</label><input id="o-amt" class="input num" inputmode="decimal" autocomplete="off" value="${(cap0 / 100).toFixed(2)}"><p class="muted small" id="o-max" style="margin:4px 0 0">Up to ${esc(fmt(cap0, r.cur))}</p></div>
+    <div class="msg" id="sheetMsg" role="alert"></div>
+    ${sheetButtons("Record offset")}
+    <button type="button" class="btn quiet block" data-act="xUnlink" data-gi="${r.gi}">Not the same person? Unlink ${esc(r.name)}</button></div>`,
+    () => {
+      const A = r.pos.find(p => p.v.id === $("#o-pos").value), B = r.neg.find(p => p.v.id === $("#o-neg").value), amt = parseMoney($("#o-amt").value), max = cap();
+      if (!A || !B) return sheetMsg("Pick both volumes.");
+      if (isNaN(amt)) return sheetMsg("Use numbers like 12.50 (up to 2 decimals).");
+      if (!(amt > 0)) return sheetMsg("Enter an amount greater than zero.");
+      if (amt > max) return sheetMsg(`That's more than the overlap. Offset up to ${fmt(max, r.cur)}.`);
+      const now = Date.now(), date = today(), ia = uid(), ib = uid();
+      const how = v => `Offset with ${v.title}`.slice(0, 40);
+      A.v.settlements.push({ id: ia, from: A.id, to: A.v.meId, amount: amt, date, upd: now, how: how(B.v), twinVol: B.v.id, twinId: ib });
+      B.v.settlements.push({ id: ib, from: B.v.meId, to: B.id, amount: amt, date, upd: now, how: how(A.v), twinVol: A.v.id, twinId: ia });
+      if (!commit()) return;
+      closeSheet(); render();
+      toast(`Offset recorded in ${A.v.title} and ${B.v.title}.`, { undo: () => undoSteps(A.v.id, [{ list: "settlements", id: ia, was: null, upd: now }, { vol: B.v.id, list: "settlements", id: ib, was: null, upd: now }]), ms: 6000 });
+    });
+  const upd = () => { const m = cap(); $("#o-max").textContent = `Up to ${fmt(m, r.cur)}`; $("#o-amt").value = (m / 100).toFixed(2); };
+  ["#o-pos", "#o-neg"].forEach(q => $(q).addEventListener("change", upd));
+}
+// Keep twins matched (runs before every save, so merges from other phones are covered too): a twin deleted
+// anywhere takes this one with it; a changed amount or date is copied to the older side (newer edit wins).
+function reconcileTwins() {
+  for (const v of S.volumes) {
+    for (const s of v.settlements.slice()) {
+      if (!s.twinVol) continue;
+      const tv = volById(s.twinVol); if (!tv) continue;
+      const t = tv.settlements.find(x => x.id === s.twinId);
+      if (!t) { if ((tv.deleted || []).includes(s.twinId)) { v.settlements = v.settlements.filter(x => x !== s); tombstone(v, s.id); } continue; }
+      if (t.amount === s.amount && t.date === s.date) continue;
+      const [win, lose] = t.upd > s.upd || (t.upd === s.upd && t.id < s.id) ? [t, s] : [s, t];
+      lose.amount = win.amount; lose.date = win.date; lose.upd = win.upd;
+    }
+  }
 }
 
 // The volume or the expense being edited was deleted in another tab (on Android the browser tab and the
@@ -2015,15 +2150,20 @@ function settleSheet(existing) {
   const s = existing || ds[0] || { from: v.meId, to: (v.members.find(m => m.id !== v.meId) || {}).id };
   const people = v.members.map(m => [m.id, meName(v, m.id)]), day0 = existing ? existing.date : today();
   const sugg = !existing && ds.length > 1 ? `<div class="legend">Suggested payments</div><div class="ledger">${ds.map((d, i) => debtRow(v, d, "button", `type="button" data-sugg="${i}" aria-pressed="${i === 0}"`, CHECK)).join("")}</div>` : "";
-  sheet(`<h2>${existing ? "Edit payment" : "Settle up"}</h2><div class="stack">${sugg}
-    <div class="field">${pickField("s-from", "From", people, s.from)}</div>
-    <div class="field">${pickField("s-to", "To", people, s.to)}</div>
+  // XV: a debt here that another volume can cancel out is offered first; an offset payment keeps its two people
+  const twin = existing && existing.twinVol ? volById(existing.twinVol) : null;
+  const xs = existing ? [] : xRows().map((r, i) => ({ r, i })).filter(({ r }) => r.overlap && r.ps.some(p => p.v.id === v.id));
+  const offer = xs.map(({ r, i }) => `<div class="panel pad stack xv-offer"><p class="small" style="margin:0">${esc(r.ps.map(p => `${p.v.title}: ${xPart(p, r.name)}`).join(". "))}.</p><button type="button" class="btn" data-act="offset" data-i="${i}" data-here="${esc(v.id)}">Offset ${esc(fmt(r.overlap, r.cur))} across volumes</button></div>`).join("");
+  sheet(`<h2>${existing ? (existing.twinVol ? "Edit offset" : "Edit payment") : "Settle up"}</h2><div class="stack">${offer}${sugg}
+    ${existing && existing.twinVol ? `<p class="small muted" style="margin:0">${esc(meName(v, s.from))} paid ${esc(meObj(v, s.to))}, offset with ${esc(twin ? twin.title : "another volume")}.${twin ? " A change to the amount or date here changes it there too." : ""}</p>
+    <input type="hidden" id="s-from" value="${esc(s.from)}"><input type="hidden" id="s-to" value="${esc(s.to)}">` : `<div class="field">${pickField("s-from", "From", people, s.from)}</div>
+    <div class="field">${pickField("s-to", "To", people, s.to)}</div>`}
     <div class="field"><label for="s-amt">Amount (${esc(v.currency)})</label><input id="s-amt" class="input num" inputmode="decimal" placeholder="0.00" autocomplete="off" value="${s.amount ? (s.amount / 100).toFixed(2) : ""}"></div>
     <div class="field"><label for="s-date">Date</label><input id="s-date" type="date" class="input" value="${esc(day0)}">${quickDays(day0)}</div>
     <div class="field"><label for="s-via">How (optional)</label><input id="s-via" class="input" maxlength="40" placeholder="GCash ref 1234" autocomplete="off" value="${esc((existing && existing.how) || "")}">${quickHow((existing && existing.how) || "")}</div>
     <div class="msg" id="sheetMsg" role="alert"></div>
     ${sheetButtons("Record payment")}
-    ${existing ? `<button type="button" class="btn danger block" data-act="deleteSettle" data-id="${esc(existing.id)}">Delete payment</button>` : ""}</div>`,
+    ${existing ? `<button type="button" class="btn danger block" data-act="deleteSettle" data-id="${esc(existing.id)}">${existing.twinVol ? "Delete offset" : "Delete payment"}</button>` : ""}</div>`,
     () => {
       const from = $("#s-from").value, to = $("#s-to").value, amt = parseMoney($("#s-amt").value);
       if (from === to) return sheetMsg("Pick two different people.");
@@ -2035,9 +2175,11 @@ function settleSheet(existing) {
       const date = $("#s-date").value || today(), how = $("#s-via").value.trim().slice(0, 40);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return sheetMsg("Pick a date.");
       const now = Date.now(), step = { list: "settlements", id: existing ? existing.id : uid(), was: existing ? { ...existing } : null, upd: now };
-      const rec = { id: step.id, from, to, amount: amt, date, upd: now, ...(how ? { how } : {}) };
+      const rec = { id: step.id, from, to, amount: amt, date, upd: now, ...(how ? { how } : {}), ...(existing && existing.twinVol ? { twinVol: existing.twinVol, twinId: existing.twinId } : {}) };
+      const steps = [step], t = twin && twin.settlements.find(x => x.id === existing.twinId);
+      if (t && (t.amount !== amt || t.date !== date)) { steps.push({ vol: twin.id, list: "settlements", id: t.id, was: { ...t }, upd: now }); Object.assign(t, { amount: amt, date, upd: now }); }
       if (existing) { delete existing.how; Object.assign(existing, rec); } else v.settlements.push(rec);
-      if (!commit()) return; FX.settled = v.id; closeSheet(); render(); toast("Payment recorded", { undo: () => undoSteps(v.id, [step]), ms: 6000 });
+      if (!commit()) return; FX.settled = v.id; closeSheet(); render(); toast(steps.length > 1 ? `Offset changed here and in ${twin.title}` : "Payment recorded", { undo: () => undoSteps(v.id, steps), ms: 6000 });
     });
   if (!sugg) return;
   // The chosen suggestion is the row the form still matches; editing From/To/Amount away from every row clears it.
@@ -2624,11 +2766,18 @@ function cleanVolume(x) {
       splits: { ...e.splits }, inputs: Object.fromEntries(Object.entries(e.inputs && typeof e.inputs === "object" ? e.inputs : {}).filter(([k, v]) => x.members.some(m => m.id === k) && typeof v === "string" && v.length <= 20)),
       note: typeof e.note === "string" ? e.note : "", upd: updOf(e.upd) })),
     // `how` (D3, optional, up to 40 characters) goes last: an older phone drops it, and mergeVolumes compares in this key order
-    settlements: x.settlements.map(t => ({ id: t.id, from: t.from, to: t.to, amount: t.amount, date: t.date, upd: updOf(t.upd), ...(typeof t.how === "string" && t.how.trim() && t.how.length <= 40 ? { how: t.how.trim() } : {}) })),
+    // XV: an offset payment names its twin in another volume (twinVol, twinId); both go after `how`, for the same reason
+    settlements: x.settlements.map(t => ({ id: t.id, from: t.from, to: t.to, amount: t.amount, date: t.date, upd: updOf(t.upd), ...(typeof t.how === "string" && t.how.trim() && t.how.length <= 40 ? { how: t.how.trim() } : {}),
+      ...(okId(t.twinVol) && okId(t.twinId) && t.twinVol !== x.id ? { twinVol: t.twinVol, twinId: t.twinId } : {}) })),
     deleted: [...new Set((x.deleted || []).filter(i => okId(i)))]
   };
 }
 const sameEntry = (a, b) => JSON.stringify({ ...a, upd: 0 }) === JSON.stringify({ ...b, upd: 0 });
+// Optional payment fields an older phone drops when it writes a payment back (D3 `how`, XV twin link).
+const OPT_PAY = ["how", "twinVol", "twinId"];
+const stripOpt = o => Object.fromEntries(Object.entries(o).filter(([k]) => !OPT_PAY.includes(k)));
+const olderCopy = (x, mine) => x.upd === mine.upd && OPT_PAY.every(k => x[k] === undefined || x[k] === mine[k]) &&
+  OPT_PAY.some(k => x[k] === undefined && mine[k] !== undefined) && sameEntry(stripOpt(x), stripOpt(mine));
 // What Replace throws away: local entries and members the code lacks or has an older/different copy of,
 // and local deletions the code would bring back. `other` is true when only volume details differ.
 function replaceLoss(localRaw, codeRaw) {
@@ -2651,9 +2800,9 @@ function mergeVolumes(localRaw, incomingRaw) {
   const added = { expense: 0, payment: 0, member: 0 }, updated = { ...added, details: 0 }, removed = { ...added };
   // A phone on an older version reads a category it doesn't know as Other and may send it back with the same edit
   // time; a real change of category always has a newer one, so that copy doesn't overwrite the category here.
-  // Likewise a payment's `how` (D3): an older phone sends it back without one at the same edit time.
+  // Likewise a payment's `how` (D3) and offset link (XV): an older phone sends it back without them at the same edit time.
   const same = (x, mine) => sameEntry(x, mine) || (x.upd === mine.upd && x.category === "other" && !!mine.category && mine.category !== "other" && sameEntry({ ...x, category: mine.category }, mine)) ||
-    (x.upd === mine.upd && x.how === undefined && mine.how !== undefined && sameEntry({ ...x, how: mine.how }, mine));
+    olderCopy(x, mine);
   const union = (a, b, isGone, kind) => {
     const out = new Map(a.map(x => [x.id, x]));
     for (const x of b) {
@@ -3143,7 +3292,18 @@ document.addEventListener("click", async ev => {
     case "deleteExpense": confirmSheet("Delete expense?", `${ui.form.desc || "This expense"} will be removed and balances recalculated.`, "Delete", () => { const was = v.expenses.find(e => e.id === ui.form.id); v.expenses = v.expenses.filter(e => e.id !== ui.form.id); tombstone(v, ui.form.id); if (!commit()) return; leave(); toast("Expense deleted", was ? { undo: () => undoSteps(v.id, [{ list: "expenses", id: was.id, was, upd: 0 }]), ms: 6000 } : {}); }); break;
     case "settle": settleSheet(null); break;
     case "editSettle": settleSheet(v.settlements.find(s => s.id === el.dataset.id)); break;
-    case "deleteSettle": { const id = el.dataset.id; confirmSheet("Delete payment?", "This payment will be removed and balances recalculated.", "Delete", () => { const was = v.settlements.find(s => s.id === id); v.settlements = v.settlements.filter(s => s.id !== id); tombstone(v, id); if (!commit()) return; closeSheet(); render(); toast("Payment deleted", was ? { undo: () => undoSteps(v.id, [{ list: "settlements", id, was, upd: 0 }]), ms: 6000 } : {}); }); break; }
+    case "deleteSettle": {
+      // XV: an offset goes with its twin in the other volume; Undo brings both back, linked
+      const id = el.dataset.id, x = v.settlements.find(s => s.id === id), tv = x && x.twinVol ? volById(x.twinVol) : null, tw = tv && tv.settlements.find(s => s.id === x.twinId);
+      confirmSheet(tw ? "Delete offset?" : "Delete payment?", tw ? `This offset will be removed here and in ${tv.title}, and balances recalculated in both.` : "This payment will be removed and balances recalculated.", "Delete", () => {
+        const was = v.settlements.find(s => s.id === id), steps = was ? [{ list: "settlements", id, was, upd: 0 }] : [];
+        v.settlements = v.settlements.filter(s => s.id !== id); tombstone(v, id);
+        if (tw && tv.settlements.includes(tw)) { steps.push({ vol: tv.id, list: "settlements", id: tw.id, was: { ...tw }, upd: 0 }); tv.settlements = tv.settlements.filter(s => s !== tw); tombstone(tv, tw.id); }
+        if (!commit()) return; closeSheet(); render(); toast(tw ? `Offset deleted here and in ${tv.title}` : "Payment deleted", steps.length ? { undo: () => undoSteps(v.id, steps), ms: 6000 } : {}); }); break; }
+    case "xYes": if (xLink(el.dataset.a, el.dataset.b)) { render(); announce("Linked."); const n = $("#across button"); if (n) n.focus(); } break;
+    case "xNo": XL.no = [...new Set([...XL.no, xNo(el.dataset.a, el.dataset.b)])]; saveLinks(); render(); { const n = $("#across button") || $("#app h1"); if (n) n.focus(); } break;
+    case "xUnlink": { const g = XL.groups[+el.dataset.gi]; if (g) { XL.no = [...new Set([...XL.no, ...g.flatMap((a, i) => g.slice(i + 1).map(b => xNo(a, b)))])]; XL.groups = XL.groups.filter(x => x !== g); saveLinks(); } closeSheet(); render(); toast("Unlinked."); break; }
+    case "offset": { const r = xRows()[+el.dataset.i]; if (r && r.overlap) offsetSheet(r, el.dataset.here); break; }
     case "editMember": { const m = v.members.find(x => x.id === el.dataset.id); if (m) editMemberSheet(m); break; }
     case "removeMember": removeMember(el.dataset.id); break;
     case "backup": await downloadBackup(); break;
