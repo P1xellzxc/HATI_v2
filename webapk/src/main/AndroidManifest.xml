@@ -23,8 +23,10 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Invite links: https://p1xellzxc.github.io/HATI_v2/app/#<data> -->
-            <intent-filter>
+            <!-- Invite links: https://p1xellzxc.github.io/HATI_v2/app/#<data>. autoVerify opens them straight in the
+                 app once https://p1xellzxc.github.io/.well-known/assetlinks.json lists this app (webapk/assetlinks.json);
+                 until then Android opens them in Chrome, which hands them over (hati2://join?j=…). -->
+            <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />

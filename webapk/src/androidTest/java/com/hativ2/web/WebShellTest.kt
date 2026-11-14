@@ -96,6 +96,8 @@ class WebShellTest {
         assertEquals("$index#join=abc", MainActivity.startUrl(Uri.parse("https://p1xellzxc.github.io/HATI_v2/app/#join=abc")))
         assertEquals("$index#v1.xyz", MainActivity.startUrl(Uri.parse("hati2://join#v1.xyz")))
         assertEquals(index, MainActivity.startUrl(Uri.parse("hati2://join")))
+        assertEquals("$index#join=m.abc.def", MainActivity.startUrl(Uri.parse("hati2://join?j=m.abc.def")))
+        assertEquals(index, MainActivity.startUrl(Uri.parse("hati2://join?j=%3Cscript%3E")))
         assertEquals(index, MainActivity.startUrl(Uri.parse("https://example.com/#evil")))
         assertEquals(index, MainActivity.startUrl(null))
     }

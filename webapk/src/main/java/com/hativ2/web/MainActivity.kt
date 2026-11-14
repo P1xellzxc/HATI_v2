@@ -267,7 +267,12 @@ class MainActivity : ComponentActivity() {
         fun startUrl(uri: Uri?): String {
             val ok = uri != null && (isAppLink(uri) || (uri.scheme == "hati2" && uri.host == "join"))
             val fragment = if (ok) uri!!.encodedFragment else null
-            return if (fragment.isNullOrEmpty()) INDEX else "$INDEX#$fragment"
+            if (!fragment.isNullOrEmpty()) return "$INDEX#$fragment"
+            // From Chrome's "Open in HATI² app" (an intent: URL can't carry a #fragment): hati2://join?j=<invite payload>
+            val j = if (ok && uri!!.scheme == "hati2") uri.getQueryParameter("j") else null
+            return if (j != null && INVITE_RE.matches(j)) "$INDEX#join=$j" else INDEX
         }
+
+        private val INVITE_RE = Regex("[A-Za-z0-9_.-]{1,1000000}")
     }
 }
