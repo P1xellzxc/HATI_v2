@@ -79,3 +79,6 @@ Given the Android app, a volume just created from the hub (or opened with nothin
 
 ## 25. Invite tapped on Android with the app installed (HO)
 Given Ivy has the HATI² APK and gets Geryme's invite link in Messenger. When she taps it. Then Chrome opens it and hands it to the app straight away (hati2://join?j=…); if Chrome blocks that, one tap on "Open in HATI² app" does it, and the join sheet opens in the app. Without the app, Chrome's fallback (?noapp=1) joins in the browser as before; "Use in browser instead" is always there. Budget: 0–1 extra tap. Check: e2e "HO: …", instrumented `startUrlMapping`.
+
+## 26. Ivy picks herself and every screen follows (ME-view)
+Given Ivy's app holds Bebetime Expenses and Baguio 2026 copied from Geryme's phone (you = Geryme). When she opens Settings → Who you are and changes both to Ivy. Then at once: the hub cards read "You owe ₱292.05" / "You owe ₱4,200.00"; Across volumes says "You owe Geryme ₱4,492.05" with no question (her old selves link up); inside Bebetime the hero, the You chip, Who pays whom ("You pay Geryme"), Recent and History ("Ramen · You paid +₱225.45"), a new expense (paid by You) and Settle up (You → Geryme ₱292.05) are all from her side; Settings warns about mixed names or a second copy of a volume. Check: e2e "ME-view: …".

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-9zNQSF01ymwsfdayKOcAq1pfpp34sioAfWRlKgCoZ3w='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://hati-sync.gerymefernando.workers.dev wss://hati-sync.gerymefernando.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wilJGuBZS1nkxQY2iUvAqs6Zl96/Lz8Iv+GPHcMIk/U='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://hati-sync.gerymefernando.workers.dev wss://hati-sync.gerymefernando.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>HATI²</title>
@@ -1358,8 +1358,9 @@ function matchItem(v, it, hf) {
   if (q && ![meName(v, x.from), meName(v, x.to), x.how || "", "payment"].some(t => t.toLowerCase().includes(q))) return false;
   return true;
 }
-// PERF (hati-perf, 2026-11-15): a long History draws its first HIST_FIRST rows with the screen and the rest in a
-// second, separate task just after the screen change, so neither task holds the page for 50 ms on a slow phone.
+// PERF (hati-perf, 2026-11-15): a long History draws its first HIST_FIRST rows with the screen; the rest are added
+// HIST_STEP at a time when the end of the list comes within a screen of view (a sentinel row), never during the screen
+// change, so no task holds the page for 50 ms on a slow phone. Filters and Set dates draw everything at once.
 const HIST_FIRST = 40;
 let histRest = null;
 function histBody(v) {
@@ -1368,8 +1369,8 @@ function histBody(v) {
   const none = filterOn(hf) ? emptyCard("(・_・;)", "Nothing matches. Try other words or clear the filter.") : emptyCard("(・_・;)", "Nothing recorded yet.");
   const split = !filterOn(hf) && !sel && shown.length > HIST_FIRST ? HIST_FIRST : shown.length;
   histRest = split < shown.length ? { v, rows: shown.slice(split), at: split, totals, gen: renders, k: shown[split - 1].d.slice(0, 7) } : null;
-  if (histRest) setTimeout(histMore, motionOn() ? motionTimes().wipe + motionTimes().in : 0);
-  return (shown.length ? histMonths(v, shown.slice(0, split), sel, totals) : none) +
+  if (histRest) setTimeout(histWatch, 0);
+  return (shown.length ? histMonths(v, shown.slice(0, split), sel, totals) : none) + (histRest ? `<div id="histMoreAt" aria-hidden="true"></div>` : "") +
     (items.length > shown.length ? `<button class="btn block" data-act="more" style="margin-top:12px">Show ${Math.min(100, items.length - shown.length)} more</button>` : "");
 }
 function histCount(v) {
@@ -1378,13 +1379,29 @@ function histCount(v) {
   return n === 1 ? "1 match" : `${n} matches`;
 }
 // Adds the rows histBody() held back: rows of the month the first part ended in join its ledger, the rest are new months.
+const HIST_STEP = 20;
+let histIO = null;
+function histWatch() {
+  if (histIO) histIO.disconnect();
+  const at = $("#histMoreAt"); if (!at || !histRest) return;
+  if (typeof IntersectionObserver !== "function") { while (histRest) histMore(); return; }
+  histIO = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { histMore(); if (!histRest) { histIO.disconnect(); const x = $("#histMoreAt"); if (x) x.remove(); } } }, { rootMargin: "0px 0px 100% 0px" });
+  histIO.observe(at);
+}
 function histMore() {
-  const r = histRest; histRest = null;
+  let r = histRest; histRest = null;
   const body = $("#histBody"); if (!r || !body || ui.view !== "history" || renders !== r.gen) return;
+  if (r.rows.length > HIST_STEP) {
+    const last = r.rows[HIST_STEP - 1];
+    histRest = { ...r, rows: r.rows.slice(HIST_STEP), at: r.at + HIST_STEP, k: last.d.slice(0, 7) };
+    r = { ...r, rows: r.rows.slice(0, HIST_STEP) };
+    // the sentinel stays in view while there's more, so the observer fires again for the next step
+    if (histIO) { const at = $("#histMoreAt"); if (at) setTimeout(() => { if (histIO && $("#histMoreAt")) { histIO.unobserve(at); histIO.observe(at); } }, 0); }
+  }
   const same = r.rows.findIndex(it => it.d.slice(0, 7) !== r.k), head = same < 0 ? r.rows : r.rows.slice(0, same), tail = same < 0 ? [] : r.rows.slice(same);
   const months = body.querySelectorAll(".month .ledger.hist"), last = months[months.length - 1];
   if (head.length && last) last.insertAdjacentHTML("beforeend", head.map((it, j) => { const i = r.at + j, cls = i < 12 ? "tx lead" : i >= 32 ? "tx cv" : "tx"; return itemRow(r.v, it).replace('class="tx"', `class="${cls}"`); }).join(""));
-  if (tail.length) { const more = body.querySelector('[data-act="more"]'), html = histMonths(r.v, tail, null, r.totals, r.at + head.length); if (more) more.insertAdjacentHTML("beforebegin", html); else body.insertAdjacentHTML("beforeend", html); }
+  if (tail.length) { const at = $("#histMoreAt"), html = histMonths(r.v, tail, null, r.totals, r.at + head.length); if (at) at.insertAdjacentHTML("beforebegin", html); else body.insertAdjacentHTML("beforeend", html); }
 }
 function refreshHist() {
   const v = vol(), body = $("#histBody"); if (!v || !body) return;
@@ -1569,8 +1586,8 @@ const views = {
     const seg = (key, label, opts) => `<div class="seg" role="group" aria-label="${label}">${opts.map(o => `<button type="button" data-set="${key}" data-val="${o[0]}" aria-pressed="${st[key] === o[0]}">${o[1]}</button>`).join("")}</div>`;
     return topbar("Settings", { back: true }) + `<div class="stack">
       ${S.volumes.length ? `<section class="sect" id="whoYou"><div class="strip"><h2 class="label">Who you are</h2></div>
-      <p class="muted small" style="margin:0">Your name in each volume on this phone. Wrong one? Tap Change. The others aren't affected.</p>
-      <div class="ledger">${S.volumes.map(v => `<div class="debt who-row"><span class="grow small"><b class="ellip">${esc(v.title)}</b><span class="muted"> · You're </span><b>${esc(nameOf(v, v.meId))}</b></span><button type="button" class="btn quiet" data-act="whoSheet" data-id="${esc(v.id)}" aria-label="${esc(`Change who you are in ${v.title}`)}">Change</button></div>`).join("")}</div></section>` : ""}
+      <p class="muted small" style="margin:0">Your name in each volume on this phone. Wrong one? Tap Change. The others aren't affected.</p>${whoWarn()}
+      <div class="ledger">${S.volumes.map(v => `<div class="debt who-row"><span class="grow small"><b class="ellip">${esc(v.title)}</b>${v.archived ? `<span class="muted"> (archived)</span>` : ""}<span class="muted"> · You're </span><b>${esc(nameOf(v, v.meId))}</b></span><button type="button" class="btn quiet" data-act="whoSheet" data-id="${esc(v.id)}" aria-label="${esc(`Change who you are in ${v.title}`)}">Change</button></div>`).join("")}</div></section>` : ""}
       <section class="sect"><div class="strip"><h2 class="label">Appearance</h2></div>
       <div class="panel pad stack">${seg("mode", "Appearance", [["system", "System"], ["light", "Light"], ["dark", "Dark"]])}
         <div><h3 class="legend" style="margin:0" id="palLabel">Color theme</h3><div class="muted small">From Sanzo Wada's A Dictionary of Color Combinations (1918).</div></div>
@@ -1800,7 +1817,7 @@ function undoSteps(volId, steps) {
 // member in each volume, never the simplified group route, and only volumes of one currency are added up.
 // An offset is two payments, one per volume in opposite directions, each naming its twin (twinVol, twinId).
 const LINKS = "hati2.links.v1";
-let XL = (() => { try { const j = JSON.parse(localStorage.getItem(LINKS) || "null"); if (j && Array.isArray(j.groups) && Array.isArray(j.no)) return { groups: j.groups.filter(g => Array.isArray(g) && g.every(k => typeof k === "string")), no: j.no.filter(k => typeof k === "string") }; } catch (e) {} return { groups: [], no: [] }; })();
+let XL = (() => { try { const j = JSON.parse(localStorage.getItem(LINKS) || "null"); if (j && Array.isArray(j.groups) && Array.isArray(j.no)) return { groups: j.groups.filter(g => Array.isArray(g) && g.every(k => typeof k === "string")), no: j.no.filter(k => typeof k === "string"), was: j.was && typeof j.was === "object" ? Object.fromEntries(Object.entries(j.was).filter(([a, b]) => okId(a) && okId(b))) : {} }; } catch (e) {} return { groups: [], no: [] }; })();
 const saveLinks = () => { try { localStorage.setItem(LINKS, JSON.stringify(XL)); } catch (e) {} };
 const xk = (volId, id) => volId + "." + id;
 const xVolOf = k => k.slice(0, k.indexOf("."));
@@ -2250,9 +2267,28 @@ function editMemberSheet(m) {
 function setMe(id, v = vol()) {
   if (!v || id === v.meId || !v.members.some(m => m.id === id)) return;
   const was = v.meId; v.meId = id;
-  if (!commit()) return;
+  if (!commit()) { v.meId = was; return; }
+  // a "same person" link to the member who is now you means nothing any more (you're linked everywhere already)
+  const k = xk(v.id, id); if (XL.groups.some(g => g.includes(k))) { XL.groups = XL.groups.map(g => g.filter(x => x !== k)).filter(g => g.length > 1); saveLinks(); }
+  // The member you were is one person in every volume you switched away from (this phone's old "you"), so those link
+  // up at once and the cross-volume net needs no question. XL.was: the member each switched volume had as "you".
+  XL.was = { ...(XL.was || {}), [v.id]: was };
+  for (const [w, m] of Object.entries(XL.was)) { const W = volById(w); if (w !== v.id && W && m !== W.meId && W.members.some(x => x.id === m)) xLink(xk(v.id, was), xk(w, m)); }
+  saveLinks();
   closeSheet(); render(); focusTitle();
   toast(`You're ${nameOf(v, id)} in ${v.title} now`, { undo: () => { const x = volById(v.id); if (!x || x.meId !== id || !x.members.some(m => m.id === was)) return; x.meId = was; if (!commit()) return; if (!sheetOpen()) render(); toast("Undone."); }, ms: 6000 });
+}
+// Settings > Who you are: say so when this phone isn't one person everywhere (different names), or holds two copies of
+// one volume (same title and people, different copies, e.g. a backup and an invite): an old copy keeps the other side.
+const sig = v => xName(v.title) + "|" + v.members.map(m => xName(m.name)).sort().join(",");
+function whoWarn() {
+  const names = [...new Set(S.volumes.filter(v => !v.archived).map(v => nameOf(v, v.meId)))];
+  const seen = new Map(); S.volumes.forEach(v => seen.set(sig(v), [...(seen.get(sig(v)) || []), v]));
+  const dup = [...seen.values()].filter(a => a.length > 1);
+  const say = [];
+  if (names.length > 1) say.push(`You're ${names.slice(0, -1).join(", ")} and ${names[names.length - 1]} in different volumes. If that's not right, tap Change.`);
+  for (const a of dup) say.push(`${a[0].title} is here ${a.length} times (one may be an old copy from someone else's phone). Keep the one you use; delete the other from the volumes list (press and hold it).`);
+  return say.length ? `<div class="panel pad stack who-warn" role="note">${say.map(t => `<p class="small" style="margin:0">${esc(t)}</p>`).join("")}</div>` : "";
 }
 // Settings > Who you are > Change: pick yourself among the volume's members.
 function whoSheet(volId) {
