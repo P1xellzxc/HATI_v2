@@ -186,7 +186,9 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(await d.getByText('Open file').isVisible(),'file import is a labeled button, not a bare file input');
    await d.locator('[data-act=closeSheet]').click();
    await toSettings(d);
-   ok(await d.evaluate(()=>document.scrollingElement.scrollHeight)<=1300,'settings is at most 1300px tall at 360 (got '+await d.evaluate(()=>document.scrollingElement.scrollHeight)+')');
+   // The budget keeps the palette picker compact; "Who you are" (one row per volume, owner 2026-11-15) is outside it.
+   const sh360=await d.evaluate(()=>{ const w=document.getElementById('whoYou'); return document.scrollingElement.scrollHeight-(w?w.getBoundingClientRect().height+12:0); });
+   ok(sh360<=1300,'settings without "Who you are" is at most 1300px tall at 360 (got '+Math.round(sh360)+')');
    const names=await d.evaluate(()=>PALETTES.map(x=>x.name)); let allSel=true;
    for (const n of names) { await d.getByRole('radio',{name:new RegExp(n,'i')}).click(); if(await d.getByRole('radio',{name:new RegExp(n,'i')}).getAttribute('aria-checked')!=='true') allSel=false; }
    ok(allSel && names.length===13,'all 13 palettes are selectable by name');
@@ -1506,6 +1508,11 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    { const N=await mk({viewport:{width:390,height:844}}); const q=N.pg; await seed(q);
      await q.locator('.vol').first().click(); await q.waitForTimeout(350); await q.locator('[data-act=history]').first().click();
      await q.waitForFunction(()=>document.querySelector('#app .ink'),null,{timeout:2000}).catch(()=>{});
+     await q.waitForFunction(()=>document.querySelectorAll('#app .ledger > *').length>40,null,{timeout:3000}).catch(()=>{}); // PERF: rows after the 40th arrive just after the screen change
+     // PERF: the split draw ends identical to drawing everything at once: same rows, same order, one heading per month
+     const same=await q.evaluate(()=>{ const got=[...document.querySelectorAll('#histBody .tx')].map(x=>x.dataset.id), heads=[...document.querySelectorAll('#histBody .month h2')].map(h=>h.textContent);
+       const want=timeline(vol()).slice(0,ui.histLimit).map(it=>it.x.id); return {n:got.length,eq:JSON.stringify(got)===JSON.stringify(want),dupHead:heads.length!==new Set(heads).size,cls:[...document.querySelectorAll('#histBody .tx')].every((x,i)=>x.classList.contains(i<12?'lead':i>=32?'cv':'tx'))}; });
+     ok(same.n>40 && same.eq && !same.dupHead && same.cls,'PERF: History draws its first 40 rows with the screen and the rest right after; the result is the same rows, order, month headings and row classes as one draw '+JSON.stringify(same));
      const r=await q.evaluate(()=>{ const rows=[...document.querySelectorAll('#app .ledger > *')];
        return {rows:rows.length,ink:document.querySelectorAll('#app .ink').length,inkRows:rows.filter(x=>x.classList.contains('ink')).length,cv32:getComputedStyle(rows[31]).contentVisibility,cv33:getComputedStyle(rows[32]).contentVisibility,
          rule:[...document.styleSheets].flatMap(s=>[...s.cssRules]).some(function f(x){ return (x.selectorText||'').includes('data-turn') || [...(x.cssRules||[])].some(f); })}; });
@@ -1997,7 +2004,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    const js=await B.pg.evaluate(()=>({h:$('#sheetTitle').textContent,who:!!$('#s-who'),txt:$('#sheetForm').textContent.replace(/\s+/g,' ')}));
    await B.pg.locator('#sheetForm button.primary').click(); await B.pg.waitForTimeout(500);
    const got=await B.pg.evaluate(()=>{ const a=volById('ya'),bb=volById('yb'); return {a:a&&a.meId,b:bb&&bb.meId,bal:a&&balances(a)[a.meId],sync:!!(SY.ya&&SY.yb),link:XL.groups.some(g=>g.includes('ya.g1')&&g.includes('yb.g2')),view:ui.view,row:$('.xv-row')&&$('.xv-row').textContent.replace(/\s+/g,' ')}; });
-   ok(js.h==='Join 2 volumes' && !js.who && /You're Ivy in each one/.test(js.txt) && got.a==='i1' && got.b==='i2' && got.bal===-420000 && got.sync && got.link && got.view==='hub','XV2: opening it joins both volumes as Ivy with no "which member are you" step, both kept in sync, and Geryme is linked as one person on her phone '+JSON.stringify([js.h,got]));
+   ok(js.h==='Join 2 volumes' && !js.who && /This invite is for Ivy/.test(js.txt) && got.a==='i1' && got.b==='i2' && got.bal===-420000 && got.sync && got.link && got.view==='hub','XV2: opening it joins both volumes as Ivy with no "which member are you" step, both kept in sync, and Geryme is linked as one person on her phone '+JSON.stringify([js.h,got]));
    ok(/You owe Geryme/.test(got.row||'') && /₱3,135.00/.test(got.row||''),'XV2: her hub shows the same net from her side: You owe Geryme ₱3,135.00 '+JSON.stringify(got.row));
    const bad=await B.pg.evaluate(async()=>(await readInvite('m.'+'a'.repeat(22)+'.'+'b'.repeat(43)+'.x.y')).error===JOIN_BROKEN);
    ok(bad,'XV2: a one-volume or malformed bundle reads as a broken link '+bad);
@@ -2020,6 +2027,66 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    const no=await Promise.all([N,I,W].map(x=>x.pg.evaluate(()=>!$('#s-openapp'))));
    ok(no.every(Boolean),'HO: no hand-off after the browser fallback (?noapp=1), on iPhone, or inside the app itself '+JSON.stringify(no));
    ok([A,N,I,W].every(x=>x.errs.length===0),'HO: no page errors '+JSON.stringify([A,N,I,W].map(x=>x.errs))); for (const x of [A,N,I,W]) await x.c.close(); }
+
+ // ME Who "you" are (owner 2026-11-15: Ivy's app showed the volumes from Geryme's side after joining by invite).
+ // Cause: her app already had copies with Geryme as "you" (e.g. from Geryme's backup); merging kept that, with no way to change it.
+ { const appInit=()=>{ window.HatiAndroid={share(){},saveFile(){}}; };
+   const mk=async app=>{ const c=await b.newContext({...devices['Pixel 7']}); if (app) await c.addInitScript(appInit); const pg=await c.newPage(); const errs=[];
+     pg.on('pageerror',e=>errs.push(e.message)); pg.on('console',m=>{if(m.type()==='error')errs.push(m.text())}); return {c,pg,errs}; };
+   const d='2026-11-12', eq=(id,desc,amt,by,sp)=>({id,desc,amount:amt,paidBy:by,category:'food',date:d,splitType:'exact',splits:sp,inputs:{},note:'',upd:1});
+   const vols=[
+     {id:'za',title:'Baguio 2026',type:'travel',currency:'₱',meId:'g1',created:2,members:[{id:'g1',name:'Geryme'},{id:'i1',name:'Ivy'}],expenses:[eq('ea','Airbnb',840000,'g1',{g1:420000,i1:420000})],settlements:[]},
+     {id:'zb',title:'Bebetime',type:'household',currency:'₱',meId:'g2',created:1,members:[{id:'g2',name:'Geryme'},{id:'i2',name:'Ivy'}],expenses:[eq('eb','Ramen',213000,'i2',{g2:106500,i2:106500})],settlements:[]}];
+   const seed=(pg,links)=>pg.evaluate(([vs,l])=>{ localStorage.setItem('hati2.mock.v1',JSON.stringify({volumes:vs,settings:{palette:'classic',mode:'light',strategy:'simplify'}})); if (l) localStorage.setItem('hati2.links.v1',JSON.stringify(l)); },[vols,links]);
+   const G=await mk(true); await G.pg.goto(URL); await seed(G.pg,{groups:[['zb.i2','za.i1']],no:[]}); await G.pg.reload(); await G.pg.waitForSelector('[data-act=xInvite]');
+   await G.pg.locator('[data-act=xInvite]').click(); await G.pg.waitForSelector('#s-link',{state:'attached',timeout:15000});
+   const link=await G.pg.evaluate(()=>$('#s-link').value);
+   const view=pg=>pg.evaluate(()=>S.volumes.filter(v=>/^z/.test(v.id)).sort((a,b)=>a.id<b.id?-1:1).map(v=>nameOf(v,v.meId)+':'+balances(v)[v.meId]).join());
+   // Ivy's app already holds Geryme's copies (as after restoring his backup), then opens the invite
+   const I=await mk(true); await I.pg.goto(URL); await seed(I.pg); await I.pg.reload(); await I.pg.waitForSelector('.vol');
+   const before=await view(I.pg);
+   await I.pg.goto(URL+'#join='+link.split('#join=')[1]); await I.pg.waitForSelector('#s-me',{timeout:15000});
+   const sh=await I.pg.evaluate(()=>({clash:$('#s-clash').textContent.replace(/\s+/g,' '),val:$('#s-me').value,opts:$('#s-me').opts.map(o=>o[1])}));
+   await I.pg.locator('#sheetForm button.primary').click(); await I.pg.waitForTimeout(800);
+   const after=await view(I.pg), toastT=await I.pg.evaluate(()=>[...document.querySelectorAll('.toast')].pop().textContent);
+   ok(before==='Geryme:420000,Geryme:-106500' && /On this phone you're Geryme in Bebetime and Baguio 2026/.test(sh.clash) && sh.val==='invite' && sh.opts.join()==="I'm Ivy,I'm Geryme" && after==='Ivy:-420000,Ivy:106500' && /as Ivy/.test(toastT),
+     'ME: an invite for Ivy on a phone whose copies show Geryme as "you" asks who you are (starting on Ivy), and Join all switches both volumes to Ivy\'s side '+JSON.stringify({before,sh,after,toastT}));
+   await I.pg.reload(); await I.pg.waitForTimeout(1500);
+   await G.pg.evaluate(()=>{ const v=volById('zb'); v.expenses.push({id:'zz',desc:'Taxi',amount:10000,paidBy:'g2',category:'transport',date:'2026-11-15',splitType:'equal',splits:{g2:5000,i2:5000},inputs:{},note:'',upd:Date.now()}); commit(); syncRun('zb'); });
+   await I.pg.waitForFunction(()=>volById('zb').expenses.some(e=>e.id==='zz'),null,{timeout:10000}).catch(()=>{});
+   const live=await view(I.pg), gv=await view(G.pg);
+   ok(live==='Ivy:-420000,Ivy:101500' && gv==='Geryme:420000,Geryme:-101500','ME: after a reload and a live change from Geryme, Ivy\'s app still shows Ivy\'s side and Geryme\'s still shows his '+JSON.stringify({live,gv}));
+   // the sender opening his own invite keeps himself
+   await G.pg.goto(link); await G.pg.waitForSelector('#s-me',{timeout:15000}); await pick(G.pg,'s-me','keep');
+   await G.pg.locator('#sheetForm button.primary').click(); await G.pg.waitForTimeout(800);
+   ok((await view(G.pg)).startsWith('Geryme:'),'ME: "I\'m Geryme" keeps this phone as Geryme (the sender testing his own link) '+await view(G.pg));
+   // "This is me" on a member, with Undo; never sent to the others
+   const C=await mk(false); await C.pg.goto(URL); await seed(C.pg); await C.pg.reload(); await C.pg.waitForSelector('.vol');
+   await C.pg.evaluate(()=>{ ui.volId='zb'; go('volume'); }); await C.pg.locator('.chip[data-act=editMember][data-id=i2]').click(); await C.pg.waitForSelector('[data-act=setMe]');
+   const meBtn=await C.pg.evaluate(()=>!!document.querySelector('[data-act=setMe]'));
+   await C.pg.locator('[data-act=setMe]').click(); await C.pg.waitForTimeout(300);
+   const s1=await C.pg.evaluate(()=>({me:vol().meId,hero:$('.hero .k').textContent,sent:payload(vol()).includes('meId')}));
+   await C.pg.locator('.toast button.undo').last().click(); await C.pg.waitForTimeout(300);
+   const s2=await C.pg.evaluate(()=>vol().meId);
+   await C.pg.evaluate(()=>{ editMemberSheet(vol().members.find(m=>m.id===vol().meId)); });
+   const own=await C.pg.evaluate(()=>!document.querySelector('[data-act=setMe]'));
+   ok(meBtn && s1.me==='i2' && /owed/.test(s1.hero) && !s1.sent && s2==='g2' && own,'ME: "This is me" on a member shows the volume from their side on this phone only (not in the synced data); Undo switches back; your own chip has no such button '+JSON.stringify({s1,s2}));
+   // Settings > Who you are (owner 2026-11-15): your name in every volume, and Change picks who you are
+   await toSettings(C.pg); await C.pg.waitForSelector('#whoYou');
+   const rows=await C.pg.evaluate(()=>[...document.querySelectorAll('#whoYou .who-row')].map(r=>r.textContent.replace(/\s+/g,' ').replace(/Change$/,'').trim()));
+   await C.pg.getByRole('button',{name:'Change who you are in Bebetime'}).click(); await C.pg.waitForSelector('#s-iam');
+   const t1=await pick(C.pg,'s-iam',{label:'Ivy'}); await C.pg.locator('#sheetForm button.primary').click(); await C.pg.waitForTimeout(300);
+   const w=await C.pg.evaluate(()=>({me:volById('zb').meId,row:[...document.querySelectorAll('#whoYou .who-row')].find(r=>/Bebetime/.test(r.textContent)).textContent.replace(/\s+/g,' '),view:ui.view}));
+   ok(rows.includes("Bebetime · You're Geryme") && rows.includes("Baguio 2026 · You're Geryme") && t1===1 && w.me==='i2' && /You're Ivy/.test(w.row) && w.view==='settings','ME: Settings lists who you are in each volume; Change → Ivy → Save switches Bebetime to Ivy in one pick and the row says so '+JSON.stringify({rows,w}));
+   // property: merging any copy never changes who "you" are, and you are always a member
+   const fz=await C.pg.evaluate(()=>{ let bad=0; const rnd=n=>Math.floor(Math.random()*n);
+     for (let k=0;k<300;k++) { const ids=['a','b','c','d'].slice(0,2+rnd(3)), mk=(me)=>({id:'fv',title:'F',currency:'₱',meId:me,members:ids.map(i=>({id:i,name:i.toUpperCase(),upd:rnd(5)})),expenses:Array.from({length:rnd(4)},(_,j)=>{ const a=100+rnd(900); return {id:'e'+rnd(6),desc:'x',amount:a,paidBy:ids[rnd(ids.length)],category:'food',date:'2026-11-01',splitType:'equal',splits:splitEqual(a,ids),inputs:{},note:'',upd:rnd(9)}; }).filter((e,i,a)=>a.findIndex(x=>x.id===e.id)===i),settlements:[]});
+       const L=mk(ids[rnd(ids.length)]), R=mk(ids[rnd(ids.length)]); const m=mergeVolumes(L,R); if (m.error) continue;
+       if (m.vol.meId!==L.meId || !m.vol.members.some(x=>x.id===m.vol.meId)) bad++;
+       const t=cleanVolume(remoteOrder(m.vol,cleanVolume(JSON.parse(payload(R))))); if (t.meId!==L.meId) bad++; }
+     return bad; });
+   ok(fz===0,'ME: in 300 random merges (as sync does), who "you" are is always kept and is always a member ('+fz+' bad)');
+   ok([G,I,C].every(x=>x.errs.length===0),'ME: no page errors '+JSON.stringify([G,I,C].map(x=>x.errs))); for (const x of [G,I,C]) await x.c.close(); }
 
  await b.close();
 })();

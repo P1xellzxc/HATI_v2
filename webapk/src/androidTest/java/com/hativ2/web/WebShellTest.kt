@@ -90,6 +90,15 @@ class WebShellTest {
         }
     }
 
+    /** Chrome's hand-off (intent → hati2://join?j=…) reaches the page's join flow in the real WebView. */
+    @Test
+    fun handoffLinkOpensTheJoinSheet() {
+        launch("hati2://join?j=m.notavalidinvite").use { s ->
+            awaitApp(s)
+            assertEquals(true, waitFor(s, "!!document.querySelector('#sheetTitle') && /Join/.test(document.querySelector('#sheetTitle').textContent)"))
+        }
+    }
+
     @Test
     fun startUrlMapping() {
         val index = MainActivity.INDEX

@@ -16,6 +16,14 @@ Facts from the code that shaped the debate (`web/src/app.src.html`):
 - No duplicate check anywhere. **Owner correction:** the repeated "House of Bagnet" ₱334.13 and the two Chowking entries are real, separate meals on different dates. Same-amount repeats are normal for this couple, so they are not evidence for duplicate detection. What they do show: per-expense dates matter, and the import set every date to today, so the history can't tell the meals apart.
 - Open items from the 2026-11-09 handoff: perf regression (patch `brain/WIP/perf-fix-wip.patch`), K3, restore does not re-join sync, real-Worker check never done.
 
+## Next (updated 2026-11-15, Manila time; a new chat starts here)
+Shipped today (APK "latest"): cross-volume offset (XV), one invite per person (XV2), Android Back fix (AB), invites hand off from Chrome to the app (HO), who-you-are fixes (ME: the join asks when the phone and invite disagree, "This is me", Settings → Who you are).
+1. **Owner check on phones:** Ivy opens Settings → Who you are and confirms she is Ivy in both volumes (or taps Change); Geryme sends a fresh invite once and reports what opens.
+2. ~~History render at the 50 ms line~~ fixed 2026-11-15 ([[hati-perf]]): the first 40 rows draw with the screen and the rest right after. `tools/test-all.sh` is all green (web 630 PASS, sync 14/14).
+3. **Owner step (outside the repo):** create the public repo `P1xellzxc/p1xellzxc.github.io` with `.well-known/assetlinks.json` (copy `webapk/assetlinks.json`) and an empty `.nojekyll`, Pages on. Then invites open the app with no Chrome step ([[hati-android-device]]).
+4. **[[hati-design-audit]]:** fresh shots of the new hub "Across volumes", the offset/invite/join sheets and Settings → Who you are, light and dark, several palettes.
+5. Earlier plan below still stands where not done.
+
 ## 0. Current plan (2026-11-12, all skills)
 - **In the next APK:** X1–X6, matte glass, balanced Members.
 - **Now:** N4 + D8 (restore re-joins sync, backup you can trust) → N3 K3 (APK save survives process death) → glass pass on every view (shots, pixel, slop, reduced transparency) → G1 "Spent over time" line chart (lines per type + moving average of the total; owner: next APK).

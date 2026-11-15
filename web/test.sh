@@ -19,11 +19,12 @@ cp web/tests/e2e.js "docs/app/$E2E"
 cp web/tests/contrast.js "docs/app/$CON"
 cp web/tests/data-io.js "docs/app/$DIO"
 trap 'kill $SERVER 2>/dev/null || true; rm -f "docs/app/$E2E" "docs/app/$CON" "docs/app/$DIO"' EXIT
-(cd docs/app && URL="http://127.0.0.1:$PORT/" node "$E2E" "$SHOTS") | tee "$SHOTS/e2e.txt"
+# Every suite runs even when an earlier one fails; the last line fails the run on any FAIL.
+(cd docs/app && URL="http://127.0.0.1:$PORT/" node "$E2E" "$SHOTS") | tee "$SHOTS/e2e.txt" || true
 # Text contrast in all palettes and both themes (WCAG 4.5:1); the table goes to contrast.txt.
-if (cd docs/app && URL="http://127.0.0.1:$PORT/" node "$CON") > "$SHOTS/contrast.txt" 2>&1; then echo "PASS text contrast >= 4.5:1 in every palette and theme"; else echo "FAIL text contrast (see $SHOTS/contrast.txt)"; tail -5 "$SHOTS/contrast.txt"; exit 1; fi
+if (cd docs/app && URL="http://127.0.0.1:$PORT/" node "$CON") > "$SHOTS/contrast.txt" 2>&1; then echo "PASS text contrast >= 4.5:1 in every palette and theme" | tee "$SHOTS/contrast-result.txt"; else echo "FAIL text contrast (see $SHOTS/contrast.txt)" | tee "$SHOTS/contrast-result.txt"; tail -5 "$SHOTS/contrast.txt"; fi
 # Data in and out (backup/restore, share code, invite links) on desktop, the Android app and iPhone.
-(cd docs/app && URL="http://127.0.0.1:$PORT/" node "$DIO") | tee "$SHOTS/data-io.txt"
+(cd docs/app && URL="http://127.0.0.1:$PORT/" node "$DIO") | tee "$SHOTS/data-io.txt" || true
 # The paste-a-receipt parser table (D9), plain node.
-node web/tests/receipt.js | tee "$SHOTS/receipt.txt"
-! grep -q '^FAIL' "$SHOTS/e2e.txt" "$SHOTS/data-io.txt" "$SHOTS/receipt.txt"
+node web/tests/receipt.js | tee "$SHOTS/receipt.txt" || true
+! grep -q '^FAIL' "$SHOTS/e2e.txt" "$SHOTS/contrast-result.txt" "$SHOTS/data-io.txt" "$SHOTS/receipt.txt"
