@@ -1250,9 +1250,10 @@ function monthTotals(rows) {
   rows.forEach(it => { if (it.k !== "e") return; const k = /^\d{4}-\d{2}/.test(it.d) ? it.d.slice(0, 7) : ""; t[k] = (t[k] || 0) + it.x.amount; });
   return t;
 }
-function histMonths(v, rows, sel, totals = {}) {
+function histMonths(v, rows, sel, totals = {}, start = 0) {
   const groups = [];
-  rows.forEach((it, i) => {
+  rows.forEach((it, j) => {
+    const i = start + j;
     const k = /^\d{4}-\d{2}/.test(it.d) ? it.d.slice(0, 7) : "";
     let g = groups[groups.length - 1]; if (!g || g.k !== k) groups.push(g = { k, html: [] });
     const cls = i < 12 ? "tx lead" : i >= 32 ? "tx cv" : "tx";
@@ -1282,17 +1283,33 @@ function matchItem(v, it, hf) {
   if (q && ![meName(v, x.from), meName(v, x.to), x.how || "", "payment"].some(t => t.toLowerCase().includes(q))) return false;
   return true;
 }
+// PERF (hati-perf, 2026-11-15): a long History draws its first HIST_FIRST rows with the screen and the rest in a
+// second, separate task just after the screen change, so neither task holds the page for 50 ms on a slow phone.
+const HIST_FIRST = 40;
+let histRest = null;
 function histBody(v) {
   const hf = histFilter(v), all = timeline(v), items = filterOn(hf) ? all.filter(it => matchItem(v, it, hf)) : all;
-  const shown = items.slice(0, ui.histLimit), sel = ui.sel;
+  const shown = items.slice(0, ui.histLimit), sel = ui.sel, totals = monthTotals(items);
   const none = filterOn(hf) ? emptyCard("(・_・;)", "Nothing matches. Try other words or clear the filter.") : emptyCard("(・_・;)", "Nothing recorded yet.");
-  return (shown.length ? histMonths(v, shown, sel, monthTotals(items)) : none) +
+  const split = !filterOn(hf) && !sel && shown.length > HIST_FIRST ? HIST_FIRST : shown.length;
+  histRest = split < shown.length ? { v, rows: shown.slice(split), at: split, totals, gen: renders, k: shown[split - 1].d.slice(0, 7) } : null;
+  if (histRest) setTimeout(histMore, motionOn() ? motionTimes().wipe + motionTimes().in : 0);
+  return (shown.length ? histMonths(v, shown.slice(0, split), sel, totals) : none) +
     (items.length > shown.length ? `<button class="btn block" data-act="more" style="margin-top:12px">Show ${Math.min(100, items.length - shown.length)} more</button>` : "");
 }
 function histCount(v) {
   const hf = histFilter(v); if (!filterOn(hf)) return "";
   const n = timeline(v).filter(it => matchItem(v, it, hf)).length;
   return n === 1 ? "1 match" : `${n} matches`;
+}
+// Adds the rows histBody() held back: rows of the month the first part ended in join its ledger, the rest are new months.
+function histMore() {
+  const r = histRest; histRest = null;
+  const body = $("#histBody"); if (!r || !body || ui.view !== "history" || renders !== r.gen) return;
+  const same = r.rows.findIndex(it => it.d.slice(0, 7) !== r.k), head = same < 0 ? r.rows : r.rows.slice(0, same), tail = same < 0 ? [] : r.rows.slice(same);
+  const months = body.querySelectorAll(".month .ledger.hist"), last = months[months.length - 1];
+  if (head.length && last) last.insertAdjacentHTML("beforeend", head.map((it, j) => { const i = r.at + j, cls = i < 12 ? "tx lead" : i >= 32 ? "tx cv" : "tx"; return itemRow(r.v, it).replace('class="tx"', `class="${cls}"`); }).join(""));
+  if (tail.length) { const more = body.querySelector('[data-act="more"]'), html = histMonths(r.v, tail, null, r.totals, r.at + head.length); if (more) more.insertAdjacentHTML("beforebegin", html); else body.insertAdjacentHTML("beforeend", html); }
 }
 function refreshHist() {
   const v = vol(), body = $("#histBody"); if (!v || !body) return;
@@ -1476,6 +1493,9 @@ const views = {
     const st = S.settings;
     const seg = (key, label, opts) => `<div class="seg" role="group" aria-label="${label}">${opts.map(o => `<button type="button" data-set="${key}" data-val="${o[0]}" aria-pressed="${st[key] === o[0]}">${o[1]}</button>`).join("")}</div>`;
     return topbar("Settings", { back: true }) + `<div class="stack">
+      ${S.volumes.length ? `<section class="sect" id="whoYou"><div class="strip"><h2 class="label">Who you are</h2></div>
+      <p class="muted small" style="margin:0">Your name in each volume on this phone. Wrong one? Tap Change. The others aren't affected.</p>
+      <div class="ledger">${S.volumes.map(v => `<div class="debt who-row"><span class="grow small"><b class="ellip">${esc(v.title)}</b><span class="muted"> · You're </span><b>${esc(nameOf(v, v.meId))}</b></span><button type="button" class="btn quiet" data-act="whoSheet" data-id="${esc(v.id)}" aria-label="${esc(`Change who you are in ${v.title}`)}">Change</button></div>`).join("")}</div></section>` : ""}
       <section class="sect"><div class="strip"><h2 class="label">Appearance</h2></div>
       <div class="panel pad stack">${seg("mode", "Appearance", [["system", "System"], ["light", "Light"], ["dark", "Dark"]])}
         <div><h3 class="legend" style="margin:0" id="palLabel">Color theme</h3><div class="muted small">From Sanzo Wada's A Dictionary of Color Combinations (1918).</div></div>
@@ -1829,19 +1849,27 @@ async function readBundle(payload) {
 }
 function bundleJoinSheet(items) {
   const who = items[0].p.volume.members.find(m => m.id === items[0].who).name;
+  // ME: a copy already on this phone may show someone else as "you" (it came from their backup or share code).
+  // The invite says who it is for; the phone says otherwise. Ask once, starting on the invite.
+  const clash = items.map(it => ({ it, v: volById(it.p.volume.id) })).filter(x => x.v && x.v.meId !== x.it.who);
+  const here = [...new Set(clash.map(x => nameOf(x.v, x.v.meId)))];
+  const ask = clash.length ? `<p class="small" style="margin:0" id="s-clash">On this phone you're <b>${esc(here.join(" / "))}</b> in ${esc(clash.map(x => x.v.title).join(" and "))}.</p>
+    <div class="field">${pickField("s-me", "Who are you?", [["invite", `I'm ${who}`], ["keep", `I'm ${here.join(" / ")}`]], "invite")}</div>` : "";
   sheet(`<h2>Join ${plural(items.length, "volume")}</h2><div class="stack">
-    <p class="small" style="margin:0">You're <b>${esc(who)}</b> in each one. They stay in sync with the others.</p>
-    <ul class="xv-parts share-sum">${items.map(it => `<li class="row between"><b class="ellip">${esc(it.p.volume.title)}</b><span class="muted small">${volById(it.p.volume.id) ? "Already here: merge" : countLine(it.p.volume)}</span></li>`).join("")}</ul>
+    <p class="small" style="margin:0">This invite is for <b>${esc(who)}</b>. The volumes stay in sync with the others.</p>
+    <ul class="xv-parts share-sum">${items.map(it => { const v = volById(it.p.volume.id); return `<li class="row between"><b class="ellip">${esc(it.p.volume.title)}</b><span class="muted small">${v ? "Already here: merge" : countLine(it.p.volume)}</span></li>`; }).join("")}</ul>
+    ${ask}
     <div class="msg" id="sheetMsg" role="alert"></div>
-    ${sheetButtons("Join all")}</div>`, () => joinBundle(items));
+    ${sheetButtons("Join all")}</div>`, () => joinBundle(items, !clash.length || $("#s-me").value === "invite"));
 }
-function joinBundle(items) {
+function joinBundle(items, asInvite = true) {
   const before = JSON.stringify(S), rooms = [];
   for (const it of items) {
     const x = it.p.volume, local = volById(x.id);
     if (local) {
       const r = mergeVolumes(local, x);
       if (r.error) { S = JSON.parse(before); return sheetMsg(`${x.title}: ${r.error}`); }
+      if (asInvite && r.vol.members.some(m => m.id === it.who)) r.vol.meId = it.who; // ME: the invite's person, unless they said to keep
       S.volumes = S.volumes.map(v => v.id === x.id ? r.vol : v);
     } else {
       const nv = cleanVolume(x); nv.meId = it.who; delete nv.archived;
@@ -1854,7 +1882,7 @@ function joinBundle(items) {
   // the sender is one person in all of them on this phone too
   const ks = items.filter(it => volById(it.p.volume.id).meId !== it.from).map(it => xk(it.p.volume.id, it.from));
   ks.slice(1).forEach(k => xLink(ks[0], k));
-  closeSheet(); go("hub"); toast(`You joined ${plural(items.length, "volume")}`);
+  closeSheet(); go("hub"); toast(`You joined ${plural(items.length, "volume")} as ${nameOf(volById(items[0].p.volume.id), volById(items[0].p.volume.id).meId)}`);
 }
 // The offset sheet for row r (from xRows()). `here`: the volume the Settle up sheet came from, picked first.
 function offsetSheet(r, here) {
@@ -2131,6 +2159,8 @@ function editMemberSheet(m) {
     <div class="field"><label for="s-name">Name</label><input id="s-name" class="input" maxlength="40" autocomplete="off" value="${esc(m.name)}"></div>
     <div class="msg" id="sheetMsg" role="alert"></div>
     ${sheetButtons("Save")}
+    ${me ? "" : `<button type="button" class="btn block" data-act="setMe" data-id="${esc(m.id)}">This is me</button>
+    <p class="muted small" style="margin:0">Shows this volume from ${esc(m.name)}'s side on this phone. Nothing changes for the others.</p>`}
     <button type="button" class="btn danger block" data-act="removeMember" data-id="${esc(m.id)}" ${why ? 'disabled aria-describedby="s-why"' : ""}>Remove from volume</button>
     ${why ? `<p class="muted small" id="s-why" style="margin:0">${esc(why)}</p>` : ""}</div>`,
     () => {
@@ -2139,6 +2169,23 @@ function editMemberSheet(m) {
       if (n !== m.name) { m.name = n; m.upd = Date.now(); if (!commit()) return; }
       closeSheet(); render(); toast("Name saved");
     });
+}
+// ME: who "you" are in a volume is this phone's own choice (meId is never synced). A wrong pick, or a copy that came
+// from someone else's phone (their backup or share code), is fixed here; Undo switches back.
+function setMe(id, v = vol()) {
+  if (!v || id === v.meId || !v.members.some(m => m.id === id)) return;
+  const was = v.meId; v.meId = id;
+  if (!commit()) return;
+  closeSheet(); render(); focusTitle();
+  toast(`You're ${nameOf(v, id)} in ${v.title} now`, { undo: () => { const x = volById(v.id); if (!x || x.meId !== id || !x.members.some(m => m.id === was)) return; x.meId = was; if (!commit()) return; if (!sheetOpen()) render(); toast("Undone."); }, ms: 6000 });
+}
+// Settings > Who you are > Change: pick yourself among the volume's members.
+function whoSheet(volId) {
+  const v = volById(volId); if (!v) return;
+  sheet(`<h2>Who are you in ${esc(v.title)}?</h2><div class="stack">
+    <div class="field">${pickField("s-iam", "I'm", v.members.map(m => [m.id, m.name]), v.meId, "", true)}</div>
+    <p class="muted small" style="margin:0">Only this phone changes. Balances show from that person's side.</p>
+    ${sheetButtons("Save")}</div>`, () => { const id = $("#s-iam").value; if (id === v.meId) return closeSheet(); setMe(id, v); });
 }
 function removeMember(id) {
   const v = vol();
@@ -2938,8 +2985,9 @@ function fillPick(pick, x) {
   };
   const say = mode => `You already have ${local.title}. ${sums[mode]}`;
   pick.innerHTML = `<p class="share-sum small" id="s-sum" role="status">${esc(say("merge"))}</p>
+    <p class="muted small" id="s-mehere" style="margin:0">You're ${esc(nameOf(local, local.meId))} in it on this phone. Wrong? Change it in Settings, Who you are.</p>
     <div class="field">${pickField("s-mode", "What to do", [["merge", "Merge"], ["replace", "Replace"], ["copy", "Keep both"]], "merge")}</div>` + who;
-  $("#s-mode").addEventListener("change", ev => { $("#s-whobox").hidden = ev.target.value === "merge"; $("#s-sum").textContent = say(ev.target.value); $("#s-who").fit(); });
+  $("#s-mode").addEventListener("change", ev => { $("#s-whobox").hidden = ev.target.value === "merge"; $("#s-mehere").hidden = ev.target.value !== "merge"; $("#s-sum").textContent = say(ev.target.value); $("#s-who").fit(); });
 }
 // Imports p.volume (already through validVolume) the way the picker in the open sheet says, then opens it.
 // p.room (a live invite, or a code from a shared volume) links the volume to its sync room; "Keep both" makes a
@@ -3344,6 +3392,8 @@ document.addEventListener("click", async ev => {
     case "xNo": XL.no = [...new Set([...XL.no, xNo(el.dataset.a, el.dataset.b)])]; saveLinks(); render(); { const n = $("#across button") || $("#app h1"); if (n) n.focus(); } break;
     case "xUnlink": { const g = XL.groups[+el.dataset.gi]; if (g) { XL.no = [...new Set([...XL.no, ...g.flatMap((a, i) => g.slice(i + 1).map(b => xNo(a, b)))])]; XL.groups = XL.groups.filter(x => x !== g); saveLinks(); } closeSheet(); render(); toast("Unlinked."); break; }
     case "xInvite": groupInviteSheet(+el.dataset.gi); break;
+    case "setMe": setMe(el.dataset.id); break;
+    case "whoSheet": whoSheet(el.dataset.id); break;
     case "offset": { const r = xRows()[+el.dataset.i]; if (r && r.overlap) offsetSheet(r, el.dataset.here); break; }
     case "editMember": { const m = v.members.find(x => x.id === el.dataset.id); if (m) editMemberSheet(m); break; }
     case "removeMember": removeMember(el.dataset.id); break;

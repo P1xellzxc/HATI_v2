@@ -10,6 +10,7 @@ Always use the brain (owner's standing rule) — this applies to the main sessio
 - Before any task: read `brain/HATI Brain.md`, `brain/Goal.md` and the Decisions in `brain/Team log.md`.
 - During work: decisions, findings and handoffs go into `brain/Team log.md`, not only into chat.
 - After work: run `python3 -I tools/brain/export.py`, then commit and push `brain/` with the change.
+- Keep GitHub current for the next chat (owner, 2026-11-15): after every task update `brain/Roadmap.md` → "Next" (what's done, what's next, owner steps), then commit and push. Run every test with `tools/test-all.sh` (see the hati-test-scout skill).
 - If something you need isn't in the brain, add it there.
 
 Always discuss with the skills (owner's standing rule, 2026-11-09): before planning, deciding or building anything, consult the skills in `.claude/skills/` whose specialty it touches, and let each one speak and challenge from its own specialty before you decide. For a plan or roadmap, consult all of them. Record what they said in `brain/Team log.md`. If usage is tight, have one agent voice the skills instead of spawning one agent per skill.
