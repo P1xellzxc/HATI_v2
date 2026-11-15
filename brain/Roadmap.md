@@ -18,8 +18,9 @@ Facts from the code that shaped the debate (`web/src/app.src.html`):
 
 ## Next (updated 2026-11-15, Manila time; a new chat starts here)
 Shipped today (APK "latest"): cross-volume offset (XV), one invite per person (XV2), Android Back fix (AB), invites hand off from Chrome to the app (HO), who-you-are fixes (ME: the join asks when the phone and invite disagree, "This is me", Settings → Who you are).
-1. **Owner check on phones:** Ivy opens Settings → Who you are and confirms she is Ivy in both volumes (or taps Change); Geryme sends a fresh invite once and reports what opens.
+1. **Owner check on phones (newest APK):** Ivy opens Settings → Who you are, taps Change → Ivy on any volume that says Geryme; every screen follows at once, and Geryme links up by himself. If Settings says a volume is here twice, delete the old copy. If anything still shows Geryme's side, send a screenshot of that screen.
 2. ~~History render at the 50 ms line~~ fixed 2026-11-15 ([[hati-perf]]): the first 40 rows draw with the screen and the rest right after. `tools/test-all.sh` is all green (web 630 PASS, sync 14/14).
+2b. **[[hati-perf]]: make M-perf robust on the shared VM** (it fails at random on untouched screens): add a control screen per run and judge against it, or median of 5. History itself now draws 40 rows first and the rest on scroll.
 3. **Owner step (outside the repo):** create the public repo `P1xellzxc/p1xellzxc.github.io` with `.well-known/assetlinks.json` (copy `webapk/assetlinks.json`) and an empty `.nojekyll`, Pages on. Then invites open the app with no Chrome step ([[hati-android-device]]).
 4. **[[hati-design-audit]]:** fresh shots of the new hub "Across volumes", the offset/invite/join sheets and Settings → Who you are, light and dark, several palettes.
 5. Earlier plan below still stands where not done.

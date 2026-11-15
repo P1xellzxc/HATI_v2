@@ -1508,11 +1508,15 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    { const N=await mk({viewport:{width:390,height:844}}); const q=N.pg; await seed(q);
      await q.locator('.vol').first().click(); await q.waitForTimeout(350); await q.locator('[data-act=history]').first().click();
      await q.waitForFunction(()=>document.querySelector('#app .ink'),null,{timeout:2000}).catch(()=>{});
-     await q.waitForFunction(()=>document.querySelectorAll('#app .ledger > *').length>40,null,{timeout:3000}).catch(()=>{}); // PERF: rows after the 40th arrive just after the screen change
+     // PERF: only the first 40 rows come with the screen; the rest arrive as the end of the list scrolls near
+     const first=await q.evaluate(()=>document.querySelectorAll('#histBody .tx').length);
+     for (let i=0;i<10 && await q.evaluate(()=>!!document.getElementById('histMoreAt'));i++) { await q.evaluate(()=>scrollTo(0,document.scrollingElement.scrollHeight)); await q.waitForTimeout(150); }
+     ok(first===40,'PERF: opening a long History draws 40 rows, nothing more during the screen change ('+first+')');
+     await q.evaluate(()=>scrollTo(0,0));
      // PERF: the split draw ends identical to drawing everything at once: same rows, same order, one heading per month
      const same=await q.evaluate(()=>{ const got=[...document.querySelectorAll('#histBody .tx')].map(x=>x.dataset.id), heads=[...document.querySelectorAll('#histBody .month h2')].map(h=>h.textContent);
        const want=timeline(vol()).slice(0,ui.histLimit).map(it=>it.x.id); return {n:got.length,eq:JSON.stringify(got)===JSON.stringify(want),dupHead:heads.length!==new Set(heads).size,cls:[...document.querySelectorAll('#histBody .tx')].every((x,i)=>x.classList.contains(i<12?'lead':i>=32?'cv':'tx'))}; });
-     ok(same.n>40 && same.eq && !same.dupHead && same.cls,'PERF: History draws its first 40 rows with the screen and the rest right after; the result is the same rows, order, month headings and row classes as one draw '+JSON.stringify(same));
+     ok(same.n>40 && same.eq && !same.dupHead && same.cls,'PERF: History draws its first 40 rows with the screen and the rest as you scroll; the result is the same rows, order, month headings and row classes as one draw '+JSON.stringify(same));
      const r=await q.evaluate(()=>{ const rows=[...document.querySelectorAll('#app .ledger > *')];
        return {rows:rows.length,ink:document.querySelectorAll('#app .ink').length,inkRows:rows.filter(x=>x.classList.contains('ink')).length,cv32:getComputedStyle(rows[31]).contentVisibility,cv33:getComputedStyle(rows[32]).contentVisibility,
          rule:[...document.styleSheets].flatMap(s=>[...s.cssRules]).some(function f(x){ return (x.selectorText||'').includes('data-turn') || [...(x.cssRules||[])].some(f); })}; });
@@ -2087,6 +2091,73 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      return bad; });
    ok(fz===0,'ME: in 300 random merges (as sync does), who "you" are is always kept and is always a member ('+fz+' bad)');
    ok([G,I,C].every(x=>x.errs.length===0),'ME: no page errors '+JSON.stringify([G,I,C].map(x=>x.errs))); for (const x of [G,I,C]) await x.c.close(); }
+
+ // ME-view (owner 2026-11-15: "make sure the data is adapting depending on who the user picked"): the owner's two real
+ // volumes, seen as Geryme, then switched to Ivy in Settings → Who you are; every screen must read from Ivy's side.
+ { const c=await b.newContext({...devices['Pixel 7']}); await c.addInitScript(noSync); const pg=await c.newPage(); const errs=[];
+   pg.on('pageerror',e=>errs.push(e.message)); pg.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
+   const d='2026-11-12', E=(id,desc,amt,by,sp,cat='food')=>({id,desc,amount:amt,paidBy:by,category:cat,date:d,splitType:'equal',splits:sp,inputs:{},note:'',upd:1});
+   const vols=[
+     {id:'plj9d1epbrpu',title:'Baguio 2026',type:'travel',currency:'₱',meId:'83zcfj2ibrpu',created:2,members:[{id:'83zcfj2ibrpu',name:'Geryme'},{id:'nawj48mqbrpu',name:'Ivy'}],
+       expenses:[E('ksw2m8ojc4d8','Airbnb',840000,'83zcfj2ibrpu',{'83zcfj2ibrpu':420000,nawj48mqbrpu:420000},'lodging')],settlements:[]},
+     {id:'bebetime',title:'Bebetime Expenses',type:'household',currency:'₱',meId:'geryme',created:1,members:[{id:'geryme',name:'Geryme'},{id:'ivy',name:'Ivy'}],
+       expenses:[E('bbe13','Bus Pamasahe',43500,'geryme',{geryme:21750,ivy:21750},'transport'),E('bbe02','Ramen',45090,'ivy',{geryme:22545,ivy:22545})],
+       settlements:[{id:'bbs01',from:'geryme',to:'ivy',amount:30000,date:d,upd:1}]}];
+   await pg.goto(URL); await pg.evaluate(vs=>{ localStorage.setItem('hati2.mock.v1',JSON.stringify({volumes:vs,settings:{palette:'classic',mode:'light',strategy:'simplify'}}));
+     localStorage.setItem('hati2.links.v1',JSON.stringify({groups:[['bebetime.ivy','plj9d1epbrpu.nawj48mqbrpu']],no:[]})); },vols); await pg.reload(); await pg.waitForSelector('.vol');
+   const T=sel=>pg.evaluate(s=>[...document.querySelectorAll(s)].map(x=>x.innerText.replace(/\s+/g,' ').trim()),sel);
+   // Bebetime as Geryme: Bus 435 (G paid, half each) +217.50; Ramen 450.90 (I paid) −225.45; G paid I 300 → G +300 → G balance +292.05
+   const g0={hub:await T('.vol-bal'),across:await T('#across .xv-row > .row')};
+   // switch both volumes to Ivy in Settings
+   for (const t of ['Bebetime Expenses','Baguio 2026']) { await toSettings(pg); await pg.getByRole('button',{name:'Change who you are in '+t}).click(); await pg.waitForSelector('#s-iam'); await pick(pg,'s-iam',{label:'Ivy'}); await pg.locator('#sheetForm button.primary').click(); await pg.waitForTimeout(250); }
+   await toHub(pg);
+   const hub={cards:await T('.vol-bal'),ask:await T('.xv-ask p'),rows:await T('#across .xv-row')};
+   const across=await T('#across .xv-row > .row');
+   await pg.evaluate(()=>{ ui.volId='bebetime'; go('volume'); }); await pg.waitForTimeout(300);
+   const vol1={hero:await T('.hero .k'),amt:await T('.hero .amt'),mine:await T('.hero .mine li'),chips:await T('.chips .chip:not(.add)'),debts:await T('.sect .ledger .debt'),recent:await T('.ledger .tx'),who:await T('.gl-who li')};
+   await pg.evaluate(()=>openExpense(null)); await pg.waitForSelector('#f-paid');
+   const form={paid:await pg.evaluate(()=>$('#f-paid').value),label:await pg.evaluate(()=>{ const b=document.querySelector('#f-paid [aria-checked=true]'); return b&&b.textContent; })};
+   await pg.evaluate(()=>{ go('volume'); settleSheet(null); }); await pg.waitForSelector('#s-amt');
+   const settle={from:await pg.evaluate(()=>$('#s-from').value),to:await pg.evaluate(()=>$('#s-to').value),amt:await pg.evaluate(()=>$('#s-amt').value)};
+   await pg.keyboard.press('Escape'); await pg.evaluate(()=>go('history')); await pg.waitForTimeout(300);
+   const hist=await T('#histBody .tx');
+   const want={
+     g0: g0.hub.includes("You're owed ₱292.05") && g0.hub.includes("You're owed ₱4,200.00"),
+     cards: hub.cards.includes('You owe ₱292.05') && hub.cards.includes('You owe ₱4,200.00'),
+     ask: hub.ask.length===0 && hub.rows.some(t=>/You owe Geryme ₱4,492.05/.test(t)),
+     across: across.some(t=>/You owe Geryme ₱4,492.05/.test(t)),
+     hero: /You owe/.test(vol1.hero.join()) && vol1.amt.join()==='₱292.05' && /Pay Geryme ₱292.05/.test(vol1.mine.join()),
+     chips: vol1.chips.some(t=>/You −₱292.05/.test(t)) && vol1.chips.some(t=>/Geryme \+₱292.05/.test(t)) && !vol1.chips.some(t=>/Ivy/.test(t)),
+     debts: vol1.debts.some(t=>/You pay Geryme ₱292.05/.test(t)),
+     recent: vol1.recent.some(t=>/Ramen You paid ₱450.90 \+₱225.45/.test(t)) && vol1.recent.some(t=>/Bus Pamasahe Geryme paid ₱435.00 −₱217.50/.test(t)) && vol1.recent.some(t=>/Geryme paid you/.test(t)),
+     who: vol1.who.length===0 || vol1.who.some(t=>/^You/.test(t)),
+     form: form.paid==='ivy' && form.label==='You',
+     settle: settle.from==='ivy' && settle.to==='geryme' && settle.amt==='292.05',
+     hist: hist.some(t=>/Ramen You paid/.test(t)) && hist.some(t=>/Geryme paid you/.test(t))
+   };
+   ok(Object.values(want).every(Boolean),'ME-view: after switching to Ivy in Settings, every screen reads from Ivy\'s side at once: hub cards, the net across volumes (Geryme linked by itself, no question), the volume hero, You chip, who pays whom, recent and history rows, a new expense paid by You, Settle up from You '+JSON.stringify({want,g0,hub,across,vol1,form,settle,hist:hist.slice(0,3)}));
+   // Settings warns about mixed names and a second copy of a volume (an old copy keeps the other person's side)
+   await pg.evaluate(()=>{ const v=volById('bebetime'); const c={...JSON.parse(JSON.stringify(v)),id:'bebecopy',meId:'geryme'}; S.volumes.push(c); commit(); });
+   await toSettings(pg); const warn=await T('#whoYou .who-warn p');
+   ok(warn.some(t=>/You're Ivy and Geryme in different volumes/.test(t)) && warn.some(t=>/Bebetime Expenses is here 2 times/.test(t)),'ME-view: Settings says when you have different names in different volumes and when a volume is here twice '+JSON.stringify(warn));
+   // the switch tidied the link that pointed at Ivy (now you)
+   const links=await pg.evaluate(()=>JSON.stringify(XL.groups));
+   ok(!/bebetime\.ivy|nawj48mqbrpu/.test(links),'ME-view: switching who you are drops "same person" links to the member who is now you '+links);
+   // property: for 200 random volumes and every possible "you", the volume screen is from that member's side
+   const prop=await pg.evaluate(()=>{ let bad=[]; const rnd=n=>Math.floor(Math.random()*n), was=S.volumes;
+     for (let k=0;k<200 && bad.length<3;k++) { const n=2+rnd(4), ids=Array.from({length:n},(_,i)=>'p'+i), names=['Ana','Ben','Cy','Di','Ed'];
+       const v={id:'pv'+k,title:'P'+k,type:'other',currency:'₱',meId:'p0',created:1,upd:0,members:ids.map((id,i)=>({id,name:names[i],upd:0})),expenses:[],settlements:[],deleted:[]};
+       for (let j=0;j<1+rnd(5);j++){ const a=100+rnd(5000), inc=ids.filter(()=>Math.random()<.7); if (!inc.length) inc.push(ids[0]); v.expenses.push({id:'e'+j,desc:'x'+j,amount:a,paidBy:ids[rnd(n)],category:'food',date:'2026-11-01',splitType:'equal',splits:splitEqual(a,inc),inputs:{},note:'',upd:1}); }
+       S.volumes=[v];
+       for (const me of ids) { v.meId=me; ui.volId=v.id; ui.view='volume'; render();
+         const b=balances(v)[me], k2=$('.hero .k').textContent, amt=$('.hero .amt'), chipYou=[...document.querySelectorAll('.chips .chip')].filter(c=>/You/.test(c.textContent)).length;
+         const okHero=Math.abs(b)<=1 ? /settled/.test(k2) : (b>0 ? /owed/.test(k2) : /You owe/.test(k2)) && amt && amt.textContent.includes(fmt(Math.abs(b),'₱').slice(1));
+         const myName=names[ids.indexOf(me)], showsMe=[...document.querySelectorAll('.chips .chip, .ledger .debt')].some(x=>x.textContent.includes(myName));
+         if (!okHero || chipYou!==1 || showsMe) bad.push({k,me,b,k2,chipYou,showsMe}); } }
+     S.volumes=was; ui.view='hub'; render(); return bad; });
+   ok(prop.length===0,'ME-view: in 200 random volumes, for every member picked as you, the hero shows that member\'s balance, exactly one chip says You, and their own name never shows in chips or Who pays whom '+JSON.stringify(prop));
+   const zero=await pg.evaluate(()=>S.volumes.every(v=>Object.values(balances(v)).reduce((a,b)=>a+b,0)===0));
+   ok(zero && errs.length===0,'ME-view: balances still sum to zero; no page errors '+JSON.stringify(errs)); await c.close(); }
 
  await b.close();
 })();
