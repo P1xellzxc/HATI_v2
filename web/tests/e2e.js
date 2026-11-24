@@ -1410,7 +1410,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    // screen change forward: the old page leaves as a slanted panel (a ghost that ignores taps); the new page's lists ink in
    await pg.locator('.vol').first().click();
    await step(pg,'hub to volume wipes the old page off to the left',x=>x.on.startsWith('ghost screen')&&x.name==='js');
-   await step(pg,'hub to volume inks its rows in, 30 ms apart',x=>x.name==='ink-off');
+   await step(pg,'hub to volume inks its rows in, 30 ms apart',x=>x.name==='pane-in'||x.name==='pane-in-l');
    // a tap during the wipe lands on the real button under the ghost
    await pg.locator('[data-act=back]').click(); await pg.waitForTimeout(400);
    const tap=await pg.evaluate(()=>{ $('.vol').click(); const r=$('[data-act=addExpense]').getBoundingClientRect(), x=r.left+r.width/2, y=r.top+r.height/2; return {x,y,ghost:!!ghosts.screen,hit:!!(document.elementFromPoint(x,y)||{closest:()=>null}).closest('[data-act=addExpense]')}; });
@@ -1419,8 +1419,8 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await pg.locator('[data-act=back]').click(); await pg.waitForTimeout(400);
    // a long list: the entrance stagger is capped (row 7 on start together, rows past 12 are simply there)
    await pg.locator('[data-act=history]').first().click();
-   const hs=await step(pg,'volume to history inks its rows in',x=>x.name==='ink-off');
-   const hd=hs.filter(x=>x.name==='ink-off'); const rows=await pg.locator('#app .ledger > *').count();
+   const hs=await step(pg,'volume to history inks its rows in',x=>x.name==='pane-in'||x.name==='pane-in-l');
+   const hd=hs.filter(x=>x.name==='pane-in'||x.name==='pane-in-l'); const rows=await pg.locator('#app .ledger > *').count();
    ok(rows>12 && hd.length<=12 && Math.max(...hd.map(x=>x.delay))===180 && Math.max(...hd.map(x=>x.delay+x.d))<=400,`M: stagger is capped: ${rows} rows, ${hd.length} animate, last starts at ${Math.max(...hd.map(x=>x.delay))} ms, all in by ${Math.max(...hd.map(x=>x.delay+x.d))} ms`);
    // Back plays the other way: the ghost leaves to the right and rows ink in from the right
    await pg.locator('[data-act=back]').click();
@@ -1461,7 +1461,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    // share/invite: the summary inks in and the QR prints top to bottom
    await pg.waitForTimeout(400); await pg.getByRole('button',{name:'Share volume'}).click(); await pg.waitForSelector('svg.qr');
    await step(pg,'the QR prints in',x=>x.name==='qr-print');
-   await step(pg,'the share summary inks in',x=>x.name==='ink-off'&&/share-sum/.test(x.on));
+   await step(pg,'the share summary inks in',x=>x.name==='pane-in'&&/share-sum/.test(x.on));
    await pg.waitForTimeout(300); await pg.keyboard.press('Escape');
    // the bounds: transform/opacity (clip-path only on small things), no interaction animation over 300 ms, a stagger
    // all in by 400 ms; collected from every step above

@@ -766,6 +766,35 @@ body { background: linear-gradient(170deg, var(--page-a) 0 min(52%, 900px), var(
 :root.lowfx :is(.topbar, .sheet) { -webkit-backdrop-filter: none; backdrop-filter: none; }
 :root.lowfx .topbar { background: var(--nav); }
 @media (prefers-reduced-transparency: reduce) { :root :is(.topbar, .sheet) { -webkit-backdrop-filter: none; backdrop-filter: none; } :root .topbar { background: var(--nav); } }
+/* Glass motion (unslop-design pass, 2026-11-24). The ink motion above was drawn for flat paper: a white cover with an
+   ink edge wiped off each row and a slanted panel with speed lines. On glass both flash white blocks and black bars.
+   Here: panes settle instead. The old screen slides off as one pane (turn()), the new rows slide 12px the same way and
+   fade in, 30 ms apart; a press sinks the pane onto its own shadow at .97. Transform and opacity only; reduced motion
+   still runs nothing (the block above and motionOn()). */
+.gw { transform: none; background: var(--page-a, var(--bg)); box-shadow: 0 0 24px var(--g-shadow, rgb(0 0 0 / .18)); }
+.gw::after { display: none; }
+.gin { transform: none; }
+@media (prefers-reduced-motion: no-preference) {
+  #app .ink::after, .sheet .share-sum::after { content: none; }
+  #app .ink, .sheet .share-sum { animation: pane-in var(--dur-in) var(--ease-out) backwards; } /* backwards: hidden only during its delay; when it ends nothing stays on the row (no layer left behind) */
+  #app .ink.ink-l { animation-name: pane-in-l; }
+  #app .ink:nth-child(2) { animation-delay: calc(1 * var(--stagger)); }
+  #app .ink:nth-child(3) { animation-delay: calc(2 * var(--stagger)); }
+  #app .ink:nth-child(4) { animation-delay: calc(3 * var(--stagger)); }
+  #app .ink:nth-child(5) { animation-delay: calc(4 * var(--stagger)); }
+  #app .ink:nth-child(6) { animation-delay: calc(5 * var(--stagger)); }
+  #app .ink:nth-child(n+7) { animation-delay: calc(6 * var(--stagger)); }
+  .sheet .share-sum { animation-delay: 90ms; }
+  @keyframes pane-in { from { opacity: 0; transform: translateX(12px); } }
+  @keyframes pane-in-l { from { opacity: 0; transform: translateX(-12px); } }
+  /* a live arrival: a soft accent wash leaves the row (no ink edge) */
+  .tx.ink-new::after { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+  /* press: the pane sinks onto its shadow (the shadow itself drops to a contact shadow via --c-x) */
+  :root :is(#app, #layer) :is(.btn:not(.quiet):not(.text):not(:disabled), .ico, .cat, button.chip:not(.add)):active { transform: translateY(1px) scale(.97); }
+  :root :is(#app, #layer) .vol:active { transform: translateY(1px) scale(.985); }
+  @keyframes squash { to { transform: translateY(1px) scale(var(--press-s, .97)); } }
+  :root :is(#app, #layer) .vol { --press-s: .985; }
+}
 </style>
 
 <main id="app"></main>
@@ -3116,7 +3145,9 @@ let ghostCss; // the page's own styles plus one rule: a ghost's CSS animations s
 function ghostSheets() {
   if (ghostCss === undefined) try {
     const a = new CSSStyleSheet(), b = new CSSStyleSheet();
-    a.replaceSync([...document.querySelectorAll("style")].map(s => s.textContent).join("\n"));
+    // :root means nothing inside a shadow root, so the glass rules (all :root ...) would miss the ghost and it would
+    // show the old ink look; the ghost's own .groot (a copy of <html>'s classes, theme and palette) stands in for it.
+    a.replaceSync([...document.querySelectorAll("style")].map(s => s.textContent).join("\n").replace(/:root\b/g, ".groot"));
     b.replaceSync("*, *::before, *::after { animation-delay: -9s !important; }");
     ghostCss = [a, b];
   } catch (e) { ghostCss = null; }
@@ -3129,24 +3160,29 @@ function ghost(kind, cls) {
   const css = motionOn() && typeof document.body.attachShadow === "function" && ghostSheets(); if (!css) return null;
   const host = document.createElement("div"); host.className = `ghost ${kind} ${cls}`; host.setAttribute("aria-hidden", "true"); host.inert = true;
   const root = host.attachShadow({ mode: "closed" }); root.adoptedStyleSheets = css;
-  ghosts[kind] = host; ghostRoots.set(host, root); return { host, root };
+  const html = document.documentElement, gr = document.createElement("div");
+  gr.className = ("groot " + html.className).trim(); gr.style.cssText = html.style.cssText; gr.style.display = "contents";
+  if (html.hasAttribute("data-theme")) gr.setAttribute("data-theme", html.getAttribute("data-theme"));
+  root.append(gr);
+  ghosts[kind] = host; ghostRoots.set(host, root); return { host, root: gr };
 }
 const ghostDone = (kind, host, a) => a.finished.then(() => { if (ghosts[kind] === host) dropGhost(kind); }, () => {});
 // Where the user is before a screen change; read before anything is written, so it never forces a layout.
 const viewBox = () => ({ y: scrollY, w: document.documentElement.clientWidth, h: innerHeight });
 const RANK = { hub: 0, settings: 1, volume: 1, history: 2, expense: 3 };
 let enterDir = ""; // "fwd" / "back" for the next render(): its lists ink in
-// Panel wipe: the page being left is cut out as a slanted panel (skewed 8°, its content skewed back) with an ink edge
-// and speed lines trailing, and slides off: forward to the left, Back (to a shallower screen) to the right.
+// Screen change (glass): the page being left slides off as one pane with a soft shadow edge, uncovering the new page
+// that is already live under it (no crossfade: two pages' words never overlap): forward to the left, Back (to a
+// shallower screen) to the right. The new rows slide in the same way.
 function turn(from, to, box) {
   enterDir = "";
   if (from === to) return;
   const back = (RANK[to] || 0) < (RANK[from] || 0), app = $("#app");
   const g = app.firstChild && ghost("screen", back ? "back" : ""); if (!g) return dropGhost("screen");
   enterDir = back ? "back" : "fwd";
-  const T = motionTimes(), s = Math.ceil(box.h * 0.1405), el = c => { const n = document.createElement("div"); n.className = c; return n; };
-  const gw = el("gw"), gin = el("gin"), gl = el("gl"), main = document.createElement("main");
-  main.id = "app"; gw.style.width = box.w + s + "px"; gin.style.width = box.w + "px"; gl.style.left = back ? "-72px" : box.w + s + "px";
+  const T = motionTimes(), el = c => { const n = document.createElement("div"); n.className = c; return n; };
+  const gw = el("gw"), gin = el("gin"), main = document.createElement("main");
+  main.id = "app"; gw.style.width = box.w + "px"; gin.style.width = box.w + "px";
   g.host.style.setProperty("--gy", box.y);
   // Only what was on screen goes along (a 100-row history would cost a long style and layout pass); the page was laid
   // out when the user tapped, so these reads are free.
@@ -3158,10 +3194,9 @@ function turn(from, to, box) {
   // tap's own task stays as short as without motion (focusTitle() forces a layout, and it must not lay out the ghost).
   requestAnimationFrame(() => {
     if (ghosts.screen !== g.host) return;
-    gin.append(main); gw.append(gin); g.root.append(gw, gl);
+    gin.append(main); gw.append(gin); g.root.append(gw);
     document.body.insertBefore(g.host, $("#layer"));
-    const a = g.host.animate([{ transform: "none" }, { transform: `translateX(${(box.w + s + 80) * (back ? 1 : -1)}px)` }], { duration: T.wipe, easing: T.easeOut, fill: "forwards" });
-    gl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: T.wipe, easing: "ease-in", fill: "forwards" });
+    const a = g.host.animate([{ transform: "none" }, { transform: `translateX(${(box.w + 40) * (back ? 1 : -1)}px)` }], { duration: T.wipe, easing: T.easeOut, fill: "forwards" });
     ghostDone("screen", g.host, a);
   });
 }
