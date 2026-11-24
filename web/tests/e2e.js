@@ -1591,7 +1591,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await pick(pg,'f-paid',{label:'Ivy'});                                                                                                            // tap 3
    await pg.locator('#expForm button[type=submit]').click(); await pg.waitForSelector('[data-act=addExpense]');                                       // tap 4
    const saved=await pg.evaluate(()=>{ const v=S.volumes[0], e=v.expenses.find(x=>x.amount===41200); return e&&{desc:e.desc,paid:e.paidBy,cat:e.category,sum:Object.values(e.splits).reduce((a,x)=>a+x,0),keys:Object.keys(e).sort().join(),bal:Object.values(balances(v)).reduce((a,x)=>a+x,0)}; });
-   ok(saved && saved.desc==='Chowking' && saved.paid==='ivy1' && saved.cat==='food' && saved.sum===41200 && saved.keys===keys0 && saved.bal===0,'D1 scenario 16: "Chowking again, Ivy paid" in 4 taps (Add, suggestion, Ivy, Save) plus typing the amount; splits sum to the amount and no new field is stored '+JSON.stringify(saved));
+   ok(saved && saved.desc==='Chowking' && saved.paid==='ivy1' && saved.cat==='food' && saved.sum===41200 && saved.keys.replace(',time','')===keys0 && saved.bal===0,'D1 scenario 16: "Chowking again, Ivy paid" in 4 taps (Add, suggestion, Ivy, Save) plus typing the amount; splits sum to the amount and no new field is stored '+JSON.stringify(saved));
    await pg.waitForTimeout(350); await pg.locator('[data-act=addExpense]').click(); await pg.waitForSelector('#expForm'); await pg.waitForTimeout(350);
    await pg.locator('#f-desc').fill('rent'); await pg.locator('#descSug [data-sug]').first().click(); await pg.locator('#f-amount').fill('900.00');
    const sh=await pg.evaluate(()=>({split:document.querySelector('[data-split][aria-pressed=true]').dataset.split,ins:[...document.querySelectorAll('#splitRows [data-in]')].map(i=>i.value).join()}));
@@ -2158,6 +2158,32 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(prop.length===0,'ME-view: in 200 random volumes, for every member picked as you, the hero shows that member\'s balance, exactly one chip says You, and their own name never shows in chips or Who pays whom '+JSON.stringify(prop));
    const zero=await pg.evaluate(()=>S.volumes.every(v=>Object.values(balances(v)).reduce((a,b)=>a+b,0)===0));
    ok(zero && errs.length===0,'ME-view: balances still sum to zero; no page errors '+JSON.stringify(errs)); await c.close(); }
+
+ // TM time of day (owner 2026-11-24): an expense keeps a time; rows on one day are newest-time first; sync keeps it
+ { const {c,pg,errs}=await bebe();
+   await pg.locator('.vol').first().click(); await pg.waitForSelector('[data-act=addExpense]'); await pg.waitForTimeout(350);
+   await pg.locator('[data-act=addExpense]').click(); await pg.waitForSelector('#expForm'); await pg.waitForTimeout(350);
+   const t0=await pg.evaluate(()=>({v:document.getElementById('f-time').value,now:nowTime(),lab:document.querySelector('label[for=f-time]').textContent}));
+   ok(/^\d\d:\d\d$/.test(t0.v) && t0.lab==='Time (optional)','TM: a new expense starts at the time now '+JSON.stringify(t0));
+   await pg.locator('#f-amount').fill('90.00'); await pg.locator('#f-desc').fill('Kape');
+   await pg.locator('#f-time').fill('07:15');
+   await pg.locator('#expForm button[type=submit]').click(); await pg.waitForSelector('[data-act=addExpense]');
+   const sv=await pg.evaluate(()=>{ const e=S.volumes[0].expenses.find(x=>x.desc==='Kape'); return e&&e.time; });
+   ok(sv==='07:15','TM: the picked time is saved on the expense '+sv);
+   const ord=await pg.evaluate(()=>{ const v=S.volumes[0], d='2026-03-03', base={paidBy:v.meId,category:'food',splitType:'equal',inputs:{},note:''};
+     const mk=(id,desc,time,upd)=>({...base,id,desc,amount:100,date:d,splits:splitEqual(100,v.members.map(m=>m.id)),upd,...(time?{time}:{})});
+     v.expenses.push(mk('tm1','Breakfast','08:00',5),mk('tm2','Dinner','19:30',1),mk('tm3','Lunch','12:10',9),mk('tm4','Old one',null,3));
+     commit(); render(); return timeline(v).filter(it=>it.d===d).map(it=>it.x.desc); });
+   ok(JSON.stringify(ord)==='["Dinner","Lunch","Breakfast","Old one"]','TM: on one day the latest time is on top, whatever order they were added; one with no time goes last '+JSON.stringify(ord));
+   await pg.locator('[data-act=history]').first().click(); await pg.waitForSelector('.ledger.hist'); await pg.waitForTimeout(350);
+   const row=await pg.evaluate(()=>[...document.querySelectorAll('.ledger.hist .tx')].map(r=>r.textContent.replace(/\s+/g,' ')).find(t=>/Dinner/.test(t)));
+   ok(/Mar 3 · 7:30\sPM/.test(row),'TM: the row shows the date and the time '+row);
+   const sync=await pg.evaluate(()=>{ const v=S.volumes[0], old=JSON.parse(JSON.stringify(v)); old.expenses.forEach(e=>delete e.time);
+     const r=mergeVolumes(v,old), e=r.vol.expenses.find(x=>x.id==='tm2');
+     const bad=JSON.parse(JSON.stringify(v)); bad.expenses[0].time='25:00';
+     return {kept:e.time, upd:r.updated.expense, bad:validVolume(bad)}; });
+   ok(sync.kept==='19:30' && sync.upd===0 && sync.bad===false,'TM: a copy from an older phone (no time, same edit time) keeps the time and changes nothing; a broken time is refused '+JSON.stringify(sync));
+   ok(errs.length===0,'TM: no page errors '+JSON.stringify(errs)); await c.close(); }
 
  await b.close();
 })();
