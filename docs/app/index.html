@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-n/URMugWX2NPTeakbh4zbZpFcEBR9oOQFD61WT4cVqs='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://hati-sync.gerymefernando.workers.dev wss://hati-sync.gerymefernando.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wbemzxjb3rngyJvtBQ9f0rkT+wtmlqQAb9nYmuikC/E='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://hati-sync.gerymefernando.workers.dev wss://hati-sync.gerymefernando.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>HATI²</title>
@@ -1210,6 +1210,15 @@ const volNo = v => String([...S.volumes].sort((a, b) => (a.created || 0) - (b.cr
 const whenKey = x => { if (okTime(x.time)) return x.time; if (!x.upd) return ""; const t = new Date(x.upd); return isoLocal(t) === x.date ? hhmm(t) : ""; };
 const timeline = v => [...v.expenses.map(e => ({ k: "e", d: e.date, x: e })), ...v.settlements.map(s => ({ k: "s", d: s.date, x: s }))]
   .map(it => ({ ...it, w: whenKey(it.x) })).sort((a, b) => b.d.localeCompare(a.d) || b.w.localeCompare(a.w) || (b.x.upd || 0) - (a.x.upd || 0));
+// Last added first (owner 2026-11-24: "the recently added is not on top"): `at` is when the entry was first saved.
+// Entries saved before `at` existed have none; they follow, in date order, so old data reads as it did.
+const addedOrder = v => { const rows = timeline(v), on = rows.filter(it => it.x.at > 0).sort((a, b) => b.x.at - a.x.at);
+  return on.length ? [...on, ...rows.filter(it => !(it.x.at > 0))] : rows; };
+// History order: "added" (default) or "date" (grouped by month); this phone only.
+const HSORT = "hati2.hsort";
+const hsort = () => { try { return localStorage.getItem(HSORT) === "date" ? "date" : "added"; } catch (e) { return "added"; } };
+const histRows = v => hsort() === "date" ? timeline(v) : addedOrder(v);
+const histKey = it => hsort() === "date" ? (/^\d{4}-\d{2}/.test(it.d) ? it.d.slice(0, 7) : "") : "*";
 const TIME12 = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" });
 const niceTime = t => okTime(t) ? TIME12.format(new Date(2000, 0, 1, +t.slice(0, 2), +t.slice(3))) : "";
 
@@ -1367,12 +1376,12 @@ function histMonths(v, rows, sel, totals = {}, start = 0) {
   const groups = [];
   rows.forEach((it, j) => {
     const i = start + j;
-    const k = /^\d{4}-\d{2}/.test(it.d) ? it.d.slice(0, 7) : "";
+    const k = histKey(it);
     let g = groups[groups.length - 1]; if (!g || g.k !== k) groups.push(g = { k, html: [] });
     const cls = i < 12 ? "tx lead" : i >= 32 ? "tx cv" : "tx";
     g.html.push(itemRow(v, it).replace('class="tx"', `class="${cls}"`));
   });
-  return groups.map(g => `<section class="sect month"><div class="strip"><h2 class="label">${g.k ? MONTH.format(new Date(+g.k.slice(0, 4), +g.k.slice(5) - 1, 1)) : "Other dates"}</h2>${totals[g.k] ? `<span class="num month-tot">${esc(fmt(totals[g.k], v.currency))}<span class="sr"> spent</span></span>` : ""}</div>
+  return groups.map(g => `<section class="sect month"><div class="strip"><h2 class="label">${g.k === "*" ? "Last added first" : g.k ? MONTH.format(new Date(+g.k.slice(0, 4), +g.k.slice(5) - 1, 1)) : "Other dates"}</h2>${g.k !== "*" && totals[g.k] ? `<span class="num month-tot">${esc(fmt(totals[g.k], v.currency))}<span class="sr"> spent</span></span>` : ""}</div>
     <div class="ledger hist${sel ? " selecting" : ""}">${g.html.join("")}</div></section>`).join("");
 }
 // X3 search and filter (History): words in the description, note, names or "how"; a member (paid, or has a share; for a
@@ -1402,11 +1411,11 @@ function matchItem(v, it, hf) {
 const HIST_FIRST = 40;
 let histRest = null;
 function histBody(v) {
-  const hf = histFilter(v), all = timeline(v), items = filterOn(hf) ? all.filter(it => matchItem(v, it, hf)) : all;
+  const hf = histFilter(v), all = histRows(v), items = filterOn(hf) ? all.filter(it => matchItem(v, it, hf)) : all;
   const shown = items.slice(0, ui.histLimit), sel = ui.sel, totals = monthTotals(items);
   const none = filterOn(hf) ? emptyCard("(・_・;)", "Nothing matches. Try other words or clear the filter.") : emptyCard("(・_・;)", "Nothing recorded yet.");
   const split = !filterOn(hf) && !sel && shown.length > HIST_FIRST ? HIST_FIRST : shown.length;
-  histRest = split < shown.length ? { v, rows: shown.slice(split), at: split, totals, gen: renders, k: shown[split - 1].d.slice(0, 7) } : null;
+  histRest = split < shown.length ? { v, rows: shown.slice(split), at: split, totals, gen: renders, k: histKey(shown[split - 1]) } : null;
   if (histRest) setTimeout(histWatch, 0);
   return (shown.length ? histMonths(v, shown.slice(0, split), sel, totals) : none) + (histRest ? `<div id="histMoreAt" aria-hidden="true"></div>` : "") +
     (items.length > shown.length ? `<button class="btn block" data-act="more" style="margin-top:12px">Show ${Math.min(100, items.length - shown.length)} more</button>` : "");
@@ -1431,12 +1440,12 @@ function histMore() {
   const body = $("#histBody"); if (!r || !body || ui.view !== "history" || renders !== r.gen) return;
   if (r.rows.length > HIST_STEP) {
     const last = r.rows[HIST_STEP - 1];
-    histRest = { ...r, rows: r.rows.slice(HIST_STEP), at: r.at + HIST_STEP, k: last.d.slice(0, 7) };
+    histRest = { ...r, rows: r.rows.slice(HIST_STEP), at: r.at + HIST_STEP, k: histKey(last) };
     r = { ...r, rows: r.rows.slice(0, HIST_STEP) };
     // the sentinel stays in view while there's more, so the observer fires again for the next step
     if (histIO) { const at = $("#histMoreAt"); if (at) setTimeout(() => { if (histIO && $("#histMoreAt")) { histIO.unobserve(at); histIO.observe(at); } }, 0); }
   }
-  const same = r.rows.findIndex(it => it.d.slice(0, 7) !== r.k), head = same < 0 ? r.rows : r.rows.slice(0, same), tail = same < 0 ? [] : r.rows.slice(same);
+  const same = r.rows.findIndex(it => histKey(it) !== r.k), head = same < 0 ? r.rows : r.rows.slice(0, same), tail = same < 0 ? [] : r.rows.slice(same);
   const months = body.querySelectorAll(".month .ledger.hist"), last = months[months.length - 1];
   if (head.length && last) last.insertAdjacentHTML("beforeend", head.map((it, j) => { const i = r.at + j, cls = i < 12 ? "tx lead" : i >= 32 ? "tx cv" : "tx"; return itemRow(r.v, it).replace('class="tx"', `class="${cls}"`); }).join(""));
   if (tail.length) { const at = $("#histMoreAt"), html = histMonths(r.v, tail, null, r.totals, r.at + head.length); if (at) at.insertAdjacentHTML("beforebegin", html); else body.insertAdjacentHTML("beforeend", html); }
@@ -1567,7 +1576,7 @@ const views = {
         ${ds.length ? `<div class="ledger">${ds.map(d => debtRow(v, d)).join("")}</div>` : emptyCard("(＾▽＾)", "Nobody owes anything.")}</section>
       ${glanceHtml(v)}
       <section class="sect"><div class="strip"><h2 class="label">Recent</h2>${items.length > 4 ? `<button class="btn quiet" data-act="history">${I.list} See all ${items.length}</button>` : ""}</div>
-        ${items.length ? `<div class="ledger">${items.slice(0, 4).map(it => itemRow(v, it)).join("")}</div>` : emptyCard("(・_・;)", v.archived ? "No expenses." : "No expenses yet. Add the first one.")}</section>
+        ${items.length ? `<div class="ledger">${addedOrder(v).slice(0, 4).map(it => itemRow(v, it)).join("")}</div>` : emptyCard("(・_・;)", v.archived ? "No expenses." : "No expenses yet. Add the first one.")}</section>
       </div>`;
   },
 
@@ -1584,6 +1593,7 @@ const views = {
     const meta = sel ? "Tap the ones to change, then pick a date." : `${plural(v.expenses.length, "expense")} and ${plural(v.settlements.length, "payment")}. ${v.archived ? "Archived: read-only." : "Tap one to edit it."}`;
     return topbar("History", { back: true, right: `<span class="muted sub ellip">${esc(v.title)}</span>` }) +
       `<div class="row between" style="margin:0 0 8px;gap:8px"><p class="muted small" style="margin:0">${meta}</p>${!sel && !v.archived && items.length ? `<button class="btn quiet" data-act="selStart">Set dates</button>` : ""}</div>` +
+      (items.length > 1 && !sel ? `<div class="seg hsort" role="group" aria-label="Order" style="margin:0 0 8px">${[["added", "Last added"], ["date", "By date"]].map(([k, t]) => `<button type="button" data-hsort="${k}" aria-pressed="${hsort() === k}">${t}</button>`).join("")}</div>` : "") +
       bar + `<div id="histBody">${histBody(v)}</div>` +
       (sel ? `<div class="panel pad stack setdate" role="group" aria-label="Set date">
         <p class="small" id="selCount" style="margin:0"><b>${sel.size} selected</b></p>
@@ -1786,7 +1796,8 @@ function submitExpense() {
   const r = computeSplits();
   if (r.error) { refreshSplitPreview(); $("#formMsg").scrollIntoView({ block: "center" }); return; }
   const inputs = f.splitType === "equal" || f.splitType === "exact" ? {} : Object.fromEntries(Object.entries(f.inputs).filter(([k]) => has(r.splits, k)));
-  const rec = { id: f.id || uid(), desc: f.desc.trim(), amount: r.amount, paidBy: f.paidBy, category: f.category, date: f.date || today(), splitType: f.splitType, splits: r.splits, inputs, note: f.note.trim(), upd: Date.now(), ...(okTime(f.time) ? { time: f.time } : {}) };
+  const old = f.id ? v.expenses.find(e => e.id === f.id) : null, at = old ? old.at : Date.now();
+  const rec = { id: f.id || uid(), desc: f.desc.trim(), amount: r.amount, paidBy: f.paidBy, category: f.category, date: f.date || today(), splitType: f.splitType, splits: r.splits, inputs, note: f.note.trim(), upd: Date.now(), ...(okTime(f.time) ? { time: f.time } : {}), ...(at ? { at } : {}) };
   const i = v.expenses.findIndex(e => e.id === rec.id), was = i >= 0 ? v.expenses[i] : null;
   if (i >= 0) v.expenses[i] = rec; else v.expenses.push(rec);
   if (!commit()) return;
@@ -2039,8 +2050,8 @@ function offsetSheet(r, here) {
       if (amt > max) return sheetMsg(`That's more than the overlap. Offset up to ${fmt(max, r.cur)}.`);
       const now = Date.now(), date = today(), ia = uid(), ib = uid();
       const how = v => `Offset with ${v.title}`.slice(0, 40);
-      A.v.settlements.push({ id: ia, from: A.id, to: A.v.meId, amount: amt, date, upd: now, how: how(B.v), twinVol: B.v.id, twinId: ib });
-      B.v.settlements.push({ id: ib, from: B.v.meId, to: B.id, amount: amt, date, upd: now, how: how(A.v), twinVol: A.v.id, twinId: ia });
+      A.v.settlements.push({ id: ia, from: A.id, to: A.v.meId, amount: amt, date, upd: now, how: how(B.v), twinVol: B.v.id, twinId: ib, at: now });
+      B.v.settlements.push({ id: ib, from: B.v.meId, to: B.id, amount: amt, date, upd: now, how: how(A.v), twinVol: A.v.id, twinId: ia, at: now });
       if (!commit()) return;
       closeSheet(); render();
       toast(`Offset recorded in ${A.v.title} and ${B.v.title}.`, { undo: () => undoSteps(A.v.id, [{ list: "settlements", id: ia, was: null, upd: now }, { vol: B.v.id, list: "settlements", id: ib, was: null, upd: now }]), ms: 6000 });
@@ -2379,7 +2390,7 @@ function settleSheet(existing) {
       const date = $("#s-date").value || today(), how = $("#s-via").value.trim().slice(0, 40);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return sheetMsg("Pick a date.");
       const now = Date.now(), step = { list: "settlements", id: existing ? existing.id : uid(), was: existing ? { ...existing } : null, upd: now };
-      const rec = { id: step.id, from, to, amount: amt, date, upd: now, ...(how ? { how } : {}), ...(existing && existing.twinVol ? { twinVol: existing.twinVol, twinId: existing.twinId } : {}) };
+      const rec = { id: step.id, from, to, amount: amt, date, upd: now, ...(how ? { how } : {}), ...(existing && existing.twinVol ? { twinVol: existing.twinVol, twinId: existing.twinId } : {}), ...(existing ? (existing.at ? { at: existing.at } : {}) : { at: now }) };
       const steps = [step], t = twin && twin.settlements.find(x => x.id === existing.twinId);
       if (t && (t.amount !== amt || t.date !== date)) { steps.push({ vol: twin.id, list: "settlements", id: t.id, was: { ...t }, upd: now }); Object.assign(t, { amount: amt, date, upd: now }); }
       if (existing) { delete existing.how; Object.assign(existing, rec); } else v.settlements.push(rec);
@@ -2994,17 +3005,17 @@ function cleanVolume(x) {
       splitType: ["equal", "exact", "percent", "shares"].includes(e.splitType) ? e.splitType : "exact",
       splits: { ...e.splits }, inputs: Object.fromEntries(Object.entries(e.inputs && typeof e.inputs === "object" ? e.inputs : {}).filter(([k, v]) => x.members.some(m => m.id === k) && typeof v === "string" && v.length <= 20)),
       // `time` (owner 2026-11-24, optional "HH:MM") goes last: an older phone drops it (OPT_PAY below)
-      note: typeof e.note === "string" ? e.note : "", upd: updOf(e.upd), ...(okTime(e.time) ? { time: e.time } : {}) })),
+      note: typeof e.note === "string" ? e.note : "", upd: updOf(e.upd), ...(okTime(e.time) ? { time: e.time } : {}), ...(updOf(e.at) ? { at: e.at } : {}) })),
     // `how` (D3, optional, up to 40 characters) goes last: an older phone drops it, and mergeVolumes compares in this key order
     // XV: an offset payment names its twin in another volume (twinVol, twinId); both go after `how`, for the same reason
     settlements: x.settlements.map(t => ({ id: t.id, from: t.from, to: t.to, amount: t.amount, date: t.date, upd: updOf(t.upd), ...(typeof t.how === "string" && t.how.trim() && t.how.length <= 40 ? { how: t.how.trim() } : {}),
-      ...(okId(t.twinVol) && okId(t.twinId) && t.twinVol !== x.id ? { twinVol: t.twinVol, twinId: t.twinId } : {}) })),
+      ...(okId(t.twinVol) && okId(t.twinId) && t.twinVol !== x.id ? { twinVol: t.twinVol, twinId: t.twinId } : {}), ...(updOf(t.at) ? { at: t.at } : {}) })),
     deleted: [...new Set((x.deleted || []).filter(i => okId(i)))]
   };
 }
 const sameEntry = (a, b) => JSON.stringify({ ...a, upd: 0 }) === JSON.stringify({ ...b, upd: 0 });
 // Optional fields an older phone drops when it writes an entry back (D3 `how`, XV twin link, an expense's `time`).
-const OPT_PAY = ["how", "twinVol", "twinId", "time"];
+const OPT_PAY = ["how", "twinVol", "twinId", "time", "at"]; // `at`: when first saved (last-added order)
 const stripOpt = o => Object.fromEntries(Object.entries(o).filter(([k]) => !OPT_PAY.includes(k)));
 const olderCopy = (x, mine) => x.upd === mine.upd && OPT_PAY.every(k => x[k] === undefined || x[k] === mine[k]) &&
   OPT_PAY.some(k => x[k] === undefined && mine[k] !== undefined) && sameEntry(stripOpt(x), stripOpt(mine));
@@ -3482,6 +3493,9 @@ document.addEventListener("click", async ev => {
   if (qh) { const i = qh.closest(".field").querySelector("input"); if (!i) return; const on = qh.getAttribute("aria-pressed") === "true"; i.value = on ? "" : qh.dataset.how; paintHow(i); i.dispatchEvent(new Event("input", { bubbles: true })); return; }
   const qd = ev.target.closest && ev.target.closest(".field [data-day]");
   if (qd) { const i = qd.closest(".field").querySelector("input[type=date]"); if (!i) return; i.value = dayAgo(+qd.dataset.day); ["input", "change"].forEach(t => i.dispatchEvent(new Event(t, { bubbles: true }))); return; }
+  const hs = ev.target.closest && ev.target.closest("[data-hsort]");
+  if (hs) { try { localStorage.setItem(HSORT, hs.dataset.hsort); } catch (e) {} document.querySelectorAll("[data-hsort]").forEach(x => x.setAttribute("aria-pressed", String(x === hs)));
+    ui.histLimit = 100; refreshHist(); announce(hs.dataset.hsort === "date" ? "By date" : "Last added first"); return; }
   const el = ev.target.closest("[data-act],[data-pal],[data-set]"); if (!el) return;
   if (el.dataset.pal) return selectPalette(el.dataset.pal);
   if (el.dataset.set) {

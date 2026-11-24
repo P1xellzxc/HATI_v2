@@ -17,6 +17,8 @@ Facts from the code that shaped the debate (`web/src/app.src.html`):
 - Open items from the 2026-11-09 handoff: perf regression (patch `brain/WIP/perf-fix-wip.patch`), K3, restore does not re-join sync, real-Worker check never done.
 
 ## Next (updated 2026-11-24, Manila time; a new chat starts here)
+Shipped 2026-11-24 (latest): **last added on top** (LA): Recent and History show the newest added first, even when dated earlier; History has "Last added | By date". **Owner:** add an expense dated last week; it must be first in Recent and History.
+
 Shipped 2026-11-24 (later): **time on expenses** (TM): a Time field under Date (starts at now), rows on one day sorted newest time first, rows show "Mar 3 · 7:30 PM"; older expenses use their last save time for order. See [[Team log]] "Time on expenses". **Owner:** install the new APK "latest", add two expenses on one day with different times, check History order; edit an old one to give it a time.
 
 Shipped 2026-11-24: glass motion pass (screen change and closing sheets render in glass, rows slide in instead of white ink covers, press sinks at .97); see [[Team log]] "Glass motion pass". APK from the merge to main → release "latest". **Owner:** install it and check a screen change, Back and a button press feel right on the phone.

@@ -1591,7 +1591,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    await pick(pg,'f-paid',{label:'Ivy'});                                                                                                            // tap 3
    await pg.locator('#expForm button[type=submit]').click(); await pg.waitForSelector('[data-act=addExpense]');                                       // tap 4
    const saved=await pg.evaluate(()=>{ const v=S.volumes[0], e=v.expenses.find(x=>x.amount===41200); return e&&{desc:e.desc,paid:e.paidBy,cat:e.category,sum:Object.values(e.splits).reduce((a,x)=>a+x,0),keys:Object.keys(e).sort().join(),bal:Object.values(balances(v)).reduce((a,x)=>a+x,0)}; });
-   ok(saved && saved.desc==='Chowking' && saved.paid==='ivy1' && saved.cat==='food' && saved.sum===41200 && saved.keys.replace(',time','')===keys0 && saved.bal===0,'D1 scenario 16: "Chowking again, Ivy paid" in 4 taps (Add, suggestion, Ivy, Save) plus typing the amount; splits sum to the amount and no new field is stored '+JSON.stringify(saved));
+   ok(saved && saved.desc==='Chowking' && saved.paid==='ivy1' && saved.cat==='food' && saved.sum===41200 && saved.keys.replace(',time','').replace('amount,at,','amount,')===keys0 && saved.bal===0,'D1 scenario 16: "Chowking again, Ivy paid" in 4 taps (Add, suggestion, Ivy, Save) plus typing the amount; splits sum to the amount and no new field is stored '+JSON.stringify(saved));
    await pg.waitForTimeout(350); await pg.locator('[data-act=addExpense]').click(); await pg.waitForSelector('#expForm'); await pg.waitForTimeout(350);
    await pg.locator('#f-desc').fill('rent'); await pg.locator('#descSug [data-sug]').first().click(); await pg.locator('#f-amount').fill('900.00');
    const sh=await pg.evaluate(()=>({split:document.querySelector('[data-split][aria-pressed=true]').dataset.split,ins:[...document.querySelectorAll('#splitRows [data-in]')].map(i=>i.value).join()}));
@@ -1817,7 +1817,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    ok(dr.valid && dr.clean==='GCash' && !dr.long && !dr.bad,'D3: validVolume accepts a payment with how; cleanVolume keeps it, drops one over 40 characters or not text '+JSON.stringify(dr));
    ok(dr.m1==='GCash' && dr.m2==='GCash' && !dr.m3,'D3: mergeVolumes keeps how when an older phone sends the payment back without it at the same upd, and takes a newer edit '+JSON.stringify(dr));
    ok(dr.money && dr.code==='GCash' && dr.canon,'D3: how never changes balances or debts, travels in share codes and backups, and counts as a change for sync '+JSON.stringify(dr));
-   await pg.evaluate(()=>{ S.volumes[0].settlements[0].how='<img src=x onerror="window.__h=1">'; commit(); render(); });
+   await pg.evaluate(()=>{ S.volumes[0].settlements[0].how='<img src=x onerror="window.__h=1">'; localStorage.setItem('hati2.hsort','date'); commit(); render(); });
    await pg.reload(); await pg.waitForSelector('.ledger.hist');
    const hx=await pg.evaluate(()=>({h:window.__h,t:document.querySelector('.ledger.hist .tx[data-act=editSettle] .tx-m').textContent,kept:S.volumes[0].settlements[0].how}));
    ok(hx.h===undefined && /via <img/.test(hx.t) && /^<img/.test(hx.kept),'D3: how survives a reload and shows as text '+JSON.stringify(hx));
@@ -1848,7 +1848,7 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
    const trip=await pg.evaluate(()=>{ const v=exampleVolume(), g=glance(v); return {kind:g.time.kind,sum:g.time.cols.reduce((a,c)=>a+c.a,0)===g.tot,n:g.time.cols.length}; });
    ok(trip.kind==='days' && trip.sum,'X1: a trip shows one column per day and the days sum to the total '+JSON.stringify(trip));
    // X2
-   await pg.evaluate(()=>go('history')); await pg.waitForSelector('.ledger.hist'); await pg.waitForTimeout(300);
+   await pg.evaluate(()=>{ localStorage.setItem('hati2.hsort','date'); go('history'); }); await pg.waitForSelector('.ledger.hist'); await pg.waitForTimeout(300);
    const m=await pg.evaluate(()=>{ const v=vol(), want={}; v.expenses.forEach(e=>{ const k=e.date.slice(0,7); want[k]=(want[k]||0)+e.amount; });
      return [...document.querySelectorAll('.sect.month')].map(s=>({h:s.querySelector('h2').textContent,t:s.querySelector('.month-tot')&&s.querySelector('.month-tot').firstChild.textContent,ok:false,want:null})).map((r,i)=>{ const k=Object.keys(want).sort().reverse()[i]; return {...r,ok:r.t===fmt(want[k],v.currency)}; }); });
    ok(m.length===2 && m.every(r=>r.ok),'X2: every month heading carries that month\'s expense total (payments excluded) '+JSON.stringify(m));
@@ -2183,6 +2183,24 @@ const URL=process.env.URL||'http://127.0.0.1:8765/';
      const bad=JSON.parse(JSON.stringify(v)); bad.expenses[0].time='25:00';
      return {kept:e.time, upd:r.updated.expense, bad:validVolume(bad)}; });
    ok(sync.kept==='19:30' && sync.upd===0 && sync.bad===false,'TM: a copy from an older phone (no time, same edit time) keeps the time and changes nothing; a broken time is refused '+JSON.stringify(sync));
+   // LA: the one added last is on top of Recent and History, even when dated in the past; "By date" brings months back
+   await pg.evaluate(()=>localStorage.removeItem('hati2.hsort')); await pg.locator('[data-act=back]').first().click(); await pg.waitForSelector('[data-act=addExpense]'); await pg.waitForTimeout(350);
+   await pg.locator('[data-act=addExpense]').click(); await pg.waitForSelector('#expForm'); await pg.waitForTimeout(350);
+   await pg.locator('#f-amount').fill('55.00'); await pg.locator('#f-desc').fill('Pandesal');
+   await pg.locator('#f-date').fill('2025-01-05'); await pg.locator('#f-date').dispatchEvent('change');
+   await pg.locator('#expForm button[type=submit]').click(); await pg.waitForSelector('[data-act=addExpense]'); await pg.waitForTimeout(350);
+   const rec=await pg.evaluate(()=>{ const e=S.volumes[0].expenses.find(x=>x.desc==='Pandesal'); return {top:[...document.querySelectorAll('.ledger .tx-t')].map(x=>x.textContent).filter(t=>t)[0], at:e&&e.at}; });
+   const recent=await pg.evaluate(()=>{ const secs=[...document.querySelectorAll('section.sect')].find(s=>/Recent/.test(s.querySelector('.label')?.textContent||'')); return secs?[...secs.querySelectorAll('.tx-t')].map(x=>x.textContent):[]; });
+   ok(recent[0]==='Pandesal' && rec.at>0,'LA: an expense dated last year, added now, is first in Recent and keeps when it was added '+JSON.stringify({recent,rec}));
+   await pg.locator('[data-act=history]').first().click(); await pg.waitForSelector('.ledger.hist'); await pg.waitForTimeout(350);
+   const h1=await pg.evaluate(()=>({first:document.querySelector('.ledger.hist .tx-t').textContent,heads:[...document.querySelectorAll('.month .label')].map(x=>x.textContent),pressed:[...document.querySelectorAll('[data-hsort]')].map(b=>b.textContent+':'+b.getAttribute('aria-pressed')).join()}));
+   ok(h1.first==='Pandesal' && h1.heads.join()==='Last added first' && h1.pressed==='Last added:true,By date:false','LA: History opens last added first '+JSON.stringify(h1));
+   await pg.locator('[data-hsort=date]').click(); await pg.waitForTimeout(200);
+   const h2=await pg.evaluate(()=>({first:document.querySelector('.ledger.hist .tx-t').textContent,heads:[...document.querySelectorAll('.month .label')].map(x=>x.textContent),saved:localStorage.getItem('hati2.hsort')}));
+   ok(h2.first!=='Pandesal' && h2.heads[h2.heads.length-1]==='January 2025' && h2.saved==='date','LA: By date groups by month again (the January 2025 one goes to the bottom) and is remembered '+JSON.stringify(h2));
+   const edit=await pg.evaluate(()=>{ const v=S.volumes[0], e=v.expenses.find(x=>x.desc==='Pandesal'), at=e.at; const old=JSON.parse(JSON.stringify(v)); old.expenses.forEach(x=>delete x.at); const r=mergeVolumes(v,old); return {kept:r.vol.expenses.find(x=>x.id===e.id).at===at, upd:r.updated.expense}; });
+   ok(edit.kept && edit.upd===0,'LA: a copy from an older phone (no added time, same edit time) keeps it '+JSON.stringify(edit));
+   await pg.evaluate(()=>localStorage.removeItem('hati2.hsort'));
    ok(errs.length===0,'TM: no page errors '+JSON.stringify(errs)); await c.close(); }
 
  await b.close();
