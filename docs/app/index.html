@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-v7KBJ041efc8j7PXoYSADOgF15VqSPq+HA01aJ42zeQ='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://hati-sync.gerymefernando.workers.dev wss://hati-sync.gerymefernando.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-n/URMugWX2NPTeakbh4zbZpFcEBR9oOQFD61WT4cVqs='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://hati-sync.gerymefernando.workers.dev wss://hati-sync.gerymefernando.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>HATI²</title>
@@ -913,6 +913,9 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;"
 const pad2 = n => String(n).padStart(2, "0");
 const isoLocal = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 const today = () => isoLocal(new Date());
+// Time of day (owner 2026-11-24): "HH:MM", local. Optional on an expense; orders rows within one day.
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/, okTime = t => typeof t === "string" && TIME_RE.test(t);
+const hhmm = d => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`, nowTime = () => hhmm(new Date());
 // One formatter, made once: toLocaleString with options builds a new Intl formatter on every call (a 100-row history
 // spent most of its render there). Same locale and options, so the text is identical.
 const MONEY = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1202,7 +1205,13 @@ function balancePill(c, cur) {
 }
 const total = v => v.expenses.reduce((a, e) => a + e.amount, 0);
 const volNo = v => String([...S.volumes].sort((a, b) => (a.created || 0) - (b.created || 0)).indexOf(v) + 1).padStart(2, "0");
-const timeline = v => [...v.expenses.map(e => ({ k: "e", d: e.date, x: e })), ...v.settlements.map(s => ({ k: "s", d: s.date, x: s }))].sort((a, b) => b.d.localeCompare(a.d));
+// Newest first: by date, then time of day. An entry with no time (older data, payments) takes the time it was last
+// saved when that was on its own date, else sorts after the timed ones of that day; then the later save goes first.
+const whenKey = x => { if (okTime(x.time)) return x.time; if (!x.upd) return ""; const t = new Date(x.upd); return isoLocal(t) === x.date ? hhmm(t) : ""; };
+const timeline = v => [...v.expenses.map(e => ({ k: "e", d: e.date, x: e })), ...v.settlements.map(s => ({ k: "s", d: s.date, x: s }))]
+  .map(it => ({ ...it, w: whenKey(it.x) })).sort((a, b) => b.d.localeCompare(a.d) || b.w.localeCompare(a.w) || (b.x.upd || 0) - (a.x.upd || 0));
+const TIME12 = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" });
+const niceTime = t => okTime(t) ? TIME12.format(new Date(2000, 0, 1, +t.slice(0, 2), +t.slice(3))) : "";
 
 function topbar(title, { back, right = "" } = {}) {
   return `<header class="topbar">${back ? `<button class="ico" data-act="back" aria-label="Back">${I.back}</button>` : `<span class="logo" aria-hidden="true">H²</span>`}<h1 tabindex="-1">${esc(title)}</h1>${right}</header>`;
@@ -1342,7 +1351,7 @@ function expenseRow(v, e) {
   const effect = (e.paidBy === v.meId ? e.amount : 0) - mineShare;
   return `${txOpen(v, "editExpense", e.id)}<span class="tx-ic" aria-hidden="true">${CAT_ICON[c[0]]}</span>
     <span class="grow"><b class="tx-t">${esc(e.desc)}</b><span class="muted small tx-m">${esc(meName(v, e.paidBy))} paid ${esc(fmt(e.amount, v.currency))}</span></span>
-    <span class="tx-r"><span class="tx-a num" style="color:${effect > 0 ? "var(--pos)" : effect < 0 ? "var(--neg)" : "var(--sub)"}">${effect === 0 ? "—" : esc(signed(effect, v.currency))}</span><span class="muted small date">${esc(niceDate(e.date))}</span></span>${txClose(v)}`;
+    <span class="tx-r"><span class="tx-a num" style="color:${effect > 0 ? "var(--pos)" : effect < 0 ? "var(--neg)" : "var(--sub)"}">${effect === 0 ? "—" : esc(signed(effect, v.currency))}</span><span class="muted small date">${esc(niceDate(e.date))}${e.time ? ` · ${esc(niceTime(e.time))}` : ""}</span></span>${txClose(v)}`;
 }
 // History as one section card per month (owner 2026-11-11), newest first, each with its own ledger. Rows keep their
 // place in the whole list: the first 12 ink in (.lead) and rows after the 32nd are drawn only near the screen (.cv).
@@ -1601,6 +1610,7 @@ const views = {
       <div class="muted small" id="splitSum" aria-live="polite"></div>
       </section><section class="sect"><div class="strip"><h2 class="label">Details</h2></div>
       <div class="field"><label for="f-date">Date</label><input id="f-date" type="date" class="input" value="${esc(f.date)}">${quickDays(f.date)}</div>
+      <div class="field"><label for="f-time">Time (optional)</label><input id="f-time" type="time" class="input" value="${esc(f.time || "")}"></div>
       <fieldset><legend class="legend">Category</legend><div class="cats">${CATEGORIES.map(c => `<button type="button" class="cat" data-cat="${c[0]}" aria-pressed="${c[0] === f.category}"><span aria-hidden="true">${CAT_ICON[c[0]]}</span>${c[1]}</button>`).join("")}</div></fieldset>
       <div class="field"><label for="f-note">Note (optional)</label><input id="f-note" class="input" maxlength="200" autocomplete="off" value="${esc(f.note || "")}"></div>
       </section>
@@ -1680,9 +1690,9 @@ function loadDraft() { try { return JSON.parse(sessionStorage.getItem(DRAFT) || 
 function clearDraft() { try { sessionStorage.removeItem(DRAFT); } catch (e) {} }
 function formFrom(e) {
   const v = vol();
-  const f = e ? { id: e.id, amount: (e.amount / 100).toFixed(2), desc: e.desc, paidBy: e.paidBy, date: e.date, category: e.category, splitType: e.splitType || "equal", note: e.note || "",
+  const f = e ? { id: e.id, amount: (e.amount / 100).toFixed(2), desc: e.desc, paidBy: e.paidBy, date: e.date, time: e.time || "", category: e.category, splitType: e.splitType || "equal", note: e.note || "",
     include: Object.fromEntries(v.members.map(m => [m.id, has(e.splits, m.id)])), inputs: { ...(e.inputs || {}) } }
-    : { amount: "", desc: "", paidBy: v.meId, date: today(), category: lastCat(v.id), splitType: "equal", note: "", include: Object.fromEntries(v.members.map(m => [m.id, true])), inputs: {} };
+    : { amount: "", desc: "", paidBy: v.meId, date: today(), time: nowTime(), category: lastCat(v.id), splitType: "equal", note: "", include: Object.fromEntries(v.members.map(m => [m.id, true])), inputs: {} };
   if (e && e.splitType === "exact") v.members.forEach(m => { if (has(e.splits, m.id)) f.inputs[m.id] = (e.splits[m.id] / 100).toFixed(2); });
   return f;
 }
@@ -1699,7 +1709,7 @@ function pastExpenses(v, q) {
   const by = new Map();
   v.expenses.forEach((e, i) => {
     const k = String(e.desc || "").trim().toLowerCase(); if (!k) return;
-    const x = by.get(k) || { n: 0, e: null, key: "" }, key = `${e.date || ""}|${String(e.upd || 0).padStart(15, "0")}|${String(i).padStart(6, "0")}`;
+    const x = by.get(k) || { n: 0, e: null, key: "" }, key = `${e.date || ""}|${e.time || ""}|${String(e.upd || 0).padStart(15, "0")}|${String(i).padStart(6, "0")}`;
     x.n++; if (key > x.key) { x.key = key; x.e = e; } // the latest one is the model
     by.set(k, x);
   });
@@ -1758,7 +1768,7 @@ function setPasted(c, label) {
 // X6: the open expense becomes a new one (rent, bills): same fields, a new id, dated today; nothing saves until Save.
 function copyExpense() {
   const f = ui.form; if (!f || !f.id) return;
-  ui.form = { ...JSON.parse(JSON.stringify(f)), id: null, date: today(), touched: false };
+  ui.form = { ...JSON.parse(JSON.stringify(f)), id: null, date: today(), time: nowTime(), touched: false };
   saveDraft(); render(); { const a = $("#f-amount"); if (a) a.focus(); }
   announce("Copied. Check the date and amount, then save.");
 }
@@ -1776,7 +1786,7 @@ function submitExpense() {
   const r = computeSplits();
   if (r.error) { refreshSplitPreview(); $("#formMsg").scrollIntoView({ block: "center" }); return; }
   const inputs = f.splitType === "equal" || f.splitType === "exact" ? {} : Object.fromEntries(Object.entries(f.inputs).filter(([k]) => has(r.splits, k)));
-  const rec = { id: f.id || uid(), desc: f.desc.trim(), amount: r.amount, paidBy: f.paidBy, category: f.category, date: f.date || today(), splitType: f.splitType, splits: r.splits, inputs, note: f.note.trim(), upd: Date.now() };
+  const rec = { id: f.id || uid(), desc: f.desc.trim(), amount: r.amount, paidBy: f.paidBy, category: f.category, date: f.date || today(), splitType: f.splitType, splits: r.splits, inputs, note: f.note.trim(), upd: Date.now(), ...(okTime(f.time) ? { time: f.time } : {}) };
   const i = v.expenses.findIndex(e => e.id === rec.id), was = i >= 0 ? v.expenses[i] : null;
   if (i >= 0) v.expenses[i] = rec; else v.expenses.push(rec);
   if (!commit()) return;
@@ -2970,7 +2980,7 @@ function validVolume(x) {
   const uniq = list => new Set(list.map(i => i.id)).size === list.length;
   return uniq(x.expenses) && uniq(x.settlements) &&
     x.expenses.every(e => e && okId(e.id) && str(e.desc, 100) && int(e.amount) && e.amount > 0 && ids.has(e.paidBy) && date(e.date) &&
-      (e.note === undefined || (typeof e.note === "string" && e.note.length <= 200)) &&
+      (e.note === undefined || (typeof e.note === "string" && e.note.length <= 200)) && (e.time === undefined || okTime(e.time)) &&
       e.splits && typeof e.splits === "object" && Object.keys(e.splits).length > 0 &&
       Object.entries(e.splits).every(([k, a]) => ids.has(k) && int(a)) && Object.values(e.splits).reduce((a, b) => a + b, 0) === e.amount) &&
     x.settlements.every(t => t && okId(t.id) && ids.has(t.from) && ids.has(t.to) && t.from !== t.to && int(t.amount) && t.amount > 0 && date(t.date));
@@ -2983,7 +2993,8 @@ function cleanVolume(x) {
     expenses: x.expenses.map(e => ({ id: e.id, desc: e.desc.trim(), amount: e.amount, paidBy: e.paidBy, category: catOf(e.category)[0], date: e.date,
       splitType: ["equal", "exact", "percent", "shares"].includes(e.splitType) ? e.splitType : "exact",
       splits: { ...e.splits }, inputs: Object.fromEntries(Object.entries(e.inputs && typeof e.inputs === "object" ? e.inputs : {}).filter(([k, v]) => x.members.some(m => m.id === k) && typeof v === "string" && v.length <= 20)),
-      note: typeof e.note === "string" ? e.note : "", upd: updOf(e.upd) })),
+      // `time` (owner 2026-11-24, optional "HH:MM") goes last: an older phone drops it (OPT_PAY below)
+      note: typeof e.note === "string" ? e.note : "", upd: updOf(e.upd), ...(okTime(e.time) ? { time: e.time } : {}) })),
     // `how` (D3, optional, up to 40 characters) goes last: an older phone drops it, and mergeVolumes compares in this key order
     // XV: an offset payment names its twin in another volume (twinVol, twinId); both go after `how`, for the same reason
     settlements: x.settlements.map(t => ({ id: t.id, from: t.from, to: t.to, amount: t.amount, date: t.date, upd: updOf(t.upd), ...(typeof t.how === "string" && t.how.trim() && t.how.length <= 40 ? { how: t.how.trim() } : {}),
@@ -2992,8 +3003,8 @@ function cleanVolume(x) {
   };
 }
 const sameEntry = (a, b) => JSON.stringify({ ...a, upd: 0 }) === JSON.stringify({ ...b, upd: 0 });
-// Optional payment fields an older phone drops when it writes a payment back (D3 `how`, XV twin link).
-const OPT_PAY = ["how", "twinVol", "twinId"];
+// Optional fields an older phone drops when it writes an entry back (D3 `how`, XV twin link, an expense's `time`).
+const OPT_PAY = ["how", "twinVol", "twinId", "time"];
 const stripOpt = o => Object.fromEntries(Object.entries(o).filter(([k]) => !OPT_PAY.includes(k)));
 const olderCopy = (x, mine) => x.upd === mine.upd && OPT_PAY.every(k => x[k] === undefined || x[k] === mine[k]) &&
   OPT_PAY.some(k => x[k] === undefined && mine[k] !== undefined) && sameEntry(stripOpt(x), stripOpt(mine));
@@ -3406,6 +3417,7 @@ function bindExpenseForm() {
     else if (t.id === "f-note") f.note = t.value;
     if (t.id === "f-desc" || t.id === "f-amount") refreshSuggest();
     else if (t.id === "f-date") f.date = t.value;
+    else if (t.id === "f-time") f.time = t.value;
     else if (t.dataset.in) f.inputs[t.dataset.in] = t.value;
     refreshSplitPreview(); saveDraft();
   });
@@ -3413,6 +3425,7 @@ function bindExpenseForm() {
     const t = ev.target;
     if (t.id === "f-paid") f.paidBy = t.value;
     if (t.id === "f-date") f.date = t.value;
+    if (t.id === "f-time") f.time = t.value;
     if (t.dataset.inc) {
       const id = t.dataset.inc, i = form.querySelector(`[data-in="${CSS.escape(id)}"]`);
       f.include[id] = t.checked;
