@@ -16,7 +16,9 @@ Facts from the code that shaped the debate (`web/src/app.src.html`):
 - No duplicate check anywhere. **Owner correction:** the repeated "House of Bagnet" ₱334.13 and the two Chowking entries are real, separate meals on different dates. Same-amount repeats are normal for this couple, so they are not evidence for duplicate detection. What they do show: per-expense dates matter, and the import set every date to today, so the history can't tell the meals apart.
 - Open items from the 2026-11-09 handoff: perf regression (patch `brain/WIP/perf-fix-wip.patch`), K3, restore does not re-join sync, real-Worker check never done.
 
-## Next (updated 2026-11-15, Manila time; a new chat starts here)
+## Next (updated 2026-11-24, Manila time; a new chat starts here)
+Shipped 2026-11-24: glass motion pass (screen change and closing sheets render in glass, rows slide in instead of white ink covers, press sinks at .97); see [[Team log]] "Glass motion pass". APK from the merge to main → release "latest". **Owner:** install it and check a screen change, Back and a button press feel right on the phone.
+
 Shipped today (APK "latest"): cross-volume offset (XV), one invite per person (XV2), Android Back fix (AB), invites hand off from Chrome to the app (HO), who-you-are fixes (ME: the join asks when the phone and invite disagree, "This is me", Settings → Who you are).
 1. **Owner check on phones (newest APK):** Ivy opens Settings → Who you are, taps Change → Ivy on any volume that says Geryme; every screen follows at once, and Geryme links up by himself. If Settings says a volume is here twice, delete the old copy. If anything still shows Geryme's side, send a screenshot of that screen.
 2. ~~History render at the 50 ms line~~ fixed 2026-11-15 ([[hati-perf]]): the first 40 rows draw with the screen and the rest right after. `tools/test-all.sh` is all green (web 630 PASS, sync 14/14).
